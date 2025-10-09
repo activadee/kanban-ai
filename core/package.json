@@ -8,7 +8,9 @@
     "build": "tsc -b",
     "dev": "tsc --watch",
     "type-check": "tsc -b --pretty false",
-    "lint": "echo 'no-op (inherits root lint)'"
+    "lint": "echo 'no-op (inherits root lint)'",
+    "test": "vitest run --coverage && bun run scripts/check-coverage.ts",
+    "test:watch": "vitest watch"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.5",
@@ -21,4 +23,3 @@
     "typescript": "^5.8.3"
   }
 }
-
