@@ -1,0 +1,54 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+  - package-ecosystem: "npm"
+    directory: "/client"
+    schedule:
+      interval: "daily"
+      time: "03:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+  - package-ecosystem: "npm"
+    directory: "/shared"
+    schedule:
+      interval: "daily"
+      time: "04:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+  - package-ecosystem: "npm"
+    directory: "/core"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "direct"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "05:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
