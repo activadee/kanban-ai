@@ -1,0 +1,24 @@
+{
+  "name": "core",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc --watch",
+    "type-check": "tsc -b --pretty false",
+    "lint": "echo 'no-op (inherits root lint)'"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.5",
+    "shared": "workspace:*",
+    "simple-git": "^3.28.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.8.3"
+  }
+}
+

@@ -1,0 +1,41 @@
+import type {AppEventBus} from '../events/bus'
+import {broadcast} from '../ws/bus'
+import {getDashboardOverview} from 'core'
+
+const CHANNEL_ID = 'dashboard'
+
+let scheduled = false
+
+function scheduleBroadcast() {
+    if (scheduled) return
+    scheduled = true
+    setTimeout(async () => {
+        try {
+            const overview = await getDashboardOverview()
+            broadcast(CHANNEL_ID, JSON.stringify({type: 'dashboard_overview', payload: overview}))
+        } catch (error) {
+            console.error('[dashboard] broadcast failed', error)
+        } finally {
+            scheduled = false
+        }
+    }, 150)
+}
+
+export function registerDashboardListeners(bus: AppEventBus) {
+    const trigger = () => scheduleBroadcast()
+
+    bus.subscribe('project.created', trigger)
+    bus.subscribe('project.updated', trigger)
+    bus.subscribe('project.deleted', trigger)
+
+    bus.subscribe('card.created', trigger)
+    bus.subscribe('card.updated', trigger)
+    bus.subscribe('card.moved', trigger)
+    bus.subscribe('card.deleted', trigger)
+
+    bus.subscribe('attempt.queued', trigger)
+    bus.subscribe('attempt.started', trigger)
+    bus.subscribe('attempt.status.changed', trigger)
+    bus.subscribe('attempt.completed', trigger)
+    bus.subscribe('attempt.stopped', trigger)
+}

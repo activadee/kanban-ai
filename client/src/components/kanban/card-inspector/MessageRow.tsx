@@ -1,0 +1,118 @@
+import {useState} from 'react'
+import type {ConversationItem} from 'shared'
+import {Badge} from '@/components/ui/badge'
+import {cn} from '@/lib/utils'
+import {Button} from '@/components/ui/button'
+import {decodeBase64Stream} from '@/lib/encoding'
+
+export function MessageRow({item}: { item: ConversationItem }) {
+    const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
+    const time = timestamp.toLocaleTimeString()
+    const [revealOutput, setRevealOutput] = useState(false)
+
+    switch (item.type) {
+        case 'message': {
+            const {role, text} = item
+            const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
+            return (
+                <div className="mb-2 rounded bg-background p-2">
+                    <div className="mb-1 flex items-center gap-2">
+                        <Badge className="text-[10px]" variant={badgeVariant}>{role}</Badge>
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                        {item.profileId ?
+                            <span className="text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
+                    </div>
+                    <div className="whitespace-pre-wrap text-sm">{text}</div>
+                </div>
+            )
+        }
+        case 'thinking': {
+            return (
+                <div className="mb-2 rounded border border-dashed border-border/60 bg-muted/20 p-2">
+                    <div className="mb-1 flex items-center gap-2">
+                        <Badge className="text-[10px]" variant="outline">thinking</Badge>
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                        {item.title ? <span className="text-xs font-semibold">{item.title}</span> : null}
+                    </div>
+                    <div className="whitespace-pre-wrap text-xs text-muted-foreground">{item.text}</div>
+                </div>
+            )
+        }
+        case 'tool': {
+            const {tool} = item
+            const statusVariant: 'default' | 'secondary' | 'outline' = 'outline'
+            const statusClass = tool.status === 'succeeded'
+                ? 'border-emerald-500 text-emerald-500'
+                : tool.status === 'failed'
+                    ? 'border-destructive/40 text-destructive'
+                    : undefined
+            const summaryLabel = tool.name || 'tool'
+            return (
+                <details className="mb-2 rounded border border-border/60 bg-background p-2" open>
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <Badge className="text-[10px]" variant="outline">tool</Badge>
+                            <Badge className={cn('text-[10px]', statusClass)}
+                                   variant={statusVariant}>{tool.status}</Badge>
+                            <span className="text-xs font-medium">{summaryLabel}</span>
+                            <span className="text-xs text-muted-foreground">{time}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Toggle</span>
+                    </summary>
+                    <div className="mt-2 space-y-2 text-xs">
+                        {tool.command ? (
+                            <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">command</div>
+                                <div className="rounded bg-muted px-2 py-1 font-mono text-xs">{tool.command}</div>
+                            </div>
+                        ) : null}
+                        {tool.cwd ? (
+                            <div className="text-muted-foreground">cwd: <span className="font-mono">{tool.cwd}</span>
+                            </div>
+                        ) : null}
+                        {typeof tool.exitCode === 'number' ? (
+                            <div className="text-muted-foreground">exit code: {tool.exitCode}</div>
+                        ) : null}
+                        {(tool.stdout || tool.stderr) ? (
+                            <div className="flex items-center justify-between">
+                                <div className="text-[10px] uppercase text-muted-foreground">output</div>
+                                <Button size="sm" variant="outline" onClick={() => setRevealOutput((v) => !v)}>
+                                    {revealOutput ? 'Hide output' : 'Reveal output'}
+                                </Button>
+                            </div>
+                        ) : null}
+                        {revealOutput && tool.stdout ? (
+                            <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">stdout</div>
+                                <pre
+                                    className="max-w-full overflow-auto whitespace-pre break-words rounded bg-muted px-2 py-1 text-xs">{decodeBase64Stream(tool.stdout)}</pre>
+                            </div>
+                        ) : null}
+                        {revealOutput && tool.stderr ? (
+                            <div>
+                                <div className="text-[10px] uppercase text-muted-foreground">stderr</div>
+                                <pre
+                                    className="max-w-full overflow-auto whitespace-pre break-words rounded bg-muted px-2 py-1 text-xs">{decodeBase64Stream(tool.stderr)}</pre>
+                            </div>
+                        ) : null}
+                    </div>
+                </details>
+            )
+        }
+        case 'error': {
+            return (
+                <div className="mb-2 rounded border border-destructive/40 bg-destructive/10 p-2">
+                    <div className="mb-1 flex items-center gap-2">
+                        <Badge className="text-[10px] border-destructive bg-destructive/10 text-destructive"
+                               variant="outline">error</Badge>
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap text-sm text-destructive">{item.text}</div>
+                </div>
+            )
+        }
+        default:
+            return null
+    }
+}
+

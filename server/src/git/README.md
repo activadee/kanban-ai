@@ -1,0 +1,34 @@
+# Git Module
+
+## Purpose
+
+- Provide repository-level operations (status, diff, stage/unstage, commit, push, merge) for both project repos and
+  per-attempt worktrees.
+- Emit `git.*` events so UI/WebSockets can react without tight coupling.
+- Expose metadata helpers (branch resolution, file content lookup) shared across services.
+
+## Data & Event Flow
+
+1. **Repo Resolution**
+    - `getRepoPath(projectId)` fetches the canonical repository path from the projects repo table.
+    - Worktree-specific helpers accept `repoPath` directly.
+2. **Event Emission**
+    - `stageAtPath` / `unstageAtPath` publish `git.status.changed` when the index changes.
+    - `commitAtPath` publishes `git.commit.created` (with short SHA) + `git.status.changed`.
+    - `pushAtPath` publishes `git.push.completed` and a status refresh.
+    - `mergeBranchIntoBaseForProject` publishes `git.merge.completed` (used after a merge workflow).
+3. **Listeners (`core/git/listeners.ts`)**
+    - Core handles `attempt.autocommit.requested` by invoking `performAutoCommit`, applying the last assistant message
+      as commit content and logging the outcome.
+
+## Key Entry Points
+
+- `core/git/service.ts`: primary git operations, each returning domain-friendly DTOs.
+- `core/git/listeners.ts`: event handlers for attempt-driven git automation.
+- `branch.ts`: helper for branch template rendering.
+
+## Open Tasks
+
+- Add listener for `attempt.completed` to optionally refresh status/diffs after merges.
+- Cache repeated fetch operations (e.g., resolve base refs) within a request scope.
+- Provide unit tests for event emission (status, commit, push) and auto-commit handler.

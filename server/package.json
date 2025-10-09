@@ -1,0 +1,26 @@
+{
+  "name": "server",
+  "version": "0.0.1",
+  "main": "dist/app.js",
+  "types": "dist/app.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "bun --watch run src/app.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit push"
+  },
+  "dependencies": {
+    "core": "workspace:*",
+    "@hono/zod-validator": "^0.7.3",
+    "drizzle-orm": "^0.44.5",
+    "hono": "^4.7.11",
+    "shared": "workspace:*",
+    "simple-git": "^3.28.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "better-sqlite3": "^12.2.0",
+    "drizzle-kit": "^0.31.4"
+  }
+}

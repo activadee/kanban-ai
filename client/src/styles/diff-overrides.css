@@ -1,0 +1,20 @@
+.diff-tailwindcss-wrapper .w-max {
+    width: max-content;
+}
+
+.diff-tailwindcss-wrapper .overflow-x-auto {
+    overflow-x: auto;
+}
+
+.diff-tailwindcss-wrapper pre {
+    white-space: pre;
+}
+
+.diff-tailwindcss-wrapper table {
+    table-layout: fixed;
+}
+
+.diff-tailwindcss-wrapper td {
+    vertical-align: top;
+}
+

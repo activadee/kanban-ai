@@ -1,0 +1,162 @@
+import {useEffect, useState} from 'react'
+import {useNavigate, useParams} from 'react-router-dom'
+import {useQueryClient} from '@tanstack/react-query'
+import {Badge} from '@/components/ui/badge'
+import {Button} from '@/components/ui/button'
+import {Board} from '@/components/kanban/Board'
+import {ImportIssuesDialog} from '@/components/github/ImportIssuesDialog'
+import {ConnectionLostDialog} from '@/components/system/ConnectionLostDialog'
+import {useBoardState, useCreateCard, useDeleteCard, useMoveCard, useProject, useUpdateCard,} from '@/hooks'
+import {boardKeys} from '@/hooks/board'
+import {useKanbanWS} from '@/lib/ws'
+import {toast} from "@/components/ui/toast.tsx";
+import {eventBus} from "@/lib/events.ts";
+
+export function ProjectBoardPage() {
+    const {projectId} = useParams<{ projectId: string }>()
+    const navigate = useNavigate()
+    const queryClient = useQueryClient()
+
+    const {
+        data: project,
+        isLoading,
+        isError,
+        error: queryError,
+    } = useProject(projectId)
+
+    const boardQuery = useBoardState(project?.id, {enabled: Boolean(project?.id)})
+    const boardState = boardQuery.data
+
+    const {connected, reconnecting, state: socketState} = useKanbanWS(project ? project.id : null)
+    const [importOpen, setImportOpen] = useState(false)
+
+    const invalidateBoard = () => {
+        if (!project) return
+        queryClient.invalidateQueries({queryKey: boardKeys.state(project.id)})
+    }
+
+    const createCardMutation = useCreateCard({onSuccess: invalidateBoard})
+    const updateCardMutation = useUpdateCard({onSuccess: invalidateBoard})
+    const deleteCardMutation = useDeleteCard({onSuccess: invalidateBoard})
+    const moveCardMutation = useMoveCard({onSuccess: invalidateBoard})
+
+    const connectionLabel = reconnecting ? 'Reconnecting…' : connected ? 'Connected' : 'Connecting…'
+    const connectionBadgeVariant = reconnecting ? 'destructive' : connected ? 'secondary' : 'outline'
+
+    useEffect(() => {
+        return eventBus.on('attempt_log', (p) => {
+            if (p.message?.toLowerCase().includes('cleanup') || p.message?.includes('[cleanup]')) {
+                toast({title: 'Cleaned worktree', description: p.message, variant: 'success'})
+            }
+        })
+    }, [])
+
+    useEffect(() => {
+        if (project?.id && socketState) {
+            queryClient.setQueryData(boardKeys.state(project.id), socketState)
+        }
+    }, [project?.id, socketState, queryClient])
+
+    if (!projectId) {
+        return (
+            <div className="p-4">
+                <p className="text-sm text-destructive">Missing project identifier.</p>
+                <Button variant="link" onClick={() => navigate('/')}>Back to projects</Button>
+            </div>
+        )
+    }
+
+    if (isLoading || boardQuery.isLoading) {
+        return <div className="p-10 text-muted-foreground">Loading project…</div>
+    }
+
+    if (isError || !project || !boardState) {
+        return (
+            <div className="p-10 space-y-4">
+                <p className="text-sm text-destructive">{queryError?.message ?? 'Project not found.'}</p>
+                <Button onClick={() => navigate('/')}>Back to projects</Button>
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex h-full min-h-0 flex-col">
+            <div className="flex items-center justify-between px-4 py-4">
+                <div className="flex items-center gap-2">
+                    <img src={'/app/vite.svg'} className="h-6 w-6"/>
+                    <div className="text-xl font-semibold">{project.name}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Badge variant={connectionBadgeVariant}>{connectionLabel}</Badge>
+                    <Button variant="secondary" size="sm" onClick={() => setImportOpen(true)}>
+                        Import GitHub issues
+                    </Button>
+                </div>
+            </div>
+
+            <div className="flex-1 min-h-0 px-4 pb-4">
+                <Board
+                    projectId={project.id}
+                    state={boardState}
+                    handlers={{
+                        onCreateCard: async (columnId, values) => {
+                            try {
+                                await createCardMutation.mutateAsync({
+                                    projectId: project.id,
+                                    columnId,
+                                    values: {
+                                        title: values.title,
+                                        description: values.description || undefined,
+                                        dependsOn: values.dependsOn ?? []
+                                    },
+                                })
+                            } catch (err) {
+                                console.error('Create card failed', err)
+                                toast({title: 'Failed to create card', variant: 'destructive'})
+                            }
+                        },
+                        onUpdateCard: async (cardId, values) => {
+                            try {
+                                await updateCardMutation.mutateAsync({
+                                    projectId: project.id,
+                                    cardId,
+                                    values: {
+                                        title: values.title,
+                                        description: values.description || undefined,
+                                        dependsOn: values.dependsOn
+                                    },
+                                })
+                            } catch (err) {
+                                console.error('Update card failed', err)
+                                toast({title: 'Failed to update card', variant: 'destructive'})
+                            }
+                        },
+                        onDeleteCard: async (cardId) => {
+                            try {
+                                await deleteCardMutation.mutateAsync({projectId: project.id, cardId})
+                            } catch (err) {
+                                console.error('Delete card failed', err)
+                                toast({title: 'Failed to delete card', variant: 'destructive'})
+                            }
+                        },
+                        onMoveCard: async (cardId, toColumnId, toIndex) => {
+                            try {
+                                await moveCardMutation.mutateAsync({projectId: project.id, cardId, toColumnId, toIndex})
+                            } catch (err) {
+                                console.error('Move card failed', err)
+                                toast({title: 'Failed to move card', variant: 'destructive'})
+                            }
+                        },
+                    }}
+                />
+            </div>
+            <ImportIssuesDialog
+                projectId={projectId}
+                open={importOpen}
+                onOpenChange={setImportOpen}
+                onImported={() => invalidateBoard()}
+            />
+            <ConnectionLostDialog open={reconnecting}/>
+        </div>
+    )
+}
