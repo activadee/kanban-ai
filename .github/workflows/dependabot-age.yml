@@ -23,7 +23,7 @@ jobs:
         uses: dependabot/fetch-metadata@v2
       - name: Setup Node.js
         if: ${{ steps.metadata.outputs.package-ecosystem == 'npm' }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
       - name: Ensure dependency releases are at least three days old
