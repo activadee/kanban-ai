@@ -196,7 +196,7 @@ export const createProjectsRouter = () => {
                     await projectDeps.setDependencies(cardId, body.dependsOn as string[])
                 }
                 if (hasContentUpdate || hasDeps) {
-                    await broadcastBoard(cardId)
+                    await broadcastBoard(boardId)
                 }
                 const state = await fetchBoardState(boardId);
                 return c.json({state}, 200);
