@@ -81,6 +81,7 @@ jobs:
           - Skip any feedback already present in existing_comments.json.
           - Use files.json to calculate accurate HEAD line numbers; only comment on lines that appear on the '+' side of the diff or unchanged context lines.
           - Ignore style, formatting, or naming nits unless they cause functional issues.
+          - Always set "summary" to a short string (can be empty) describing the overall review outcome.
           - If nothing actionable is found, return an empty array of comments.
 
           Output format (JSON only, no extra text or Markdown fencing):
@@ -103,7 +104,7 @@ jobs:
           output-schema: |
             {
               "type": "object",
-              "required": ["comments"],
+              "required": ["summary", "comments"],
               "additionalProperties": false,
               "properties": {
                 "summary": { "type": "string" },
