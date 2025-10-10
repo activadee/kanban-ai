@@ -74,6 +74,7 @@ jobs:
           - Explain why it is a bug or risk.
           - Reference the specific code that changed.
           - Provide a concrete fix or mitigation strategy.
+          - When the fix is a small, self-contained change, include a GitHub suggestion block (```suggestion``` … ```), so maintainers can apply it directly.
           - Limit feedback to behaviour visible in diff.txt (changed lines or their immediate context).
 
           Requirements:
@@ -249,51 +250,43 @@ jobs:
 
             const data = JSON.parse(fs.readFileSync(reviewPath, 'utf8'));
             const comments = Array.isArray(data.comments) ? data.comments : [];
-            const summary = typeof data.summary === 'string' && data.summary.trim().length > 0
+            let summary = typeof data.summary === 'string' && data.summary.trim().length > 0
               ? data.summary.trim()
               : (comments.length
                 ? `Found ${comments.length} potential issue${comments.length === 1 ? '' : 's'} that should be addressed.`
-                : '✅ No issues found in the current changes.');
+                : '✅ No issues found. Approving changes.');
 
             const prNumber = context.payload.pull_request.number;
 
-            if (!comments.length) {
-              const existing = await github.paginate(github.rest.issues.listComments, {
+            if (comments.length) {
+              if (!/^requesting changes/i.test(summary)) {
+                summary = `Requesting changes: ${summary}`;
+              }
+              await github.rest.pulls.createReview({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: prNumber,
-                per_page: 100
+                pull_number: prNumber,
+                event: 'REQUEST_CHANGES',
+                body: summary,
+                comments
               });
-
-              const hasNoIssuesComment = existing.some((comment) =>
-                (comment.user?.login || '').includes('[bot]') &&
-                /no issues found|lgtm|✅/i.test(comment.body || '')
-              );
-
-              if (!hasNoIssuesComment) {
-                await github.rest.pulls.createReview({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: prNumber,
-                  event: 'COMMENT',
-                  body: summary
-                });
-              } else {
-                core.info('No actionable feedback and an existing no-issues confirmation already exists; skipping review.');
-              }
+              core.info(`Submitted review requesting changes with ${comments.length} inline comment${comments.length === 1 ? '' : 's'}.`);
               return;
+            }
+
+            if (!/approv/i.test(summary)) {
+              summary = `${summary} Approving changes.`;
             }
 
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
-              event: 'COMMENT',
-              body: summary,
-              comments
+              event: 'APPROVE',
+              body: summary
             });
 
-            core.info(`Submitted review with ${comments.length} inline comment${comments.length === 1 ? '' : 's'}.`);
+            core.info('Submitted approval review with no inline comments.');
 
       - name: Upload review artifacts
         if: failure()
