@@ -160,6 +160,19 @@ Run:
 
 - `./dist/kanbanai [--host 127.0.0.1] [--port 3000] [--open] [--no-open]`
 
+## Run via Package Runner
+
+You can also run the packaged CLI without a global install using a standard package runner:
+
+- `bunx kanban-ai` — starts the server on `127.0.0.1:3000` and prints the URL.
+- `bunx kanban-ai --port 5555 --open` — starts on port 5555 and opens the browser.
+
+If the binary is missing for your platform, build it locally:
+
+```bash
+bun run package
+```
+
 Behavior:
 
 - REST: `/api/*` (projects, agents, attempts, settings, github, filesystem, dashboard, metrics at `/api/metrics`).

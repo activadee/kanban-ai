@@ -1,0 +1,17 @@
+{
+  "name": "cli",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "bun --watch run src/main.ts",
+    "type-check": "tsc -b --pretty false"
+  },
+  "dependencies": {
+    "server": "workspace:*"
+  }
+}
+
