@@ -1,5 +1,6 @@
 # KanbanAI
 
+Some stuff added to see if the stuff works
 Developer‑centric Kanban that turns tasks into Pull Requests with help from your favorite coding agent. Built with Bun +
 Hono + React + Vite in a type‑safe monorepo, with shared models and a realtime board.
 
@@ -32,13 +33,13 @@ Built on the bhvr monorepo template.
 
 ## Quick Start (Local Dev)
 
-1) Install dependencies
+1. Install dependencies
 
 ```bash
 bun install
 ```
 
-2) Configure environment
+2. Configure environment
 
 - Server (`server/.env`):
 
@@ -58,7 +59,7 @@ DATABASE_URL=file:./drizzle/kanban.db
 VITE_SERVER_URL=http://localhost:3000
 ```
 
-3) Start everything (Turbo will run client and server)
+3. Start everything (Turbo will run client and server)
 
 ```bash
 bun run dev
@@ -71,22 +72,22 @@ bun run dev
 
 KanbanAI uses GitHub’s Device Authorization Flow — no callback server is required.
 
-1) Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps), enable “Device Flow”, and copy the Client
+1. Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps), enable “Device Flow”, and copy the Client
    ID (and Secret).
-2) Put `GITHUB_CLIENT_ID` (and optionally `GITHUB_CLIENT_SECRET`) in `server/.env`.
-3) In the app, open the GitHub panel (sidebar → GitHub) and click “Connect”. You’ll be shown a user code and
+2. Put `GITHUB_CLIENT_ID` (and optionally `GITHUB_CLIENT_SECRET`) in `server/.env`.
+3. In the app, open the GitHub panel (sidebar → GitHub) and click “Connect”. You’ll be shown a user code and
    verification URL to confirm in the browser.
 
 Scopes requested: `repo`, `read:user`, `user:email`.
 
 ## Typical Flow
 
-1) Create a Project pointing to a local git repo (or initialize one).
-2) Connect GitHub and (optionally) import issues to populate the board.
-3) Drag a ticket to In Progress to start an Attempt. The server creates a worktree at
+1. Create a Project pointing to a local git repo (or initialize one).
+2. Connect GitHub and (optionally) import issues to populate the board.
+3. Drag a ticket to In Progress to start an Attempt. The server creates a worktree at
    `$HOME/.kanbanAI/worktrees/<project>/<task>` and launches your selected agent.
-4) Review changes: view diffs, stage/commit, push, and Create PR.
-5) When merged, move to Done. Worktrees remain available for manual inspection or cleanup.
+4. Review changes: view diffs, stage/commit, push, and Create PR.
+5. When merged, move to Done. Worktrees remain available for manual inspection or cleanup.
 
 ## Scripts
 
@@ -180,9 +181,9 @@ Behavior:
 - Client: `/app` with assets under `/app/assets/*` and index.html fallback (deep links like `/app/projects`).
 - No external files required next to the binary. Client assets and SQL migrations are embedded at build time.
 - SQLite database location (always OS default):
-    - macOS: `~/Library/Application Support/KanbanAI/kanban.db`
-    - Windows: `%LOCALAPPDATA%/KanbanAI/kanban.db`
-    - Linux: `$XDG_DATA_HOME/kanbanai/kanban.db` or `~/.local/share/kanbanai/kanban.db`
+  - macOS: `~/Library/Application Support/KanbanAI/kanban.db`
+  - Windows: `%LOCALAPPDATA%/KanbanAI/kanban.db`
+  - Linux: `$XDG_DATA_HOME/kanbanai/kanban.db` or `~/.local/share/kanbanai/kanban.db`
 
 Client defaults for the binary:
 
