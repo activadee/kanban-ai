@@ -43,8 +43,11 @@ jobs:
 
           git diff --unified=5 origin/${{ github.event.pull_request.base.ref }}...${{ github.event.pull_request.head.sha }} > diff.txt
 
-          gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --paginate --jq '.[]' > existing_comments.jsonl
-          jq -s 'map({user: .user.login, body: .body})' existing_comments.jsonl > existing_comments.json
+          gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments --paginate --jq '.[]' > existing_issue_comments.jsonl
+          jq -s 'map({user: .user.login, body: .body})' existing_issue_comments.jsonl > existing_issue_comments.json
+
+          gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews --paginate --jq '.[]' > existing_reviews.jsonl
+          jq -s '[.[] | {state: .state, body: .body, submitted_at: .submitted_at, user: (.user.login), comments: (.comments_url)}]' existing_reviews.jsonl > existing_reviews.json
 
           gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --paginate --jq '.[]' > files.jsonl
           jq -s '[.[] | select(.patch != null) | {path: .filename, patch: .patch}]' files.jsonl > files.json
@@ -66,7 +69,8 @@ jobs:
           Repository metadata is in review_metadata.json.
           The unified diff for this pull request is saved in diff.txt.
           files.json lists each changed file with its diff patch.
-          existing_comments.json contains bodies of review comments that already exist; do not repeat any of them (case-insensitive comparison).
+          existing_issue_comments.json contains bodies of review comments that already exist on the PR conversation (case-insensitive comparison).
+          existing_reviews.json contains metadata for past reviews; avoid duplicating feedback that were previously requested and resolved. Close any existing review comments that have been addressed and are no longer relevant or already resolved or are duplicates.
 
           Review the diff and identify correctness, reliability, and security issues. Prefer high-signal findings over nitpicks.
 
@@ -79,7 +83,8 @@ jobs:
 
           Requirements:
           - Output at most 10 comments.
-          - Skip any feedback already present in existing_comments.json.
+          - Skip any feedback already present in existing_issue_comments.json.
+          - Skip any findings that already have a resolved GitHub review comment (look for “resolved” in existing_reviews.json and match by path/line/body where possible).
           - Use files.json to calculate accurate HEAD line numbers; only comment on lines that appear on the '+' side of the diff or unchanged context lines.
           - Ignore style, formatting, or naming nits unless they cause functional issues.
           - Always set "summary" to a short string (can be empty) describing the overall review outcome.
