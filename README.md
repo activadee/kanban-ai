@@ -112,6 +112,12 @@ bun run type-check
 bun run test
 ```
 
+## Automated Code Review
+
+- GitHub runs the **Codex Code Review** workflow on every pull request (non-draft). It collects PR diffs and posts inline comments directly on the affected lines.
+- To verify the workflow end-to-end, open a test PR with the current placeholder changes (e.g., the auto-inserted review card in the Review column or the incorrect board broadcast in `server/src/projects/routes.ts`). The workflow should surface these issues in the review summary and inline comments.
+- Debug artifacts for each run are uploaded if the workflow fails (`codex-review-debug-<run id>`), making it easy to inspect the Codex prompt, diff, and any skipped comments.
+
 ## Configuration
 
 Project Settings (per project): base branch, preferred remote, setup/dev/cleanup scripts, default agent/profile,

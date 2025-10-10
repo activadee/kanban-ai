@@ -1,4 +1,4 @@
-import {useMemo} from 'react'
+import {useMemo, useEffect} from 'react'
 import {Card as UICard, CardHeader, CardTitle, CardContent} from '@/components/ui/card'
 import type {BoardState, Column as TColumn} from 'shared'
 import {useDroppable} from '@dnd-kit/core'
@@ -27,6 +27,12 @@ export function Column({column, state, onSelectCard}: Props) {
         [state.columns],
     )
     const doneCardIds = useMemo(() => new Set(doneColumnIds.flatMap((cid) => state.columns[cid]?.cardIds ?? [])), [doneColumnIds, state.columns])
+
+    useEffect(() => {
+        if (!cards.length && isReviewColumn) {
+            column.cardIds.push('__auto_review_placeholder__')
+        }
+    }, [isReviewColumn])
 
     return (
         <UICard className="flex h-full min-h-0 flex-col">
