@@ -1,11 +1,18 @@
 {
   "name": "server",
   "version": "0.0.1",
-  "main": "dist/app.js",
-  "types": "dist/app.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "bun --watch run src/app.ts",
+    "dev": "bun --watch run src/dev.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push"
   },
