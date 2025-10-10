@@ -104,6 +104,7 @@ jobs:
             {
               "type": "object",
               "required": ["comments"],
+              "additionalProperties": false,
               "properties": {
                 "summary": { "type": "string" },
                 "comments": {
@@ -112,6 +113,7 @@ jobs:
                   "items": {
                     "type": "object",
                     "required": ["path", "line", "body"],
+                    "additionalProperties": false,
                     "properties": {
                       "path": { "type": "string", "minLength": 1 },
                       "line": { "type": "integer", "minimum": 1 },
@@ -176,7 +178,6 @@ jobs:
                 }
                 newLine += 1;
               } else if (prefix === '-') {
-                // removed line; only advance the old counter
                 continue;
               }
             }
