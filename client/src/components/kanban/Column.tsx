@@ -28,7 +28,11 @@ export function Column({column, state, onSelectCard}: Props) {
     )
     const doneCardIds = useMemo(() => new Set(doneColumnIds.flatMap((cid) => state.columns[cid]?.cardIds ?? [])), [doneColumnIds, state.columns])
 
-    useEffect(() => {
+    const doneColumnIds = useMemo(
+        () => Object.values(state.columns).filter((c) => (c.key === 'done') || c.title.trim().toLowerCase() === 'done').map((c) => c.id),
+        [state.columns],
+    )
+    const doneCardIds = useMemo(() => new Set(doneColumnIds.flatMap((cid) => state.columns[cid]?.cardIds ?? [])), [doneColumnIds, state.columns])
         if (!cards.length && isReviewColumn) {
             column.cardIds.push('__auto_review_placeholder__')
         }
