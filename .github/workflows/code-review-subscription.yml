@@ -279,7 +279,28 @@ jobs:
               return;
             }
 
-            if (!/approv/i.test(summary)) {
+            const defaultApprovalSummary = '✅ No issues found. Approving changes.';
+            if (summary !== defaultApprovalSummary) {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                event: 'COMMENT',
+                body: summary
+              });
+              core.info('Submitted comment-only review with no inline comments.');
+              return;
+            }
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              event: 'APPROVE',
+              body: summary
+            });
+
+            core.info('Submitted approval review with no inline comments.');
               summary = `${summary} Approving changes.`;
             }
 
