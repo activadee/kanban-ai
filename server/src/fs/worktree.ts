@@ -52,14 +52,11 @@ export async function createWorktree(repoPath: string, baseBranch: string, branc
     await mkdir(worktreesRoot, {recursive: true})
     try {
         await run('git', ['fetch', 'origin', '--prune'], repoPath)
+        // Mirror the remote base branch into a local ref so the worktree can track it without the remote upstream default.
+        await run('git', ['fetch', 'origin', `${baseBranch}:${baseBranch}`], repoPath)
     } catch {
     }
-    const ref = `origin/${baseBranch}`
-    try {
-        await run('git', ['worktree', 'add', '-B', branchName, worktreesRoot, ref], repoPath)
-    } catch {
-        await run('git', ['worktree', 'add', '-B', branchName, worktreesRoot, baseBranch], repoPath)
-    }
+    await run('git', ['worktree', 'add', '-B', branchName, worktreesRoot, baseBranch], repoPath)
     publishWorktreeCreated(meta, worktreesRoot, branchName, baseBranch)
     return worktreesRoot
 }
