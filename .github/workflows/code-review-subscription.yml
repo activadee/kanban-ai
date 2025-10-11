@@ -200,7 +200,8 @@ jobs:
           for (const thread of existingReviewThreads) {
             if (!thread) continue;
             const resolved = Boolean(thread.resolved);
-            for (const comment of thread.comments ?? []) {
+            const threadComments = Array.isArray(thread.comments) ? thread.comments : [];
+            for (const comment of threadComments) {
               if (!comment || typeof comment.path !== 'string') continue;
               const line =
                 Number.isInteger(comment.line) && comment.line !== null
@@ -208,14 +209,14 @@ jobs:
                   : null;
               const key = commentKey(comment.path, line, comment.body);
               if (!key) continue;
-              existing = existingCommentIndex.get(key) ?? {
+              const existingEntry = existingCommentIndex.get(key) ?? {
                 resolved,
                 author: comment.author ?? null,
                 source: 'thread',
               };
               existingCommentIndex.set(key, {
-                resolved: existing.resolved || resolved,
-                author: comment.author ?? existing.author ?? null,
+                resolved: existingEntry.resolved || resolved,
+                author: comment.author ?? existingEntry.author ?? null,
                 source: 'thread',
                 threadId: thread.id,
               });
