@@ -309,6 +309,10 @@ jobs:
               return;
             }
 
+            if (!/approv/i.test(summary)) {
+              summary = `${summary} Approving changes.`;
+            }
+
             await github.rest.pulls.createReview({
               owner: context.repo.owner,
               repo: context.repo.repo,
