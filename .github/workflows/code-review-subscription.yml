@@ -1,66 +1,93 @@
-name: "Code review with ChatGPT subscription auth"
+name: Codex Code Review
+
 on:
   pull_request:
-    types: [opened]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+concurrency:
+  group: codex-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
 jobs:
-  codex:
+  review:
+    name: Run automated review
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      final_message: ${{ steps.run_codex.outputs.final-message }}
+    timeout-minutes: 20
+
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
         with:
-          # Explicitly check out the PR's merge commit.
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Pre-fetch base and head refs for the PR
-        run: |
-          git fetch --no-tags origin \
-            ${{ github.event.pull_request.base.ref }} \
-            +refs/pull/${{ github.event.pull_request.number }}/head
+      - name: Fetch base reference
+        run: git fetch --no-tags origin ${{ github.event.pull_request.base.ref }}
 
-      - name: Run Codex (subscription auth)
+      - name: Collect review inputs
+        uses: ./.github/actions/codex-collect
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write review instructions
+        run: cp .github/prompts/codex-review.md codex_prompt.md
+
+      - name: Load Codex output schema
+        run: echo "CODEX_OUTPUT_SCHEMA=$(jq -c . .github/prompts/codex-review-schema.json)" >> "$GITHUB_ENV"
+
+      - name: Run Codex review
         id: run_codex
         uses: activadee/codex-action@main
         with:
           codex-auth-json-b64: ${{ secrets.CODEX_AUTH_JSON_B64 }}
           safety-strategy: drop-sudo
-          prompt: |
-            This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}.
-            Base SHA: ${{ github.event.pull_request.base.sha }}
-            Head SHA: ${{ github.event.pull_request.head.sha }}
+          prompt-file: codex_prompt.md
+          output-file: codex-output.json
+          output-schema: ${{ env.CODEX_OUTPUT_SCHEMA }}
 
-            Review ONLY the changes introduced by the PR.
-            Suggest any improvements, potential bugs, or issues.
-            Be concise and specific in your feedback.
+      - name: Normalize Codex review output
+        run: node .github/scripts/codex/normalize-review.cjs
 
-            Pull request title and body:
-            ----
-            ${{ github.event.pull_request.title }}
-            ${{ github.event.pull_request.body }}
-
-  post_feedback:
-    runs-on: ubuntu-latest
-    needs: codex
-    if: needs.codex.outputs.final_message != ''
-    permissions:
-      issues: write
-      pull-requests: write
-    steps:
-      - name: Report Codex feedback
+      - name: Submit review
+        if: success()
         uses: actions/github-script@v7
         env:
-          CODEX_FINAL_MESSAGE: ${{ needs.codex.outputs.final_message }}
+          REVIEW_FILE: review-comments.json
         with:
-          github-token: ${{ github.token }}
-          script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: process.env.CODEX_FINAL_MESSAGE,
-            });
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: .github/scripts/codex/submit-review.js
 
+      - name: Upload review artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-review-debug-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            diff.txt
+            files.json
+            files.jsonl
+            existing_issue_comments.json
+            existing_issue_comments.jsonl
+            existing_reviews.json
+            existing_reviews.jsonl
+            existing_review_comments.json
+            existing_review_comments.jsonl
+            existing_review_threads.json
+            existing_review_threads.jsonl
+            review_metadata.json
+            codex_prompt.md
+            codex-output.json
+            review-comments.json
+            skipped-comments.json
