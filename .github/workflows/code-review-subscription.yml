@@ -291,7 +291,13 @@ jobs:
             }
 
             const existing = existingCommentIndex.get(key);
+            const existing = existingCommentIndex.get(key);
             if (existing) {
+              if (!existing.resolved) {
+                skipped.push({ reason: 'already-existing', path, line: rawLine, body });
+                continue;
+              }
+            }
               if (existing.resolved) {
                 skipped.push({ reason: 'already-resolved', path, line: rawLine, body });
                 continue;
@@ -419,7 +425,14 @@ jobs:
 
               const marker = '<!-- codex-review-summary -->';
               const recommendation = comments.length
+              const summaryIsClean =
+                summaryText === 'No blocking issues detected.' ||
+                summaryText === '✅ No issues found in the current changes.';
+              const recommendation = comments.length
                 ? `🚫 Changes required – ${comments.length} inline issue${comments.length === 1 ? '' : 's'} detected.`
+                : summaryIsClean
+                  ? '✅ Ready to merge – no blocking issues detected.'
+                  : '⚠️ Manual follow-up required – see summary below.';
                 : '✅ Ready to merge – no blocking issues detected.';
 
               const findingsSection = comments.length
