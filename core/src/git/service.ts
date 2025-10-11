@@ -69,6 +69,27 @@ function trimOrNull(value: string | null | undefined): string | null {
     return trimmed.length > 0 ? trimmed : null
 }
 
+function normalizeSha(value: string | null | undefined): string | null {
+    if (!value) return null
+    const trimmed = value.trim()
+    return /^[0-9a-f]{7,40}$/i.test(trimmed) ? trimmed : null
+}
+
+function extractShaFromCommitResult(result: Awaited<ReturnType<SimpleGit['commit']>>): string | null {
+    if (typeof result === 'string') {
+        const match = result.match(/[0-9a-f]{7,40}/i)
+        return normalizeSha(match ? match[0] : null)
+    }
+    if (result && typeof result === 'object' && 'commit' in result) {
+        const commitValue = (result as any).commit
+        if (typeof commitValue === 'string') {
+            const normalized = normalizeSha(commitValue)
+            if (normalized) return normalized
+        }
+    }
+    return null
+}
+
 async function readGitConfigValue(g: SimpleGit, key: string): Promise<string | null> {
     try {
         const out = await g.raw(['config', '--get', key])
@@ -177,14 +198,38 @@ export async function unstageFiles(projectId: string, paths: string[]): Promise<
     await g.raw(['reset', '-q', 'HEAD', '--', ...paths])
 }
 
+async function commitWithHash(g: SimpleGit, message: string): Promise<string> {
+    const previousHead = await g.revparse(['HEAD']).catch(() => null)
+    const result = await g.commit(message)
+    const shaFromResult = extractShaFromCommitResult(result)
+    const currentHead = await g.revparse(['HEAD']).catch(() => null)
+
+    if (shaFromResult) return shaFromResult
+    if (currentHead && currentHead !== previousHead) return currentHead.trim()
+
+    const summary = (result && typeof result === 'object' && 'summary' in result) ? (result as any).summary ?? {} : {}
+    const {changes = 0, insertions = 0, deletions = 0} = summary as {
+        changes?: number; insertions?: number; deletions?: number
+    }
+
+    const rawOutput = typeof result === 'string' ? result : ''
+    const nothingToCommit = rawOutput.toLowerCase().includes('nothing to commit')
+
+    if (!changes && !insertions && !deletions) {
+        throw new Error(nothingToCommit ? 'No staged changes to commit.' : 'Git commit failed: no commit hash returned.')
+    }
+
+    if (currentHead) return currentHead.trim()
+    throw new Error('Git commit succeeded but commit hash could not be determined.')
+}
+
 export async function commit(projectId: string, subject: string, body?: string): Promise<string> {
     const repoPath = await getRepoPath(projectId)
     const g = git(repoPath)
     if (!subject?.trim()) throw new Error('Commit subject is required')
     const message = body?.trim() ? `${subject.trim()}\n\n${body.trim()}` : subject.trim()
     await ensureGitAuthorIdentity(g)
-    const res = await g.commit(message)
-    return res.commit
+    return commitWithHash(g, message)
 }
 
 export async function push(
@@ -348,11 +393,11 @@ export async function commitAtPath(
     const g = gitAtPath(worktreePath)
     const message = body?.trim() ? `${subject.trim()}\n\n${body.trim()}` : subject.trim()
     await ensureGitAuthorIdentity(g)
-    const res = await g.commit(message)
+    const sha = await commitWithHash(g, message)
     const ts = new Date().toISOString()
-    publishCommitCreated(meta, res.commit, subject.trim(), ts)
+    publishCommitCreated(meta, sha, subject.trim(), ts)
     publishStatusChanged(meta)
-    return res.commit
+    return sha
 }
 
 export async function pushAtPath(

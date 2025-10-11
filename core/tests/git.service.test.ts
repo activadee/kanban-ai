@@ -21,6 +21,7 @@ function createGitMock(baseDir: string) {
         diff: vi.fn(),
         add: vi.fn(),
         commit: vi.fn(),
+        revparse: vi.fn(),
         push: vi.fn(),
     }
 }
@@ -173,13 +174,16 @@ describe('git/service repository status and content', () => {
         })
         getRepositoryPathMock.mockResolvedValue('/repos/app')
         const git = createGitMock('/repos/app')
-        git.commit.mockResolvedValue({commit: '123abc'})
+        git.commit.mockResolvedValue({commit: '123abc4'})
+        git.revparse
+            .mockResolvedValueOnce('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+            .mockResolvedValueOnce('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
         git.status.mockResolvedValue({current: 'feature', tracking: 'origin/feature'} as any)
         git.raw.mockResolvedValue('0\t0')
         gitInstances.set('/repos/app', git)
 
         const hash = await commit('proj', ' Test commit ')
-        expect(hash).toBe('123abc')
+        expect(hash).toBe('123abc4')
         expect(git.commit).toHaveBeenCalledWith('Test commit')
 
         await push('proj', {token: 'secret', setUpstream: true})
@@ -308,7 +312,10 @@ describe('git/service helpers for worktree paths', () => {
         })
 
         const git = createGitMock('/tmp/work')
-        git.commit.mockResolvedValue({commit: 'abc'})
+        git.commit.mockResolvedValue({commit: 'abcdef1'})
+        git.revparse
+            .mockResolvedValueOnce('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+            .mockResolvedValueOnce('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
         git.status.mockResolvedValue({current: 'feature', tracking: 'origin/feature'} as any)
         git.raw.mockResolvedValue('0\t0')
         gitInstances.set('/tmp/work', git)
@@ -324,7 +331,7 @@ describe('git/service helpers for worktree paths', () => {
         expect(bus.publish).toHaveBeenCalledWith('git.status.changed', {projectId: 'proj'})
         expect(bus.publish).toHaveBeenCalledWith(
             'git.commit.created',
-            expect.objectContaining({projectId: 'proj', attemptId: 'att', shortSha: 'abc'}),
+            expect.objectContaining({projectId: 'proj', attemptId: 'att', shortSha: 'abcdef1'}),
         )
         expect(bus.publish).toHaveBeenCalledWith(
             'git.push.completed',
