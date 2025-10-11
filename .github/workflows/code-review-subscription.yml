@@ -291,7 +291,13 @@ jobs:
             }
 
             const existing = existingCommentIndex.get(key);
+            const existing = existingCommentIndex.get(key);
             if (existing) {
+              if (!existing.resolved) {
+                skipped.push({ reason: 'already-existing', path, line: rawLine, body });
+                continue;
+              }
+            }
               if (existing.resolved) {
                 skipped.push({ reason: 'already-resolved', path, line: rawLine, body });
                 continue;
