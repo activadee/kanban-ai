@@ -429,18 +429,24 @@ jobs:
                 : '- No inline findings.';
 
               const timestamp = new Date().toISOString();
-              const summaryBody = `${marker}
-### Codex Review Summary
-
-Recommendation: ${recommendation}
-
-Summary:
-${summaryText}
-
-Inline findings:
-${findingsSection}
-
-${resolvedCount ? `Resolved ${resolvedCount} previously open Codex thread${resolvedCount === 1 ? '' : 's'}.\n\n` : ''}Generated at ${timestamp}.`;
+              const summaryLines = [
+                marker,
+                '### Codex Review Summary',
+                '',
+                `Recommendation: ${recommendation}`,
+                '',
+                'Summary:',
+                summaryText,
+                '',
+                'Inline findings:',
+                findingsSection,
+                '',
+                resolvedCount
+                  ? `Resolved ${resolvedCount} previously open Codex thread${resolvedCount === 1 ? '' : 's'}.`
+                  : null,
+                `Generated at ${timestamp}.`,
+              ].filter((line) => line !== null);
+              const summaryBody = summaryLines.join('\n');
 
               const existingSummary = await github.paginate(
                 github.rest.issues.listComments,
