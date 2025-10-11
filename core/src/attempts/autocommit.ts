@@ -13,10 +13,7 @@ function normalizeSha(value: string | null): string | null {
 }
 
 function extractShaFromCommitResult(result: SimpleGitCommitResult): string | null {
-    if (typeof result === 'string') {
-        const match = result.match(/[0-9a-f]{7,40}/i)
-        return normalizeSha(match ? match[0] : null)
-    }
+
     if (result && typeof result === 'object' && 'commit' in result) {
         const commitValue = (result as any).commit
         if (typeof commitValue === 'string') return normalizeSha(commitValue)
