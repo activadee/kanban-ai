@@ -50,18 +50,18 @@ jobs:
           jq -s '[.[] | {id: .id, state: .state, body: .body, submitted_at: .submitted_at, user: (.user.login), comments: (.comments_url)}]' existing_reviews.jsonl > existing_reviews.json
 
           gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --paginate --jq '.[]' > existing_review_comments.jsonl
-          jq -s '[.[] | {id: .id, review_id: .pull_request_review_id, in_reply_to_id: .in_reply_to_id, path: .path, line: (.line // .original_line // .original_start_line), start_line: .start_line, position: .position, body: .body, side: .side, commit_id: .commit_id, created_at: .created_at, updated_at: .updated_at}]' existing_review_comments.jsonl > existing_review_comments.json
+          jq -s '[.[] | {id: .id, review_id: .pull_request_review_id, in_reply_to_id: .in_reply_to_id, path: .path, line: (.line // .original_line // .original_start_line), start_line: .start_line, position: .position, body: .body, side: .side, commit_id: .commit_id, created_at: .created_at, updated_at: .updated_at, user: (.user.login)}]' existing_review_comments.jsonl > existing_review_comments.json
 
           repo_full="${{ github.repository }}"
           repo_owner="${repo_full%%/*}"
           repo_name="${repo_full#*/}"
           gh api graphql --paginate \
-            -f query='query($owner:String!, $name:String!, $number:Int!, $after:String){ repository(owner:$owner, name:$name) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { id isResolved comments(first:100) { nodes { id path originalLine line body createdAt updatedAt } } } pageInfo { hasNextPage endCursor } } } } }' \
+            -f query='query($owner:String!, $name:String!, $number:Int!, $after:String){ repository(owner:$owner, name:$name) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { id isResolved comments(first:100) { nodes { id path originalLine line body createdAt updatedAt author { login } } } } pageInfo { hasNextPage endCursor } } } } }' \
             -F owner="$repo_owner" \
             -F name="$repo_name" \
             -F number="${{ github.event.pull_request.number }}" \
             --jq '(.data.repository.pullRequest.reviewThreads.nodes // [])' > existing_review_threads.jsonl
-          jq -s '[.[] | .[] | {id: .id, resolved: .isResolved, comments: ((.comments.nodes // []) | map({id: .id, path: .path, line: (.line // .originalLine), body: .body, created_at: .createdAt, updated_at: .updatedAt}))}]' existing_review_threads.jsonl > existing_review_threads.json
+          jq -s '[.[] | .[] | {id: .id, resolved: .isResolved, comments: ((.comments.nodes // []) | map({id: .id, path: .path, line: (.line // .originalLine), body: .body, created_at: .createdAt, updated_at: .updatedAt, author: (.author.login)}))}]' existing_review_threads.jsonl > existing_review_threads.json
 
           gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --paginate --jq '.[]' > files.jsonl
           jq -s '[.[] | select(.patch != null) | {path: .filename, patch: .patch}]' files.jsonl > files.json
@@ -173,7 +173,56 @@ jobs:
           const normalized = [];
           const skipped = [];
 
+          const existingReviewComments = fs.existsSync('existing_review_comments.json')
+            ? JSON.parse(fs.readFileSync('existing_review_comments.json', 'utf8'))
+            : [];
+          const existingReviewThreads = fs.existsSync('existing_review_threads.json')
+            ? JSON.parse(fs.readFileSync('existing_review_threads.json', 'utf8'))
+            : [];
+
           const normalizeBody = (body) => (typeof body === 'string' ? body.trim() : '');
+          const commentKey = (path, line, body) =>
+            `${path ?? ''}#${Number.isInteger(line) ? line : 'null'}#${normalizeBody(body)}`;
+
+          const existingCommentIndex = new Map();
+
+          for (const comment of existingReviewComments) {
+            if (!comment || typeof comment.path !== 'string') continue;
+            const key = commentKey(comment.path, Number.isInteger(comment.line) ? comment.line : null, comment.body);
+            if (!key) continue;
+            existingCommentIndex.set(key, {
+              resolved: false,
+              author: comment.user ?? null,
+              source: 'rest',
+            });
+          }
+
+          for (const thread of existingReviewThreads) {
+            if (!thread) continue;
+            const resolved = Boolean(thread.resolved);
+            for (const comment of thread.comments ?? []) {
+              if (!comment || typeof comment.path !== 'string') continue;
+              const line =
+                Number.isInteger(comment.line) && comment.line !== null
+                  ? comment.line
+                  : null;
+              const key = commentKey(comment.path, line, comment.body);
+              if (!key) continue;
+              const existing = existingCommentIndex.get(key) ?? {
+                resolved,
+                author: comment.author ?? null,
+                source: 'thread',
+              };
+              existingCommentIndex.set(key, {
+                resolved: existing.resolved || resolved,
+                author: comment.author ?? existing.author ?? null,
+                source: 'thread',
+                threadId: thread.id,
+              });
+            }
+          }
+
+          const newCommentKeys = new Set();
 
           const lineIsReviewable = (patch, targetLine) => {
             if (typeof patch !== 'string' || !patch.length) return false;
@@ -235,12 +284,29 @@ jobs:
               continue;
             }
 
+            const key = commentKey(path, rawLine, body);
+            if (newCommentKeys.has(key)) {
+              skipped.push({ reason: 'duplicate-new', path, line: rawLine, body });
+              continue;
+            }
+
+            const existing = existingCommentIndex.get(key);
+            if (existing) {
+              if (existing.resolved) {
+                skipped.push({ reason: 'already-resolved', path, line: rawLine, body });
+                continue;
+              }
+              skipped.push({ reason: 'already-existing', path, line: rawLine, body });
+              continue;
+            }
+
             if (normalized.some((existing) => existing.path === path && existing.line === rawLine && existing.body === body)) {
               skipped.push({ reason: 'duplicate', path, line: rawLine, body });
               continue;
             }
 
             normalized.push({ path, line: rawLine, side: 'RIGHT', body });
+            newCommentKeys.add(key);
           }
 
           const summary =
@@ -273,43 +339,152 @@ jobs:
 
               const data = JSON.parse(fs.readFileSync(reviewPath, 'utf8'));
               const comments = Array.isArray(data.comments) ? data.comments : [];
-              let summary = typeof data.summary === 'string' && data.summary.trim().length > 0
+              const summaryText = typeof data.summary === 'string' && data.summary.trim().length > 0
                 ? data.summary.trim()
                 : (comments.length
                   ? `Found ${comments.length} potential issue${comments.length === 1 ? '' : 's'} that should be addressed.`
-                  : '✅ No issues found. Approving changes.');
+                  : 'No blocking issues detected.');
 
               const prNumber = context.payload.pull_request.number;
+              const headSha = context.payload.pull_request.head.sha;
 
-              if (comments.length) {
-                if (!/^requesting changes/i.test(summary)) {
-                  summary = `Requesting changes: ${summary}`;
+              const normalizeBody = (body) => (typeof body === 'string' ? body.trim() : '');
+              const commentKey = (path, line, body) =>
+                `${path ?? ''}#${Number.isInteger(line) ? line : 'null'}#${normalizeBody(body)}`;
+              const summarizeInlineBody = (body) => {
+                const normalized = normalizeBody(body);
+                const lines = normalized.split('\n').map((line) => line.trim()).filter(Boolean);
+                const firstContent = lines.find((line) => !line.startsWith('```'));
+                return firstContent ?? lines[0] ?? normalized;
+              };
+
+              const newCommentKeys = new Set();
+              const createdComments = [];
+              const failedComments = [];
+
+              for (const comment of comments) {
+                const path = comment.path;
+                const line = comment.line;
+                const body = comment.body;
+                const key = commentKey(path, line, body);
+                newCommentKeys.add(key);
+                try {
+                  await github.rest.pulls.createReviewComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber,
+                    commit_id: headSha,
+                    path,
+                    side: comment.side ?? 'RIGHT',
+                    line,
+                    body,
+                  });
+                  createdComments.push(comment);
+                } catch (error) {
+                  core.warning(`Failed to create inline comment for ${path}:${line} – ${error.message}`);
+                  failedComments.push({ comment, error: error.message });
                 }
-                await github.rest.pulls.createReview({
+              }
+
+              let resolvedCount = 0;
+              try {
+                const threadsPath = 'existing_review_threads.json';
+                if (fs.existsSync(threadsPath)) {
+                  const threads = JSON.parse(fs.readFileSync(threadsPath, 'utf8'));
+                  for (const thread of threads) {
+                    if (!thread || thread.resolved) continue;
+                    const threadComments = thread.comments ?? [];
+                    if (!threadComments.length) continue;
+                    const authoredByBot = threadComments.every((c) => (c.author ?? '').includes('[bot]'));
+                    if (!authoredByBot) continue;
+                    const threadKeys = threadComments.map((c) =>
+                      commentKey(c.path, Number.isInteger(c.line) ? c.line : null, c.body),
+                    );
+                    const stillRelevant = threadKeys.some((key) => newCommentKeys.has(key));
+                    if (stillRelevant) continue;
+                    await github.graphql(
+                      `mutation($threadId: ID!) {
+                        resolveReviewThread(input: { threadId: $threadId }) {
+                          thread { id isResolved }
+                        }
+                      }`,
+                      { threadId: thread.id },
+                    );
+                    resolvedCount += 1;
+                  }
+                }
+              } catch (error) {
+                core.warning(`Failed to resolve prior threads: ${error.message}`);
+              }
+
+              const marker = '<!-- codex-review-summary -->';
+              const recommendation = comments.length
+                ? `🚫 Changes required – ${comments.length} inline issue${comments.length === 1 ? '' : 's'} detected.`
+                : '✅ Ready to merge – no blocking issues detected.';
+
+              const findingsSection = comments.length
+                ? comments
+                    .map((c) => `- \`${c.path}:${c.line}\` — ${summarizeInlineBody(c.body)}`)
+                    .join('\n')
+                : '- No inline findings.';
+
+              const timestamp = new Date().toISOString();
+              const summaryBody = `${marker}
+### Codex Review Summary
+
+Recommendation: ${recommendation}
+
+Summary:
+${summaryText}
+
+Inline findings:
+${findingsSection}
+
+${resolvedCount ? `Resolved ${resolvedCount} previously open Codex thread${resolvedCount === 1 ? '' : 's'}.\n\n` : ''}Generated at ${timestamp}.`;
+
+              const existingSummary = await github.paginate(
+                github.rest.issues.listComments,
+                {
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  pull_number: prNumber,
-                  event: 'REQUEST_CHANGES',
-                  body: summary,
-                  comments
+                  issue_number: prNumber,
+                  per_page: 100,
+                },
+              ).then((comments) =>
+                comments.find(
+                  (comment) =>
+                    (comment.user?.login || '').includes('[bot]') &&
+                    typeof comment.body === 'string' &&
+                    comment.body.includes(marker),
+                ),
+              );
+
+              if (existingSummary) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existingSummary.id,
+                  body: summaryBody,
                 });
-                core.info(`Submitted review requesting changes with ${comments.length} inline comment${comments.length === 1 ? '' : 's'}.`);
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: summaryBody,
+                });
+              }
+
+              if (failedComments.length) {
+                core.setFailed(
+                  `Failed to create ${failedComments.length} inline comment${failedComments.length === 1 ? '' : 's'}. Check workflow logs.`,
+                );
                 return;
               }
 
-              if (!/approv/i.test(summary)) {
-                summary = `${summary} Approving changes.`;
-              }
-
-              await github.rest.pulls.createReview({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                event: 'APPROVE',
-                body: summary
-              });
-
-              core.info('Submitted approval review with no inline comments.');
+              core.info(
+                `Posted ${createdComments.length} inline comment${createdComments.length === 1 ? '' : 's'} and updated summary comment (${resolvedCount} threads resolved).`,
+              );
             }
 
             return run();
