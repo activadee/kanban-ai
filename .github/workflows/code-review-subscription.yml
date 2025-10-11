@@ -47,7 +47,21 @@ jobs:
           jq -s 'map({user: .user.login, body: .body})' existing_issue_comments.jsonl > existing_issue_comments.json
 
           gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews --paginate --jq '.[]' > existing_reviews.jsonl
-          jq -s '[.[] | {state: .state, body: .body, submitted_at: .submitted_at, user: (.user.login), comments: (.comments_url)}]' existing_reviews.jsonl > existing_reviews.json
+          jq -s '[.[] | {id: .id, state: .state, body: .body, submitted_at: .submitted_at, user: (.user.login), comments: (.comments_url)}]' existing_reviews.jsonl > existing_reviews.json
+
+          gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --paginate --jq '.[]' > existing_review_comments.jsonl
+          jq -s '[.[] | {id: .id, review_id: .pull_request_review_id, in_reply_to_id: .in_reply_to_id, path: .path, line: (.line // .original_line // .original_start_line), start_line: .start_line, position: .position, body: .body, side: .side, commit_id: .commit_id, created_at: .created_at, updated_at: .updated_at}]' existing_review_comments.jsonl > existing_review_comments.json
+
+          repo_full="${{ github.repository }}"
+          repo_owner="${repo_full%%/*}"
+          repo_name="${repo_full#*/}"
+          gh api graphql --paginate \
+            -f query='query($owner:String!, $name:String!, $number:Int!, $after:String){ repository(owner:$owner, name:$name) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { id isResolved comments(first:100) { nodes { id path originalLine line body createdAt updatedAt } } } pageInfo { hasNextPage endCursor } } } } }' \
+            -F owner="$repo_owner" \
+            -F name="$repo_name" \
+            -F number="${{ github.event.pull_request.number }}" \
+            --jq '(.data.repository.pullRequest.reviewThreads.nodes // [])' > existing_review_threads.jsonl
+          jq -s '[.[] | .[] | {id: .id, resolved: .isResolved, comments: ((.comments.nodes // []) | map({id: .id, path: .path, line: (.line // .originalLine), body: .body, created_at: .createdAt, updated_at: .updatedAt}))}]' existing_review_threads.jsonl > existing_review_threads.json
 
           gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --paginate --jq '.[]' > files.jsonl
           jq -s '[.[] | select(.patch != null) | {path: .filename, patch: .patch}]' files.jsonl > files.json
@@ -70,7 +84,9 @@ jobs:
           The unified diff for this pull request is saved in diff.txt.
           files.json lists each changed file with its diff patch.
           existing_issue_comments.json contains bodies of review comments that already exist on the PR conversation (case-insensitive comparison).
-          existing_reviews.json contains metadata for past reviews; avoid duplicating feedback that were previously requested and resolved. Close any existing review comments that have been addressed and are no longer relevant or already resolved or are duplicates.
+          existing_reviews.json contains metadata for past reviews.
+          existing_review_comments.json lists every inline review comment with file/line metadata.
+          existing_review_threads.json indicates which review comment threads are already resolved.
 
           Review the diff and identify correctness, reliability, and security issues. Prefer high-signal findings over nitpicks.
 
@@ -84,7 +100,8 @@ jobs:
           Requirements:
           - Output at most 10 comments.
           - Skip any feedback already present in existing_issue_comments.json.
-          - Skip any findings that already have a resolved GitHub review comment (look for “resolved” in existing_reviews.json and match by path/line/body where possible).
+          - Skip any findings that already have a corresponding inline comment in existing_review_comments.json unless the thread is unresolved.
+          - Do not recreate feedback for threads that are marked resolved in existing_review_threads.json.
           - Use files.json to calculate accurate HEAD line numbers; only comment on lines that appear on the '+' side of the diff or unchanged context lines.
           - Ignore style, formatting, or naming nits unless they cause functional issues.
           - Always set "summary" to a short string (can be empty) describing the overall review outcome.
@@ -279,28 +296,7 @@ jobs:
               return;
             }
 
-            const defaultApprovalSummary = '✅ No issues found. Approving changes.';
-            if (summary !== defaultApprovalSummary) {
-              await github.rest.pulls.createReview({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber,
-                event: 'COMMENT',
-                body: summary
-              });
-              core.info('Submitted comment-only review with no inline comments.');
-              return;
-            }
-
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              event: 'APPROVE',
-              body: summary
-            });
-
-            core.info('Submitted approval review with no inline comments.');
+            if (!/approv/i.test(summary)) {
               summary = `${summary} Approving changes.`;
             }
 
@@ -325,8 +321,14 @@ jobs:
             diff.txt
             files.json
             files.jsonl
-            existing_comments.json
-            existing_comments.jsonl
+            existing_issue_comments.json
+            existing_issue_comments.jsonl
+            existing_reviews.json
+            existing_reviews.jsonl
+            existing_review_comments.json
+            existing_review_comments.jsonl
+            existing_review_threads.json
+            existing_review_threads.jsonl
             review_metadata.json
             codex_prompt.md
             codex-output.json
