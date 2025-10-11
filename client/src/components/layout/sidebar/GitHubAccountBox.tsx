@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
 import {Button} from '@/components/ui/button'
-import {Github} from 'lucide-react'
+import {GitHubIcon} from '@/components/icons/SimpleIcons'
 import type {GitHubAccount} from 'shared'
 import {githubKeys} from '@/lib/queryClient'
 import {toast} from '@/components/ui/toast'
@@ -115,7 +115,7 @@ export function GitHubAccountBox() {
                     {avatar ? (
                         <img src={avatar} alt="GitHub avatar" className="size-6 rounded-full"/>
                     ) : (
-                        <Github className="size-5"/>
+                        <GitHubIcon className="size-5" aria-hidden="true"/>
                     )}
                     <div className="text-sm">
                         <div className="font-medium">{username ?? 'GitHub'}</div>
@@ -125,7 +125,7 @@ export function GitHubAccountBox() {
             ) : (
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                        <Github className="size-5"/>
+                        <GitHubIcon className="size-5" aria-hidden="true"/>
                         <div className="text-sm">GitHub</div>
                     </div>
                     <Button size="sm" onClick={startGithubConnect}
@@ -157,4 +157,3 @@ export function GitHubAccountBox() {
         </div>
     )
 }
-
