@@ -1,15 +1,16 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 → 1.1.0 (MINOR)
-Modified principles: Boundaries (CLI workspace extraction), Quality Gates (packaging), Workflow (runner usage)
-Added sections: Release Packaging & Distribution
+Version change: 1.1.0 → 1.2.0 (MINOR)
+Modified principles: Boundaries → Architecture Boundaries (explicit: domain logic in core; shared for reusable cross‑package types; server as adapters)
+Added sections: none (material expansion under Core Principles)
+Removed sections: none
 Templates reviewed:
-  ✅ .specify/templates/spec-template.md (aligns)
-  ✅ .specify/templates/plan-template.md (aligns; CLI extraction recognized)
+  ✅ .specify/templates/spec-template.md (aligns; tech‑agnostic)
+  ✅ .specify/templates/plan-template.md (aligns; Constitution Check remains valid)
   ✅ .specify/templates/tasks-template.md (aligns)
 Other docs reviewed:
-  ✅ README.md (runner instructions added)
-  ✅ AGENTS.md (updated with CLI + CI)
+  ✅ README.md (no contradictions)
+  ✅ AGENTS.md (consistent with CLI + CI guidance)
 Deferred TODOs:
   - TODO(RATIFICATION_DATE): original adoption date not previously captured
 -->
@@ -24,7 +25,13 @@ All contributed code MUST be simple, readable, and maintainable within the exist
 
 - Types: Public APIs are fully typed; `any` is disallowed except with an inline justification comment and the smallest possible scope.
 - Lint & Types: Workspace lint and type‑check MUST pass before merge (`lint`, `type-check`, or their workspace equivalents).
-- Boundaries: New functionality belongs in the appropriate workspace; cross‑workspace coupling occurs only through exported types/contracts in `shared/`. CLI process/bootstrap lives in `cli/`; `server/` exposes factories/helpers only (no `import.meta.main`).
+- Architecture Boundaries:
+  - Domain logic (entities, policies, orchestration/use cases) lives in `core/`.
+  - `core/` exposes pure APIs and ports (interfaces). It MUST NOT perform network/FS/process side effects.
+  - `server/` implements adapters (HTTP, DB, FS, processes, locks, auth) and application wiring that call `core/` through its public API/ports.
+  - `shared/` is for reusable cross‑package assets (types, DTOs/schemas, minimal side‑effect‑free utilities). No domain logic or adapters belong in `shared/`.
+  - Cross‑workspace coupling occurs via exported types/contracts in `shared/` and via `core/`’s public API only.
+  - CLI process/bootstrap lives in `cli/`; `server/` exposes factories/helpers only (no `import.meta.main`).
 - Small, focused changes: Prefer incremental PRs with a single responsibility and clear rationale.
 - Dead code and unused exports are removed as they are encountered.
 
@@ -99,4 +106,5 @@ The following gates MUST pass before merge for any PR that changes application c
   - PATCH: Clarifications without semantic change
 - Compliance Reviews: During planning and PR review, maintainers verify gates and principles. Non‑compliant changes are blocked until addressed or explicitly excepted with owners and timelines.
 
-**Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date not recorded | **Last Amended**: 2025-10-10
+**Version**: 1.2.0 | **Ratified**: TODO(RATIFICATION_DATE): original adoption date not recorded | **Last Amended**: 2025-10-11
+
