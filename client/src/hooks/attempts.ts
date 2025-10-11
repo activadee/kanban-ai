@@ -1,5 +1,5 @@
 import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
-import type {Attempt, AttemptLog, ConversationItem} from 'shared'
+import type {Attempt, AttemptLog, ConversationAutomationItem, ConversationItem} from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
     followupAttemptRequest,
@@ -9,6 +9,7 @@ import {
     openAttemptEditor,
     startAttemptRequest,
     stopAttemptRequest,
+    runDevAutomationRequest,
 } from '@/api/attempts'
 
 type CardAttemptResult = { attempt: Attempt; logs: AttemptLog[]; conversation: ConversationItem[] }
@@ -109,6 +110,15 @@ export function useOpenAttemptEditor(options?: OpenEditorOptions) {
     return useMutation({
         mutationFn: ({attemptId, subpath, editorKey, customCommand}: OpenEditorArgs) =>
             openAttemptEditor(attemptId, {subpath, editorKey, customCommand}),
+        ...options,
+    })
+}
+
+type RunDevAutomationOptions = UseMutationOptions<ConversationAutomationItem, Error, { attemptId: string }>
+
+export function useRunDevAutomation(options?: RunDevAutomationOptions) {
+    return useMutation({
+        mutationFn: ({attemptId}: { attemptId: string }) => runDevAutomationRequest(attemptId),
         ...options,
     })
 }

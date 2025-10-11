@@ -1,4 +1,4 @@
-import type {Attempt, AttemptLog, ConversationItem} from 'shared'
+import type {Attempt, AttemptLog, ConversationAutomationItem, ConversationItem} from 'shared'
 import {SERVER_URL} from '@/lib/env'
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -88,4 +88,10 @@ export async function openAttemptEditor(attemptId: string, opts?: {
         body: JSON.stringify(opts ?? {}),
     })
     return parseJson<{ ok: true; command: { cmd: string; args: string[] } }>(res)
+}
+
+export async function runDevAutomationRequest(attemptId: string): Promise<ConversationAutomationItem> {
+    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/automation/dev`, {method: 'POST'})
+    const data = await parseJson<{ item: ConversationAutomationItem }>(res)
+    return data.item
 }

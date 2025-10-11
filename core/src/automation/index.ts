@@ -1,0 +1,1 @@
+export {runAutomationCommand} from './scripts'

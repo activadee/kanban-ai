@@ -45,6 +45,37 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
         )
     }
 
+    if (item.type === 'automation') {
+        const stageLabels: Record<typeof item.stage, string> = {
+            copy_files: 'Copy files',
+            setup: 'Setup',
+            dev: 'Dev',
+            cleanup: 'Cleanup',
+        }
+        const statusClass = item.status === 'succeeded'
+            ? 'text-emerald-500'
+            : item.status === 'failed'
+                ? 'text-destructive'
+                : undefined
+        return (
+            <div className="mb-2 rounded border border-border/60 bg-background p-2 text-xs">
+                <div className="mb-1 flex items-center justify-between text-muted-foreground">
+                    <span className={statusClass}>{stageLabels[item.stage]} · {item.status}</span>
+                    <span>{time}</span>
+                </div>
+                <div className="space-y-1 text-muted-foreground">
+                    <div className="font-mono text-foreground">{item.command}</div>
+                    <div>cwd: <span className="font-mono text-foreground">{item.cwd}</span></div>
+                    <div>exit: {item.exitCode ?? 'n/a'} · duration: {(item.durationMs / 1000).toFixed(1)}s</div>
+                    {item.stdout ?
+                        <pre className="whitespace-pre-wrap text-foreground">{item.stdout}</pre> : null}
+                    {item.stderr ?
+                        <pre className="whitespace-pre-wrap text-destructive">{item.stderr}</pre> : null}
+                </div>
+            </div>
+        )
+    }
+
     if (item.type === 'error') {
         return (
             <div className="mb-2 rounded border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
@@ -59,4 +90,3 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
 
     return null
 }
-

@@ -14,7 +14,7 @@
     "./cli"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=server --filter=client --filter=core --filter=shared",
     "dev:client": "turbo dev --filter=client",
     "dev:server": "turbo dev --filter=server",
     "dev:cli": "turbo dev --filter=cli",

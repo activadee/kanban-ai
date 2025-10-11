@@ -1,4 +1,5 @@
 import {Hono} from 'hono'
+import type {ContentfulStatusCode} from 'hono/utils/http-status'
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
@@ -342,6 +343,24 @@ export const createAttemptsRouter = () => {
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Merge failed'
             return c.json({error: message}, 400)
+        }
+    })
+
+    router.post('/:id/automation/dev', async (c) => {
+        const events = c.get('events')
+        try {
+            const item = await attempts.runAttemptAutomation(c.req.param('id'), 'dev', {events})
+            return c.json({item})
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to run dev automation'
+            let status: ContentfulStatusCode = 500
+            if (message === 'Attempt not found') status = 404
+            else if (message.startsWith('No automation script configured')) status = 422
+            else if (message.includes('Worktree is missing')) status = 409
+            if (status >= 500) {
+                console.error('[attempts:automation:dev] failed', error)
+            }
+            return c.json({error: message}, {status})
         }
     })
 

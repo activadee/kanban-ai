@@ -27,6 +27,7 @@ import {
     useStopAttempt,
     useOpenAttemptEditor,
     useProjectSettings,
+    useRunDevAutomation,
 } from '@/hooks'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {toast} from '@/components/ui/toast'
@@ -122,6 +123,17 @@ export function CardInspector({
             toast({title: 'Follow-up failed', description: err.message, variant: 'destructive'})
         },
     })
+    const devAutomationMutation = useRunDevAutomation({
+        onSuccess: async (_item, variables) => {
+            await queryClient.invalidateQueries({queryKey: attemptKeys.detail(variables.attemptId)})
+            await queryClient.invalidateQueries({queryKey: attemptKeys.logs(variables.attemptId)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
+            toast({title: 'Dev script completed', description: 'Check the automation log for output.'})
+        },
+        onError: (err) => {
+            toast({title: 'Dev script failed', description: err.message, variant: 'destructive'})
+        },
+    })
     const [stopping, setStopping] = useState(false)
     const [profileId, setProfileId] = useState<string | undefined>(undefined)
     const [changesOpen, setChangesOpen] = useState(false)
@@ -159,6 +171,11 @@ export function CardInspector({
         const trimmed = raw.trim()
         return trimmed.length ? (trimmed as AgentKey) : undefined
     }, [projectSettingsQuery.data?.defaultAgent])
+    const devScriptConfigured = useMemo(() => {
+        const raw = projectSettingsQuery.data?.devScript
+        if (typeof raw !== 'string') return false
+        return raw.trim().length > 0
+    }, [projectSettingsQuery.data?.devScript])
 
     const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data])
     useEffect(() => {
@@ -236,6 +253,14 @@ export function CardInspector({
         }
         return undefined
     }, [attemptDetailQuery.data?.conversation])
+
+    const latestDevAutomation = useMemo(() => {
+        for (let i = conversation.length - 1; i >= 0; i--) {
+            const item = conversation[i]
+            if (item.type === 'automation' && item.stage === 'dev') return item
+        }
+        return null
+    }, [conversation])
 
     const followupProfiles = useMemo(
         () =>
@@ -479,6 +504,18 @@ export function CardInspector({
         }
     }
 
+    const handleRunDevScript = () => {
+        if (!devScriptConfigured) {
+            toast({title: 'Dev script not configured', description: 'Add a dev script in Project Settings.'})
+            return
+        }
+        if (!attempt) {
+            toast({title: 'Worktree missing', description: 'Start an attempt to run the dev script.', variant: 'destructive'})
+            return
+        }
+        devAutomationMutation.mutate({attemptId: attempt.id})
+    }
+
     // Load latest attempt on first open for this card
     // Scroll to newest message once on card open
     useEffect(() => {
@@ -558,13 +595,51 @@ export function CardInspector({
             actions: agentActions,
         })
 
+        const devStatus: ProcessStatus = devAutomationMutation.isPending
+            ? 'running'
+            : latestDevAutomation
+                ? latestDevAutomation.status === 'succeeded'
+                    ? 'succeeded'
+                    : latestDevAutomation.status === 'failed'
+                        ? 'failed'
+                        : 'idle'
+                : 'idle'
+        const devRelative = latestDevAutomation
+            ? formatRelativeTime(latestDevAutomation.completedAt ?? latestDevAutomation.timestamp)
+            : null
+        const devMeta = (() => {
+            if (!devScriptConfigured) return 'Configure a dev script in Project Settings.'
+            if (!attempt) return 'Start an attempt to provision a worktree.'
+            if (!latestDevAutomation) return 'Ready to launch.'
+            const prefix = latestDevAutomation.status === 'succeeded' ? 'Succeeded' : 'Failed'
+            return devRelative ? `${prefix} ${devRelative}` : prefix
+        })()
+        const devDescription = devScriptConfigured
+            ? 'Start and monitor the project dev script.'
+            : 'Add a dev script in Project Settings to enable quick launches.'
+        const devActions: ProcessAction[] = [
+            {
+                id: 'run-dev',
+                label: devAutomationMutation.isPending ? 'Running…' : 'Run dev',
+                onClick: handleRunDevScript,
+                disabled: devAutomationMutation.isPending || !devScriptConfigured || !attempt,
+                variant: 'outline',
+                tooltip: !devScriptConfigured
+                    ? 'Configure a dev script in Project Settings.'
+                    : !attempt
+                        ? 'Start an attempt to create a worktree first.'
+                        : undefined,
+            },
+        ]
+
         entries.push({
             id: 'dev-server',
             icon: <Server className="size-4"/>,
-            name: 'Dev server',
-            status: 'idle',
-            description: 'Reserved for the project dev server (coming soon).',
-            meta: 'Placeholder entry until dev server tracking is wired.',
+            name: 'Dev script',
+            status: devStatus,
+            description: devDescription,
+            meta: devMeta,
+            actions: devActions,
         })
 
         return entries

@@ -2,6 +2,10 @@ export type ConversationTextFormat = 'markdown' | 'plaintext'
 
 export type ConversationRole = 'user' | 'assistant' | 'system'
 
+export type AutomationStage = 'copy_files' | 'setup' | 'dev' | 'cleanup'
+
+export type AutomationStatus = 'running' | 'succeeded' | 'failed'
+
 export interface ConversationItemBase {
     /**
      * Optional stable identifier assigned by the server when persisted.
@@ -57,8 +61,24 @@ export type ConversationErrorItem = ConversationItemBase & {
     details?: Record<string, unknown>
 }
 
+export type ConversationAutomationItem = ConversationItemBase & {
+    type: 'automation'
+    stage: AutomationStage
+    command: string
+    cwd: string
+    status: AutomationStatus
+    startedAt: string
+    completedAt: string
+    durationMs: number
+    exitCode: number | null
+    stdout?: string | null
+    stderr?: string | null
+    metadata?: Record<string, unknown>
+}
+
 export type ConversationItem =
     | ConversationMessageItem
     | ConversationThinkingItem
     | ConversationToolItem
     | ConversationErrorItem
+    | ConversationAutomationItem

@@ -1,6 +1,6 @@
 import {existsSync} from 'fs'
 import type {AttemptStatus} from 'shared'
-import type {ConversationItem} from 'shared'
+import type {AutomationStage, ConversationAutomationItem, ConversationItem} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -8,6 +8,7 @@ import {getWorktreePath, getWorktreePathByNames, createWorktree} from '../ports/
 import {getAgent} from '../agents/registry'
 import {renderBranchName} from '../git/branch'
 import {settingsService} from '../settings/service'
+import {runAutomationCommand} from '../automation/scripts'
 import {
     getAttemptById,
     getAttemptForCard,
@@ -42,6 +43,46 @@ type AttemptServiceDeps = { events: AppEventBus }
 function requireEvents(deps?: AttemptServiceDeps): AppEventBus {
     if (!deps?.events) throw new Error('Attempt service requires an event bus instance')
     return deps.events
+}
+
+function normalizeScript(source: string | null | undefined): string | null {
+    if (typeof source !== 'string') return null
+    const trimmed = source.trim()
+    return trimmed.length ? trimmed : null
+}
+
+async function appendAutomationConversationItem(
+    attemptId: string,
+    boardId: string,
+    item: ConversationAutomationItem,
+    events: AppEventBus,
+    seq?: number,
+) {
+    const ts = (() => {
+        const parsed = Date.parse(item.timestamp)
+        if (Number.isFinite(parsed)) return new Date(parsed)
+        return new Date()
+    })()
+    const recordId = item.id ?? `auto-${crypto.randomUUID()}`
+    const payload: ConversationAutomationItem = {
+        ...item,
+        id: recordId,
+        timestamp: item.timestamp ?? ts.toISOString(),
+    }
+    const seqValue = typeof seq === 'number' ? seq : await getNextConversationSeq(attemptId)
+    await insertConversationItem({
+        id: recordId,
+        attemptId,
+        seq: seqValue,
+        ts,
+        itemJson: JSON.stringify(payload),
+    })
+    events.publish('attempt.conversation.appended', {
+        attemptId,
+        boardId,
+        item: payload,
+    })
+    return payload
 }
 
 function deserializeConversationItem(row: { id: string; ts: Date | number; itemJson: string }): ConversationItem {
@@ -127,6 +168,10 @@ export async function startAttempt(input: StartAttemptInput, deps?: AttemptServi
         })
     }
 
+    const copyScript = normalizeScript(settings.copyFiles)
+    const setupScript = normalizeScript(settings.setupScript)
+    const cleanupScript = normalizeScript(settings.cleanupScript)
+
     events.publish('attempt.queued', {
         attemptId: id,
         boardId: input.boardId,
@@ -140,6 +185,7 @@ export async function startAttempt(input: StartAttemptInput, deps?: AttemptServi
     queueMicrotask(async () => {
         let finishAttemptFn: ((status: AttemptStatus) => Promise<void>) | null = null
         let logFn: ((level: 'info' | 'warn' | 'error', message: string) => Promise<void>) | null = null
+        let cleanupRunner: (() => Promise<void>) | null = null
         try {
             await updateAttempt(id, {status: 'running', startedAt: new Date(), updatedAt: new Date()})
             events.publish('attempt.status.changed', {
@@ -158,8 +204,10 @@ export async function startAttempt(input: StartAttemptInput, deps?: AttemptServi
                 worktreePath,
                 profileId
             })
+            let worktreeCreated = false
             if (!existsSync(worktreePath)) {
                 await createWorktree(repoPath, base, branch, worktreePath, {projectId: input.boardId, attemptId: id})
+                worktreeCreated = true
             }
             const agent = getAgent(input.agent)
             if (!agent) throw new Error(`Unknown agent: ${input.agent}`)
@@ -253,6 +301,33 @@ export async function startAttempt(input: StartAttemptInput, deps?: AttemptServi
                     })
                 }
             }
+            const runAutomationStage = async (stage: AutomationStage, script: string | null, options?: {
+                failHard?: boolean
+            }): Promise<ConversationAutomationItem | null> => {
+                if (!script) return null
+                const item = await runAutomationCommand({stage, command: script, cwd: worktreePath})
+                await emit({type: 'conversation', item})
+                if (options?.failHard && item.exitCode !== 0) {
+                    throw new Error(`[automation:${stage}] exited with code ${item.exitCode ?? -1}`)
+                }
+                return item
+            }
+            cleanupRunner = (() => {
+                let invoked = false
+                return async () => {
+                    if (invoked) return
+                    invoked = true
+                    if (!cleanupScript) return
+                    await runAutomationStage('cleanup', cleanupScript, {failHard: false})
+                }
+            })()
+
+            if (worktreeCreated && copyScript) {
+                await runAutomationStage('copy_files', copyScript, {failHard: true})
+            }
+            if (setupScript) {
+                await runAutomationStage('setup', setupScript, {failHard: true})
+            }
             const ac = new AbortController();
             running.set(id, {controller: ac, aborted: false, repoPath, worktreePath, boardId: input.boardId})
             let profile: unknown = agent.defaultProfile
@@ -308,6 +383,10 @@ export async function startAttempt(input: StartAttemptInput, deps?: AttemptServi
             } catch {
             }
         } finally {
+            try {
+                if (cleanupRunner) await cleanupRunner()
+            } catch {
+            }
             running.delete(id)
         }
     })
@@ -339,6 +418,44 @@ export async function stopAttempt(id: string, deps?: AttemptServiceDeps) {
     }
 }
 
+export async function runAttemptAutomation(attemptId: string, stage: AutomationStage, deps?: AttemptServiceDeps): Promise<ConversationAutomationItem> {
+    const events = requireEvents(deps)
+    const attempt = await getAttemptById(attemptId)
+    if (!attempt) throw new Error('Attempt not found')
+    const settings = await ensureProjectSettings(attempt.boardId)
+    const scriptSource = (() => {
+        switch (stage) {
+            case 'copy_files':
+                return settings.copyFiles
+            case 'setup':
+                return settings.setupScript
+            case 'dev':
+                return settings.devScript
+            case 'cleanup':
+                return settings.cleanupScript
+            default:
+                return null
+        }
+    })()
+    const script = normalizeScript(scriptSource)
+    if (!script) throw new Error(`No automation script configured for stage ${stage}`)
+    let worktreePath = attempt.worktreePath
+    if (!worktreePath) {
+        const cardRow = await getCardById(attempt.cardId)
+        const boardRow = await getBoardById(attempt.boardId)
+        worktreePath = boardRow
+            ? getWorktreePathByNames(boardRow.name, cardRow?.title ?? attempt.cardId)
+            : getWorktreePath(attempt.boardId, attempt.id)
+    }
+    if (!worktreePath) throw new Error('Worktree path not available for attempt')
+    if (!existsSync(worktreePath)) {
+        throw new Error('Worktree is missing; start a new attempt before running automation')
+    }
+    const item = await runAutomationCommand({stage, command: script, cwd: worktreePath})
+    const saved = await appendAutomationConversationItem(attemptId, attempt.boardId, item, events)
+    return saved
+}
+
 export async function followupAttempt(attemptId: string, prompt: string, profileId?: string, deps?: AttemptServiceDeps) {
     const events = requireEvents(deps)
     const base = await getAttemptById(attemptId);
@@ -349,6 +466,9 @@ export async function followupAttempt(attemptId: string, prompt: string, profile
     if (!agent || typeof agent.resume !== 'function') throw new Error('Agent does not support follow-up')
     const settings = await ensureProjectSettings(base.boardId)
     const effectiveProfileId = profileId ?? settings.defaultProfileId ?? undefined
+    const copyScript = normalizeScript(settings.copyFiles)
+    const setupScript = normalizeScript(settings.setupScript)
+    const cleanupScript = normalizeScript(settings.cleanupScript)
     const now = new Date();
     const repoPath = await (async () => {
         const p = await getRepositoryPath(base.boardId);
@@ -373,6 +493,7 @@ export async function followupAttempt(attemptId: string, prompt: string, profile
     })
     queueMicrotask(async () => {
         let finishAttemptFn: ((status: AttemptStatus) => Promise<void>) | null = null
+        let cleanupRunner: (() => Promise<void>) | null = null
         try {
             await updateAttempt(base.id, {status: 'running', startedAt: new Date(), updatedAt: new Date()})
             events.publish('attempt.status.changed', {
@@ -391,11 +512,13 @@ export async function followupAttempt(attemptId: string, prompt: string, profile
                 worktreePath,
                 profileId: effectiveProfileId ?? undefined
             })
+            let worktreeCreated = false
             if (!existsSync(worktreePath)) {
                 await createWorktree(repoPath, base.baseBranch, base.branchName, worktreePath, {
                     projectId: base.boardId,
                     attemptId: base.id
                 })
+                worktreeCreated = true
             }
             const agent = getAgent(base.agent)!;
             let currentStatus: AttemptStatus = 'running';
@@ -469,6 +592,32 @@ export async function followupAttempt(attemptId: string, prompt: string, profile
                     })
                 }
             }
+            const runAutomationStage = async (stage: AutomationStage, script: string | null, options?: {
+                failHard?: boolean
+            }): Promise<ConversationAutomationItem | null> => {
+                if (!script) return null
+                const item = await runAutomationCommand({stage, command: script, cwd: worktreePath})
+                await emit({type: 'conversation', item})
+                if (options?.failHard && item.exitCode !== 0) {
+                    throw new Error(`[automation:${stage}] exited with code ${item.exitCode ?? -1}`)
+                }
+                return item
+            }
+            cleanupRunner = (() => {
+                let invoked = false
+                return async () => {
+                    if (invoked) return
+                    invoked = true
+                    if (!cleanupScript) return
+                    await runAutomationStage('cleanup', cleanupScript, {failHard: false})
+                }
+            })()
+            if (worktreeCreated && copyScript) {
+                await runAutomationStage('copy_files', copyScript, {failHard: true})
+            }
+            if (setupScript) {
+                await runAutomationStage('setup', setupScript, {failHard: true})
+            }
             const ac = new AbortController();
             running.set(base.id, {controller: ac, aborted: false, repoPath, worktreePath, boardId: base.boardId})
             let profile: unknown = agent.defaultProfile;
@@ -502,8 +651,11 @@ export async function followupAttempt(attemptId: string, prompt: string, profile
                 await emit({type: 'status', status: 'failed'})
             }
         } finally {
+            try {
+                if (cleanupRunner) await cleanupRunner()
+            } catch {
+            }
             running.delete(base.id)
         }
     })
 }
-
