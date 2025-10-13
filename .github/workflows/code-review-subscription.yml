@@ -60,7 +60,7 @@ jobs:
 
       - name: Submit review
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
