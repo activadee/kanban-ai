@@ -2,7 +2,8 @@ import {useEffect} from 'react'
 import {eventBus} from '@/lib/events'
 
 type Status = import('shared').Attempt['status']
-type LogPayload = { ts: string; level: string; message: string }
+type LogLevel = import('shared').AttemptLog['level']
+type LogPayload = { ts: string; level: LogLevel; message: string }
 type ConversationItem = import('shared').ConversationItem
 
 export function useAttemptEventStream({
@@ -22,11 +23,11 @@ export function useAttemptEventStream({
         if (!attemptId) return
         const offStatus = eventBus.on('attempt_status', (p) => {
             if (p.attemptId !== attemptId) return
-            onStatus?.(p.status)
+            onStatus?.(p.status as Status)
         })
         const offLog = eventBus.on('attempt_log', (p) => {
             if (p.attemptId !== attemptId) return
-            onLog?.({ts: p.ts, level: p.level, message: p.message})
+            onLog?.({ts: p.ts, level: p.level as LogLevel, message: p.message})
         })
         const offMsg = eventBus.on('conversation_item', (p) => {
             if (p.attemptId !== attemptId) return
@@ -44,4 +45,3 @@ export function useAttemptEventStream({
         }
     }, [attemptId, onLog, onMessage, onSession, onStatus])
 }
-

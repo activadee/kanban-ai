@@ -81,7 +81,7 @@ export async function openAttemptEditor(attemptId: string, opts?: {
     subpath?: string;
     editorKey?: string;
     customCommand?: string
-}): Promise<{ command: { cmd: string; args: string[] } }> {
+}): Promise<{ ok: true; command: { cmd: string; args: string[] } }> {
     const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/open-editor`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
