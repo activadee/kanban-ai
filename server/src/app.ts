@@ -21,7 +21,7 @@ import {createDashboardRouter} from './dashboard/routes'
 import {registerWorktreeProvider} from './ports/worktree'
 import {CodexAgent, OpencodeAgent, DroidAgent} from 'core'
 import {dashboardWebsocketHandlers} from './dashboard/ws'
-// Readiness flag for /api/readyz
+// Readiness flag for /api/v1/readyz (shimmed on /api/readyz temporarily)
 let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
 import * as console from "node:console";
@@ -72,9 +72,11 @@ export const createApp = ({
 
     app.use('*', logger())
 
+    const isApiWebSocket = (path: string) => path.startsWith('/api/ws') || path.startsWith('/api/v1/ws')
+
     // Security headers (exclude WebSocket upgrade paths)
     app.use('*', (c, next) => {
-        if (c.req.path.startsWith('/api/ws')) return next()
+        if (isApiWebSocket(c.req.path)) return next()
         return secureHeaders({
             referrerPolicy: 'strict-origin-when-cross-origin',
         })(c, next)
@@ -85,7 +87,7 @@ export const createApp = ({
 
     // CORS only for REST endpoints (exclude websockets)
     app.use('/api/*', (c, next) => {
-        if (c.req.path.startsWith('/api/ws')) return next()
+        if (isApiWebSocket(c.req.path)) return next()
         return cors()(c, next)
     })
 
@@ -99,7 +101,7 @@ export const createApp = ({
     app.get('/', (c) => c.text('KanbanAI server is running'))
     app.get('/hello', (c) => c.json({message: 'Hello KanbanAI!', success: true}))
 
-    // Mount API under /api/*
+    // Mount API under /api/v1/* (with /api/* shim for transition)
     const api = new Hono<AppEnv>()
     // Health probes
     api.get('/healthz', (c) => c.json({ok: true}))
@@ -109,7 +111,6 @@ export const createApp = ({
     api.route('/projects', createGithubProjectRouter())
     api.route('/auth/github', createGithubRouter())
     api.route('/fs', createFilesystemRouter())
-    api.route('/filesystem', createFilesystemRouter())
     api.route('/attempts', createAttemptsRouter())
     api.route('/agents', createAgentsRouter())
     api.route('/editors', createEditorsRouter())
@@ -135,6 +136,7 @@ export const createApp = ({
 
     api.route('/metrics', createMetricsRouter())
 
+    app.route('/api/v1', api)
     app.route('/api', api)
 
     app.notFound((c) => c.json({error: 'Not Found'}, 404))

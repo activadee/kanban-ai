@@ -61,7 +61,7 @@ CODEX_API_KEY=your_codex_or_openai_api_key
 - Client (`client/.env`):
 
 ```env
-VITE_SERVER_URL=http://localhost:3000
+VITE_SERVER_URL=http://localhost:3000/api/v1
 ```
 
 3) Start everything (Turbo will run client and server)
@@ -71,7 +71,7 @@ bun run dev
 ```
 
 - UI: <http://localhost:5173>
-- API: <http://localhost:3000> (health: `/` → “KanbanAI server is running”)
+- API (base): <http://localhost:3000/api/v1> (shim also at `/api`)
 
 ## GitHub OAuth (Device Flow)
 
@@ -130,6 +130,8 @@ purges associated worktrees.
 
 ## API (selected)
 
+All endpoints are rooted at `/api/v1` (temporary shim also available at `/api`).
+
 - GitHub device flow: `POST /auth/github/device/start`, `POST /auth/github/device/poll`, `GET /auth/github/check`,
   `POST /auth/github/logout`
 - Projects: `GET/POST /projects`, `GET /projects/:id`, `GET/PATCH /projects/:id/settings`,
@@ -156,7 +158,7 @@ MIT © 2025 Steve Simkins
 
 ## Binary Releases
 
-You can build a single binary that serves the API at `/api/*` and the SPA at `/app`.
+You can build a single binary that serves the API at `/api/v1/*` (shimmed at `/api/*`) and the SPA at `/app`.
 
 Build (local platform only):
 
@@ -181,8 +183,8 @@ bun run package
 
 Behavior:
 
-- REST: `/api/*` (projects, agents, attempts, settings, github, filesystem, dashboard, metrics at `/api/metrics`).
-- WebSockets: `/api/ws` and `/api/ws/dashboard`.
+- REST: `/api/v1/*` (temporary shim at `/api/*`) — projects, agents, attempts, settings, github, fs, dashboard, metrics at `/api/v1/metrics`.
+- WebSockets: `/api/v1/ws` and `/api/v1/ws/dashboard` (shimmed via `/api/ws*`).
 - Client: `/app` with assets under `/app/assets/*` and index.html fallback (deep links like `/app/projects`).
 - No external files required next to the binary. Client assets and SQL migrations are embedded at build time.
 - SQLite database location (always OS default):
@@ -194,9 +196,9 @@ Client defaults for the binary:
 
 - `vite.config.ts` uses `base: "/app/"`.
 - Router `BrowserRouter` uses `basename="/app"`.
-- `SERVER_URL` defaults to `http://localhost:3000/api` (override via `VITE_SERVER_URL`).
+- `SERVER_URL` defaults to `http://localhost:3000/api/v1` (override via `VITE_SERVER_URL`).
 
 Notes:
 
 - In dev, the server serves from the filesystem; the embedded assets are used in packaged binaries.
-- Metrics are available only at `/api/metrics`.
+- Metrics are available at `/api/v1/metrics` (shimmed on `/api/metrics`).
