@@ -45,6 +45,13 @@ export const EMBEDDED_META: EmbeddedMeta = {
       "when": 1759084774548,
       "tag": "0005_retire_auto_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1763729475445,
+      "tag": "0006_card_dependencies",
+      "breakpoints": true
     }
   ]
 }
@@ -446,5 +453,44 @@ ALTER TABLE \`__new_app_settings\` RENAME TO \`app_settings\`;--> statement-brea
 PRAGMA
 foreign_keys=ON;` },
   { tag: "0005_retire_auto_cleanup", sql: `ALTER TABLE "project_settings" DROP COLUMN "auto_cleanup";
+` },
+  { tag: "0006_card_dependencies", sql: `CREATE TABLE IF NOT EXISTS \`card_dependencies\`
+(
+    \`card_id\`
+    text
+    NOT
+    NULL,
+    \`depends_on_card_id\`
+    text
+    NOT
+    NULL,
+    \`created_at\`
+    integer
+    DEFAULT
+    CURRENT_TIMESTAMP
+    NOT
+    NULL,
+    FOREIGN
+    KEY
+(
+    \`card_id\`
+) REFERENCES \`cards\`
+(
+    \`id\`
+) ON UPDATE no action
+  ON DELETE cascade,
+    FOREIGN KEY
+(
+    \`depends_on_card_id\`
+) REFERENCES \`cards\`
+(
+    \`id\`
+)
+  ON UPDATE no action
+  ON DELETE cascade
+    );
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS \`card_deps_unique\` ON \`card_dependencies\` (\`card_id\`, \`depends_on_card_id\`);
+
 ` },
 ] as const

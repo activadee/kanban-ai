@@ -15,6 +15,7 @@
     ],
     // Output settings
     "declaration": true,
+    "composite": true,
     "outDir": "dist",
     "noEmit": false,
     "emitDecoratorMetadata": true,

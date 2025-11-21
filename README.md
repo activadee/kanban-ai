@@ -11,7 +11,7 @@ Built on the bhvr monorepo template.
 - GitHub device‑flow login, import issues as tasks, and create PRs from the app
 - Per‑task Attempts run inside isolated git worktrees under `$HOME/.kanbanAI/worktrees/...`
 - Diff viewer, stage/commit, push, Create PR, and optional auto‑merge to base
-- Agent profiles (e.g., Codex) with customizable command/env settings
+- Agent profiles (e.g., Codex via SDK) with customizable model/sandbox settings
 - Full‑stack TypeScript, shared types, and Turbo for orchestration
 
 ## Monorepo Layout
@@ -50,6 +50,12 @@ GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
 
 # Optional: SQLite path (defaults to file:./drizzle/kanban.db)
 DATABASE_URL=file:./drizzle/kanban.db
+
+# Codex SDK
+CODEX_API_KEY=your_codex_or_openai_api_key
+# Optional: override base URL or codex binary path
+# OPENAI_BASE_URL=https://api.openai.com/v1
+# CODEX_PATH_OVERRIDE=/custom/path/to/codex
 ```
 
 - Client (`client/.env`):
@@ -64,8 +70,8 @@ VITE_SERVER_URL=http://localhost:3000
 bun run dev
 ```
 
-- UI: http://localhost:5173
-- API: http://localhost:3000 (health: `/` → “KanbanAI server is running”)
+- UI: <http://localhost:5173>
+- API: <http://localhost:3000> (health: `/` → “KanbanAI server is running”)
 
 ## GitHub OAuth (Device Flow)
 
@@ -180,9 +186,9 @@ Behavior:
 - Client: `/app` with assets under `/app/assets/*` and index.html fallback (deep links like `/app/projects`).
 - No external files required next to the binary. Client assets and SQL migrations are embedded at build time.
 - SQLite database location (always OS default):
-    - macOS: `~/Library/Application Support/KanbanAI/kanban.db`
-    - Windows: `%LOCALAPPDATA%/KanbanAI/kanban.db`
-    - Linux: `$XDG_DATA_HOME/kanbanai/kanban.db` or `~/.local/share/kanbanai/kanban.db`
+  - macOS: `~/Library/Application Support/KanbanAI/kanban.db`
+  - Windows: `%LOCALAPPDATA%/KanbanAI/kanban.db`
+  - Linux: `$XDG_DATA_HOME/kanbanai/kanban.db` or `~/.local/share/kanbanai/kanban.db`
 
 Client defaults for the binary:
 

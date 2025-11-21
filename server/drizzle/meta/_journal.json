@@ -43,6 +43,13 @@
       "when": 1759084774548,
       "tag": "0005_retire_auto_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1763729475445,
+      "tag": "0006_card_dependencies",
+      "breakpoints": true
     }
   ]
 }

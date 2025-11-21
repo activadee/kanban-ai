@@ -99,7 +99,7 @@ export function ProjectBoardPage() {
                     projectId={project.id}
                     state={boardState}
                     handlers={{
-                        onCreateCard: async (columnId, values) => {
+                        onCreateCard: async (columnId, values: { title: string; description: string; dependsOn?: string[] }) => {
                             try {
                                 await createCardMutation.mutateAsync({
                                     projectId: project.id,
@@ -115,7 +115,7 @@ export function ProjectBoardPage() {
                                 toast({title: 'Failed to create card', variant: 'destructive'})
                             }
                         },
-                        onUpdateCard: async (cardId, values) => {
+                        onUpdateCard: async (cardId, values: { title: string; description: string; dependsOn?: string[] }) => {
                             try {
                                 await updateCardMutation.mutateAsync({
                                     projectId: project.id,
