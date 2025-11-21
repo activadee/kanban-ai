@@ -75,7 +75,7 @@ jobs:
           "ARTIFACT=$dst"      | Out-File -FilePath $Env:GITHUB_ENV -Append
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kanbanai-${{ env.OS_ID }}-${{ env.ARCH_ID }}
           path: ${{ env.ARTIFACT }}
