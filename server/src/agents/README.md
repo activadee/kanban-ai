@@ -2,7 +2,7 @@
 
 ## Purpose
 
-- Define the Agent interface and registry for command-based agents (Codex, Shell, etc.).
+- Define the Agent interface and registry for SDK- and command-based agents (Codex via SDK, Shell, etc.).
 - Provide profile schema handling, profile CRUD, and agent-specific runners.
 - Emit agent lifecycle events so the UI stays in sync with available agents and profiles.
 
@@ -15,8 +15,8 @@
     - Shared profile CRUD lives in the `core` package and is consumed by `projects/routes.ts`.
     - Create/update/delete operations emit `agent.profile.changed` (kind + profile metadata).
 3. **Runners**
-    - Agents implement `Agent.run` / `resume` (Codex via `CommandAgent`).
-    - The attempts service calls into the agent and forwards JSONL output via `emit` which becomes attempt events.
+    - Agents implement `Agent.run` / `resume` (Codex now via the Codex SDK and `SdkAgent`).
+    - The attempts service calls into the agent and forwards streamed events via `emit`, which becomes attempt events.
 
 ## Key Entry Points
 

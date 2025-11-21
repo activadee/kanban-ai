@@ -7,6 +7,7 @@
     ],
     "target": "ESNext",
     "module": "ESNext",
+    "composite": true,
     // Output configuration
     "declaration": true,
     "outDir": "./dist",

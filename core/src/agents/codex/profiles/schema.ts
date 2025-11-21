@@ -4,17 +4,23 @@ import type {CodexProfile as SharedCodexProfile} from 'shared'
 export const CodexProfileSchema = z.object({
     appendPrompt: z.string().nullable().optional(),
     sandbox: z
-        .enum(['auto', 'read-only', 'workspace-write', 'danger-full-access'])
+        .enum(['read-only', 'workspace-write', 'danger-full-access', 'auto'])
         .optional(),
-    oss: z.boolean().optional(),
     model: z.string().optional(),
-    modelReasoningEffort: z.enum(['low', 'medium', 'high']).optional(),
-    modelReasoningSummary: z.enum(['auto', 'concise', 'detailed', 'none']).optional(),
-    baseCommandOverride: z.string().nullable().optional(),
-    additionalParams: z.array(z.string()).optional(),
+    modelReasoningEffort: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
+    skipGitRepoCheck: z.boolean().optional(),
+    networkAccessEnabled: z.boolean().optional(),
+    webSearchEnabled: z.boolean().optional(),
+    approvalPolicy: z.enum(['never', 'on-request', 'on-failure', 'untrusted']).optional(),
+    additionalDirectories: z.array(z.string()).optional(),
+    outputSchema: z.unknown().optional(),
     debug: z.boolean().optional(),
 })
 
 export type CodexProfile = z.infer<typeof CodexProfileSchema>
 
-export const defaultProfile: SharedCodexProfile = {sandbox: 'auto', oss: false, debug: false}
+export const defaultProfile: SharedCodexProfile = {
+    sandbox: 'workspace-write',
+    skipGitRepoCheck: true,
+    debug: false,
+}

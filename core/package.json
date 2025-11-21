@@ -13,6 +13,7 @@
     "test:watch": "vitest watch"
   },
   "dependencies": {
+    "@openai/codex-sdk": "^0.61.0",
     "drizzle-orm": "^0.44.5",
     "shared": "workspace:*",
     "simple-git": "^3.28.0",

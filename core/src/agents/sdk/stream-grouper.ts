@@ -1,4 +1,4 @@
-import type {AgentContext} from '../../types'
+import type {AgentContext} from '../types'
 import type {ConversationItem, ConversationToolInvocation} from 'shared'
 
 const nowIso = () => new Date().toISOString()
@@ -18,7 +18,8 @@ type McpState = {
     started: number
 }
 
-export class CodexGrouper {
+// Aggregates streamed reasoning/tool events into conversation items.
+export class StreamGrouper {
     private reasoningBuf = ''
     private execPending = new Map<string, ExecState>()
     private lastExecKey: string | null = null
