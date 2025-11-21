@@ -1,0 +1,16 @@
+name: Codex Issue Implementation Plan
+
+on:
+  issues:
+    types:
+      - labeled
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  plan:
+    if: github.event.label.name == 'codex-plan' && github.event.sender.login == github.repository_owner
+    uses: activadee/codex-shared-workflows/.github/workflows/issue-plan.yml@main
+    secrets: inherit
