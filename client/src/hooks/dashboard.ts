@@ -8,7 +8,7 @@ function resolveDashboardWsUrl() {
     const env = import.meta.env
     const explicit = env.VITE_WS_URL as string | undefined
     if (explicit) return `${explicit.replace(/\/?$/, '')}/dashboard`
-    const host = (env.VITE_SERVER_URL || 'http://localhost:3000/api').replace(/\/?$/, '')
+    const host = (env.VITE_SERVER_URL || 'http://localhost:3000/api/v1').replace(/\/?$/, '')
     return host.replace(/^http/, 'ws') + '/ws/dashboard'
 }
 

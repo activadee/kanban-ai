@@ -17,7 +17,7 @@ async function parseJson<T>(response: Response): Promise<T> {
 }
 
 export async function discoverGitRepositories(path?: string): Promise<GitRepositoryEntry[]> {
-    const url = new URL(`${SERVER_URL}/filesystem/git-repos`)
+    const url = new URL(`${SERVER_URL}/fs/git-repos`)
     if (path) url.searchParams.set('path', path)
     const res = await fetch(url.toString())
     const payload = await parseJson<{ entries: GitRepositoryEntry[] }>(res)

@@ -10,6 +10,7 @@
     "composite": true,
     // Output configuration
     "declaration": true,
+    "rootDir": "./src",
     "outDir": "./dist",
     "noEmit": false,
     // Type checking
