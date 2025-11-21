@@ -1,6 +1,6 @@
 import {useQuery, type UseQueryOptions} from '@tanstack/react-query'
 import {useMutation, type UseMutationOptions} from '@tanstack/react-query'
-import type {GitFileStatus, PRInfo} from 'shared'
+import type {PRInfo, FileChange} from 'shared'
 import {getAttemptGitStatus, getAttemptFileContent, commitAttempt, pushAttempt, createAttemptPR} from '@/api/git'
 import {SERVER_URL} from '@/lib/env'
 
@@ -8,7 +8,7 @@ const gitKey = (attemptId: string, suffix: string) => ['attempt-git', attemptId,
 
 export function useAttemptGitStatus(
     attemptId: string | undefined,
-    options?: Partial<UseQueryOptions<{ files: Array<{ path: string; status: GitFileStatus }> }>>,
+    options?: Partial<UseQueryOptions<{ files: FileChange[] }>>,
 ) {
     const enabled = Boolean(attemptId)
     return useQuery({

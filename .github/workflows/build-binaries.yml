@@ -21,7 +21,7 @@ jobs:
       BUN_VERSION: '1.2.21'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -75,7 +75,7 @@ jobs:
           "ARTIFACT=$dst"      | Out-File -FilePath $Env:GITHUB_ENV -Append
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: kanbanai-${{ env.OS_ID }}-${{ env.ARCH_ID }}
           path: ${{ env.ARTIFACT }}
@@ -88,7 +88,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           merge-multiple: true
 

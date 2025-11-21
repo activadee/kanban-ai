@@ -36,7 +36,7 @@ export function AgentCompletionNotifier() {
                         queryFn: () => getAttempt(attemptId),
                         staleTime: 60_000,
                     })
-                    attemptRef.current.set(attemptId, attempt)
+                    if (attempt) attemptRef.current.set(attemptId, attempt)
                 } catch (error) {
                     console.error('Failed to load attempt metadata for notification', error)
                 }
@@ -54,7 +54,6 @@ export function AgentCompletionNotifier() {
                 new window.Notification(title, {
                     body: bodyLines.join('\n'),
                     tag: `attempt-${attemptId}`,
-                    renotify: true,
                 })
             } catch (error) {
                 console.error('Failed to display desktop notification', error)
@@ -73,4 +72,3 @@ export function AgentCompletionNotifier() {
 
     return null
 }
-

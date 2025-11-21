@@ -58,8 +58,8 @@
     "bun-types": "latest",
     "turbo": "^2.5.5",
     "semver": "^7.6.3",
-    "vitest": "^3.2.4",
-    "@vitest/coverage-v8": "^3.2.4"
+    "vitest": "^4.0.12",
+    "@vitest/coverage-v8": "^4.0.12"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
