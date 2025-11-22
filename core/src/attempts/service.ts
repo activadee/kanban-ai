@@ -17,6 +17,9 @@ import { getAgent } from "../agents/registry";
 import { renderBranchName } from "../git/branch";
 import { settingsService } from "../settings/service";
 import { runAutomationCommand } from "../automation/scripts";
+import { getAgentProfile as getProjectAgentProfile } from "../agents/profiles";
+import { getGlobalAgentProfile } from "../agents/profiles-global";
+import type { Agent } from "../agents/types";
 import {
     getAttemptById,
     getAttemptForCard,
@@ -61,6 +64,54 @@ function normalizeScript(source: string | null | undefined): string | null {
     if (typeof source !== "string") return null;
     const trimmed = source.trim();
     return trimmed.length ? trimmed : null;
+}
+
+async function resolveAgentProfileConfig(
+    agent: Agent,
+    projectId: string,
+    profileId?: string,
+): Promise<{ profile: unknown | null; label?: string; warning?: string }> {
+    if (!profileId) return { profile: null };
+
+    const isGlobal = profileId.startsWith("apg-");
+    const row = isGlobal
+        ? await getGlobalAgentProfile(profileId)
+        : await getProjectAgentProfile(projectId, profileId);
+
+    if (!row) {
+        return {
+            profile: null,
+            warning: `[profiles] ${isGlobal ? "global" : "project"} profile ${profileId} not found; falling back to defaults`,
+        };
+    }
+
+    if (row.agent !== agent.key) {
+        return {
+            profile: null,
+            warning: `[profiles] profile ${profileId} belongs to agent ${row.agent}; expected ${agent.key}. Using default profile instead`,
+        };
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(row.configJson);
+    } catch (err) {
+        return {
+            profile: null,
+            warning: `[profiles] failed to parse profile ${profileId}: ${err instanceof Error ? err.message : String(err)}`,
+        };
+    }
+
+    const validated = agent.profileSchema.safeParse(parsed);
+    if (!validated.success) {
+        const issue = validated.error.issues.at(0)?.message ?? "invalid profile";
+        return {
+            profile: null,
+            warning: `[profiles] profile ${profileId} is invalid: ${issue}. Using defaults`,
+        };
+    }
+
+    return { profile: validated.data, label: row.name };
 }
 
 async function appendAutomationConversationItem(
@@ -423,10 +474,6 @@ export async function startAttempt(
                 worktreePath,
                 boardId: input.boardId,
             });
-            let profile: unknown = agent.defaultProfile;
-            if (profileId) {
-                /* host can resolve profiles externally if needed; skip here to keep core generic */
-            }
             const log = async (
                 level: "info" | "warn" | "error",
                 message: string,
@@ -434,6 +481,22 @@ export async function startAttempt(
                 await emit({ type: "log", level, message });
             };
             logFn = log;
+            let profile: unknown = agent.defaultProfile;
+            const resolvedProfile = await resolveAgentProfileConfig(
+                agent,
+                input.boardId,
+                profileId,
+            );
+            if (resolvedProfile.profile) {
+                profile = resolvedProfile.profile;
+                if (resolvedProfile.label)
+                    await log(
+                        "info",
+                        `[profiles] using ${resolvedProfile.label} (${profileId}) for ${agent.key}`,
+                    );
+            } else if (resolvedProfile.warning) {
+                await log("warn", resolvedProfile.warning);
+            }
             const code =
                 typeof agent.run === "function"
                     ? await agent.run(
@@ -857,9 +920,26 @@ export async function followupAttempt(
                 worktreePath,
                 boardId: base.boardId,
             });
+            const log = async (
+                level: "info" | "warn" | "error",
+                message: string,
+            ) => emit({ type: "log", level, message });
+
             let profile: unknown = agent.defaultProfile;
-            if (effectiveProfileId) {
-                /* host can resolve profile JSON externally if desired */
+            const resolvedProfile = await resolveAgentProfileConfig(
+                agent,
+                base.boardId,
+                effectiveProfileId,
+            );
+            if (resolvedProfile.profile) {
+                profile = resolvedProfile.profile;
+                if (resolvedProfile.label)
+                    await log(
+                        "info",
+                        `[profiles] using ${resolvedProfile.label} (${effectiveProfileId}) for ${agent.key}`,
+                    );
+            } else if (resolvedProfile.warning) {
+                await log("warn", resolvedProfile.warning);
             }
             try {
                 const code = await agent.resume!(
