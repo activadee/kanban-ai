@@ -39,5 +39,16 @@ export const vsCodeAdapter = createAdapter({
     label: 'VS Code',
     candidates: collectVSCodeCommandCandidates,
     // -n forces a new window instead of reusing the existing one
-    argsFor: (path) => ['-n', path],
+    argsFor: (path, bin) => {
+        if (isWSL() && /\.exe$/i.test(bin)) {
+            const distro = process.env.WSL_DISTRO_NAME || 'wsl'
+            return ['-n', '--remote', `wsl+${distro}`, path]
+        }
+        return ['-n', path]
+    },
+    // Keep WSL paths when launching Windows Code with Remote WSL; Windows path conversion would break it
+    transformPath: (path, bin) => {
+        if (isWSL() && /\.exe$/i.test(bin)) return path
+        return path
+    },
 })

@@ -17,8 +17,8 @@ export function isWSL(): boolean {
 }
 
 export function windowsPathToWSLPath(winPath: string): string | null {
-    if (!/^[a-z]:/i.test(winPath)) return null
-    const drive = winPath[0].toLowerCase()
+    if (!/^[a-z]:/i.test(winPath) || winPath.length < 2) return null
+    const drive = winPath.charAt(0).toLowerCase()
     const rest = winPath.slice(2).replace(/\\/g, '/').replace(/^\/+/, '')
     return `/mnt/${drive}/${rest}`
 }

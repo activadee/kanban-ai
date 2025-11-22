@@ -20,8 +20,9 @@ export function createAdapter(params: {
     label: string
     candidates: () => string[]
     argsFor: (path: string, bin: string) => string[]
+    transformPath?: (path: string, bin: string) => string
 }): EditorAdapter {
-    const {key, label, candidates, argsFor} = params
+    const {key, label, candidates, argsFor, transformPath} = params
 
     const pick = (): string | null => pickBinary(candidates())
 
@@ -33,7 +34,7 @@ export function createAdapter(params: {
     const buildSpec = (path: string): ExecSpec | null => {
         const bin = pick()
         if (!bin) return null
-        const target = normalizePathForWindowsBinary(bin, path)
+        const target = (transformPath ?? normalizePathForWindowsBinary)(path, bin)
         const args = argsFor(target, bin)
         return {cmd: bin, args, line: formatCommandLine(bin, args)}
     }
@@ -41,7 +42,7 @@ export function createAdapter(params: {
     const buildFallback = (path: string): string => {
         const list = candidates()
         const bin = pickBinary(list) || list[0] || key.toLowerCase()
-        const target = normalizePathForWindowsBinary(bin, path)
+        const target = (transformPath ?? normalizePathForWindowsBinary)(path, bin)
         const args = argsFor(target, bin)
         return formatCommandLine(bin, args)
     }
