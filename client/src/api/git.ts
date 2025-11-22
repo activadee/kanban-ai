@@ -40,24 +40,6 @@ export async function getAttemptFileContent(attemptId: string, path: string, sou
     return data.content
 }
 
-export async function stageAttemptFiles(attemptId: string, paths?: string[]): Promise<void> {
-    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/git/stage`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({paths}),
-    })
-    if (!res.ok) throw new Error(await res.text() || 'Stage failed')
-}
-
-export async function unstageAttemptFiles(attemptId: string, paths?: string[]): Promise<void> {
-    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/git/unstage`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({paths}),
-    })
-    if (!res.ok) throw new Error(await res.text() || 'Unstage failed')
-}
-
 type CommitResponse = { shortSha: string }
 
 export async function commitAttempt(attemptId: string, subject: string, body?: string): Promise<CommitResponse> {
