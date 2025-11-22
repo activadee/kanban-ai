@@ -31,10 +31,15 @@ export function createAdapter(params: {
         return {key, label, installed: Boolean(bin), bin: bin || undefined}
     }
 
+    const computeTarget = (path: string, bin: string): string => {
+        if (transformPath) return transformPath(path, bin)
+        return normalizePathForWindowsBinary(bin, path)
+    }
+
     const buildSpec = (path: string): ExecSpec | null => {
         const bin = pick()
         if (!bin) return null
-        const target = (transformPath ?? normalizePathForWindowsBinary)(path, bin)
+        const target = computeTarget(path, bin)
         const args = argsFor(target, bin)
         return {cmd: bin, args, line: formatCommandLine(bin, args)}
     }
@@ -42,7 +47,7 @@ export function createAdapter(params: {
     const buildFallback = (path: string): string => {
         const list = candidates()
         const bin = pickBinary(list) || list[0] || key.toLowerCase()
-        const target = (transformPath ?? normalizePathForWindowsBinary)(path, bin)
+        const target = computeTarget(path, bin)
         const args = argsFor(target, bin)
         return formatCommandLine(bin, args)
     }
