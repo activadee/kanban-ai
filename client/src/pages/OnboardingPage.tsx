@@ -178,10 +178,6 @@ export function OnboardingPage() {
     // Resume from last recorded step if user reloads mid-onboarding
     useEffect(() => {
         if (resumeApplied || !onboardingStatus.data) return
-        if (onboardingStatus.data.status === 'completed') {
-            navigate('/', {replace: true})
-            return
-        }
         if (onboardingStatus.data.lastStep) {
             const idx = STEP_ORDER.findIndex((id) => id === onboardingStatus.data!.lastStep)
             if (idx >= 0) {
@@ -189,7 +185,7 @@ export function OnboardingPage() {
             }
         }
         setResumeApplied(true)
-    }, [onboardingStatus.data, navigate, resumeApplied])
+    }, [onboardingStatus.data, resumeApplied])
 
     // Record progress when step changes
     useEffect(() => {
@@ -288,6 +284,7 @@ export function OnboardingPage() {
     const connected = githubAuthQuery.data?.status === 'valid'
     const githubAccount = githubAuthQuery.data?.status === 'valid' ? githubAuthQuery.data.account : null
     const connectedUsername = githubAccount?.username ?? null
+    const onboardingCompleted = onboardingStatus.data?.status === 'completed'
     const githubConfigMissing = (appCredForm?.clientId.trim() ?? '').length === 0 || !appCredForm?.hasClientSecret
 
     const anyLoading =
@@ -410,6 +407,40 @@ export function OnboardingPage() {
         }
     }
 
+    const queryErrored = settingsQuery.isError || githubAppQuery.isError || editorsQuery.isError
+
+    if (queryErrored) {
+        const messages = [
+            settingsQuery.error instanceof Error ? settingsQuery.error.message : null,
+            githubAppQuery.error instanceof Error ? githubAppQuery.error.message : null,
+            editorsQuery.error instanceof Error ? editorsQuery.error.message : null,
+        ].filter(Boolean)
+        return (
+            <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background text-center text-sm text-destructive">
+                <div>Could not load onboarding prerequisites.</div>
+                {messages.length ? (
+                    <div className="text-xs text-muted-foreground">
+                        {messages.join(' · ')}
+                    </div>
+                ) : null}
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            settingsQuery.refetch()
+                            githubAppQuery.refetch()
+                            editorsQuery.refetch()
+                            onboardingStatus.refetch()
+                        }}
+                    >
+                        Retry
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+
     if (anyLoading || !settingsForm || !appCredForm || onboardingStatus.isLoading) {
         return (
             <div className="flex h-screen items-center justify-center bg-background text-muted-foreground">
@@ -479,6 +510,11 @@ export function OnboardingPage() {
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Onboarding</p>
                             <h1 className="text-xl font-semibold text-foreground">{stepMeta.title}</h1>
                             <p className="text-sm text-muted-foreground">{stepMeta.description}</p>
+                            {onboardingCompleted ? (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    You previously completed onboarding. You can revisit steps and save updates here.
+                                </p>
+                            ) : null}
                         </div>
                         <Badge variant="secondary">{currentStep + 1} / {STEP_ORDER.length}</Badge>
                     </div>
