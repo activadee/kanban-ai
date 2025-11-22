@@ -45,8 +45,8 @@ describe('settings/service', () => {
             language: 'en',
             telemetryEnabled: true,
             notificationsAgentCompletionSound: true,
-            editorType: 'ZED',
-            editorCommand: 'zed',
+            editorType: 'VS_CODE',
+            editorCommand: null,
             ghAutolinkTickets: false,
         })
 

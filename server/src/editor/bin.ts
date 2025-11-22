@@ -6,9 +6,12 @@ export function which(cmd: string): string | null {
         return existsSync(cmd) ? cmd : null
     }
     try {
-        const bunResult = Bun.which(cmd)
-        if (bunResult) {
-            return String(bunResult)
+        if (typeof Bun !== 'undefined') {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const bunResult = (Bun as any)?.which?.(cmd)
+            if (bunResult) {
+                return String(bunResult)
+            }
         }
     } catch {
         // ignore and try platform-specific lookup below
