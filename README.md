@@ -139,7 +139,8 @@ All endpoints are rooted at `/api/v1` (temporary shim also available at `/api`).
 - Projects: `GET/POST /projects`, `GET /projects/:id`, `GET/PATCH /projects/:id/settings`,
   `GET /projects/:id/github/origin`, `POST /projects/:id/import/github/issues`
 - Attempts: `POST /attempts/projects/:boardId/cards/:cardId/attempts`, `GET /attempts/:id`, `POST /attempts/:id/stop`,
-  `GET /attempts/:id/logs`
+  `GET /attempts/:id/logs` (`POST /attempts/:id/stop` now force-stops attempts stuck in running/queued states even if
+  the worker process is no longer tracked)
 - Attempt Git: `GET /attempts/:id/git/status`, `GET /attempts/:id/git/file`,
   `POST /attempts/:id/git/stage|unstage|commit|push|merge`, `POST /attempts/:id/github/pr`
 
