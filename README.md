@@ -124,6 +124,11 @@ bun run test
 Project Settings (per project): base branch, preferred remote, setup/dev/cleanup scripts, default agent/profile,
 auto-commit-on-finish (automatically triggers an autocommit when a successful attempt finishes).
 
+Agent profiles can be stored per project or as workspace-global entries (IDs beginning with `apg-`). When an attempt
+starts or resumes, the server now resolves the referenced profile, validates it against the agent’s schema, and logs an
+info message when a named profile is used. Missing, mismatched, or invalid profile JSON automatically falls back to the
+agent’s default profile with a warning, so attempts continue without manual cleanup.
+
 Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatically on server start; default file lives
 at `server/drizzle/kanban.db` (configurable with `DATABASE_URL`).
 
