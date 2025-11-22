@@ -14,6 +14,7 @@ import {createAgentsRouter} from './agents/routes'
 import {createGithubProjectRouter} from './github/pr-routes'
 import {createEditorsRouter} from './editor/routes'
 import {createAppSettingsRouter} from './settings/routes'
+import {createOnboardingRouter} from './onboarding/routes'
 import {createEventBus, type AppEventBus} from './events/bus'
 import {registerEventListeners} from './events/register'
 import {createDashboardRouter} from './dashboard/routes'
@@ -112,6 +113,7 @@ export const createApp = ({
     api.route('/editors', createEditorsRouter())
     api.route('/settings', createAppSettingsRouter())
     api.route('/dashboard', createDashboardRouter())
+    api.route('/onboarding', createOnboardingRouter())
 
     if (upgradeWebSocket) {
         api.get(

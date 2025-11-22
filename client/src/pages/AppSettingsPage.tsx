@@ -3,12 +3,13 @@ import {toast} from '@/components/ui/toast'
 import {Button} from '@/components/ui/button'
 import {useEffect, useMemo, useState} from 'react'
 import type {CheckedState} from '@radix-ui/react-checkbox'
-import {useAppSettings, useEditors, useUpdateAppSettings} from '@/hooks'
-import type {EditorType, UpdateAppSettingsRequest} from 'shared'
+import {useAppSettings, useEditors, useGithubAppConfig, useSaveGithubAppConfig, useUpdateAppSettings} from '@/hooks'
+import type {EditorType, GithubAppConfig, UpdateAppSettingsRequest} from 'shared'
 import {GeneralSettingsSection} from './app-settings/GeneralSettingsSection'
 import {EditorSettingsSection} from './app-settings/EditorSettingsSection'
 import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
+import {GithubAppCredentialsFields} from '@/components/github/GithubAppCredentialsFields'
 
 type FormState = {
     theme: 'system' | 'light' | 'dark'
@@ -25,12 +26,23 @@ type FormState = {
     ghAutolinkTickets: boolean
 }
 
+type GithubAppForm = {
+    clientId: string
+    clientSecret: string
+    hasClientSecret: boolean
+    source: GithubAppConfig['source']
+    updatedAt: string | null
+}
+
 const SUPPORTED_EDITOR_KEYS: readonly EditorType[] = ['VS_CODE', 'CURSOR', 'WINDSURF', 'ZED', 'INTELLIJ', 'WEBSTORM', 'XCODE'] as const
 
 export function AppSettingsPage() {
     const {data, isLoading} = useAppSettings()
     const editorsQuery = useEditors()
+    const githubAppQuery = useGithubAppConfig()
     const [form, setForm] = useState<FormState | null>(null)
+    const [appCredForm, setAppCredForm] = useState<GithubAppForm | null>(null)
+    const [appCredInitial, setAppCredInitial] = useState<GithubAppForm | null>(null)
 
     const initial = useMemo(() => {
         if (!data) return null
@@ -54,7 +66,25 @@ export function AppSettingsPage() {
         if (initial && !form) setForm(initial)
     }, [initial, form])
 
+    useEffect(() => {
+        if (githubAppQuery.data) {
+            const incoming: GithubAppForm = {
+                clientId: githubAppQuery.data.clientId ?? '',
+                clientSecret: '',
+                hasClientSecret: githubAppQuery.data.hasClientSecret,
+                source: githubAppQuery.data.source,
+                updatedAt: githubAppQuery.data.updatedAt,
+            }
+            setAppCredInitial(incoming)
+            setAppCredForm((prev) => prev ?? incoming)
+        }
+    }, [githubAppQuery.data])
+
     const dirty = form && initial && JSON.stringify(form) !== JSON.stringify(initial)
+    const appCredDirty =
+        appCredForm &&
+        appCredInitial &&
+        (appCredForm.clientId.trim() !== appCredInitial.clientId.trim() || appCredForm.clientSecret.trim().length > 0)
 
     const updateSettings = useUpdateAppSettings({
         onSuccess: (result) => {
@@ -78,6 +108,22 @@ export function AppSettingsPage() {
         onError: (err) => {
             toast({title: 'Save failed', description: err.message, variant: 'destructive'})
         },
+    })
+
+    const saveGithubApp = useSaveGithubAppConfig({
+        onSuccess: (saved) => {
+            const next: GithubAppForm = {
+                clientId: saved.clientId ?? '',
+                clientSecret: '',
+                hasClientSecret: saved.hasClientSecret,
+                source: saved.source,
+                updatedAt: saved.updatedAt,
+            }
+            setAppCredInitial(next)
+            setAppCredForm(next)
+            toast({title: 'GitHub app saved', variant: 'success'})
+        },
+        onError: (err) => toast({title: 'Save failed', description: err.message, variant: 'destructive'}),
     })
 
     const save = () => {
@@ -215,6 +261,45 @@ export function AppSettingsPage() {
                                 ghPrBodyTemplate: form.ghPrBodyTemplate
                             }} onChange={(p) => setForm({...form, ...p})}/>
                         </div>
+                        {appCredForm ? (
+                            <div className="rounded-md border p-6">
+                                <div className="mb-4">
+                                    <h2 className="text-base font-medium">GitHub OAuth App</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Client ID and secret used for GitHub device flow. Values are stored locally in the app database.
+                                    </p>
+                                </div>
+                                <GithubAppCredentialsFields
+                                    value={appCredForm}
+                                    onChange={(patch) => setAppCredForm({...appCredForm, ...patch})}
+                                    disabled={saveGithubApp.isPending}
+                                />
+                                <div className="mt-4 flex justify-end gap-2">
+                                    <Button
+                                        variant="outline"
+                                        disabled={!appCredDirty || saveGithubApp.isPending}
+                                        onClick={() => {
+                                            if (appCredInitial) setAppCredForm(appCredInitial)
+                                        }}
+                                    >
+                                        Reset
+                                    </Button>
+                                    <Button
+                                        disabled={
+                                            !appCredDirty ||
+                                            saveGithubApp.isPending ||
+                                            !appCredForm.clientId.trim()
+                                        }
+                                        onClick={() => saveGithubApp.mutate({
+                                            clientId: appCredForm.clientId.trim(),
+                                            clientSecret: appCredForm.clientSecret.trim() || null
+                                        })}
+                                    >
+                                        {saveGithubApp.isPending ? 'Saving…' : 'Save GitHub app'}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
                     </>
                 )}
 

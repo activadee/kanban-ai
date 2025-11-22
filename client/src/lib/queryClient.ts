@@ -45,6 +45,7 @@ export const cardAttemptKeys = {
 export const githubKeys = {
     all: ['github'] as const,
     check: () => [...githubKeys.all, 'check'] as const,
+    appConfig: () => [...githubKeys.all, 'app-config'] as const,
 }
 
 export const filesystemKeys = {
@@ -55,4 +56,9 @@ export const filesystemKeys = {
 export const dashboardKeys = {
     all: ['dashboard'] as const,
     overview: () => [...dashboardKeys.all, 'overview'] as const,
+}
+
+export const onboardingKeys = {
+    all: ['onboarding'] as const,
+    status: () => [...onboardingKeys.all, 'status'] as const,
 }

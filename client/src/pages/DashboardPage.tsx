@@ -244,7 +244,7 @@ export function DashboardPage() {
                                             ? 'Checking status…'
                                             : githubConnected
                                                 ? `Connected as ${githubAccount?.username}`
-                                                : 'Not connected. Start the device flow from project onboarding.'}
+                                                : 'Not connected. Open onboarding or Settings → GitHub to connect.'}
                                     </p>
                                 </div>
                                 <div className="rounded-md border border-border/60 p-3">

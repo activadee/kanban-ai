@@ -1,6 +1,19 @@
 import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
-import type {GitHubCheckResponse, GitHubDevicePollResponse, GitHubDeviceStartResponse} from 'shared'
-import {checkGitHubDevice, logoutGitHub, pollGitHubDevice, startGitHubDevice} from '@/api/github'
+import type {
+    GitHubCheckResponse,
+    GitHubDevicePollResponse,
+    GitHubDeviceStartResponse,
+    GithubAppConfig,
+    UpsertGithubAppConfigRequest,
+} from 'shared'
+import {
+    checkGitHubDevice,
+    getGithubAppConfig,
+    logoutGitHub,
+    pollGitHubDevice,
+    putGithubAppConfig,
+    startGitHubDevice,
+} from '@/api/github'
 import {githubKeys} from '@/lib/queryClient'
 
 type AuthOptions = Partial<UseQueryOptions<GitHubCheckResponse>>
@@ -36,6 +49,23 @@ export function usePollGithubDevice(options?: PollOptions) {
 export function useLogoutGithub(options?: LogoutOptions) {
     return useMutation({
         mutationFn: logoutGitHub,
+        ...options,
+    })
+}
+
+type AppConfigOptions = Partial<UseQueryOptions<GithubAppConfig>>
+export function useGithubAppConfig(options?: AppConfigOptions) {
+    return useQuery({
+        queryKey: githubKeys.appConfig(),
+        queryFn: getGithubAppConfig,
+        ...options,
+    })
+}
+
+type SaveAppConfigOptions = UseMutationOptions<GithubAppConfig, Error, UpsertGithubAppConfigRequest>
+export function useSaveGithubAppConfig(options?: SaveAppConfigOptions) {
+    return useMutation({
+        mutationFn: (payload: UpsertGithubAppConfigRequest) => putGithubAppConfig(payload),
         ...options,
     })
 }

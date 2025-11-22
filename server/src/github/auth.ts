@@ -1,7 +1,7 @@
 import type {GitHubCheckResponse, GitHubDevicePollResponse, GitHubDeviceStartResponse} from 'shared'
 import {githubRepo} from 'core'
 
-const {getGithubConnection, upsertGithubConnection} = githubRepo
+const {getGithubConnection, upsertGithubConnection, getGithubAppConfig} = githubRepo
 
 const USER_AGENT = 'kanbanai-app'
 const DEFAULT_SCOPE = 'repo user:email'
@@ -12,26 +12,26 @@ type DeviceFlowSession = {
     verificationUri: string
     verificationUriComplete: string | null
     interval: number
+    nextPollAt: number
     expiresAt: number
 }
 
 let currentSession: DeviceFlowSession | null = null
 
-function getRequiredEnv(name: string): string {
-    const value = Bun.env[name]
-    if (!value || !value.trim()) {
-        throw new Error(`${name} is required for GitHub OAuth device flow`)
-    }
-    return value.trim()
-}
+type GithubClientConfig = { clientId: string; clientSecret: string | null }
 
-function getOptionalEnv(name: string): string | null {
-    const value = Bun.env[name]
-    return value && value.trim().length ? value.trim() : null
+async function loadGithubClient(): Promise<GithubClientConfig> {
+    const stored = await getGithubAppConfig()
+    const clientId = stored?.clientId?.trim() || Bun.env.GITHUB_CLIENT_ID?.trim()
+    const clientSecret = stored?.clientSecret?.trim() || Bun.env.GITHUB_CLIENT_SECRET?.trim() || null
+    if (!clientId) {
+        throw new Error('GitHub OAuth client is not configured. Add a client ID in settings or set GITHUB_CLIENT_ID.')
+    }
+    return {clientId, clientSecret}
 }
 
 export async function startGithubDeviceFlow(): Promise<GitHubDeviceStartResponse> {
-    const clientId = getRequiredEnv('GITHUB_CLIENT_ID')
+    const {clientId} = await loadGithubClient()
     const body = new URLSearchParams({client_id: clientId, scope: DEFAULT_SCOPE})
 
     const res = await fetch('https://github.com/login/device/code', {
@@ -57,12 +57,14 @@ export async function startGithubDeviceFlow(): Promise<GitHubDeviceStartResponse
         interval: number
     }
 
+    const now = Date.now()
     currentSession = {
         deviceCode: json.device_code,
         userCode: json.user_code,
         verificationUri: json.verification_uri,
         verificationUriComplete: json.verification_uri_complete ?? null,
         interval: json.interval,
+        nextPollAt: now, // first poll can happen immediately
         expiresAt: Date.now() + json.expires_in * 1000,
     }
 
@@ -120,8 +122,13 @@ export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> 
         return {status: 'expired'}
     }
 
-    const clientId = getRequiredEnv('GITHUB_CLIENT_ID')
-    const clientSecret = getOptionalEnv('GITHUB_CLIENT_SECRET')
+    const now = Date.now()
+    if (now < currentSession.nextPollAt) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((currentSession.nextPollAt - now) / 1000))
+        return {status: 'slow_down', retryAfterSeconds}
+    }
+
+    const {clientId, clientSecret} = await loadGithubClient()
 
     const body = new URLSearchParams({
         client_id: clientId,
@@ -132,6 +139,9 @@ export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> 
     if (clientSecret) {
         body.set('client_secret', clientSecret)
     }
+
+    // Enforce per-session interval locally to avoid hammering GitHub if the UI misbehaves
+    currentSession.nextPollAt = now + currentSession.interval * 1000
 
     const res = await fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
@@ -154,9 +164,11 @@ export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> 
     if ('error' in json) {
         switch (json.error) {
             case 'authorization_pending':
+                currentSession.nextPollAt = now + currentSession.interval * 1000
                 return {status: 'authorization_pending'}
             case 'slow_down':
-                return {status: 'slow_down'}
+                currentSession.nextPollAt = now + (currentSession.interval + 5) * 1000
+                return {status: 'slow_down', retryAfterSeconds: Math.ceil((currentSession.nextPollAt - now) / 1000)}
             case 'expired_token':
                 currentSession = null
                 return {status: 'expired'}
@@ -168,6 +180,9 @@ export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> 
         }
     }
 
+    // Success; prevent any further polls for this session
+    currentSession = null
+
     const account = await fetchGithubAccount(json.access_token)
     await upsertGithubConnection({
         username: account.username,
@@ -176,7 +191,6 @@ export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> 
         tokenType: json.token_type,
         scope: json.scope ?? null,
     })
-    currentSession = null
     return {
         status: 'success',
         account: {

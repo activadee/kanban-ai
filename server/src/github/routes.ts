@@ -1,4 +1,6 @@
 import {Hono} from 'hono'
+import {z} from 'zod'
+import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
 import {startGithubDeviceFlow, pollGithubDeviceFlow, checkGithubConnection} from './auth'
 import {githubRepo} from 'core'
@@ -6,6 +8,10 @@ import {listUserRepos} from './api'
 
 export const createGithubRouter = () => {
     const router = new Hono<AppEnv>()
+    const appConfigSchema = z.object({
+        clientId: z.string().trim().min(1, 'Client ID is required'),
+        clientSecret: z.string().trim().min(1).optional().nullable(),
+    })
 
     router.post('/device/start', async (c) => {
         try {
@@ -48,6 +54,39 @@ export const createGithubRouter = () => {
                 message: error instanceof Error ? error.message : 'GitHub check failed'
             }, 500)
         }
+    })
+
+    router.get('/app', async (c) => {
+        const config = await githubRepo.getGithubAppConfig()
+        const envClientId = Bun.env.GITHUB_CLIENT_ID?.trim()
+        const envSecret = Bun.env.GITHUB_CLIENT_SECRET?.trim()
+        const source: 'db' | 'env' | 'unset' = config ? 'db' : envClientId || envSecret ? 'env' : 'unset'
+        return c.json(
+            {
+                clientId: config?.clientId ?? envClientId ?? null,
+                hasClientSecret: Boolean(config?.clientSecret ?? envSecret),
+                updatedAt: config?.updatedAt ? new Date(config.updatedAt).toISOString() : null,
+                source,
+            },
+            200,
+        )
+    })
+
+    router.put('/app', zValidator('json', appConfigSchema), async (c) => {
+        const body = c.req.valid('json')
+        const saved = await githubRepo.upsertGithubAppConfig({
+            clientId: body.clientId.trim(),
+            clientSecret: body.clientSecret ? body.clientSecret.trim() : null,
+        })
+        return c.json(
+            {
+                clientId: saved.clientId,
+                hasClientSecret: Boolean(saved.clientSecret),
+                updatedAt: saved.updatedAt ? new Date(saved.updatedAt).toISOString() : null,
+                source: 'db',
+            },
+            200,
+        )
     })
 
     router.get('/repos', async (c) => {

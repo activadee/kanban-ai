@@ -1,4 +1,10 @@
-import type {GitHubCheckResponse, GitHubDevicePollResponse, GitHubDeviceStartResponse} from 'shared'
+import type {
+    GitHubCheckResponse,
+    GitHubDevicePollResponse,
+    GitHubDeviceStartResponse,
+    GithubAppConfig,
+    UpsertGithubAppConfigRequest,
+} from 'shared'
 import {SERVER_URL} from '@/lib/env'
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -41,4 +47,26 @@ export async function logoutGitHub(): Promise<void> {
         const text = await res.text()
         throw new Error(text || `GitHub logout failed (${res.status})`)
     }
+}
+
+export async function getGithubAppConfig(): Promise<GithubAppConfig> {
+    const res = await fetch(`${SERVER_URL}/auth/github/app`)
+    if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Failed to load GitHub app config')
+    }
+    return (await res.json()) as GithubAppConfig
+}
+
+export async function putGithubAppConfig(payload: UpsertGithubAppConfigRequest): Promise<GithubAppConfig> {
+    const res = await fetch(`${SERVER_URL}/auth/github/app`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || 'Failed to save GitHub app config')
+    }
+    return (await res.json()) as GithubAppConfig
 }

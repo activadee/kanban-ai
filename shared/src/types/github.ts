@@ -15,7 +15,7 @@ export type GitHubDeviceStartResponse = {
 
 export type GitHubDevicePollResponse =
     | { status: 'authorization_pending' }
-    | { status: 'slow_down' }
+    | { status: 'slow_down'; retryAfterSeconds?: number }
     | { status: 'expired' }
     | { status: 'access_denied' }
     | { status: 'error'; message: string }
