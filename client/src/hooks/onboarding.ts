@@ -20,8 +20,9 @@ export function useOnboardingProgress(options?: ProgressOptions) {
     return useMutation({
         mutationFn: (payload: { step?: string }) => recordOnboardingProgress(payload?.step),
         onSuccess: (status, variables, onMutateResult, context) => {
+            const ctx = (context ?? onMutateResult) as unknown
             queryClient.setQueryData(onboardingKeys.status(), status)
-            options?.onSuccess?.(status, variables, onMutateResult, context)
+            options?.onSuccess?.(status, variables, onMutateResult, ctx as any)
         },
         ...options,
     })
@@ -34,8 +35,9 @@ export function useCompleteOnboarding(options?: CompleteOptions) {
     return useMutation({
         mutationFn: (payload: { step?: string }) => completeOnboarding(payload?.step),
         onSuccess: (status, variables, onMutateResult, context) => {
+            const ctx = (context ?? onMutateResult) as unknown
             queryClient.setQueryData(onboardingKeys.status(), status)
-            options?.onSuccess?.(status, variables, onMutateResult, context)
+            options?.onSuccess?.(status, variables, onMutateResult, ctx as any)
         },
         ...options,
     })

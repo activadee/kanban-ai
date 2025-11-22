@@ -285,7 +285,7 @@ export function OnboardingPage() {
     const githubAccount = githubAuthQuery.data?.status === 'valid' ? githubAuthQuery.data.account : null
     const connectedUsername = githubAccount?.username ?? null
     const onboardingCompleted = onboardingStatus.data?.status === 'completed'
-    const githubConfigMissing = (appCredForm?.clientId.trim() ?? '').length === 0 || !appCredForm?.hasClientSecret
+    const githubConfigMissingId = (appCredForm?.clientId.trim() ?? '').length === 0
 
     const anyLoading =
         onboardingStatus.isLoading ||
@@ -624,8 +624,8 @@ export function OnboardingPage() {
                                                 {connected ? `Signed in as ${connectedUsername}` : 'Awaiting authorization'}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
-                                                {githubConfigMissing
-                                                    ? 'Add client ID and secret first, then start the flow.'
+                                                {githubConfigMissingId
+                                                    ? 'Add a client ID first, then start the flow.'
                                                     : connected
                                                         ? 'You can continue to the app.'
                                                         : 'Click connect to open GitHub and enter the device code.'}
@@ -643,7 +643,7 @@ export function OnboardingPage() {
                                             </Button>
                                             <Button
                                                 onClick={startGithubConnect}
-                                                disabled={githubConfigMissing || startingDevice || polling || connected}
+                                                disabled={githubConfigMissingId || startingDevice || polling || connected}
                                             >
                                                 {startingDevice ? (
                                                     <>
@@ -674,9 +674,9 @@ export function OnboardingPage() {
                                             </div>
                                         </div>
                                     ) : null}
-                                    {githubConfigMissing ? (
+                                    {githubConfigMissingId ? (
                                         <p className="mt-3 text-xs text-destructive">
-                                            GitHub app credentials are missing. Add a client ID and secret in the previous step.
+                                            GitHub app client ID is required. Add it in the previous step.
                                         </p>
                                     ) : null}
                                 </div>

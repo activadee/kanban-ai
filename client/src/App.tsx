@@ -18,14 +18,27 @@ import {AgentCompletionSoundListener} from '@/components/notifications/AgentComp
 
 function RequireOnboardingComplete() {
     const status = useOnboardingStatus()
-    if (status.isLoading) {
+    if (status.isLoading || !status.data) {
         return (
             <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
                 Checking onboarding…
             </div>
         )
     }
-    if (status.data?.status === 'pending') {
+    if (status.isError) {
+        return (
+            <div className="flex h-screen flex-col items-center justify-center gap-3 text-sm text-destructive">
+                Unable to confirm onboarding status.
+                <button
+                    className="rounded border border-border px-3 py-1 text-foreground"
+                    onClick={() => status.refetch()}
+                >
+                    Retry
+                </button>
+            </div>
+        )
+    }
+    if (status.data.status === 'pending') {
         return <Navigate to="/onboarding" replace/>
     }
     return <Outlet/>
