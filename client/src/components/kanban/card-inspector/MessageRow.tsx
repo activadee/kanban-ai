@@ -48,7 +48,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
                     : undefined
             const summaryLabel = tool.name || 'tool'
             return (
-                <details className="mb-2 rounded border border-border/60 bg-background p-2" open>
+                <details className="mb-2 rounded border border-border/60 bg-background p-2">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                             <Badge className="text-[10px]" variant="outline">tool</Badge>
