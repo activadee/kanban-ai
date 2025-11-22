@@ -184,6 +184,7 @@ describe('git/service repository status and content', () => {
 
         const hash = await commit('proj', ' Test commit ')
         expect(hash).toBe('123abc4')
+        expect(git.add).toHaveBeenCalledWith(['-A'])
         expect(git.commit).toHaveBeenCalledWith('Test commit')
 
         await push('proj', {token: 'secret', setUpstream: true})
@@ -328,6 +329,7 @@ describe('git/service helpers for worktree paths', () => {
         await commitAtPath('/tmp/work', 'Commit message', undefined, {projectId: 'proj', attemptId: 'att'})
         await pushAtPath('/tmp/work', {setUpstream: true}, {projectId: 'proj', attemptId: 'att'})
 
+        expect(git.add).toHaveBeenCalledWith(['-A'])
         expect(bus.publish).toHaveBeenCalledWith('git.status.changed', {projectId: 'proj'})
         expect(bus.publish).toHaveBeenCalledWith(
             'git.commit.created',

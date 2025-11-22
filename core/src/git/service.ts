@@ -196,6 +196,9 @@ export async function unstageFiles(projectId: string, paths: string[]): Promise<
 }
 
 async function commitWithHash(g: SimpleGit, message: string): Promise<string> {
+    // Always stage everything (including deletions) before committing
+    await g.add(['-A'])
+
     const previousHead = await g.revparse(['HEAD']).catch(() => null)
     const result = await g.commit(message)
     const shaFromResult = extractShaFromCommitResult(result)
