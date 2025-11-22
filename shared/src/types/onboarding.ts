@@ -23,5 +23,5 @@ export type GithubAppConfig = {
 
 export type UpsertGithubAppConfigRequest = {
     clientId: string
-    clientSecret: string | null
+    clientSecret?: string | null
 }

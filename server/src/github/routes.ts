@@ -72,11 +72,11 @@ export const createGithubRouter = () => {
         )
     })
 
-    router.put('/app', zValidator('json', appConfigSchema), async (c) => {
+    router.put('/app', zValidator('json', appConfigSchema.partial({clientSecret: true})), async (c) => {
         const body = c.req.valid('json')
         const saved = await githubRepo.upsertGithubAppConfig({
             clientId: body.clientId.trim(),
-            clientSecret: body.clientSecret ? body.clientSecret.trim() : null,
+            clientSecret: body.clientSecret === undefined ? undefined : (body.clientSecret ? body.clientSecret.trim() : null),
         })
         return c.json(
             {

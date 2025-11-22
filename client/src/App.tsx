@@ -18,13 +18,6 @@ import {AgentCompletionSoundListener} from '@/components/notifications/AgentComp
 
 function RequireOnboardingComplete() {
     const status = useOnboardingStatus()
-    if (status.isLoading || !status.data) {
-        return (
-            <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
-                Checking onboarding…
-            </div>
-        )
-    }
     if (status.isError) {
         return (
             <div className="flex h-screen flex-col items-center justify-center gap-3 text-sm text-destructive">
@@ -35,6 +28,13 @@ function RequireOnboardingComplete() {
                 >
                     Retry
                 </button>
+            </div>
+        )
+    }
+    if (status.isLoading || !status.data) {
+        return (
+            <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
+                Checking onboarding…
             </div>
         )
     }

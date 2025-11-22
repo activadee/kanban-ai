@@ -30,6 +30,7 @@ type GithubAppForm = {
     clientId: string
     clientSecret: string
     hasClientSecret: boolean
+    secretAction: 'unchanged' | 'update' | 'clear'
     source: GithubAppConfig['source']
     updatedAt: string | null
 }
@@ -72,6 +73,7 @@ export function AppSettingsPage() {
                 clientId: githubAppQuery.data.clientId ?? '',
                 clientSecret: '',
                 hasClientSecret: githubAppQuery.data.hasClientSecret,
+                secretAction: 'unchanged',
                 source: githubAppQuery.data.source,
                 updatedAt: githubAppQuery.data.updatedAt,
             }
@@ -84,7 +86,7 @@ export function AppSettingsPage() {
     const appCredDirty =
         appCredForm &&
         appCredInitial &&
-        (appCredForm.clientId.trim() !== appCredInitial.clientId.trim() || appCredForm.clientSecret.trim().length > 0)
+        (appCredForm.clientId.trim() !== appCredInitial.clientId.trim() || appCredForm.secretAction !== 'unchanged')
 
     const updateSettings = useUpdateAppSettings({
         onSuccess: (result) => {
@@ -116,6 +118,7 @@ export function AppSettingsPage() {
                 clientId: saved.clientId ?? '',
                 clientSecret: '',
                 hasClientSecret: saved.hasClientSecret,
+                secretAction: 'unchanged',
                 source: saved.source,
                 updatedAt: saved.updatedAt,
             }
@@ -271,9 +274,32 @@ export function AppSettingsPage() {
                                 </div>
                                 <GithubAppCredentialsFields
                                     value={appCredForm}
-                                    onChange={(patch) => setAppCredForm({...appCredForm, ...patch})}
+                                    onChange={(patch) =>
+                                        setAppCredForm({
+                                            ...appCredForm,
+                                            ...patch,
+                                            secretAction: patch.clientSecret !== undefined ? 'update' : appCredForm.secretAction,
+                                        })
+                                    }
                                     disabled={saveGithubApp.isPending}
                                 />
+                                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-border"
+                                            checked={appCredForm.secretAction === 'clear'}
+                                            onChange={(e) =>
+                                                setAppCredForm({
+                                                    ...appCredForm,
+                                                    clientSecret: '',
+                                                    secretAction: e.target.checked ? 'clear' : 'unchanged',
+                                                })
+                                            }
+                                        />
+                                        Remove stored secret (fall back to env)
+                                    </label>
+                                </div>
                                 <div className="mt-4 flex justify-end gap-2">
                                     <Button
                                         variant="outline"
@@ -292,7 +318,12 @@ export function AppSettingsPage() {
                                         }
                                         onClick={() => saveGithubApp.mutate({
                                             clientId: appCredForm.clientId.trim(),
-                                            clientSecret: appCredForm.clientSecret.trim() || null
+                                            clientSecret:
+                                                appCredForm.secretAction === 'unchanged'
+                                                    ? undefined
+                                                    : appCredForm.secretAction === 'clear'
+                                                        ? null
+                                                        : appCredForm.clientSecret.trim() || null,
                                         })}
                                     >
                                         {saveGithubApp.isPending ? 'Saving…' : 'Save GitHub app'}

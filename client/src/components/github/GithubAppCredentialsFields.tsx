@@ -8,6 +8,7 @@ type CredentialsForm = {
     clientId: string
     clientSecret: string
     hasClientSecret: boolean
+    secretAction: 'unchanged' | 'update' | 'clear'
     source: GithubAppConfig['source']
     updatedAt?: string | null
 }
@@ -55,12 +56,12 @@ export function GithubAppCredentialsFields({
                         type="password"
                         value={value.clientSecret}
                         disabled={disabled}
-                        placeholder={value.hasClientSecret ? '••••••••••' : 'Paste client secret'}
-                        onChange={(e) => onChange({clientSecret: e.target.value})}
+                        placeholder={value.hasClientSecret ? '•••••••••• (kept)' : 'Paste client secret'}
+                        onChange={(e) => onChange({clientSecret: e.target.value, secretAction: 'update'})}
                         className={cn(!value.clientSecret && value.hasClientSecret && 'font-mono')}
                     />
                     <p className="text-xs text-muted-foreground">
-                        Stored securely in the local database. Updating will overwrite the previous secret.
+                        Stored securely in the local database. Leave blank to keep existing; check “Remove secret” to delete.
                     </p>
                 </div>
             </div>

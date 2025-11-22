@@ -55,6 +55,7 @@ type CredentialsState = {
     clientId: string
     clientSecret: string
     hasClientSecret: boolean
+    secretAction: 'unchanged' | 'update' | 'clear'
     source: GithubAppConfig['source']
     updatedAt: string | null
 }
@@ -119,6 +120,7 @@ export function OnboardingPage() {
                 clientId: saved.clientId ?? '',
                 clientSecret: '',
                 hasClientSecret: saved.hasClientSecret,
+                secretAction: 'unchanged',
                 source: saved.source,
                 updatedAt: saved.updatedAt,
             }
@@ -167,6 +169,7 @@ export function OnboardingPage() {
                 clientId: githubAppQuery.data.clientId ?? '',
                 clientSecret: '',
                 hasClientSecret: githubAppQuery.data.hasClientSecret,
+                secretAction: 'unchanged',
                 source: githubAppQuery.data.source,
                 updatedAt: githubAppQuery.data.updatedAt,
             }
@@ -279,7 +282,7 @@ export function OnboardingPage() {
     const appCredDirty =
         appCredForm &&
         appCredBaseline &&
-        (appCredForm.clientId.trim() !== appCredBaseline.clientId.trim() || appCredForm.clientSecret.trim().length > 0)
+        (appCredForm.clientId.trim() !== appCredBaseline.clientId.trim() || appCredForm.secretAction !== 'unchanged')
 
     const connected = githubAuthQuery.data?.status === 'valid'
     const githubAccount = githubAuthQuery.data?.status === 'valid' ? githubAuthQuery.data.account : null
@@ -363,7 +366,12 @@ export function OnboardingPage() {
         if (!appCredForm) return
         await saveGithubApp.mutateAsync({
             clientId: appCredForm.clientId.trim(),
-            clientSecret: appCredForm.clientSecret.trim() || null,
+            clientSecret:
+                appCredForm.secretAction === 'unchanged'
+                    ? undefined
+                    : appCredForm.secretAction === 'clear'
+                        ? null
+                        : appCredForm.clientSecret.trim() || null,
         })
     }
 
@@ -546,6 +554,25 @@ export function OnboardingPage() {
                                         <div className="mt-1 text-xs text-muted-foreground">Store OAuth app keys and authorize the app.</div>
                                     </div>
                                 </div>
+                                {appCredForm ? (
+                                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                        <label className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-border"
+                                                checked={appCredForm.secretAction === 'clear'}
+                                                onChange={(e) =>
+                                                    setAppCredForm({
+                                                        ...appCredForm,
+                                                        clientSecret: '',
+                                                        secretAction: e.target.checked ? 'clear' : 'unchanged',
+                                                    })
+                                                }
+                                            />
+                                            Remove stored secret (fall back to env)
+                                        </label>
+                                    </div>
+                                ) : null}
                             </div>
                         ) : null}
 
@@ -596,7 +623,13 @@ export function OnboardingPage() {
                                 {appCredForm ? (
                                     <GithubAppCredentialsFields
                                         value={appCredForm}
-                                        onChange={(patch) => setAppCredForm({...appCredForm, ...patch})}
+                                        onChange={(patch) =>
+                                            setAppCredForm({
+                                                ...appCredForm,
+                                                ...patch,
+                                                secretAction: patch.clientSecret !== undefined ? 'update' : patch.secretAction ?? appCredForm.secretAction,
+                                            })
+                                        }
                                         disabled={saveGithubApp.isPending}
                                     />
                                 ) : null}

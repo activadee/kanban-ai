@@ -66,7 +66,7 @@ export async function deleteGithubConnection(executor?: DbExecutor): Promise<voi
 
 export type GithubAppConfigUpsert = {
     clientId: string
-    clientSecret: string | null
+    clientSecret?: string | null
 }
 
 export async function getGithubAppConfig(executor?: DbExecutor): Promise<GithubAppConfigRow | null> {
@@ -77,13 +77,16 @@ export async function getGithubAppConfig(executor?: DbExecutor): Promise<GithubA
 
 export async function upsertGithubAppConfig(values: GithubAppConfigUpsert, executor?: DbExecutor): Promise<GithubAppConfigRow> {
     const database = resolveDb(executor)
+    const existing = await getGithubAppConfig(database)
+    const secretToStore =
+        values.clientSecret === undefined ? existing?.clientSecret ?? null : values.clientSecret
     const now = new Date()
     await database
         .insert(githubAppConfigs)
         .values({
             id: APP_CONFIG_ID,
             clientId: values.clientId,
-            clientSecret: values.clientSecret,
+            clientSecret: secretToStore,
             createdAt: now,
             updatedAt: now,
         })
@@ -91,7 +94,7 @@ export async function upsertGithubAppConfig(values: GithubAppConfigUpsert, execu
             target: githubAppConfigs.id,
             set: {
                 clientId: values.clientId,
-                clientSecret: values.clientSecret,
+                clientSecret: secretToStore,
                 updatedAt: now,
             },
         })
