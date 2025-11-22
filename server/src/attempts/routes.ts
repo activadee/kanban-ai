@@ -87,7 +87,6 @@ export const createAttemptsRouter = () => {
     router.post('/:id/open-editor', zValidator('json', z.object({
         subpath: z.string().optional(),
         editorKey: z.string().optional(),
-        customCommand: z.string().optional(),
     })), async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
         if (!attempt) return c.json({error: 'Not found'}, 404)
@@ -107,7 +106,6 @@ export const createAttemptsRouter = () => {
         try {
             const {spec, env} = await openEditorAtPath(path, {
                 editorKey: body.editorKey as any,
-                customCommand: body.customCommand ?? undefined,
             })
             attemptedEditorKey = env.EDITOR_KEY ?? attemptedEditorKey
             events.publish('editor.open.succeeded', {

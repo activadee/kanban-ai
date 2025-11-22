@@ -11,7 +11,6 @@ const updateSchema = z.object({
     notificationsAgentCompletionSound: z.boolean().optional(),
     notificationsDesktop: z.boolean().optional(),
     editorType: z.enum(['VS_CODE', 'WEBSTORM', 'ZED']).optional(),
-    editorCommand: z.string().nullable().optional(),
     gitUserName: z.string().nullable().optional(),
     gitUserEmail: z.string().email().nullable().optional().or(z.string().trim().length(0)).optional(),
     branchTemplate: z.string().optional(),

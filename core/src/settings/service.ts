@@ -42,11 +42,11 @@ function normalizeEditor(rowType: unknown, rowCommand: unknown): {
     if (SUPPORTED_EDITORS.has(type as SharedAppSettings['editorType'])) {
         return {
             editorType: type as SharedAppSettings['editorType'],
-            editorCommand: cleanedCommand,
+            editorCommand: null,
         }
     }
-    // Legacy or unknown editors are coerced to default type but preserve any stored custom command
-    return {editorType: 'VS_CODE', editorCommand: cleanedCommand}
+    // Legacy or unknown editors are coerced to default; drop custom command support
+    return {editorType: 'VS_CODE', editorCommand: null}
 }
 
 function mapRow(row: any): SharedAppSettings {
