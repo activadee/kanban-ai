@@ -1,7 +1,25 @@
 import type {AppEventBus} from '../events/bus'
 import {performAutoCommit} from '../attempts/autocommit'
+import {ensureProjectSettings} from '../projects/settings/service'
 
 export function registerGitListeners(bus: AppEventBus) {
+    bus.subscribe('attempt.completed', async (payload) => {
+        try {
+            if (payload.status !== 'succeeded') return
+            const settings = await ensureProjectSettings(payload.boardId)
+            if (!settings.autoCommitOnFinish) return
+            bus.publish('attempt.autocommit.requested', {
+                attemptId: payload.attemptId,
+                boardId: payload.boardId,
+                cardId: payload.cardId,
+                worktreePath: payload.worktreePath,
+                profileId: payload.profileId ?? undefined,
+            })
+        } catch (error) {
+            console.error('[core:git] auto-commit request failed', error)
+        }
+    })
+
     bus.subscribe('attempt.autocommit.requested', async (payload) => {
         try {
             await performAutoCommit({

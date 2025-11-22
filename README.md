@@ -122,7 +122,7 @@ bun run test
 ## Configuration
 
 Project Settings (per project): base branch, preferred remote, setup/dev/cleanup scripts, default agent/profile,
-auto‑commit‑on‑finish.
+auto-commit-on-finish (automatically triggers an autocommit when a successful attempt finishes).
 
 Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatically on server start; default file lives
 at `server/drizzle/kanban.db` (configurable with `DATABASE_URL`).
