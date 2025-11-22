@@ -132,25 +132,27 @@ function mapFileChanges(status: Awaited<ReturnType<SimpleGit['status']>>): FileC
 }
 
 function parseNameStatusDiff(output: string): FileChange[] {
-    const lines = output.split('\n').map((l) => l.trim()).filter(Boolean)
+    // Use -z output to preserve leading/trailing whitespace in filenames
+    const records = output.split('\0').filter(Boolean)
     const files: FileChange[] = []
 
-    for (const line of lines) {
-        const [statusToken, ...rest] = line.split('\t')
+    for (const record of records) {
+        const parts = record.split('\t')
+        const statusToken = parts.shift()
         if (!statusToken) continue
 
-        const code = statusToken.trim()
-        const letter = (code[0] || 'M') as GitFileStatus
+        const letter = (statusToken[0] || 'M') as GitFileStatus
 
         if (letter === 'R' || letter === 'C') {
-            const [oldPath, newPath] = rest
+            const oldPath = parts[0]
+            const newPath = parts[1]
             const path = newPath || oldPath
             if (!path) continue
             files.push({path, oldPath: oldPath || undefined, status: letter, staged: false})
             continue
         }
 
-        const path = rest[0]
+        const path = parts[0]
         if (!path) continue
         files.push({path, status: letter, staged: false})
     }
@@ -367,7 +369,7 @@ export async function getStatusAgainstBaseAtPath(worktreePath: string, baseAnces
 
     let diffFiles: FileChange[] = []
     try {
-        const rawDiff = await g.raw(['diff', '--name-status', '--find-renames', '--find-copies', baseRef])
+        const rawDiff = await g.raw(['diff', '--name-status', '-z', '--find-renames', '--find-copies', baseRef])
         diffFiles = parseNameStatusDiff(rawDiff)
     } catch {
         // fall back to simple status listing if diff fails (e.g., shallow clone issues)
@@ -398,6 +400,7 @@ export async function getStatusAgainstBaseAtPath(worktreePath: string, baseAnces
     for (const f of files) {
         switch (f.status) {
             case 'A':
+            case 'C':
                 summary.added += 1
                 break
             case 'D':

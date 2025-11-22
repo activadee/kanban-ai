@@ -271,7 +271,13 @@ describe('git/service helpers for worktree paths', () => {
                 return '0\t3'
             }
             if (args[0] === 'diff') {
-                return ['M\ta.txt', 'A\tb.txt', 'R100\told.txt\tnew.txt'].join('\n')
+                return [
+                    'M\ta.txt',
+                    'A\tb.txt',
+                    'R100\told.txt\tnew.txt',
+                    'C100\tsrc\t new-with-space.txt ',
+                    'A\t spaced-leading.txt',
+                ].join('\0') + '\0'
             }
             if (args[0] === 'show') {
                 const target = args[1]
@@ -287,13 +293,17 @@ describe('git/service helpers for worktree paths', () => {
         const status = await getStatusAgainstBaseAtPath('/tmp/work', 'base-ref')
         expect(status.ahead).toBe(3)
         expect(status.behind).toBe(0)
-        expect(status.files).toEqual([
+        const expectedFiles = [
             {path: 'a.txt', status: 'M', staged: false},
             {path: 'b.txt', status: 'A', staged: true},
+            {path: ' spaced-leading.txt', status: 'A', staged: false},
             {path: 'c.txt', status: '?', staged: false},
             {path: 'new.txt', oldPath: 'old.txt', status: 'R', staged: true},
-        ])
-        expect(status.summary).toMatchObject({added: 1, modified: 2, untracked: 1, staged: 2})
+            {path: ' new-with-space.txt ', oldPath: 'src', status: 'C', staged: false},
+        ]
+        const sortByPath = (a: any, b: any) => a.path.localeCompare(b.path)
+        expect(status.files.slice().sort(sortByPath)).toEqual(expectedFiles.sort(sortByPath))
+        expect(status.summary).toMatchObject({added: 3, modified: 2, untracked: 1, staged: 2})
         expect(status.hasUncommitted).toBe(true)
 
         const worktree = await getFileContentAtPath('/tmp/work', 'a.txt', 'worktree')
