@@ -19,7 +19,7 @@
       `attempt.autocommit.requested` (handled by the git listener).
     - On abort, `attempt.stopped` fires and the status transitions to `stopping/stopped`.
 3. **Git Helpers**
-    - Attempt routes proxy to the git service (`stageAtPath`, `commitAtPath`, etc.) with metadata so those helpers emit
+    - Attempt routes proxy to the git service (`commitAtPath`, etc.) with metadata so those helpers emit
       `git.*` events automatically.
 4. **Editor**
     - `/attempts/:id/open-editor` emits `editor.open.requested/succeeded/failed` and returns diagnostics.

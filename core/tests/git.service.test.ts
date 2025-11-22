@@ -60,22 +60,6 @@ beforeEach(() => {
 })
 
 describe('git/service basic operations', () => {
-    it('binds event bus and publishes on stage operations', async () => {
-        const {bindGitEventBus, stageAtPath} = await loadService()
-        const bus = {publish: vi.fn()}
-        snapshotMock.mockReturnValue({
-            gitUserName: 'Jane',
-            gitUserEmail: 'jane@example.com',
-        })
-
-        bindGitEventBus(bus as any)
-        await stageAtPath('/tmp/worktree', undefined, {projectId: 'proj-1'})
-
-        const gitForPath = gitInstances.get('/tmp/worktree')
-        expect(gitForPath?.add).toHaveBeenCalledWith(['.'])
-        expect(bus.publish).toHaveBeenCalledWith('git.status.changed', {projectId: 'proj-1'})
-    })
-
     it('resolves repository path or throws when missing', async () => {
         const {getRepoPath} = await loadService()
 
@@ -297,15 +281,8 @@ describe('git/service helpers for worktree paths', () => {
         expect(base).toBeNull()
     })
 
-    it('publishes events for staged, unstaged, commit and push operations', async () => {
-        const {
-            bindGitEventBus,
-            stageAtPath,
-            unstageAtPath,
-            commitAtPath,
-            pushAtPath,
-            mergeBranchIntoBaseForProject,
-        } = await loadService()
+    it('publishes events for commit and push operations', async () => {
+        const {bindGitEventBus, commitAtPath, pushAtPath, mergeBranchIntoBaseForProject} = await loadService()
 
         snapshotMock.mockReturnValue({
             gitUserName: 'Jane',
@@ -324,12 +301,9 @@ describe('git/service helpers for worktree paths', () => {
         const bus = {publish: vi.fn()}
         bindGitEventBus(bus as any)
 
-        await stageAtPath('/tmp/work', ['src/index.ts'], {projectId: 'proj', attemptId: 'att'})
-        await unstageAtPath('/tmp/work', ['src/index.ts'], {projectId: 'proj', attemptId: 'att'})
         await commitAtPath('/tmp/work', 'Commit message', undefined, {projectId: 'proj', attemptId: 'att'})
         await pushAtPath('/tmp/work', {setUpstream: true}, {projectId: 'proj', attemptId: 'att'})
 
-        expect(git.add).toHaveBeenCalledWith(['-A'])
         expect(bus.publish).toHaveBeenCalledWith('git.status.changed', {projectId: 'proj'})
         expect(bus.publish).toHaveBeenCalledWith(
             'git.commit.created',

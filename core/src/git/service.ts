@@ -384,18 +384,6 @@ export async function getFileContentAtPath(
     }
 }
 
-export async function stageAtPath(worktreePath: string, paths?: string[], meta?: GitEventMeta) {
-    const g = gitAtPath(worktreePath)
-    await g.add(paths && paths.length ? paths : ['.'])
-    publishStatusChanged(meta)
-}
-
-export async function unstageAtPath(worktreePath: string, paths?: string[], meta?: GitEventMeta) {
-    const g = gitAtPath(worktreePath)
-    await g.raw(['reset', '-q', 'HEAD', '--', ...(paths && paths.length ? paths : ['.'])])
-    publishStatusChanged(meta)
-}
-
 export async function commitAtPath(
     worktreePath: string,
     subject: string,

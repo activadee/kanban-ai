@@ -142,7 +142,7 @@ All endpoints are rooted at `/api/v1` (temporary shim also available at `/api`).
   `GET /attempts/:id/logs` (`POST /attempts/:id/stop` now force-stops attempts stuck in running/queued states even if
   the worker process is no longer tracked)
 - Attempt Git: `GET /attempts/:id/git/status`, `GET /attempts/:id/git/file`,
-  `POST /attempts/:id/git/stage|unstage|commit|push|merge`, `POST /attempts/:id/github/pr`
+  `POST /attempts/:id/git/commit|push|merge`, `POST /attempts/:id/github/pr`
 
 Types for requests/responses and WebSocket messages are exported from the `shared` package.
 
