@@ -487,7 +487,7 @@ export async function startAttempt(
                 input.boardId,
                 profileId,
             );
-            if (resolvedProfile.profile) {
+            if (resolvedProfile.profile !== null && resolvedProfile.profile !== undefined) {
                 profile = resolvedProfile.profile;
                 if (resolvedProfile.label)
                     await log(
@@ -931,7 +931,7 @@ export async function followupAttempt(
                 base.boardId,
                 effectiveProfileId,
             );
-            if (resolvedProfile.profile) {
+            if (resolvedProfile.profile !== null && resolvedProfile.profile !== undefined) {
                 profile = resolvedProfile.profile;
                 if (resolvedProfile.label)
                     await log(
