@@ -686,6 +686,7 @@ export async function followupAttempt(
         let finishAttemptFn: ((status: AttemptStatus) => Promise<void>) | null =
             null;
         let cleanupRunner: (() => Promise<void>) | null = null;
+        let currentStatus: AttemptStatus = "running";
         try {
             await updateAttempt(base.id, {
                 status: "running",
@@ -723,7 +724,6 @@ export async function followupAttempt(
                 worktreeCreated = true;
             }
             const agent = getAgent(base.agent)!;
-            let currentStatus: AttemptStatus = "running";
             let msgSeq = await getNextConversationSeq(base.id);
             const emit = async (
                 evt:
@@ -898,6 +898,37 @@ export async function followupAttempt(
                 });
                 await emit({ type: "status", status: "failed" });
             }
+            const endedAt = new Date();
+            const finalStatus: AttemptStatus =
+                currentStatus === "running" ? "failed" : currentStatus;
+            if (currentStatus === "running") {
+                await updateAttempt(base.id, {
+                    status: finalStatus,
+                    endedAt,
+                    updatedAt: endedAt,
+                });
+                events.publish("attempt.status.changed", {
+                    attemptId: base.id,
+                    boardId: base.boardId,
+                    status: finalStatus,
+                    previousStatus: currentStatus,
+                    endedAt: endedAt.toISOString(),
+                });
+            } else {
+                await updateAttempt(base.id, {
+                    endedAt,
+                    updatedAt: endedAt,
+                });
+            }
+            currentStatus = finalStatus;
+            events.publish("attempt.completed", {
+                attemptId: base.id,
+                boardId: base.boardId,
+                cardId: base.cardId,
+                status: finalStatus,
+                worktreePath,
+                profileId: effectiveProfileId ?? undefined,
+            });
         } finally {
             try {
                 if (cleanupRunner) await cleanupRunner();
