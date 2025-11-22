@@ -25,7 +25,7 @@ type FormState = {
     ghAutolinkTickets: boolean
 }
 
-const SUPPORTED_EDITOR_KEYS: readonly EditorType[] = ['VS_CODE', 'CURSOR', 'WINDSURF', 'ZED', 'INTELLIJ', 'WEBSTORM', 'XCODE'] as const
+const SUPPORTED_EDITOR_KEYS: readonly EditorType[] = ['VS_CODE', 'WEBSTORM', 'ZED'] as const
 
 export function AppSettingsPage() {
     const {data, isLoading} = useAppSettings()

@@ -45,8 +45,8 @@ describe('settings/service', () => {
             language: 'en',
             telemetryEnabled: true,
             notificationsAgentCompletionSound: true,
-            editorType: 'NEOVIM',
-            editorCommand: 'nvim',
+            editorType: 'ZED',
+            editorCommand: 'zed',
             ghAutolinkTickets: false,
         })
 
@@ -136,4 +136,3 @@ describe('settings/service', () => {
         expect(snapshot.branchTemplate).toContain('{ticketKey}')
     })
 })
-
