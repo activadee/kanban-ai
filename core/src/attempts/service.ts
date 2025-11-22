@@ -399,22 +399,42 @@ export async function stopAttempt(id: string, deps?: AttemptServiceDeps) {
     try {
         const events = requireEvents(deps);
         const meta = running.get(id);
-        if (!meta) return false;
-        meta.aborted = true;
-        meta.controller.abort();
-        const updatedAt = new Date();
-        await updateAttempt(id, {status: 'stopping', updatedAt});
-        events.publish('attempt.status.changed', {
-            attemptId: id,
-            boardId: meta.boardId,
-            status: 'stopping',
-            previousStatus: 'running',
-            endedAt: null
-        });
-        events.publish('attempt.stopped', {attemptId: id, boardId: meta.boardId, reason: 'user'});
-        return true
-    } catch {
-        return false
+        const attempt = await getAttemptById(id);
+        if (!attempt) return false;
+
+        // Normal stop path: attempt is currently tracked and running
+        if (meta) {
+            meta.aborted = true;
+            meta.controller.abort();
+            const updatedAt = new Date();
+            await updateAttempt(id, {status: 'stopping', updatedAt});
+            events.publish('attempt.status.changed', {
+                attemptId: id,
+                boardId: meta.boardId,
+                status: 'stopping',
+                previousStatus: 'running',
+                endedAt: null
+            });
+            events.publish('attempt.stopped', {attemptId: id, boardId: meta.boardId, reason: 'user'});
+            return true
+        }
+
+        // Force-stop path: no running process tracked, but DB still thinks it's active
+        const activeStatuses: AttemptStatus[] = ['running', 'stopping', 'queued']
+        if (activeStatuses.includes(attempt.status as AttemptStatus)) {
+            const now = new Date();
+            await updateAttempt(id, {status: 'stopped', endedAt: now, updatedAt: now});
+            events.publish('attempt.status.changed', {
+                attemptId: id,
+                boardId: attempt.boardId,
+                status: 'stopped',
+                previousStatus: attempt.status as AttemptStatus,
+                endedAt: now.toISOString()
+            });
+            events.publish('attempt.stopped', {attemptId: id, boardId: attempt.boardId, reason: 'force'});
+        }
+
+
     }
 }
 
