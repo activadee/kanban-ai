@@ -38,12 +38,12 @@ Built on the bhvr monorepo template.
 bun install
 ```
 
-2) Configure environment
+2) Configure environment (or plan to enter credentials during onboarding)
 
 - Server (`server/.env`):
 
 ```env
-# Required for GitHub OAuth Device Flow
+# Optional if you plan to store credentials via onboarding/settings
 GITHUB_CLIENT_ID=your_github_oauth_app_client_id
 # Optional but recommended for higher limits
 GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
@@ -73,7 +73,23 @@ bun run dev
 - UI: <http://localhost:5173>
 - API (base): <http://localhost:3000/api/v1> (shim also at `/api`)
 
+On first launch you will be redirected to `/onboarding` to confirm preferences, Git defaults, GitHub templates, GitHub OAuth
+credentials, and the GitHub device-flow connection. Completing onboarding unlocks the main workspace; you can revisit it
+any time via `/onboarding`.
+
 Note: the API server no longer serves the built client. Run the Vite dev server for UI during development (`bun run dev:client`) and host `client/dist` separately for production.
+
+## Initial Onboarding
+
+The first authenticated user session is gated behind a guided onboarding flow located at `/onboarding`. The wizard:
+
+- Collects general preferences (theme, language, telemetry, notifications) and editor/Git defaults.
+- Captures GitHub branch/PR templates and the OAuth App client ID/secret, storing them in the local database.
+- Walks you through the GitHub Device Authorization Flow so the sidebar immediately shows a connected account.
+
+Onboarding auto-saves step progress and resumes where you left off after refreshes. You can re-run it later for another
+team member by visiting `/onboarding`, but completion status prevents accidental regression once the final step is
+submitted.
 
 ## GitHub OAuth (Device Flow)
 
@@ -81,8 +97,9 @@ KanbanAI uses GitHub’s Device Authorization Flow — no callback server is req
 
 1) Create a GitHub OAuth App (Settings → Developer settings → OAuth Apps), enable “Device Flow”, and copy the Client
    ID (and Secret).
-2) Put `GITHUB_CLIENT_ID` (and optionally `GITHUB_CLIENT_SECRET`) in `server/.env`.
-3) In the app, open the GitHub panel (sidebar → GitHub) and click “Connect”. You’ll be shown a user code and
+2) Provide the Client ID/secret either (a) during onboarding, (b) from Settings → App → GitHub OAuth App, or (c) via
+   `server/.env`. Environment variables still work as a fallback if you prefer to manage secrets outside the app.
+3) In the app, open onboarding or Settings → GitHub to start the device flow. You’ll be shown a user code and
    verification URL to confirm in the browser.
 
 Scopes requested: `repo`, `read:user`, `user:email`.
@@ -134,8 +151,9 @@ purges associated worktrees.
 
 All endpoints are rooted at `/api/v1` (temporary shim also available at `/api`).
 
-- GitHub device flow: `POST /auth/github/device/start`, `POST /auth/github/device/poll`, `GET /auth/github/check`,
-  `POST /auth/github/logout`
+- GitHub auth: `POST /auth/github/device/start`, `POST /auth/github/device/poll`, `GET /auth/github/check`,
+  `POST /auth/github/logout`, `GET/PUT /auth/github/app`
+- Onboarding state: `GET /onboarding/status`, `PATCH /onboarding/progress`, `POST /onboarding/complete`
 - Projects: `GET/POST /projects`, `GET /projects/:id`, `GET/PATCH /projects/:id/settings`,
   `GET /projects/:id/github/origin`, `POST /projects/:id/import/github/issues`
 - Attempts: `POST /attempts/projects/:boardId/cards/:cardId/attempts`, `GET /attempts/:id`, `POST /attempts/:id/stop`,
