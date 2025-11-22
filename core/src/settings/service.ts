@@ -38,14 +38,15 @@ function normalizeEditor(rowType: unknown, rowCommand: unknown): {
     editorCommand: string | null
 } {
     const type = (rowType as string | undefined) ?? 'VS_CODE'
+    const cleanedCommand = typeof rowCommand === 'string' && rowCommand.trim() ? rowCommand : null
     if (SUPPORTED_EDITORS.has(type as SharedAppSettings['editorType'])) {
         return {
             editorType: type as SharedAppSettings['editorType'],
-            editorCommand: typeof rowCommand === 'string' && rowCommand.trim() ? rowCommand : null,
+            editorCommand: cleanedCommand,
         }
     }
-    // Legacy or unknown editors are coerced to default to keep contract consistent
-    return {editorType: 'VS_CODE', editorCommand: null}
+    // Legacy or unknown editors are coerced to default type but preserve any stored custom command
+    return {editorType: 'VS_CODE', editorCommand: cleanedCommand}
 }
 
 function mapRow(row: any): SharedAppSettings {

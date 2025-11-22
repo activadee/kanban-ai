@@ -3,7 +3,7 @@ import type {ContentfulStatusCode} from 'hono/utils/http-status'
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
-import {projectsRepo, projectDeps, attempts, git, type FileSource, githubRepo} from 'core'
+import {projectsRepo, projectDeps, attempts, git, type FileSource, githubRepo, settingsService} from 'core'
 import {openEditorAtPath} from '../editor/service'
 import {createPR, findOpenPR} from '../github/pr'
 
@@ -95,9 +95,11 @@ export const createAttemptsRouter = () => {
         if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
         const path = body?.subpath ? `${attempt.worktreePath}/${body.subpath}` : attempt.worktreePath
         const events = c.get('events')
+        const settings = settingsService.snapshot()
+        let attemptedEditorKey: string | undefined = body?.editorKey ?? settings.editorType
         events.publish('editor.open.requested', {
             path,
-            editorKey: body?.editorKey,
+            editorKey: attemptedEditorKey,
             attemptId: attempt.id,
             projectId: attempt.boardId,
         })
@@ -107,10 +109,10 @@ export const createAttemptsRouter = () => {
                 editorKey: body.editorKey as any,
                 customCommand: body.customCommand ?? undefined,
             })
-            const resolvedEditorKey = env.EDITOR_KEY ?? body?.editorKey ?? 'VS_CODE'
+            attemptedEditorKey = env.EDITOR_KEY ?? attemptedEditorKey
             events.publish('editor.open.succeeded', {
                 path,
-                editorKey: resolvedEditorKey,
+                editorKey: attemptedEditorKey ?? 'VS_CODE',
                 pid: undefined,
             })
             // diagnostics to help user debug when editor doesn't open
@@ -132,7 +134,7 @@ export const createAttemptsRouter = () => {
         } catch (error) {
             events.publish('editor.open.failed', {
                 path,
-                editorKey: body?.editorKey ?? 'VS_CODE',
+                editorKey: attemptedEditorKey ?? 'VS_CODE',
                 error: error instanceof Error ? error.message : String(error),
             })
             console.error('[attempts:open-editor] failed', error)

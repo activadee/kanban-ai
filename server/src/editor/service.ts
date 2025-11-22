@@ -161,9 +161,12 @@ export async function openEditorAtPath(path: string, opts?: {
 
     // Support custom command override (legacy/advanced users)
     const custom = opts?.customCommand ?? settings.editorCommand ?? null
+    const preferCustom = !opts?.editorKey && Boolean(custom)
+
     const runCustom = (): ExecSpec | null => {
         if (!custom) return null
         const replaced = custom.replaceAll('{path}', JSON.stringify(path))
+        env.EDITOR_KEY = 'CUSTOM'
         trySpawnDetached(replaced, [], env)
         return {cmd: replaced, args: [], line: replaced}
     }
@@ -173,6 +176,11 @@ export async function openEditorAtPath(path: string, opts?: {
             fallbackResult = runShellCommand(fallbackLine, env)
         }
         return fallbackResult
+    }
+
+    if (preferCustom) {
+        const customSpec = runCustom()
+        if (customSpec) return {spec: customSpec, env}
     }
 
     const direct = adapter.buildSpec(path)
