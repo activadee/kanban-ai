@@ -10,42 +10,21 @@
     "./server",
     "./client",
     "./shared",
-    "./core",
-    "./cli"
+    "./core"
   ],
   "scripts": {
     "dev": "turbo dev --filter=server --filter=client --filter=core --filter=shared",
     "dev:client": "turbo dev --filter=client",
     "dev:server": "turbo dev --filter=server",
-    "dev:cli": "turbo dev --filter=cli",
+    "start:server": "bun run server/src/dev.ts",
     "build": "turbo build",
     "build:client": "turbo build --filter=client",
     "build:server": "turbo build --filter=server",
-    "build:cli": "turbo build --filter=cli",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "test": "turbo test",
-    "postinstall": "turbo build --filter=shared --filter=core --filter=server",
-    "package:client": "cd client && ../node_modules/.bin/vite build",
-    "package:embed": "bun run scripts/embed-client.ts",
-    "package:embed:drizzle": "bun run scripts/embed-drizzle.ts",
-    "package:server": "bun build --compile cli/src/main.ts --outfile dist/kanbanai --sourcemap=none --minify",
-    "package": "bun run package:client && bun run package:embed && bun run package:embed:drizzle && bun run package:server",
-    "package:server:linux-x64": "bun build --compile cli/src/main.ts --target=linux-x64 --outfile dist/kanbanai-linux-x64 --sourcemap=none --minify",
-    "package:server:linux-arm64": "bun build --compile cli/src/main.ts --target=linux-arm64 --outfile dist/kanbanai-linux-arm64 --sourcemap=none --minify",
-    "package:server:darwin-x64": "bun build --compile cli/src/main.ts --target=darwin-x64 --outfile dist/kanbanai-darwin-x64 --sourcemap=none --minify",
-    "package:server:darwin-arm64": "bun build --compile cli/src/main.ts --target=darwin-arm64 --outfile dist/kanbanai-darwin-arm64 --sourcemap=none --minify",
-    "package:server:windows-x64": "bun build --compile cli/src/main.ts --target=windows-x64 --outfile dist/kanbanai-windows-x64.exe --sourcemap=none --minify",
-    "package:server:windows-arm64": "bun build --compile cli/src/main.ts --target=windows-arm64 --outfile dist/kanbanai-windows-arm64.exe --sourcemap=none --minify",
-    "package:all": "bun run package:client && bun run package:embed && bun run package:embed:drizzle && bun run package:server:linux-x64 && bun run package:server:linux-arm64 && bun run package:server:darwin-x64 && bun run package:server:darwin-arm64 && bun run package:server:windows-x64 && bun run package:server:windows-arm64"
+    "postinstall": "turbo build --filter=shared --filter=core --filter=server"
   },
-  "bin": {
-    "kanban-ai": "./cli/bin/kanbanai.cjs"
-  },
-  "files": [
-    "dist/**",
-    "cli/bin/**"
-  ],
   "keywords": [
     "bun",
     "hono",
@@ -57,7 +36,6 @@
   "devDependencies": {
     "bun-types": "latest",
     "turbo": "^2.5.5",
-    "semver": "^7.6.3",
     "vitest": "^4.0.12",
     "@vitest/coverage-v8": "^4.0.12"
   },

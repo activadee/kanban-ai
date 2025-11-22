@@ -31,7 +31,7 @@ function App() {
     return (
         <QueryClientProvider client={queryClient}>
             <AgentCompletionNotifier/>
-            <BrowserRouter basename="/app">
+            <BrowserRouter>
                 <Routes>
                     <Route path="/" element={<AppLayout/>}>
                         <Route index element={<ProjectsPage/>}/>

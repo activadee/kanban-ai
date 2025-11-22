@@ -73,6 +73,8 @@ bun run dev
 - UI: <http://localhost:5173>
 - API (base): <http://localhost:3000/api/v1> (shim also at `/api`)
 
+Note: the API server no longer serves the built client. Run the Vite dev server for UI during development (`bun run dev:client`) and host `client/dist` separately for production.
+
 ## GitHub OAuth (Device Flow)
 
 KanbanAI uses GitHub’s Device Authorization Flow — no callback server is required.
@@ -156,49 +158,8 @@ Types for requests/responses and WebSocket messages are exported from the `share
 
 MIT © 2025 Steve Simkins
 
-## Binary Releases
+## Deployment
 
-You can build a single binary that serves the API at `/api/v1/*` (shimmed at `/api/*`) and the SPA at `/app`.
-
-Build (local platform only):
-
-- `bun run package` – builds the client, embeds assets and migrations, and compiles `dist/kanbanai`.
-
-Run:
-
-- `./dist/kanbanai [--host 127.0.0.1] [--port 3000] [--open] [--no-open]`
-
-## Run via Package Runner
-
-You can also run the packaged CLI without a global install using a standard package runner:
-
-- `bunx kanban-ai` — starts the server on `127.0.0.1:3000` and prints the URL.
-- `bunx kanban-ai --port 5555 --open` — starts on port 5555 and opens the browser.
-
-If the binary is missing for your platform, build it locally:
-
-```bash
-bun run package
-```
-
-Behavior:
-
-- REST: `/api/v1/*` (temporary shim at `/api/*`) — projects, agents, attempts, settings, github, fs, dashboard, metrics at `/api/v1/metrics`.
-- WebSockets: `/api/v1/ws` and `/api/v1/ws/dashboard` (shimmed via `/api/ws*`).
-- Client: `/app` with assets under `/app/assets/*` and index.html fallback (deep links like `/app/projects`).
-- No external files required next to the binary. Client assets and SQL migrations are embedded at build time.
-- SQLite database location (always OS default):
-  - macOS: `~/Library/Application Support/KanbanAI/kanban.db`
-  - Windows: `%LOCALAPPDATA%/KanbanAI/kanban.db`
-  - Linux: `$XDG_DATA_HOME/kanbanai/kanban.db` or `~/.local/share/kanbanai/kanban.db`
-
-Client defaults for the binary:
-
-- `vite.config.ts` uses `base: "/app/"`.
-- Router `BrowserRouter` uses `basename="/app"`.
-- `SERVER_URL` defaults to `http://localhost:3000/api/v1` (override via `VITE_SERVER_URL`).
-
-Notes:
-
-- In dev, the server serves from the filesystem; the embedded assets are used in packaged binaries.
-- Metrics are available at `/api/v1/metrics` (shimmed on `/api/metrics`).
+- Build client: `bun run build:client` (outputs to `client/dist`). Serve those static files with your preferred web host.
+- Run API: `bun run dev:server` for development, or `bun run start:server -- --host 0.0.0.0 --port 3000` under your process manager for production.
+- API endpoints and WebSockets remain at `/api/v1/*` (shimmed at `/api/*`). Metrics at `/api/v1/metrics`.

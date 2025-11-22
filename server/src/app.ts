@@ -2,7 +2,6 @@ import {Hono} from 'hono'
 import {cors} from 'hono/cors'
 import {logger} from 'hono/logger'
 import {secureHeaders} from 'hono/secure-headers'
-import {etag} from 'hono/etag'
 import type {UpgradeWebSocket} from 'hono/ws'
 import type {AppEnv, AppServices} from './env'
 import {projectsService, settingsService, bindAgentEventBus, registerAgent} from 'core'
@@ -82,9 +81,6 @@ export const createApp = ({
         })(c, next)
     })
 
-    // ETag for SPA responses
-    app.use('/app/*', etag())
-
     // CORS only for REST endpoints (exclude websockets)
     app.use('/api/*', (c, next) => {
         if (isApiWebSocket(c.req.path)) return next()
@@ -148,5 +144,3 @@ export const createApp = ({
 
     return app
 }
-
-// Client routes registration extracted to server/src/client.ts
