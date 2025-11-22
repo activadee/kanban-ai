@@ -195,7 +195,22 @@ export async function unstageFiles(projectId: string, paths: string[]): Promise<
     await g.raw(['reset', '-q', 'HEAD', '--', ...paths])
 }
 
-async function commitWithHash(g: SimpleGit, message: string): Promise<string> {
+type CommitOptions = {
+    /**
+     * Stage the full worktree (including deletions) before committing.
+     * Defaults to true so commit helpers always capture all changes unless explicitly disabled.
+     */
+    stageAll?: boolean
+}
+
+async function commitWithHash(g: SimpleGit, message: string, options: CommitOptions = {}): Promise<string> {
+    const {stageAll = true} = options
+
+    if (stageAll) {
+        // Stage everything (including deletions) to guarantee complete commits
+        await g.add(['-A'])
+    }
+
     const previousHead = await g.revparse(['HEAD']).catch(() => null)
     const result = await g.commit(message)
     const shaFromResult = extractShaFromCommitResult(result)
@@ -226,7 +241,7 @@ export async function commit(projectId: string, subject: string, body?: string):
     if (!subject?.trim()) throw new Error('Commit subject is required')
     const message = body?.trim() ? `${subject.trim()}\n\n${body.trim()}` : subject.trim()
     await ensureGitAuthorIdentity(g)
-    return commitWithHash(g, message)
+    return commitWithHash(g, message, {stageAll: true})
 }
 
 export async function push(
@@ -369,18 +384,6 @@ export async function getFileContentAtPath(
     }
 }
 
-export async function stageAtPath(worktreePath: string, paths?: string[], meta?: GitEventMeta) {
-    const g = gitAtPath(worktreePath)
-    await g.add(paths && paths.length ? paths : ['.'])
-    publishStatusChanged(meta)
-}
-
-export async function unstageAtPath(worktreePath: string, paths?: string[], meta?: GitEventMeta) {
-    const g = gitAtPath(worktreePath)
-    await g.raw(['reset', '-q', 'HEAD', '--', ...(paths && paths.length ? paths : ['.'])])
-    publishStatusChanged(meta)
-}
-
 export async function commitAtPath(
     worktreePath: string,
     subject: string,
@@ -390,7 +393,7 @@ export async function commitAtPath(
     const g = gitAtPath(worktreePath)
     const message = body?.trim() ? `${subject.trim()}\n\n${body.trim()}` : subject.trim()
     await ensureGitAuthorIdentity(g)
-    const sha = await commitWithHash(g, message)
+    const sha = await commitWithHash(g, message, {stageAll: true})
     const ts = new Date().toISOString()
     publishCommitCreated(meta, sha, subject.trim(), ts)
     publishStatusChanged(meta)

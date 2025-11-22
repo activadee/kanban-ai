@@ -12,8 +12,6 @@ const {
     getStatusAgainstBaseAtPath,
     resolveBaseAncestorAtPath,
     resolveBaseRefAtPath,
-    stageAtPath,
-    unstageAtPath,
     commitAtPath,
     pushAtPath,
     mergeBranchIntoBaseForProject,
@@ -207,25 +205,6 @@ export const createAttemptsRouter = () => {
     })
 
     // ---- Attempt-scoped Git write operations ----
-
-    router.post('/:id/git/stage', zValidator('json', z.object({paths: z.array(z.string()).optional()})), async (c) => {
-        const {paths} = c.req.valid('json')
-        const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
-        await stageAtPath(attempt.worktreePath, paths, {projectId: attempt.boardId, attemptId: attempt.id})
-        return c.json({ok: true}, 200)
-    })
-
-    router.post('/:id/git/unstage', zValidator('json', z.object({paths: z.array(z.string()).optional()})), async (c) => {
-        const {paths} = c.req.valid('json')
-        const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
-        await unstageAtPath(attempt.worktreePath, paths, {projectId: attempt.boardId, attemptId: attempt.id})
-        return c.json({ok: true}, 200)
-    })
-
     router.post('/:id/git/commit', zValidator('json', z.object({
         subject: z.string().min(1),
         body: z.string().optional()

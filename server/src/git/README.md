@@ -2,7 +2,7 @@
 
 ## Purpose
 
-- Provide repository-level operations (status, diff, stage/unstage, commit, push, merge) for both project repos and
+- Provide repository-level operations (status, diff, commit, push, merge) for both project repos and
   per-attempt worktrees.
 - Emit `git.*` events so UI/WebSockets can react without tight coupling.
 - Expose metadata helpers (branch resolution, file content lookup) shared across services.
@@ -13,7 +13,6 @@
     - `getRepoPath(projectId)` fetches the canonical repository path from the projects repo table.
     - Worktree-specific helpers accept `repoPath` directly.
 2. **Event Emission**
-    - `stageAtPath` / `unstageAtPath` publish `git.status.changed` when the index changes.
     - `commitAtPath` publishes `git.commit.created` (with short SHA) + `git.status.changed`.
     - `pushAtPath` publishes `git.push.completed` and a status refresh.
     - `mergeBranchIntoBaseForProject` publishes `git.merge.completed` (used after a merge workflow).
