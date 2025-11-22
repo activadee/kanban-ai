@@ -46,7 +46,7 @@ describe('settings/service', () => {
             telemetryEnabled: true,
             notificationsAgentCompletionSound: true,
             editorType: 'VS_CODE',
-            editorCommand: null,
+            editorCommand: 'nvim',
             ghAutolinkTickets: false,
         })
 
