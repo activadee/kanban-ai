@@ -10,7 +10,7 @@ Built on the bhvr monorepo template.
 - Kanban board with Backlog / In Progress / Review / Done
 - GitHub device‑flow login, import issues as tasks, and create PRs from the app
 - Per‑task Attempts run inside isolated git worktrees under `$HOME/.kanbanAI/worktrees/...`
-- Diff viewer, stage/commit, push, Create PR, and optional auto‑merge to base
+- Diff viewer, commit (auto-stages all changes), push, Create PR, and optional auto‑merge to base
 - Agent profiles (e.g., Codex via SDK) with customizable model/sandbox settings
 - Full‑stack TypeScript, shared types, and Turbo for orchestration
 
@@ -93,7 +93,7 @@ Scopes requested: `repo`, `read:user`, `user:email`.
 2) Connect GitHub and (optionally) import issues to populate the board.
 3) Drag a ticket to In Progress to start an Attempt. The server creates a worktree at
    `$HOME/.kanbanAI/worktrees/<project>/<task>` and launches your selected agent.
-4) Review changes: view diffs, stage/commit, push, and Create PR.
+4) Review changes: view diffs, commit (all changes are staged automatically), push, and Create PR.
 5) When merged, move to Done. Worktrees remain available for manual inspection or cleanup.
 
 ## Scripts
