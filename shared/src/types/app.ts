@@ -1,15 +1,7 @@
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type UiLanguage = 'browser' | 'en' | 'ja'
 
-export type EditorType =
-    | 'VS_CODE'
-    | 'CURSOR'
-    | 'WINDSURF'
-    | 'ZED'
-    | 'INTELLIJ'
-    | 'WEBSTORM'
-    | 'XCODE'
-    | 'CUSTOM'
+export type EditorType = 'VS_CODE' | 'WEBSTORM' | 'ZED'
 
 export interface AppSettings {
     id: string

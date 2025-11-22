@@ -217,7 +217,6 @@ export interface SettingsGlobalUpdatedEvent {
 export interface EditorOpenRequestedEvent {
     path: string
     editorKey?: string
-    customCommand?: string
     attemptId?: string
     projectId?: string
 }

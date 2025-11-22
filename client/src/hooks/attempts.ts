@@ -100,7 +100,7 @@ export function useStopAttempt(options?: StopAttemptOptions) {
     })
 }
 
-type OpenEditorArgs = { attemptId: string; subpath?: string; editorKey?: string; customCommand?: string }
+type OpenEditorArgs = { attemptId: string; subpath?: string; editorKey?: string }
 
 type OpenEditorResult = { ok: true; command: { cmd: string; args: string[] } }
 
@@ -108,8 +108,8 @@ type OpenEditorOptions = UseMutationOptions<OpenEditorResult, Error, OpenEditorA
 
 export function useOpenAttemptEditor(options?: OpenEditorOptions) {
     return useMutation({
-        mutationFn: ({attemptId, subpath, editorKey, customCommand}: OpenEditorArgs) =>
-            openAttemptEditor(attemptId, {subpath, editorKey, customCommand}),
+        mutationFn: ({attemptId, subpath, editorKey}: OpenEditorArgs) =>
+            openAttemptEditor(attemptId, {subpath, editorKey}),
         ...options,
     })
 }

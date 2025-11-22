@@ -217,7 +217,6 @@ export interface SettingsGlobalUpdatedEvent {
 export interface EditorOpenRequestedEvent {
     path: string
     editorKey?: string
-    customCommand?: string
     attemptId?: string
     projectId?: string
 }
@@ -288,4 +287,3 @@ export type AppEvent<Name extends AppEventName = AppEventName> = {
 }
 
 export type AppEventHandler<Name extends AppEventName> = (payload: AppEventPayload<Name>) => void | Promise<void>
-
