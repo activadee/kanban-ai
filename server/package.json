@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "dev": "bun --watch run src/dev.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit push"

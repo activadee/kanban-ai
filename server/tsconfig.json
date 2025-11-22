@@ -22,7 +22,25 @@
     // Module resolution
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": false
+    ,"paths": {
+      "core": [
+        "../core/dist/index.d.ts"
+      ],
+      "core/*": [
+        "../core/dist/*"
+      ],
+      "shared": [
+        "../shared/dist/index.d.ts"
+      ],
+      "shared/*": [
+        "../shared/dist/*"
+      ]
+    }
   },
+  "references": [
+    { "path": "../shared" },
+    { "path": "../core" }
+  ],
   "include": [
     "src/**/*"
   ],
