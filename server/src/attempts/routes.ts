@@ -86,7 +86,8 @@ export const createAttemptsRouter = () => {
     // Open editor at worktree (or subpath)
     router.post('/:id/open-editor', zValidator('json', z.object({
         subpath: z.string().optional(),
-        editorKey: z.string().optional()
+        editorKey: z.string().optional(),
+        customCommand: z.string().optional(),
     })), async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
         if (!attempt) return c.json({error: 'Not found'}, 404)
@@ -94,10 +95,9 @@ export const createAttemptsRouter = () => {
         if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
         const path = body?.subpath ? `${attempt.worktreePath}/${body.subpath}` : attempt.worktreePath
         const events = c.get('events')
-        const editorKey = (body?.editorKey ?? 'VS_CODE') as string
         events.publish('editor.open.requested', {
             path,
-            editorKey,
+            editorKey: body?.editorKey,
             attemptId: attempt.id,
             projectId: attempt.boardId,
         })
@@ -105,10 +105,12 @@ export const createAttemptsRouter = () => {
         try {
             const {spec, env} = await openEditorAtPath(path, {
                 editorKey: body.editorKey as any,
+                customCommand: body.customCommand ?? undefined,
             })
+            const resolvedEditorKey = env.EDITOR_KEY ?? body?.editorKey ?? 'VS_CODE'
             events.publish('editor.open.succeeded', {
                 path,
-                editorKey,
+                editorKey: resolvedEditorKey,
                 pid: undefined,
             })
             // diagnostics to help user debug when editor doesn't open
@@ -130,7 +132,7 @@ export const createAttemptsRouter = () => {
         } catch (error) {
             events.publish('editor.open.failed', {
                 path,
-                editorKey,
+                editorKey: body?.editorKey ?? 'VS_CODE',
                 error: error instanceof Error ? error.message : String(error),
             })
             console.error('[attempts:open-editor] failed', error)

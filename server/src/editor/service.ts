@@ -127,11 +127,13 @@ function loadUserSessionEnv(): Record<string, string> | null {
 
 export async function openEditorAtPath(path: string, opts?: {
     editorKey?: EditorKey
+    customCommand?: string | null
 }): Promise<{ spec: ExecSpec; env: NodeJS.ProcessEnv }> {
     const settings = settingsService.snapshot()
     const key = opts?.editorKey ?? (settings.editorType as EditorKey | undefined)
     const adapter = getAdapter(key)
     const env = {...createDesktopEnv()}
+    env.EDITOR_KEY = adapter.key
     const sessionEnv = loadUserSessionEnv()
     if (sessionEnv) {
         for (const [k, v] of Object.entries(sessionEnv)) {
@@ -156,6 +158,16 @@ export async function openEditorAtPath(path: string, opts?: {
 
     let fallbackResult: ExecSpec | undefined
     const fallbackLine = adapter.buildFallback(path)
+
+    // Support custom command override (legacy/advanced users)
+    const custom = opts?.customCommand ?? settings.editorCommand ?? null
+    const runCustom = (): ExecSpec | null => {
+        if (!custom) return null
+        const replaced = custom.replaceAll('{path}', JSON.stringify(path))
+        trySpawnDetached(replaced, [], env)
+        return {cmd: replaced, args: [], line: replaced}
+    }
+
     const runFallback = (): ExecSpec => {
         if (!fallbackResult) {
             fallbackResult = runShellCommand(fallbackLine, env)
@@ -173,6 +185,9 @@ export async function openEditorAtPath(path: string, opts?: {
             return {spec: direct, env}
         }
     }
+
+    const customSpec = runCustom()
+    if (customSpec) return {spec: customSpec, env}
 
     const spec = runFallback()
     return {spec, env}
