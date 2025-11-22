@@ -17,14 +17,15 @@ type ProgressOptions = UseMutationOptions<OnboardingStatus, Error, { step?: stri
 
 export function useOnboardingProgress(options?: ProgressOptions) {
     const queryClient = useQueryClient()
+    const {onSuccess, ...rest} = options ?? {}
     return useMutation({
         mutationFn: (payload: { step?: string }) => recordOnboardingProgress(payload?.step),
         onSuccess: (status, variables, onMutateResult, context) => {
             const ctx = (context ?? onMutateResult) as unknown
             queryClient.setQueryData(onboardingKeys.status(), status)
-            options?.onSuccess?.(status, variables, onMutateResult, ctx as any)
+            onSuccess?.(status, variables, onMutateResult, ctx as any)
         },
-        ...options,
+        ...rest,
     })
 }
 
@@ -32,13 +33,14 @@ type CompleteOptions = UseMutationOptions<OnboardingStatus, Error, { step?: stri
 
 export function useCompleteOnboarding(options?: CompleteOptions) {
     const queryClient = useQueryClient()
+    const {onSuccess, ...rest} = options ?? {}
     return useMutation({
         mutationFn: (payload: { step?: string }) => completeOnboarding(payload?.step),
         onSuccess: (status, variables, onMutateResult, context) => {
             const ctx = (context ?? onMutateResult) as unknown
             queryClient.setQueryData(onboardingKeys.status(), status)
-            options?.onSuccess?.(status, variables, onMutateResult, ctx as any)
+            onSuccess?.(status, variables, onMutateResult, ctx as any)
         },
-        ...options,
+        ...rest,
     })
 }

@@ -184,7 +184,7 @@ export function OnboardingPage() {
         if (onboardingStatus.data.lastStep) {
             const idx = STEP_ORDER.findIndex((id) => id === onboardingStatus.data!.lastStep)
             if (idx >= 0) {
-                setCurrentStep(Math.min(idx + 1, STEP_ORDER.length - 1))
+                setCurrentStep(idx)
             }
         }
         setResumeApplied(true)

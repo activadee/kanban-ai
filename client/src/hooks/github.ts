@@ -1,4 +1,4 @@
-import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
+import {useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
 import type {
     GitHubCheckResponse,
     GitHubDevicePollResponse,
@@ -64,8 +64,14 @@ export function useGithubAppConfig(options?: AppConfigOptions) {
 
 type SaveAppConfigOptions = UseMutationOptions<GithubAppConfig, Error, UpsertGithubAppConfigRequest>
 export function useSaveGithubAppConfig(options?: SaveAppConfigOptions) {
+    const queryClient = useQueryClient()
+    const {onSuccess, ...rest} = options ?? {}
     return useMutation({
         mutationFn: (payload: UpsertGithubAppConfigRequest) => putGithubAppConfig(payload),
-        ...options,
+        onSuccess: (data, variables, onMutateResult, context) => {
+            queryClient.setQueryData(githubKeys.appConfig(), data)
+            onSuccess?.(data, variables, onMutateResult, context as any)
+        },
+        ...rest,
     })
 }
