@@ -16,12 +16,10 @@ export function createEditorsRouter() {
     router.post('/open', zValidator('json', z.object({
         path: z.string(),
         editorKey: z.string().optional(),
-        customCommand: z.string().optional()
     })), async (c) => {
-        const {path, editorKey, customCommand} = c.req.valid('json')
+        const {path, editorKey} = c.req.valid('json')
         const {spec, env} = await openEditorAtPath(path, {
             editorKey: editorKey as EditorKey | undefined,
-            customCommand: customCommand ?? undefined
         })
         return c.json({ok: true, command: spec, env})
     })
