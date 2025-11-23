@@ -45,6 +45,8 @@ export function createGithubProjectRouter() {
                 head = st.branch
             }
             if (!auth.accessToken) return c.json({error: 'auth_required'}, 401)
+            // Ensure branch is available on the remote before creating the PR to avoid 422 "head invalid"
+            await git.push(c.req.param('id'), {branch: head, token: auth.accessToken, setUpstream: true})
             const pr = await createPR(c.req.param('id'), auth.accessToken, {base, head: head!, title, body, draft})
             return c.json({pr}, 200)
         } catch (error) {
