@@ -680,6 +680,10 @@ export async function runAttemptAutomation(
         stage,
         command: script,
         cwd: worktreePath,
+        waitForExit: stage !== "dev",
+        // For long-lived dev servers we return after the first output (or 5s)
+        // instead of waiting for process exit to avoid HTTP timeouts.
+        readyTimeoutMs: stage === "dev" ? 5000 : undefined,
     });
     const saved = await appendAutomationConversationItem(
         attemptId,

@@ -127,6 +127,13 @@ Scopes requested: `repo`, `read:user`, `user:email`.
 4) Review changes: view diffs, commit (all changes are staged automatically), push, and Create PR (the PR flow will auto-push the branch if it isn't on the remote yet).
 5) When merged, move to Done. Worktrees remain available for manual inspection or cleanup.
 
+### Dev script automation
+
+Use the “Run dev” action inside a card to launch your project’s dev script from the attempt worktree (configured in
+Project Settings). Long-running commands such as `bun run dev` now return as soon as the process emits output (or after
+5 seconds), so the UI doesn’t time out while the server keeps running. The command continues in the background; stop it
+manually if needed.
+
 ## Scripts
 
 Root scripts (Turbo orchestrates workspaces):
