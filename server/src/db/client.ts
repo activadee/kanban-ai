@@ -22,14 +22,31 @@ function envDbPath(): string | undefined {
     const raw = Bun.env.DATABASE_URL ?? process.env.DATABASE_URL
     if (!raw) return undefined
     if (raw === ':memory:') return raw
-    if (raw.startsWith('file:')) return raw.replace('file:', '')
-    if (raw.startsWith('sqlite:')) return raw.replace('sqlite:', '')
+
+    // Preserve URI when query params or options are present
+    const hasQuery = raw.includes('?')
+    const isUri = raw.startsWith('file:') || raw.startsWith('sqlite:')
+    if (isUri) {
+        if (hasQuery) return raw
+        try {
+            const url = new URL(raw)
+            const filePath = url.pathname
+            const normalized = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
+            return normalized
+        } catch {
+            return raw
+        }
+    }
+
     return raw
 }
 
 const dbPath = (() => {
     const fromEnv = envDbPath()
-    if (fromEnv) return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), fromEnv)
+    if (fromEnv) {
+        if (fromEnv.startsWith('file:') || fromEnv.startsWith('sqlite:')) return fromEnv
+        return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), fromEnv)
+    }
     return path.join(dataDir(), "kanban.db")
 })()
 

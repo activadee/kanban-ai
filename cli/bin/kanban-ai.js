@@ -103,9 +103,9 @@ async function ensureBinary() {
   return { binaryPath, targetDir }
 }
 
-function spawnBinary(binaryPath, cwd) {
-  const staticDir = path.join(cwd, 'client-dist')
-  const migrationsDir = path.join(cwd, 'drizzle')
+function spawnBinary(binaryPath, extractedDir) {
+  const staticDir = path.join(extractedDir, 'client-dist')
+  const migrationsDir = path.join(extractedDir, 'drizzle')
 
   const env = {
     ...process.env,
@@ -115,7 +115,7 @@ function spawnBinary(binaryPath, cwd) {
 
   const args = process.argv.slice(2)
   const child = spawn(binaryPath, args, {
-    cwd,
+    cwd: process.cwd(),
     stdio: 'inherit',
     env,
   })
