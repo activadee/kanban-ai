@@ -10,7 +10,8 @@
     "./server",
     "./client",
     "./shared",
-    "./core"
+    "./core",
+    "./cli"
   ],
   "scripts": {
     "dev": "turbo dev --filter=server --filter=client --filter=core --filter=shared",
@@ -20,6 +21,11 @@
     "build": "turbo build",
     "build:client": "turbo build --filter=client",
     "build:server": "turbo build --filter=server",
+    "build:binary": "bun run scripts/build-binaries.ts",
+    "build:binary:linux-x64": "bun run scripts/build-binaries.ts --target linux-x64",
+    "build:binary:linux-arm64": "bun run scripts/build-binaries.ts --target linux-arm64",
+    "build:binary:darwin-arm64": "bun run scripts/build-binaries.ts --target darwin-arm64",
+    "build:binary:win-x64": "bun run scripts/build-binaries.ts --target win-x64",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
     "test": "turbo test",
@@ -37,7 +43,8 @@
     "bun-types": "latest",
     "turbo": "^2.5.5",
     "vitest": "^4.0.12",
-    "@vitest/coverage-v8": "^4.0.12"
+    "@vitest/coverage-v8": "^4.0.12",
+    "adm-zip": "^0.5.16"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"

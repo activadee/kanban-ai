@@ -9,6 +9,9 @@ coverage
 
 # production
 dist
+dist/bin
+dist/staging
+cli/dist
 build
 server/drizzle/*.db
 server/worktrees/**

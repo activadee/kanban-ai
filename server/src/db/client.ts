@@ -1,6 +1,6 @@
-import {drizzle} from "drizzle-orm/bun-sqlite";
-import {Database} from "bun:sqlite";
-import {dbSchema} from "core";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { Database } from "bun:sqlite";
+import { dbSchema } from "core";
 import os from "os";
 import path from "path";
 import fs from "fs";
@@ -18,13 +18,28 @@ function dataDir() {
     return path.join(xdg, "kanbanai")
 }
 
-const dbPath = path.join(dataDir(), "kanban.db");
+function envDbPath(): string | undefined {
+    const raw = Bun.env.DATABASE_URL ?? process.env.DATABASE_URL
+    if (!raw) return undefined
+    if (raw === ':memory:') return raw
+    if (raw.startsWith('file:')) return raw.replace('file:', '')
+    if (raw.startsWith('sqlite:')) return raw.replace('sqlite:', '')
+    return raw
+}
+
+const dbPath = (() => {
+    const fromEnv = envDbPath()
+    if (fromEnv) return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), fromEnv)
+    return path.join(dataDir(), "kanban.db")
+})()
 
 // Ensure directory exists
-try {
-    const dir = path.dirname(dbPath)
-    fs.mkdirSync(dir, {recursive: true})
-} catch {
+if (dbPath !== ':memory:') {
+    try {
+        const dir = path.dirname(dbPath)
+        fs.mkdirSync(dir, {recursive: true})
+    } catch {
+    }
 }
 
 const sqlite = new Database(dbPath, {create: true});
