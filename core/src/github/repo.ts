@@ -1,9 +1,10 @@
 import {and, eq} from 'drizzle-orm'
-import {githubConnections, githubIssues, type GithubConnection} from '../db/schema'
+import {githubConnections, githubIssues, githubAppConfigs, type GithubConnection, type GithubAppConfigRow} from '../db/schema'
 import type {DbExecutor} from '../db/with-tx'
 import {resolveDb} from '../db/with-tx'
 
 const SINGLETON_ID = 'default'
+const APP_CONFIG_ID = 'singleton'
 
 export type GithubConnectionUpsert = {
     username: string
@@ -63,6 +64,47 @@ export async function deleteGithubConnection(executor?: DbExecutor): Promise<voi
     await database.delete(githubConnections).where(eq(githubConnections.id, SINGLETON_ID)).run()
 }
 
+export type GithubAppConfigUpsert = {
+    clientId: string
+    clientSecret?: string | null
+}
+
+export async function getGithubAppConfig(executor?: DbExecutor): Promise<GithubAppConfigRow | null> {
+    const database = resolveDb(executor)
+    const [row] = await database.select().from(githubAppConfigs).where(eq(githubAppConfigs.id, APP_CONFIG_ID)).limit(1)
+    return row ?? null
+}
+
+export async function upsertGithubAppConfig(values: GithubAppConfigUpsert, executor?: DbExecutor): Promise<GithubAppConfigRow> {
+    const database = resolveDb(executor)
+    const existing = await getGithubAppConfig(database)
+    const secretToStore =
+        values.clientSecret === undefined ? existing?.clientSecret ?? null : values.clientSecret
+    const now = new Date()
+    await database
+        .insert(githubAppConfigs)
+        .values({
+            id: APP_CONFIG_ID,
+            clientId: values.clientId,
+            clientSecret: secretToStore,
+            createdAt: now,
+            updatedAt: now,
+        })
+        .onConflictDoUpdate({
+            target: githubAppConfigs.id,
+            set: {
+                clientId: values.clientId,
+                clientSecret: secretToStore,
+                updatedAt: now,
+            },
+        })
+        .run()
+
+    const saved = await getGithubAppConfig(database)
+    if (!saved) throw new Error('Failed to persist GitHub app config')
+    return saved
+}
+
 export async function findGithubIssueMapping(
     boardId: string,
     owner: string,
@@ -95,4 +137,3 @@ export async function updateGithubIssueMapping(id: string, patch: Partial<typeof
     const database = resolveDb(executor)
     await database.update(githubIssues).set(patch).where(eq(githubIssues.id, id)).run()
 }
-

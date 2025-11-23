@@ -50,6 +50,13 @@
       "when": 1763729475445,
       "tag": "0006_card_dependencies",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1763829341918,
+      "tag": "0007_onboarding_and_github_app",
+      "breakpoints": true
     }
   ]
 }

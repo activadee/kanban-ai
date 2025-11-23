@@ -6,6 +6,7 @@ export * from './conversation'
 export * from './git'
 export * from './app'
 export * from './dashboard'
+export * from './onboarding'
 
 export type ApiResponse = {
     message: string

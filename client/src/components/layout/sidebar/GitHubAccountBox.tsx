@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
 import {Button} from '@/components/ui/button'
 import {GitHubIcon} from '@/components/icons/SimpleIcons'
-import type {GitHubAccount} from 'shared'
+import type {GitHubAccount, GitHubCheckResponse} from 'shared'
 import {githubKeys} from '@/lib/queryClient'
 import {toast} from '@/components/ui/toast'
 import {GitHubAccountDialog} from '@/components/github/GitHubAccountDialog'
@@ -37,6 +37,8 @@ export function GitHubAccountBox() {
         },
     })
 
+    const pollGithubDevice = pollMutation.mutateAsync
+
     useEffect(() => {
         if (!polling || !deviceState) return
         let cancelled = false
@@ -46,15 +48,18 @@ export function GitHubAccountBox() {
             if (cancelled || inFlight) return
             inFlight = true
             try {
-                const result = await pollMutation.mutateAsync()
+                const result = await pollGithubDevice()
                 if (cancelled) return
                 if (result.status === 'authorization_pending') {
                     timer = window.setTimeout(poll, deviceState.interval * 1000)
                 } else if (result.status === 'slow_down') {
-                    timer = window.setTimeout(poll, (deviceState.interval + 5) * 1000)
+                    const retryMs = (result.retryAfterSeconds ?? deviceState.interval + 5) * 1000
+                    timer = window.setTimeout(poll, retryMs)
                 } else if (result.status === 'success') {
                     setPolling(false)
                     setDeviceState(null)
+                    // Update cache immediately so the UI flips to connected without waiting for refetch
+                    queryClient.setQueryData(githubKeys.check(), {status: 'valid', account: result.account} satisfies GitHubCheckResponse)
                     await queryClient.invalidateQueries({queryKey: githubKeys.check()})
                 } else {
                     setPolling(false)
@@ -75,7 +80,7 @@ export function GitHubAccountBox() {
             cancelled = true
             if (typeof timer === 'number') window.clearTimeout(timer)
         }
-    }, [polling, deviceState, queryClient, pollMutation])
+    }, [polling, deviceState, queryClient, pollGithubDevice])
 
     const openVerificationLink = (state?: import('shared').GitHubDeviceStartResponse | null) => {
         const s = state ?? deviceState
