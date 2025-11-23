@@ -174,7 +174,7 @@ describe('git/service repository status and content', () => {
         await push('proj', {token: 'secret', setUpstream: true})
         expect(git.raw).toHaveBeenCalledWith([
             '-c',
-            'http.extraHeader=Authorization: Bearer secret',
+            'http.extraHeader=Authorization: Basic eC1hY2Nlc3MtdG9rZW46c2VjcmV0',
             'push',
             '-u',
             'origin',
@@ -182,7 +182,11 @@ describe('git/service repository status and content', () => {
         ])
 
         await push('proj', {remote: 'upstream', branch: 'main'})
-        expect(git.push).toHaveBeenCalledWith('upstream', 'main', [])
+        expect(git.raw).toHaveBeenCalledWith([
+            'push',
+            'upstream',
+            'main',
+        ])
     })
 
     it('reads file content from different sources', async () => {
