@@ -168,8 +168,8 @@ Static assets & migrations (standalone binary): the compiled binary serves from 
 `./client-dist` relative to the current working directory) and looks for migrations in `KANBANAI_MIGRATIONS_DIR` (default
 `./drizzle`). The `npx kanban-ai` launcher sets both when it extracts a release bundle.
 
-Worktrees: created under `$HOME/.kanbanAI/worktrees`. Remove them manually when no longer needed; project deletion also
-purges associated worktrees.
+Worktrees: created under `$HOME/.kanbanAI/worktrees`. Moving a ticket to **Done** now removes its attempt branch and
+worktree automatically; project deletion also purges associated worktrees.
 
 ## API (selected)
 
