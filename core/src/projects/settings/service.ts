@@ -9,6 +9,7 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
     const toIso = (v: Date | number | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString())
     return {
         projectId: row.projectId,
+        boardId: row.projectId,
         baseBranch: row.baseBranch,
         preferredRemote: row.preferredRemote ?? null,
         setupScript: row.setupScript ?? null,

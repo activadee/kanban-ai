@@ -9,12 +9,14 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/c
 
 export function ImportIssuesDialog({
                                        projectId,
+                                       boardId,
                                        open,
                                        onOpenChange,
                                        onImported,
                                        defaultRepo,
                                    }: {
     projectId: string
+    boardId: string
     open: boolean
     onOpenChange: (open: boolean) => void
     onImported?: (result: ImportIssuesResponse) => void
@@ -58,7 +60,7 @@ export function ImportIssuesDialog({
             const [owner, name] = repo.split('/')
             if (!owner || !name) throw new Error('Enter repo as "owner/name"')
             const payload: ImportIssuesRequest = {owner, repo: name, state}
-            await importMutation.mutateAsync({projectId, payload})
+            await importMutation.mutateAsync({boardId, payload})
         } catch (err) {
             console.error('Import failed', err)
             setError(err instanceof Error ? err.message : 'Import failed')

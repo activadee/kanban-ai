@@ -4,32 +4,32 @@ import {fetchBoardState, createCard, updateCard, deleteCard, moveCard} from '@/a
 
 export const boardKeys = {
     all: ['board'] as const,
-    state: (projectId: string) => [...boardKeys.all, projectId] as const,
+    state: (boardId: string) => [...boardKeys.all, boardId] as const,
 }
 
 type BoardOptions = Partial<UseQueryOptions<BoardState>>
 
 type CreateArgs = {
-    projectId: string;
+    boardId: string;
     columnId: string;
     values: { title: string; description?: string | null; dependsOn?: string[] }
 }
 
 type UpdateArgs = {
-    projectId: string;
+    boardId: string;
     cardId: string;
     values: { title?: string; description?: string | null; dependsOn?: string[] }
 }
 
-type DeleteArgs = { projectId: string; cardId: string }
+type DeleteArgs = { boardId: string; cardId: string }
 
-type MoveArgs = { projectId: string; cardId: string; toColumnId: string; toIndex: number }
+type MoveArgs = { boardId: string; cardId: string; toColumnId: string; toIndex: number }
 
-export function useBoardState(projectId: string | undefined, options?: BoardOptions) {
-    const enabled = Boolean(projectId)
+export function useBoardState(boardId: string | undefined, options?: BoardOptions) {
+    const enabled = Boolean(boardId)
     return useQuery({
-        queryKey: projectId ? boardKeys.state(projectId) : ['board', 'disabled'],
-        queryFn: () => fetchBoardState(projectId!),
+        queryKey: boardId ? boardKeys.state(boardId) : ['board', 'disabled'],
+        queryFn: () => fetchBoardState(boardId!),
         enabled,
         ...options,
     })
@@ -45,21 +45,21 @@ type MoveOptions = UseMutationOptions<unknown, Error, MoveArgs>
 
 export function useCreateCard(options?: CreateOptions) {
     return useMutation({
-        mutationFn: ({projectId, columnId, values}: CreateArgs) => createCard(projectId, columnId, values),
+        mutationFn: ({boardId, columnId, values}: CreateArgs) => createCard(boardId, columnId, values),
         ...options,
     })
 }
 
 export function useUpdateCard(options?: UpdateOptions) {
     return useMutation({
-        mutationFn: ({projectId, cardId, values}: UpdateArgs) => updateCard(projectId, cardId, values),
+        mutationFn: ({boardId, cardId, values}: UpdateArgs) => updateCard(boardId, cardId, values),
         ...options,
     })
 }
 
 export function useDeleteCard(options?: DeleteOptions) {
     return useMutation({
-        mutationFn: ({projectId, cardId}: DeleteArgs) => deleteCard(projectId, cardId),
+        mutationFn: ({boardId, cardId}: DeleteArgs) => deleteCard(boardId, cardId),
         ...options,
     })
 }
@@ -67,11 +67,11 @@ export function useDeleteCard(options?: DeleteOptions) {
 export function useMoveCard(options?: MoveOptions) {
     return useMutation({
         mutationFn: ({
-                         projectId,
+                         boardId,
                          cardId,
                          toColumnId,
                          toIndex
-                     }: MoveArgs) => moveCard(projectId, cardId, toColumnId, toIndex),
+                     }: MoveArgs) => moveCard(boardId, cardId, toColumnId, toIndex),
         ...options,
     })
 }

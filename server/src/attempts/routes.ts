@@ -29,8 +29,8 @@ const startSchema = z.object({
 export const createAttemptsRouter = () => {
     const router = new Hono<AppEnv>()
 
-    // Nested start under project/card
-    router.post('/projects/:boardId/cards/:cardId/attempts', zValidator('json', startSchema), async (c) => {
+    // Nested start under board/card
+    router.post('/boards/:boardId/cards/:cardId/attempts', zValidator('json', startSchema), async (c) => {
         const {agent, baseBranch, branchName, profileId} = c.req.valid('json')
         const events = c.get('events')
         // Disallow starting attempts if task is done or blocked

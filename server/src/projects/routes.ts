@@ -5,6 +5,7 @@ import type {
     CreateProjectRequest,
     UpdateProjectRequest,
     ProjectSettings,
+    ProjectSummary,
 } from "shared";
 import type {AppEnv} from "../env";
 import {getGitOriginUrl, parseGithubOwnerRepo} from "core";
@@ -84,6 +85,308 @@ const moveCardSchema = z.object({
     toIndex: z.number().int().min(0),
 });
 
+type BoardContext = { boardId: string; project: ProjectSummary }
+
+const resolveBoardForProject = async (c: any): Promise<BoardContext | null> => {
+    const {projects} = c.get("services");
+    const projectId = c.req.param("projectId");
+    const project = await projects.get(projectId);
+    if (!project) return null;
+    return {boardId: project.boardId ?? project.id, project};
+};
+
+const resolveBoardById = async (c: any): Promise<BoardContext | null> => {
+    const {projects} = c.get("services");
+    const boardId = c.req.param("boardId");
+    const project = await projects.get(boardId);
+    if (!project) return null;
+    return {boardId: project.boardId ?? project.id, project};
+};
+
+function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null>) {
+    const boardRouter = new Hono<AppEnv>();
+
+    const loadContext = async (c: any): Promise<BoardContext | Response> => {
+        const ctx = await resolveBoard(c);
+        if (!ctx) return c.json({error: "Board not found"}, 404);
+        return ctx;
+    };
+
+    boardRouter.get('/', async (c) => {
+        const ctx = await loadContext(c);
+        if (ctx instanceof Response) return ctx;
+        try {
+            const state = await fetchBoardState(ctx.boardId);
+            return c.json({state}, 200);
+        } catch (error) {
+            console.error('[board:state] failed', error);
+            return c.json({error: 'Failed to fetch board state'}, 500);
+        }
+    });
+
+    boardRouter.post(
+        "/cards",
+        zValidator("json", createCardSchema),
+        async (c) => {
+            const ctx = await loadContext(c);
+            if (ctx instanceof Response) return ctx;
+            const {boardId} = ctx;
+
+            const body = c.req.valid("json");
+            const column = await getColumnById(body.columnId);
+            if (!column || column.boardId !== boardId) {
+                return c.json({error: "Column not found"}, 404);
+            }
+
+            try {
+                const cardId = await createBoardCard(body.columnId, body.title, body.description ?? undefined, {suppressBroadcast: true});
+                if (Array.isArray(body.dependsOn) && body.dependsOn.length > 0) {
+                    await projectDeps.setDependencies(cardId, body.dependsOn);
+                }
+                await broadcastBoard(boardId);
+                const state = await fetchBoardState(boardId);
+                return c.json({state}, 201);
+            } catch (error) {
+                console.error('[board:cards:create] failed', error);
+                return c.json({error: 'Failed to create card'}, 500);
+            }
+        },
+    );
+
+    boardRouter.patch(
+        "/cards/:cardId",
+        zValidator("json", updateCardSchema),
+        async (c) => {
+            const ctx = await loadContext(c);
+            if (ctx instanceof Response) return ctx;
+            const {boardId} = ctx;
+            const cardId = c.req.param("cardId");
+
+            const card = await getCardById(cardId);
+            if (!card) return c.json({error: "Card not found"}, 404);
+            let cardBoardId = card.boardId ?? null;
+            if (!cardBoardId) {
+                const column = await getColumnById(card.columnId);
+                cardBoardId = column?.boardId ?? null;
+            }
+            if (cardBoardId !== boardId) {
+                return c.json({error: "Card does not belong to this board"}, 400);
+            }
+
+            const body = c.req.valid("json");
+
+            try {
+                const hasContentUpdate = body.title !== undefined || body.description !== undefined;
+                const hasDeps = Array.isArray(body.dependsOn);
+                if (hasContentUpdate) {
+                    await updateBoardCard(cardId, {
+                        title: body.title,
+                        description: body.description ?? undefined,
+                    }, {suppressBroadcast: hasDeps});
+                }
+                if (hasDeps) {
+                    await projectDeps.setDependencies(cardId, body.dependsOn as string[]);
+                }
+                if (hasContentUpdate || hasDeps) {
+                    await broadcastBoard(boardId);
+                }
+                const state = await fetchBoardState(boardId);
+                return c.json({state}, 200);
+            } catch (error) {
+                const msg = error instanceof Error ? error.message : 'Failed to update card';
+                console.error('[board:cards:update] failed', error);
+                const status = msg === 'dependency_board_mismatch' || msg === 'dependency_cycle' ? 400 : 500;
+                return c.json({error: msg}, status);
+            }
+        },
+    );
+
+    boardRouter.post(
+        "/cards/:cardId/move",
+        zValidator("json", moveCardSchema),
+        async (c) => {
+            const ctx = await loadContext(c);
+            if (ctx instanceof Response) return ctx;
+            const {boardId} = ctx;
+            const cardId = c.req.param("cardId");
+
+            const card = await getCardById(cardId);
+            if (!card) return c.json({error: "Card not found"}, 404);
+            let cardBoardId = card.boardId ?? null;
+            if (!cardBoardId) {
+                const column = await getColumnById(card.columnId);
+                cardBoardId = column?.boardId ?? null;
+            }
+            if (cardBoardId !== boardId) {
+                return c.json({error: "Card does not belong to this board"}, 400);
+            }
+
+            const body = c.req.valid("json");
+            const targetColumn = await getColumnById(body.toColumnId);
+            if (!targetColumn || targetColumn.boardId !== boardId) {
+                return c.json({error: "Target column not found"}, 404);
+            }
+
+            // Prevent moving blocked cards into In Progress
+            if ((targetColumn.title || '').trim().toLowerCase() === 'in progress') {
+                const {blocked} = await projectDeps.isCardBlocked(cardId);
+                if (blocked) {
+                    return c.json({error: 'Task is blocked by dependencies'}, 409);
+                }
+            }
+
+            try {
+                await moveBoardCard(cardId, body.toColumnId, body.toIndex);
+                const state = await fetchBoardState(boardId);
+                return c.json({state}, 200);
+            } catch (error) {
+                console.error('[board:cards:move] failed', error);
+                return c.json({error: 'Failed to move card'}, 500);
+            }
+        },
+    );
+
+    boardRouter.delete("/cards/:cardId", async (c) => {
+        const ctx = await loadContext(c);
+        if (ctx instanceof Response) return ctx;
+        const {boardId} = ctx;
+        const cardId = c.req.param("cardId");
+
+        const card = await getCardById(cardId);
+        if (!card) return c.json({error: "Card not found"}, 404);
+        let cardBoardId = card.boardId ?? null;
+        if (!cardBoardId) {
+            const column = await getColumnById(card.columnId);
+            cardBoardId = column?.boardId ?? null;
+        }
+        if (cardBoardId !== boardId) {
+            return c.json({error: "Card does not belong to this board"}, 400);
+        }
+
+        try {
+            await deleteBoardCard(cardId);
+            const state = await fetchBoardState(boardId);
+            return c.json({state}, 200);
+        } catch (error) {
+            console.error('[board:cards:delete] failed', error);
+            return c.json({error: 'Failed to delete card'}, 500);
+        }
+    });
+
+    boardRouter.get("/cards/:cardId/attempt", async (c) => {
+        const ctx = await loadContext(c);
+        if (ctx instanceof Response) return ctx;
+        const {boardId} = ctx;
+        try {
+            const data = await attempts.getLatestAttemptForCard(boardId, c.req.param("cardId"));
+            if (!data) return c.json({error: "Not found"}, 404);
+            return c.json(data, 200);
+        } catch (error) {
+            console.error("[attempts:attempt] failed", error);
+            return c.json(
+                {
+                    error:
+                        error instanceof Error ? error.message : "Failed to fetch attempt",
+                },
+                500
+            );
+        }
+    });
+
+    // Start an attempt for a card within this board
+    boardRouter.post(
+        "/cards/:cardId/attempts",
+        zValidator(
+            "json",
+            z.object({
+                agent: z.enum(["ECHO", "SHELL", "CODEX", "OPENCODE", "DROID"]),
+                profileId: z.string().optional(),
+                baseBranch: z.string().min(1).optional(),
+                branchName: z.string().min(1).optional(),
+            })
+        ),
+        async (c) => {
+            const ctx = await loadContext(c);
+            if (ctx instanceof Response) return ctx;
+            const {boardId} = ctx;
+            const body = c.req.valid("json");
+            try {
+                // Disallow starting attempts for tasks already in Done
+                const card = await getCardById(c.req.param("cardId"));
+                if (!card) return c.json({error: "Card not found"}, 404);
+                const column = await getColumnById(card.columnId);
+                if (column?.title === "Done")
+                    return c.json({error: "Task is done and locked"}, 409);
+
+                const events = c.get("events");
+                const attempt = await attempts.startAttempt(
+                    {
+                        boardId,
+                        cardId: c.req.param("cardId"),
+                        agent: body.agent,
+                        profileId: body.profileId,
+                        baseBranch: body.baseBranch,
+                        branchName: body.branchName,
+                    },
+                    {events},
+                );
+                return c.json(attempt, 201);
+            } catch (error) {
+                console.error("[attempts:start] failed", error);
+                return c.json(
+                    {
+                        error:
+                            error instanceof Error
+                                ? error.message
+                                : "Failed to start attempt",
+                    },
+                    500
+                );
+            }
+        }
+    );
+
+    // Import GitHub issues into this board
+    boardRouter.post(
+        "/import/github/issues",
+        zValidator(
+            "json",
+            z.object({
+                owner: z.string().min(1),
+                repo: z.string().min(1),
+                state: z.enum(["open", "closed", "all"]).optional(),
+            })
+        ),
+        async (c) => {
+            const ctx = await loadContext(c);
+            if (ctx instanceof Response) return ctx;
+            const {boardId} = ctx;
+            const {owner, repo, state} = c.req.valid("json");
+            try {
+                const events = c.get("events");
+                const result = await importGithubIssues({
+                    boardId,
+                    owner,
+                    repo,
+                    state,
+                }, {bus: events});
+                return c.json(result, 200);
+            } catch (error) {
+                console.error("[board:import:github] failed", error);
+                return c.json(
+                    {
+                        error:
+                            error instanceof Error ? error.message : "GitHub import failed",
+                    },
+                    500
+                );
+            }
+        }
+    );
+
+    return boardRouter;
+}
+
 export const createProjectsRouter = () => {
     const router = new Hono<AppEnv>();
 
@@ -109,192 +412,27 @@ export const createProjectsRouter = () => {
         return c.json(project, 201);
     });
 
-    router.get("/:id", async (c) => {
+    router.get("/:projectId", async (c) => {
         const {projects} = c.get("services");
-        const project = await projects.get(c.req.param("id"));
+        const project = await projects.get(c.req.param("projectId"));
         if (!project) return c.json({error: "Project not found"}, 404);
         return c.json(project, 200);
     });
 
-    router.get("/:id/board-state", async (c) => {
-        const boardId = c.req.param("id");
+    router.route("/:projectId/board", createBoardRouter(resolveBoardForProject));
+
+    router.get("/:projectId/settings", async (c) => {
         const {projects} = c.get("services");
-        const project = await projects.get(boardId);
-        if (!project) return c.json({error: "Project not found"}, 404);
-        try {
-            const state = await fetchBoardState(boardId);
-            return c.json({state}, 200);
-        } catch (error) {
-            console.error('[projects:board-state] failed', error);
-            return c.json({error: 'Failed to fetch board state'}, 500);
-        }
-    });
-
-    router.post(
-        "/:id/cards",
-        zValidator("json", createCardSchema),
-        async (c) => {
-            const boardId = c.req.param("id");
-            const {projects} = c.get("services");
-            const project = await projects.get(boardId);
-            if (!project) return c.json({error: "Project not found"}, 404);
-
-            const body = c.req.valid("json");
-            const column = await getColumnById(body.columnId);
-            if (!column || column.boardId !== boardId) {
-                return c.json({error: "Column not found"}, 404);
-            }
-
-            try {
-                const cardId = await createBoardCard(body.columnId, body.title, body.description ?? undefined, {suppressBroadcast: true});
-                if (Array.isArray(body.dependsOn) && body.dependsOn.length > 0) {
-                    await projectDeps.setDependencies(cardId, body.dependsOn)
-                }
-                await broadcastBoard(boardId)
-                const state = await fetchBoardState(boardId);
-                return c.json({state}, 201);
-            } catch (error) {
-                console.error('[projects:cards:create] failed', error);
-                return c.json({error: 'Failed to create card'}, 500);
-            }
-        },
-    );
-
-    router.patch(
-        "/:id/cards/:cardId",
-        zValidator("json", updateCardSchema),
-        async (c) => {
-            const boardId = c.req.param("id");
-            const cardId = c.req.param("cardId");
-            const {projects} = c.get("services");
-            const project = await projects.get(boardId);
-            if (!project) return c.json({error: "Project not found"}, 404);
-
-            const card = await getCardById(cardId);
-            if (!card) return c.json({error: "Card not found"}, 404);
-            let cardBoardId = card.boardId ?? null;
-            if (!cardBoardId) {
-                const column = await getColumnById(card.columnId);
-                cardBoardId = column?.boardId ?? null;
-            }
-            if (cardBoardId !== boardId) {
-                return c.json({error: "Card does not belong to this project"}, 400);
-            }
-
-            const body = c.req.valid("json");
-
-            try {
-                const hasContentUpdate = body.title !== undefined || body.description !== undefined
-                const hasDeps = Array.isArray(body.dependsOn)
-                if (hasContentUpdate) {
-                    await updateBoardCard(cardId, {
-                        title: body.title,
-                        description: body.description ?? undefined,
-                    }, {suppressBroadcast: hasDeps})
-                }
-                if (hasDeps) {
-                    await projectDeps.setDependencies(cardId, body.dependsOn as string[])
-                }
-                if (hasContentUpdate || hasDeps) {
-                    await broadcastBoard(boardId)
-                }
-                const state = await fetchBoardState(boardId);
-                return c.json({state}, 200);
-            } catch (error) {
-                const msg = error instanceof Error ? error.message : 'Failed to update card'
-                console.error('[projects:cards:update] failed', error);
-                const status = msg === 'dependency_board_mismatch' || msg === 'dependency_cycle' ? 400 : 500
-                return c.json({error: msg}, status);
-            }
-        },
-    );
-
-    router.post(
-        "/:id/cards/:cardId/move",
-        zValidator("json", moveCardSchema),
-        async (c) => {
-            const boardId = c.req.param("id");
-            const cardId = c.req.param("cardId");
-            const {projects} = c.get("services");
-            const project = await projects.get(boardId);
-            if (!project) return c.json({error: "Project not found"}, 404);
-
-            const card = await getCardById(cardId);
-            if (!card) return c.json({error: "Card not found"}, 404);
-            let cardBoardId = card.boardId ?? null;
-            if (!cardBoardId) {
-                const column = await getColumnById(card.columnId);
-                cardBoardId = column?.boardId ?? null;
-            }
-            if (cardBoardId !== boardId) {
-                return c.json({error: "Card does not belong to this project"}, 400);
-            }
-
-            const body = c.req.valid("json");
-            const targetColumn = await getColumnById(body.toColumnId);
-            if (!targetColumn || targetColumn.boardId !== boardId) {
-                return c.json({error: "Target column not found"}, 404);
-            }
-
-            // Prevent moving blocked cards into In Progress
-            if ((targetColumn.title || '').trim().toLowerCase() === 'in progress') {
-                const {blocked} = await projectDeps.isCardBlocked(cardId)
-                if (blocked) {
-                    return c.json({error: 'Task is blocked by dependencies'}, 409)
-                }
-            }
-
-            try {
-                await moveBoardCard(cardId, body.toColumnId, body.toIndex);
-                const state = await fetchBoardState(boardId);
-                return c.json({state}, 200);
-            } catch (error) {
-                console.error('[projects:cards:move] failed', error);
-                return c.json({error: 'Failed to move card'}, 500);
-            }
-        },
-    );
-
-    router.delete("/:id/cards/:cardId", async (c) => {
-        const boardId = c.req.param("id");
-        const cardId = c.req.param("cardId");
-        const {projects} = c.get("services");
-        const project = await projects.get(boardId);
-        if (!project) return c.json({error: "Project not found"}, 404);
-
-        const card = await getCardById(cardId);
-        if (!card) return c.json({error: "Card not found"}, 404);
-        let cardBoardId = card.boardId ?? null;
-        if (!cardBoardId) {
-            const column = await getColumnById(card.columnId);
-            cardBoardId = column?.boardId ?? null;
-        }
-        if (cardBoardId !== boardId) {
-            return c.json({error: "Card does not belong to this project"}, 400);
-        }
-
-        try {
-            await deleteBoardCard(cardId);
-            const state = await fetchBoardState(boardId);
-            return c.json({state}, 200);
-        } catch (error) {
-            console.error('[projects:cards:delete] failed', error);
-            return c.json({error: 'Failed to delete card'}, 500);
-        }
-    });
-
-    router.get("/:id/settings", async (c) => {
-        const {projects} = c.get("services");
-        const projectId = c.req.param("id");
+        const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
         if (!project) return c.json({error: "Project not found"}, 404);
         const settings = await projects.ensureSettings(projectId);
         return c.json({settings}, 200);
     });
 
-    router.get("/:id/tickets/next-key", async (c) => {
+    router.get("/:projectId/tickets/next-key", async (c) => {
         const {projects} = c.get("services");
-        const projectId = c.req.param("id");
+        const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
         if (!project) return c.json({error: "Project not found"}, 404);
         const preview = await projectTickets.previewNextTicketKey(projectId);
@@ -302,11 +440,11 @@ export const createProjectsRouter = () => {
     });
 
     router.patch(
-        "/:id/settings",
+        "/:projectId/settings",
         zValidator("json", updateProjectSettingsSchema),
         async (c) => {
             const {projects} = c.get("services");
-            const projectId = c.req.param("id");
+            const projectId = c.req.param("projectId");
             const project = await projects.get(projectId);
             if (!project) return c.json({error: "Project not found"}, 404);
 
@@ -402,9 +540,9 @@ export const createProjectsRouter = () => {
         }
     );
 
-    router.get("/:id/git/branches", async (c) => {
+    router.get("/:projectId/git/branches", async (c) => {
         const {projects} = c.get("services");
-        const projectId = c.req.param("id");
+        const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
         if (!project) return c.json({error: "Project not found"}, 404);
         try {
@@ -416,11 +554,11 @@ export const createProjectsRouter = () => {
         }
     });
 
-    router.patch("/:id", zValidator("json", updateProjectSchema), async (c) => {
+    router.patch("/:projectId", zValidator("json", updateProjectSchema), async (c) => {
         const {projects} = c.get("services");
         const events = c.get("events");
         const body = c.req.valid("json");
-        const project = await projects.update(c.req.param("id"), body);
+        const project = await projects.update(c.req.param("projectId"), body);
         if (!project) return c.json({error: "Project not found"}, 404);
         events.publish("project.updated", {
             projectId: project.id,
@@ -430,10 +568,10 @@ export const createProjectsRouter = () => {
         return c.json(project, 200);
     });
 
-    router.delete("/:id", async (c) => {
+    router.delete("/:projectId", async (c) => {
         const {projects} = c.get("services");
         const events = c.get("events");
-        const projectId = c.req.param("id");
+        const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
         if (!project) return c.json({error: "Project not found"}, 404);
         const removed = await projects.remove(projectId);
@@ -443,9 +581,9 @@ export const createProjectsRouter = () => {
     });
 
     // Detect GitHub origin for this project by reading the repo's remote
-    router.get("/:id/github/origin", async (c) => {
+    router.get("/:projectId/github/origin", async (c) => {
         const {projects} = c.get("services");
-        const project = await projects.get(c.req.param("id"));
+        const project = await projects.get(c.req.param("projectId"));
         if (!project) return c.json({error: "Project not found"}, 404);
         const originUrl = await getGitOriginUrl(project.repositoryPath);
         const parsed = originUrl ? parseGithubOwnerRepo(originUrl) : null;
@@ -459,60 +597,10 @@ export const createProjectsRouter = () => {
         );
     });
 
-    // Start an attempt for a card within this project
-    router.post(
-        "/:id/cards/:cardId/attempts",
-        zValidator(
-            "json",
-            z.object({
-                agent: z.enum(["ECHO", "SHELL", "CODEX", "OPENCODE", "DROID"]),
-                profileId: z.string().optional(),
-                baseBranch: z.string().min(1).optional(),
-                branchName: z.string().min(1).optional(),
-            })
-        ),
-        async (c) => {
-            const body = c.req.valid("json");
-            try {
-                // Disallow starting attempts for tasks already in Done
-                const card = await getCardById(c.req.param("cardId"));
-                if (!card) return c.json({error: "Card not found"}, 404);
-                const column = await getColumnById(card.columnId);
-                if (column?.title === "Done")
-                    return c.json({error: "Task is done and locked"}, 409);
-
-                const events = c.get("events")
-                const attempt = await attempts.startAttempt(
-                    {
-                        boardId: c.req.param("id"),
-                        cardId: c.req.param("cardId"),
-                        agent: body.agent,
-                        profileId: body.profileId,
-                        baseBranch: body.baseBranch,
-                        branchName: body.branchName,
-                    },
-                    {events},
-                );
-                return c.json(attempt, 201);
-            } catch (error) {
-                console.error("[attempts:start] failed", error);
-                return c.json(
-                    {
-                        error:
-                            error instanceof Error
-                                ? error.message
-                                : "Failed to start attempt",
-                    },
-                    500
-                );
-            }
-        }
-    );
-
     // Agent profiles CRUD (validate using the agent's schema)
-    router.get("/:id/agents/profiles", async (c) => {
+    router.get("/:projectId/agents/profiles", async (c) => {
         try {
-            const rows = await agentProfiles.listAgentProfiles(c.req.param("id"));
+            const rows = await agentProfiles.listAgentProfiles(c.req.param("projectId"));
             return c.json({profiles: rows}, 200);
         } catch (error) {
             console.error("[agents:profiles:list] failed", error);
@@ -521,7 +609,7 @@ export const createProjectsRouter = () => {
     });
 
     router.post(
-        "/:id/agents/profiles",
+        "/:projectId/agents/profiles",
         zValidator(
             "json",
             z.object({agent: z.string(), name: z.string().min(1), config: z.any()})
@@ -539,7 +627,7 @@ export const createProjectsRouter = () => {
                         400
                     );
                 const row = await agentProfiles.createAgentProfile(
-                    c.req.param("id"),
+                    c.req.param("projectId"),
                     agentKey,
                     name,
                     parsed.data
@@ -558,9 +646,9 @@ export const createProjectsRouter = () => {
         }
     );
 
-    router.get("/:id/agents/profiles/:pid", async (c) => {
+    router.get("/:projectId/agents/profiles/:pid", async (c) => {
         try {
-            const row = await agentProfiles.getAgentProfile(c.req.param("id"), c.req.param("pid"));
+            const row = await agentProfiles.getAgentProfile(c.req.param("projectId"), c.req.param("pid"));
             if (!row) return c.json({error: "Not found"}, 404);
             return c.json(row, 200);
         } catch (error) {
@@ -570,7 +658,7 @@ export const createProjectsRouter = () => {
     });
 
     router.patch(
-        "/:id/agents/profiles/:pid",
+        "/:projectId/agents/profiles/:pid",
         zValidator(
             "json",
             z.object({
@@ -586,7 +674,7 @@ export const createProjectsRouter = () => {
                 let cfg = patch.config;
                 if (cfg !== undefined) {
                     const existing = await agentProfiles.getAgentProfile(
-                        c.req.param("id"),
+                        c.req.param("projectId"),
                         c.req.param("pid")
                     );
                     if (!existing) return c.json({error: "Not found"}, 404);
@@ -602,7 +690,7 @@ export const createProjectsRouter = () => {
                     cfg = parsed.data;
                 }
                 const row = await agentProfiles.updateAgentProfile(
-                    c.req.param("id"),
+                    c.req.param("projectId"),
                     c.req.param("pid"),
                     {name: patch.name, config: cfg}
                 );
@@ -621,12 +709,12 @@ export const createProjectsRouter = () => {
         }
     );
 
-    router.delete("/:id/agents/profiles/:pid", async (c) => {
+    router.delete("/:projectId/agents/profiles/:pid", async (c) => {
         try {
             const events = c.get("events");
-            const existing = await agentProfiles.getAgentProfile(c.req.param("id"), c.req.param("pid"));
+            const existing = await agentProfiles.getAgentProfile(c.req.param("projectId"), c.req.param("pid"));
             if (!existing) return c.json({error: "Not found"}, 404);
-            await agentProfiles.deleteAgentProfile(c.req.param("id"), c.req.param("pid"));
+            await agentProfiles.deleteAgentProfile(c.req.param("projectId"), c.req.param("pid"));
             events.publish("agent.profile.changed", {
                 profileId: existing.id,
                 agent: existing.agent,
@@ -640,61 +728,11 @@ export const createProjectsRouter = () => {
         }
     });
 
-    router.get("/:id/cards/:cardId/attempt", async (c) => {
-        try {
-            const data = await attempts.getLatestAttemptForCard(
-                c.req.param("id"),
-                c.req.param("cardId")
-            );
-            if (!data) return c.json({error: "Not found"}, 404);
-            return c.json(data, 200);
-        } catch (error) {
-            console.error("[attempts:attempt] failed", error);
-            return c.json(
-                {
-                    error:
-                        error instanceof Error ? error.message : "Failed to fetch attempt",
-                },
-                500
-            );
-        }
-    });
+    return router;
+};
 
-    // Import GitHub issues into this project's board
-    router.post(
-        "/:id/import/github/issues",
-        zValidator(
-            "json",
-            z.object({
-                owner: z.string().min(1),
-                repo: z.string().min(1),
-                state: z.enum(["open", "closed", "all"]).optional(),
-            })
-        ),
-        async (c) => {
-            const boardId = c.req.param("id");
-            const {owner, repo, state} = c.req.valid("json");
-            try {
-                const events = c.get("events");
-                const result = await importGithubIssues({
-                    boardId,
-                    owner,
-                    repo,
-                    state,
-                }, {bus: events});
-                return c.json(result, 200);
-            } catch (error) {
-                console.error("[projects:import:github] failed", error);
-                return c.json(
-                    {
-                        error:
-                            error instanceof Error ? error.message : "GitHub import failed",
-                    },
-                    500
-                );
-            }
-        }
-    );
-
+export const createBoardsRouter = () => {
+    const router = new Hono<AppEnv>();
+    router.route("/:boardId", createBoardRouter(resolveBoardById));
     return router;
 };

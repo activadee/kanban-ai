@@ -24,15 +24,17 @@ export function ProjectBoardPage() {
         error: queryError,
     } = useProject(projectId)
 
-    const boardQuery = useBoardState(project?.id, {enabled: Boolean(project?.id)})
+    const boardId = project?.boardId ?? project?.id ?? null
+
+    const boardQuery = useBoardState(boardId ?? undefined, {enabled: Boolean(boardId)})
     const boardState = boardQuery.data
 
-    const {connected, reconnecting, state: socketState} = useKanbanWS(project ? project.id : null)
+    const {connected, reconnecting, state: socketState} = useKanbanWS(boardId ?? null)
     const [importOpen, setImportOpen] = useState(false)
 
     const invalidateBoard = () => {
-        if (!project) return
-        queryClient.invalidateQueries({queryKey: boardKeys.state(project.id)})
+        if (!boardId) return
+        queryClient.invalidateQueries({queryKey: boardKeys.state(boardId)})
     }
 
     const createCardMutation = useCreateCard({onSuccess: invalidateBoard})
@@ -52,10 +54,10 @@ export function ProjectBoardPage() {
     }, [])
 
     useEffect(() => {
-        if (project?.id && socketState) {
-            queryClient.setQueryData(boardKeys.state(project.id), socketState)
+        if (boardId && socketState) {
+            queryClient.setQueryData(boardKeys.state(boardId), socketState)
         }
-    }, [project?.id, socketState, queryClient])
+    }, [boardId, socketState, queryClient])
 
     if (!projectId) {
         return (
@@ -70,7 +72,7 @@ export function ProjectBoardPage() {
         return <div className="p-10 text-muted-foreground">Loading project…</div>
     }
 
-    if (isError || !project || !boardState) {
+    if (isError || !project || !boardState || !boardId) {
         return (
             <div className="p-10 space-y-4">
                 <p className="text-sm text-destructive">{queryError?.message ?? 'Project not found.'}</p>
@@ -97,12 +99,13 @@ export function ProjectBoardPage() {
             <div className="flex-1 min-h-0 px-4 pb-4">
                 <Board
                     projectId={project.id}
+                    boardId={boardId}
                     state={boardState}
                     handlers={{
                         onCreateCard: async (columnId, values: { title: string; description: string; dependsOn?: string[] }) => {
                             try {
                                 await createCardMutation.mutateAsync({
-                                    projectId: project.id,
+                                    boardId,
                                     columnId,
                                     values: {
                                         title: values.title,
@@ -118,7 +121,7 @@ export function ProjectBoardPage() {
                         onUpdateCard: async (cardId, values: { title: string; description: string; dependsOn?: string[] }) => {
                             try {
                                 await updateCardMutation.mutateAsync({
-                                    projectId: project.id,
+                                    boardId,
                                     cardId,
                                     values: {
                                         title: values.title,
@@ -133,7 +136,7 @@ export function ProjectBoardPage() {
                         },
                         onDeleteCard: async (cardId) => {
                             try {
-                                await deleteCardMutation.mutateAsync({projectId: project.id, cardId})
+                                await deleteCardMutation.mutateAsync({boardId, cardId})
                             } catch (err) {
                                 console.error('Delete card failed', err)
                                 toast({title: 'Failed to delete card', variant: 'destructive'})
@@ -141,7 +144,7 @@ export function ProjectBoardPage() {
                         },
                         onMoveCard: async (cardId, toColumnId, toIndex) => {
                             try {
-                                await moveCardMutation.mutateAsync({projectId: project.id, cardId, toColumnId, toIndex})
+                                await moveCardMutation.mutateAsync({boardId, cardId, toColumnId, toIndex})
                             } catch (err) {
                                 console.error('Move card failed', err)
                                 toast({title: 'Failed to move card', variant: 'destructive'})
@@ -152,6 +155,7 @@ export function ProjectBoardPage() {
             </div>
             <ImportIssuesDialog
                 projectId={projectId}
+                boardId={boardId}
                 open={importOpen}
                 onOpenChange={setImportOpen}
                 onImported={() => invalidateBoard()}

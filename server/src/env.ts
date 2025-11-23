@@ -19,5 +19,6 @@ export type AppEnv = {
         services: AppServices
         events: AppEventBus
         projectId?: string
+        boardId?: string
     }
 }

@@ -19,6 +19,7 @@ type EditProps = BaseDialogProps & {
     onSubmit: (values: CardFormValues) => Promise<void> | void
     onDelete: () => Promise<void> | void
     projectId?: string
+    boardId?: string
     cardId?: string
 }
 
@@ -31,6 +32,7 @@ export function EditCardDialog({
                                    onSubmit,
                                    onDelete,
                                    projectId,
+                                   boardId,
                                    cardId
                                }: EditProps) {
     const [values, setValues] = useState<CardFormValues>({title: cardTitle, description: cardDescription ?? ''})
@@ -55,7 +57,7 @@ export function EditCardDialog({
         if (open && agents.length && !agent) setAgent(agents[0].key)
     }, [open, agents, agent])
 
-    const attemptDetailQuery = useCardAttempt(projectId, cardId, {enabled: Boolean(open && projectId && cardId)})
+    const attemptDetailQuery = useCardAttempt(boardId, cardId, {enabled: Boolean(open && boardId && cardId)})
     const logsQuery = useAttemptLogs(attempt?.id, {enabled: Boolean(attempt?.id)})
 
     useEffect(() => {
@@ -74,7 +76,7 @@ export function EditCardDialog({
         onStatus: (status) => {
             setAttempt((prev) => (prev ? {...prev, status} as Attempt : prev))
             if (attempt?.id) {
-                queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId!, cardId!)})
+                queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId!, cardId!)})
             }
         },
         onLog: (p) => {
@@ -87,7 +89,7 @@ export function EditCardDialog({
                 message: p.message
             }])
             queryClient.invalidateQueries({queryKey: attemptKeys.logs(attempt.id)})
-            queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId!, cardId!)})
+            queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId!, cardId!)})
         },
         onMessage: (item) => {
             if (!attempt?.id) return
@@ -95,7 +97,7 @@ export function EditCardDialog({
                 if (item.id && prev.some((m) => m.id === item.id)) return prev
                 return [...prev, item]
             })
-            queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId!, cardId!)})
+            queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId!, cardId!)})
         },
     })
 
@@ -125,15 +127,15 @@ export function EditCardDialog({
         onSuccess: async (att) => {
             setAttempt(att)
             setConversation([])
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId!, cardId!)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId!, cardId!)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(att.id)})
         },
     })
 
     const startAttempt = async () => {
-        if (!projectId || !cardId) return
+        if (!boardId || !cardId) return
         try {
-            await startMutation.mutateAsync({projectId, cardId, agent})
+            await startMutation.mutateAsync({boardId, cardId, agent})
         } catch (err) {
             console.error('Start attempt failed', err)
         }
@@ -141,7 +143,7 @@ export function EditCardDialog({
 
     const stopMutation = useStopAttempt({
         onSuccess: async (_data, {attemptId}) => {
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId!, cardId!)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId!, cardId!)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(attemptId)})
         },
     })
@@ -202,7 +204,7 @@ export function EditCardDialog({
                                     <option key={a.key} value={a.key}>{a.label}</option>
                                 ))}
                             </select>
-                            <Button size="sm" onClick={startAttempt} disabled={!projectId || !cardId}>
+                            <Button size="sm" onClick={startAttempt} disabled={!boardId || !cardId}>
                                 Start
                             </Button>
                             {attempt ? (
@@ -261,4 +263,3 @@ export function EditCardDialog({
         </Dialog>
     )
 }
-
