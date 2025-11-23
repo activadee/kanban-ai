@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from '@/components/ui/dialog'
 import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
@@ -16,6 +16,13 @@ export function CreatePrDialog({attemptId, baseBranch, defaultTitle, defaultBody
 }) {
     const [title, setTitle] = useState(defaultTitle || '')
     const [body, setBody] = useState(defaultBody || '')
+
+    useEffect(() => {
+        if (open) {
+            setTitle(defaultTitle || '')
+            setBody(defaultBody || '')
+        }
+    }, [open, defaultTitle, defaultBody])
 
     const prMut = useCreateAttemptPR({
         onSuccess: (pr) => {
