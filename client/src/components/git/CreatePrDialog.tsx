@@ -5,6 +5,7 @@ import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {toast} from '@/components/ui/toast'
 import {useCreateAttemptPR} from '@/hooks'
+import {describeApiError} from '@/api/http'
 
 export function CreatePrDialog({attemptId, baseBranch, defaultTitle, defaultBody, open, onOpenChange}: {
     attemptId: string;
@@ -24,7 +25,8 @@ export function CreatePrDialog({attemptId, baseBranch, defaultTitle, defaultBody
             setBody('')
         },
         onError: (err) => {
-            toast({title: 'PR failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'PR failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
 

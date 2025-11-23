@@ -7,6 +7,7 @@ import {githubKeys} from '@/lib/queryClient'
 import {toast} from '@/components/ui/toast'
 import {GitHubAccountDialog} from '@/components/github/GitHubAccountDialog'
 import {useGithubAuthStatus, useStartGithubDevice, usePollGithubDevice, useLogoutGithub} from '@/hooks'
+import {describeApiError} from '@/api/http'
 
 export function GitHubAccountBox() {
     const queryClient = useQueryClient()
@@ -17,12 +18,14 @@ export function GitHubAccountBox() {
     const [modalOpen, setModalOpen] = useState(false)
     const startMutation = useStartGithubDevice({
         onError: (err) => {
-            toast({title: 'GitHub device start failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'GitHub device start failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
     const pollMutation = usePollGithubDevice({
         onError: (err) => {
-            toast({title: 'GitHub device polling failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'GitHub device polling failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
     const logoutMutation = useLogoutGithub({
@@ -33,7 +36,8 @@ export function GitHubAccountBox() {
             setPolling(false)
         },
         onError: (err) => {
-            toast({title: 'GitHub disconnect failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'GitHub disconnect failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
 

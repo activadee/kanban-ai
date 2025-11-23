@@ -10,6 +10,7 @@ import {EditorSettingsSection} from './app-settings/EditorSettingsSection'
 import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
 import {GithubAppCredentialsFields} from '@/components/github/GithubAppCredentialsFields'
+import {describeApiError} from '@/api/http'
 
 type FormState = {
     theme: 'system' | 'light' | 'dark'
@@ -108,7 +109,8 @@ export function AppSettingsPage() {
             setForm(next)
         },
         onError: (err) => {
-            toast({title: 'Save failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'Save failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
 
@@ -126,7 +128,10 @@ export function AppSettingsPage() {
             setAppCredForm(next)
             toast({title: 'GitHub app saved', variant: 'success'})
         },
-        onError: (err) => toast({title: 'Save failed', description: err.message, variant: 'destructive'}),
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'Save failed')
+            toast({title, description, variant: 'destructive'})
+        },
     })
 
     const save = () => {

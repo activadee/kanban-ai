@@ -10,30 +10,16 @@ import type {
     TicketKeyPreview,
 } from 'shared'
 import {SERVER_URL} from '@/lib/env'
-
-async function parseJson<T>(response: Response): Promise<T> {
-    const text = await response.text()
-    let data: unknown = null
-    try {
-        data = text ? JSON.parse(text) : null
-    } catch {
-        // ignore JSON parse failure
-    }
-    if (!response.ok) {
-        const message = typeof data === 'object' && data && 'error' in data ? (data as { error?: string }).error : null
-        throw new Error(message || `Request failed with status ${response.status}`)
-    }
-    return data as T
-}
+import {parseApiResponse} from '@/api/http'
 
 export async function listProjects(): Promise<ProjectSummary[]> {
     const res = await fetch(`${SERVER_URL}/projects`)
-    return parseJson<ProjectSummary[]>(res)
+    return parseApiResponse<ProjectSummary[]>(res)
 }
 
 export async function getProject(projectId: string): Promise<ProjectSummary> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}`)
-    return parseJson<ProjectSummary>(res)
+    return parseApiResponse<ProjectSummary>(res)
 }
 
 export async function createProject(payload: CreateProjectRequest): Promise<ProjectSummary> {
@@ -42,7 +28,7 @@ export async function createProject(payload: CreateProjectRequest): Promise<Proj
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
     })
-    return parseJson<ProjectSummary>(res)
+    return parseApiResponse<ProjectSummary>(res)
 }
 
 export async function updateProjectName(projectId: string, update: UpdateProjectRequest): Promise<ProjectSummary> {
@@ -51,20 +37,17 @@ export async function updateProjectName(projectId: string, update: UpdateProject
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(update),
     })
-    return parseJson<ProjectSummary>(res)
+    return parseApiResponse<ProjectSummary>(res)
 }
 
 export async function deleteProjectById(projectId: string): Promise<void> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}`, {method: 'DELETE'})
-    if (!res.ok) {
-        const error = await res.text()
-        throw new Error(error || `Failed to delete project (${res.status})`)
-    }
+    await parseApiResponse(res)
 }
 
 export async function getProjectSettings(projectId: string): Promise<ProjectSettings> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/settings`)
-    const data = await parseJson<{ settings: ProjectSettings }>(res)
+    const data = await parseApiResponse<{ settings: ProjectSettings }>(res)
     return data.settings
 }
 
@@ -74,25 +57,25 @@ export async function updateProjectSettings(projectId: string, updates: Partial<
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(updates),
     })
-    const data = await parseJson<{ settings: ProjectSettings }>(res)
+    const data = await parseApiResponse<{ settings: ProjectSettings }>(res)
     return data.settings
 }
 
 export async function listProjectBranches(projectId: string): Promise<ProjectBranchInfo[]> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/git/branches`)
-    const data = await parseJson<{ branches: ProjectBranchInfo[] }>(res)
+    const data = await parseApiResponse<{ branches: ProjectBranchInfo[] }>(res)
     return data.branches
 }
 
 export async function getNextTicketKey(projectId: string): Promise<TicketKeyPreview> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/tickets/next-key`)
-    const data = await parseJson<{ preview: TicketKeyPreview }>(res)
+    const data = await parseApiResponse<{ preview: TicketKeyPreview }>(res)
     return data.preview
 }
 
 export async function getProjectGithubOrigin(projectId: string): Promise<GitOriginResponse> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/github/origin`)
-    return parseJson<GitOriginResponse>(res)
+    return parseApiResponse<GitOriginResponse>(res)
 }
 
 export async function importGithubIssues(boardId: string, payload: ImportIssuesRequest): Promise<ImportIssuesResponse> {
@@ -101,5 +84,5 @@ export async function importGithubIssues(boardId: string, payload: ImportIssuesR
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
     })
-    return parseJson<ImportIssuesResponse>(res)
+    return parseApiResponse<ImportIssuesResponse>(res)
 }

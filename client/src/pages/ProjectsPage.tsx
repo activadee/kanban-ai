@@ -9,6 +9,7 @@ import {useProjectsNav} from '@/contexts/useProjectsNav'
 import type {AppLayoutContext} from '@/components/layout/AppLayout'
 import {useCreateProject, useUpdateProjectName, useDeleteProject} from '@/hooks'
 import {projectsKeys} from '@/lib/queryClient'
+import {describeApiError} from '@/api/http'
 
 export function ProjectsPage() {
     const {projects: navProjects, loading: navLoading, error: navError, upsertProject, removeProject} = useProjectsNav()
@@ -30,8 +31,8 @@ export function ProjectsPage() {
             navigate(`/projects/${project.id}`)
         },
         onError: (err: unknown) => {
-            const message = err instanceof Error ? err.message : 'Unable to create project. Please try again.'
-            setError(message)
+            const {description} = describeApiError(err, 'Unable to create project. Please try again.')
+            setError(description ?? 'Unable to create project. Please try again.')
         },
     })
 
@@ -43,8 +44,8 @@ export function ProjectsPage() {
             setDialogOpen(false)
         },
         onError: (err: unknown) => {
-            const message = err instanceof Error ? err.message : 'Unable to update project. Please try again.'
-            setError(message)
+            const {description} = describeApiError(err, 'Unable to update project. Please try again.')
+            setError(description ?? 'Unable to update project. Please try again.')
         },
     })
 
@@ -53,7 +54,8 @@ export function ProjectsPage() {
             setDeleteError(null)
         },
         onError: (err: Error | unknown) => {
-            setDeleteError(err instanceof Error ? err.message : 'Unable to delete project. Please try again.')
+            const {description} = describeApiError(err, 'Unable to delete project. Please try again.')
+            setDeleteError(description ?? 'Unable to delete project. Please try again.')
         },
         onSuccess: async (_data, projectId) => {
             await queryClient.invalidateQueries({queryKey: projectsKeys.detail(projectId)})

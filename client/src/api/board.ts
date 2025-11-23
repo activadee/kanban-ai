@@ -1,17 +1,8 @@
 import {SERVER_URL} from '@/lib/env'
 import type {BoardState, Card, Column, ColumnId} from 'shared'
+import {parseApiResponse} from '@/api/http'
 
 const jsonHeaders = {'Content-Type': 'application/json'}
-
-async function handle<T>(res: Response): Promise<T> {
-    if (!res.ok) {
-        const text = await res.text()
-        const error = new Error(text || `Request failed (${res.status})`)
-        ;(error as any).status = res.status
-        throw error
-    }
-    return (await res.json()) as T
-}
 
 export type MoveCardResponse = {
     card: Card;
@@ -20,7 +11,7 @@ export type MoveCardResponse = {
 
 export async function fetchBoardState(boardId: string): Promise<BoardState> {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}`)
-    const data = await handle<{ state: BoardState }>(res)
+    const data = await parseApiResponse<{ state: BoardState }>(res)
     return data.state
 }
 
@@ -39,7 +30,7 @@ export async function createCard(
             dependsOn: values.dependsOn ?? []
         }),
     })
-    return handle(res)
+    return parseApiResponse(res)
 }
 
 export async function updateCard(
@@ -56,17 +47,14 @@ export async function updateCard(
             dependsOn: values.dependsOn,
         }),
     })
-    return handle(res)
+    return parseApiResponse(res)
 }
 
 export async function deleteCard(boardId: string, cardId: string) {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}`, {
         method: 'DELETE',
     })
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Failed to delete card (${res.status})`)
-    }
+    await parseApiResponse(res)
 }
 
 export async function moveCard(boardId: string, cardId: string, toColumnId: string, toIndex: number) {
@@ -75,5 +63,5 @@ export async function moveCard(boardId: string, cardId: string, toColumnId: stri
         headers: jsonHeaders,
         body: JSON.stringify({columnId: toColumnId, index: toIndex}),
     })
-    return handle<MoveCardResponse>(res)
+    return parseApiResponse<MoveCardResponse>(res)
 }

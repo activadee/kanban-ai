@@ -6,6 +6,7 @@ import type {AppEnv} from '../env'
 import {projectsRepo, projectDeps, attempts, git, type FileSource, githubRepo, settingsService, tasks} from 'core'
 import {openEditorAtPath} from '../editor/service'
 import {createPR, findOpenPR} from '../github/pr'
+import {problemJson} from '../http/problem'
 
 const {
     getFileContentAtPath,
@@ -35,25 +36,25 @@ export const createAttemptsRouter = () => {
     router.post('/boards/:boardId/cards/:cardId/attempts', async (c) => {
         c.header('Deprecation', 'true')
         c.header('Link', '</api/v1/projects/{projectId}/cards/{cardId}/attempts>; rel="successor-version"')
-        return c.json({error: 'Moved to /projects/:projectId/cards/:cardId/attempts'}, 410)
+        return problemJson(c, {status: 410, detail: 'Moved to /projects/:projectId/cards/:cardId/attempts'})
     })
 
     router.get('/:id', async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
         return c.json(attempt)
     })
 
     router.patch('/:id', zValidator('json', stopSchema), async (c) => {
         const {status} = c.req.valid('json')
-        if (status !== 'stopped') return c.json({error: 'Only status=stopped is supported'}, 400)
+        if (status !== 'stopped') return problemJson(c, {status: 400, detail: 'Only status=stopped is supported'})
 
         const events = c.get('events')
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
 
         const ok = await attempts.stopAttempt(c.req.param('id'), {events})
-        if (!ok) return c.json({error: 'Not running'}, 409)
+        if (!ok) return problemJson(c, {status: 409, detail: 'Attempt is not running'})
         const updated = await attempts.getAttempt(c.req.param('id'))
         return c.json({attempt: updated ?? null, status: updated?.status ?? 'stopped'})
     })
@@ -63,7 +64,7 @@ export const createAttemptsRouter = () => {
         c.header('Deprecation', 'true')
         const id = c.req.param('id')
         c.header('Link', `</api/v1/attempts/${id}>; rel="successor-version"`)
-        return c.json({error: 'Use PATCH /attempts/:id with status=stopped'}, 410)
+        return problemJson(c, {status: 410, detail: 'Use PATCH /attempts/:id with status=stopped'})
     })
 
     router.get('/:id/logs', async (c) => {
@@ -77,9 +78,9 @@ export const createAttemptsRouter = () => {
         editorKey: z.string().optional(),
     })), async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
         const body = c.req.valid('json')
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
+        if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
         const path = body?.subpath ? `${attempt.worktreePath}/${body.subpath}` : attempt.worktreePath
         const events = c.get('events')
         const settings = settingsService.snapshot()
@@ -124,15 +125,15 @@ export const createAttemptsRouter = () => {
                 error: error instanceof Error ? error.message : String(error),
             })
             console.error('[attempts:open-editor] failed', error)
-            return c.json({error: 'Failed to open editor'}, 500)
+            return problemJson(c, {status: 500, detail: 'Failed to open editor'})
         }
     })
 
     // Git endpoints per attempt (use worktree path)
     router.get('/:id/git/status', async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
+        if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
         try {
             const {projects} = c.get('services')
             const settings = await projects.ensureSettings(attempt.boardId)
@@ -142,16 +143,16 @@ export const createAttemptsRouter = () => {
             return c.json(status, 200)
         } catch (error) {
             console.error('[attempts:git:status] failed', error)
-            return c.json({error: 'Failed to get git status'}, 500)
+            return problemJson(c, {status: 502, detail: 'Failed to get git status'})
         }
     })
 
     router.get('/:id/git/file', async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
+        if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
         const path = c.req.query('path') || ''
-        if (!path) return c.json({error: 'Missing path'}, 400)
+        if (!path) return problemJson(c, {status: 400, detail: 'Missing path'})
         const source = (c.req.query('source') || 'worktree') as FileSource
         try {
             let ref: string | undefined = undefined
@@ -165,7 +166,7 @@ export const createAttemptsRouter = () => {
             return c.json({content}, 200)
         } catch (error) {
             console.error('[attempts:git:file] failed', error)
-            return c.json({error: 'Failed to fetch file content'}, 500)
+            return problemJson(c, {status: 502, detail: 'Failed to fetch file content'})
         }
     })
 
@@ -173,17 +174,17 @@ export const createAttemptsRouter = () => {
         const {prompt, profileId} = c.req.valid('json')
         try {
             const attempt = await attempts.getAttempt(c.req.param('id'))
-            if (!attempt) return c.json({error: 'Not found'}, 404)
+            if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
             const {getCardById, getColumnById} = projectsRepo
             const card = await getCardById(attempt.cardId)
             if (card) {
                 const column = await getColumnById(card.columnId)
                 const title = (column?.title || '').trim().toLowerCase()
-                if (title === 'done') return c.json({error: 'Task is done and locked'}, 409)
+                if (title === 'done') return problemJson(c, {status: 409, detail: 'Task is done and locked'})
             }
             try {
                 const {blocked} = await projectDeps.isCardBlocked(attempt.cardId)
-                if (blocked) return c.json({error: 'Task is blocked by dependencies'}, 409)
+                if (blocked) return problemJson(c, {status: 409, detail: 'Task is blocked by dependencies'})
             } catch {
             }
 
@@ -191,7 +192,10 @@ export const createAttemptsRouter = () => {
             await attempts.followupAttempt(c.req.param('id'), prompt, profileId, {events})
             return c.json({ok: true}, 201)
         } catch (err) {
-            return c.json({error: err instanceof Error ? err.message : 'Follow-up failed'}, 400)
+            return problemJson(c, {
+                status: 422,
+                detail: err instanceof Error ? err.message : 'Follow-up failed'
+            })
         }
     })
 
@@ -199,7 +203,7 @@ export const createAttemptsRouter = () => {
     router.post('/:id/followup', async (c) => {
         c.header('Deprecation', 'true')
         c.header('Link', '</api/v1/attempts/{id}/messages>; rel="successor-version"')
-        return c.json({error: 'Use POST /attempts/:id/messages'}, 410)
+        return problemJson(c, {status: 410, detail: 'Use POST /attempts/:id/messages'})
     })
 
     // ---- Attempt-scoped Git write operations ----
@@ -209,8 +213,8 @@ export const createAttemptsRouter = () => {
     })), async (c) => {
         const {subject, body} = c.req.valid('json')
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
+        if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
         try {
             const shortSha = await commitAtPath(attempt.worktreePath, subject, body, {
                 projectId: attempt.boardId,
@@ -219,15 +223,15 @@ export const createAttemptsRouter = () => {
             return c.json({shortSha}, 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Commit failed'
-            return c.json({error: message}, 400)
+            return problemJson(c, {status: 422, detail: message})
         }
     })
 
     router.post('/:id/git/push', zValidator('json', z.object({setUpstream: z.boolean().optional()})), async (c) => {
         const {setUpstream} = c.req.valid('json')
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
+        if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
         const {projects} = c.get('services')
         const settings = await projects.ensureSettings(attempt.boardId)
         const remote = settings.preferredRemote?.trim() || 'origin'
@@ -241,7 +245,8 @@ export const createAttemptsRouter = () => {
             return c.json({remote, branch: attempt.branchName}, 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Push failed'
-            return c.json({error: message}, 400)
+            const status: ContentfulStatusCode = message.toLowerCase().includes('auth') || message.toLowerCase().includes('permission') ? 401 : 502
+            return problemJson(c, {status, detail: message})
         }
     })
 
@@ -253,15 +258,15 @@ export const createAttemptsRouter = () => {
     })), async (c) => {
         const {base, title, body, draft} = c.req.valid('json')
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
-        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
+        if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
         const auth = await getGithubConnection().catch(() => null)
-        if (!auth) return c.json({error: 'auth_required'}, 401)
+        if (!auth) return problemJson(c, {status: 401, title: 'GitHub authentication required', detail: 'Connect GitHub before creating pull requests'})
         try {
             const {projects} = c.get('services')
             const settings = await projects.ensureSettings(attempt.boardId)
             const head = attempt.branchName?.trim()
-            if (!head) return c.json({error: 'Branch name missing'}, 409)
+            if (!head) return problemJson(c, {status: 409, detail: 'Branch name missing'})
             const baseBranch = (base || settings.baseBranch || 'main').trim()
             const remote = settings.preferredRemote?.trim() || 'origin'
             // Reuse open PR if exists
@@ -289,14 +294,15 @@ export const createAttemptsRouter = () => {
             return c.json({pr}, 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'PR failed'
-            return c.json({error: message}, 400)
+            const status: ContentfulStatusCode = message.toLowerCase().includes('auth') ? 401 : 502
+            return problemJson(c, {status, detail: message})
         }
     })
 
     // Merge attempt branch into base branch (no push)
     router.post('/:id/git/merge', async (c) => {
         const attempt = await attempts.getAttempt(c.req.param('id'))
-        if (!attempt) return c.json({error: 'Not found'}, 404)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
         const {projects} = c.get('services')
         const settings = await projects.ensureSettings(attempt.boardId)
         const remote = settings.preferredRemote?.trim() || 'origin'
@@ -329,7 +335,8 @@ export const createAttemptsRouter = () => {
             return c.json({ok: true, base: baseBranch}, 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Merge failed'
-            return c.json({error: message}, 400)
+            const status: ContentfulStatusCode = message.toLowerCase().includes('conflict') ? 409 : 502
+            return problemJson(c, {status, detail: message})
         }
     })
 
@@ -347,7 +354,7 @@ export const createAttemptsRouter = () => {
             if (status >= 500) {
                 console.error('[attempts:automation:dev] failed', error)
             }
-            return c.json({error: message}, {status})
+            return problemJson(c, {status, detail: message})
         }
     })
 

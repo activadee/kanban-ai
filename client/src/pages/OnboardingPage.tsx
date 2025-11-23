@@ -7,6 +7,7 @@ import {Button} from '@/components/ui/button'
 import {Badge} from '@/components/ui/badge'
 import {Separator} from '@/components/ui/separator'
 import {toast} from '@/components/ui/toast'
+import {describeApiError} from '@/api/http'
 import {GeneralSettingsSection} from './app-settings/GeneralSettingsSection'
 import {EditorSettingsSection} from './app-settings/EditorSettingsSection'
 import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
@@ -100,7 +101,10 @@ export function OnboardingPage() {
         onSuccess: () => {
             navigate('/', {replace: true})
         },
-        onError: (err) => toast({title: 'Could not complete onboarding', description: err.message, variant: 'destructive'}),
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'Could not complete onboarding')
+            toast({title, description, variant: 'destructive'})
+        },
     })
     const settingsQuery = useAppSettings()
     const editorsQuery = useEditors()
@@ -111,7 +115,10 @@ export function OnboardingPage() {
             setSettingsForm(next)
             toast({title: 'Settings saved', variant: 'success'})
         },
-        onError: (err) => toast({title: 'Save failed', description: err.message, variant: 'destructive'}),
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'Save failed')
+            toast({title, description, variant: 'destructive'})
+        },
     })
     const githubAppQuery = useGithubAppConfig()
     const saveGithubApp = useSaveGithubAppConfig({
@@ -129,14 +136,23 @@ export function OnboardingPage() {
             toast({title: 'GitHub app saved', variant: 'success'})
             queryClient.invalidateQueries({queryKey: githubKeys.check()})
         },
-        onError: (err) => toast({title: 'Save failed', description: err.message, variant: 'destructive'}),
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'Save failed')
+            toast({title, description, variant: 'destructive'})
+        },
     })
     const githubAuthQuery = useGithubAuthStatus()
     const startDevice = useStartGithubDevice({
-        onError: (err) => toast({title: 'GitHub device start failed', description: err.message, variant: 'destructive'}),
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'GitHub device start failed')
+            toast({title, description, variant: 'destructive'})
+        },
     })
     const pollDevice = usePollGithubDevice({
-        onError: (err) => toast({title: 'GitHub device polling failed', description: err.message, variant: 'destructive'}),
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'GitHub device polling failed')
+            toast({title, description, variant: 'destructive'})
+        },
     })
 
     // Local state

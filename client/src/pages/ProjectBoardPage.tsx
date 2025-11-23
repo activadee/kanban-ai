@@ -20,6 +20,7 @@ import { boardKeys } from "@/hooks/board";
 import { useKanbanWS } from "@/lib/ws";
 import { toast } from "@/components/ui/toast.tsx";
 import { eventBus } from "@/lib/events.ts";
+import { describeApiError } from "@/api/http";
 
 export function ProjectBoardPage() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -198,8 +199,13 @@ export function ProjectBoardPage() {
                                 });
                             } catch (err) {
                                 console.error("Create card failed", err);
+                                const problem = describeApiError(
+                                    err,
+                                    "Failed to create card",
+                                );
                                 toast({
-                                    title: "Failed to create card",
+                                    title: problem.title,
+                                    description: problem.description,
                                     variant: "destructive",
                                 });
                             }
@@ -225,8 +231,13 @@ export function ProjectBoardPage() {
                                 });
                             } catch (err) {
                                 console.error("Update card failed", err);
+                                const problem = describeApiError(
+                                    err,
+                                    "Failed to update card",
+                                );
                                 toast({
-                                    title: "Failed to update card",
+                                    title: problem.title,
+                                    description: problem.description,
                                     variant: "destructive",
                                 });
                             }
@@ -239,8 +250,13 @@ export function ProjectBoardPage() {
                                 });
                             } catch (err) {
                                 console.error("Delete card failed", err);
+                                const problem = describeApiError(
+                                    err,
+                                    "Failed to delete card",
+                                );
                                 toast({
-                                    title: "Failed to delete card",
+                                    title: problem.title,
+                                    description: problem.description,
                                     variant: "destructive",
                                 });
                             }
@@ -255,22 +271,22 @@ export function ProjectBoardPage() {
                                 });
                             } catch (err) {
                                 console.error("Move card failed", err);
-                                const status =
-                                    typeof err === "object" &&
-                                    err &&
-                                    "status" in err
-                                        ? (err as { status?: number }).status
-                                        : undefined;
+                                const { description, status } = describeApiError(
+                                    err,
+                                    "Failed to move card",
+                                );
                                 if (status === 409) {
                                     toast({
                                         title: "Task is blocked by dependencies",
                                         description:
+                                            description ||
                                             "Complete required dependencies before moving this card to In Progress.",
                                         variant: "destructive",
                                     });
                                 } else {
                                     toast({
                                         title: "Failed to move card",
+                                        description,
                                         variant: "destructive",
                                     });
                                 }

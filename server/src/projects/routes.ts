@@ -14,6 +14,7 @@ import {agentProfiles, agentProfilesGlobal} from "core";
 import {getAgent} from "../agents/registry";
 import {importGithubIssues} from "../github/import";
 import {listProjectBranches} from "./settings/git";
+import {problemJson} from "../http/problem";
 // ticket preview uses core implementation
 const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
 const {
@@ -122,7 +123,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
 
     const loadContext = async (c: any): Promise<BoardContext | Response> => {
         const ctx = await resolveBoard(c);
-        if (!ctx) return c.json({error: "Board not found"}, 404);
+        if (!ctx) return problemJson(c, {status: 404, detail: "Board not found"});
         return ctx;
     };
 
@@ -134,7 +135,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             return c.json({state}, 200);
         } catch (error) {
             console.error('[board:state] failed', error);
-            return c.json({error: 'Failed to fetch board state'}, 500);
+            return problemJson(c, {status: 502, detail: 'Failed to fetch board state'});
         }
     });
 
@@ -149,7 +150,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             const body = c.req.valid("json");
             const column = await getColumnById(body.columnId);
             if (!column || column.boardId !== boardId) {
-                return c.json({error: "Column not found"}, 404);
+                return problemJson(c, {status: 404, detail: "Column not found"});
             }
 
             try {
@@ -162,7 +163,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 return c.json({state}, 201);
             } catch (error) {
                 console.error('[board:cards:create] failed', error);
-                return c.json({error: 'Failed to create card'}, 500);
+                return problemJson(c, {status: 502, detail: 'Failed to create card'});
             }
         },
     );
@@ -177,14 +178,14 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             const cardId = c.req.param("cardId");
 
             const card = await getCardById(cardId);
-            if (!card) return c.json({error: "Card not found"}, 404);
+            if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
             let cardBoardId = card.boardId ?? null;
             if (!cardBoardId) {
                 const column = await getColumnById(card.columnId);
                 cardBoardId = column?.boardId ?? null;
             }
             if (cardBoardId !== boardId) {
-                return c.json({error: "Card does not belong to this board"}, 400);
+                return problemJson(c, {status: 400, detail: "Card does not belong to this board"});
             }
 
             const body = c.req.valid("json");
@@ -196,14 +197,14 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             if (wantsMove) {
                 const targetColumn = await getColumnById(body.columnId!);
                 if (!targetColumn || targetColumn.boardId !== boardId) {
-                    return c.json({error: "Target column not found"}, 404);
+                    return problemJson(c, {status: 404, detail: "Target column not found"});
                 }
 
                 // Prevent moving blocked cards into In Progress
                 if ((targetColumn.title || '').trim().toLowerCase() === 'in progress') {
                     const {blocked} = await projectDeps.isCardBlocked(cardId);
                     if (blocked) {
-                        return c.json({error: 'Task is blocked by dependencies'}, 409);
+                        return problemJson(c, {status: 409, detail: 'Task is blocked by dependencies'});
                     }
                 }
             }
@@ -232,7 +233,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                     };
 
                     const updatedCard = await getCardById(cardId);
-                    if (!updatedCard) return c.json({error: "Card not found"}, 404);
+                    if (!updatedCard) return problemJson(c, {status: 404, detail: "Card not found"});
 
                     let deps: string[] = [];
                     try {
@@ -283,8 +284,8 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             } catch (error) {
                 const msg = error instanceof Error ? error.message : 'Failed to update card';
                 console.error('[board:cards:update] failed', error);
-                const status = msg === 'dependency_board_mismatch' || msg === 'dependency_cycle' ? 400 : 500;
-                return c.json({error: msg}, status);
+                const status = msg === 'dependency_board_mismatch' || msg === 'dependency_cycle' ? 400 : 502;
+                return problemJson(c, {status, detail: msg});
             }
         },
     );
@@ -296,23 +297,23 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
         const cardId = c.req.param("cardId");
 
         const card = await getCardById(cardId);
-        if (!card) return c.json({error: "Card not found"}, 404);
+        if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
         let cardBoardId = card.boardId ?? null;
         if (!cardBoardId) {
             const column = await getColumnById(card.columnId);
             cardBoardId = column?.boardId ?? null;
         }
         if (cardBoardId !== boardId) {
-            return c.json({error: "Card does not belong to this board"}, 400);
+            return problemJson(c, {status: 400, detail: "Card does not belong to this board"});
         }
 
         try {
             await deleteBoardCard(cardId);
-            const state = await fetchBoardState(boardId);
-            return c.json({state}, 200);
+            await broadcastBoard(boardId);
+            return c.body(null, 204);
         } catch (error) {
             console.error('[board:cards:delete] failed', error);
-            return c.json({error: 'Failed to delete card'}, 500);
+            return problemJson(c, {status: 502, detail: 'Failed to delete card'});
         }
     });
 
@@ -322,17 +323,14 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
         const {boardId} = ctx;
         try {
             const data = await attempts.getLatestAttemptForCard(boardId, c.req.param("cardId"));
-            if (!data) return c.json({error: "Not found"}, 404);
+            if (!data) return problemJson(c, {status: 404, detail: "Attempt not found"});
             return c.json(data, 200);
         } catch (error) {
             console.error("[attempts:attempt] failed", error);
-            return c.json(
-                {
-                    error:
-                        error instanceof Error ? error.message : "Failed to fetch attempt",
-                },
-                500
-            );
+            return problemJson(c, {
+                status: 502,
+                detail: error instanceof Error ? error.message : "Failed to fetch attempt",
+            });
         }
     });
 
@@ -348,14 +346,14 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             try {
                 // Disallow starting attempts for tasks already in Done/blocked
                 const card = await getCardById(c.req.param("cardId"));
-                if (!card) return c.json({error: "Card not found"}, 404);
+                if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
                 const column = await getColumnById(card.columnId);
                 const colTitle = (column?.title || "").trim().toLowerCase();
                 if (colTitle === "done")
-                    return c.json({error: "Task is done and locked"}, 409);
+                    return problemJson(c, {status: 409, detail: "Task is done and locked"});
                 try {
                     const {blocked} = await projectDeps.isCardBlocked(card.id);
-                    if (blocked) return c.json({error: "Task is blocked by dependencies"}, 409);
+                    if (blocked) return problemJson(c, {status: 409, detail: "Task is blocked by dependencies"});
                 } catch {}
 
                 const events = c.get("events");
@@ -378,15 +376,13 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 return c.json(attempt, 201);
             } catch (error) {
                 console.error("[attempts:start] failed", error);
-                return c.json(
-                    {
-                        error:
-                            error instanceof Error
-                                ? error.message
-                                : "Failed to start attempt",
-                    },
-                    500
-                );
+                return problemJson(c, {
+                    status: 502,
+                    detail:
+                        error instanceof Error
+                            ? error.message
+                            : "Failed to start attempt",
+                });
             }
         }
     );
@@ -418,13 +414,9 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 return c.json(result, 200);
             } catch (error) {
                 console.error("[board:import:github] failed", error);
-                return c.json(
-                    {
-                        error:
-                            error instanceof Error ? error.message : "GitHub import failed",
-                    },
-                    500
-                );
+                const detail = error instanceof Error ? error.message : "GitHub import failed";
+                const status = detail.toLowerCase().includes('github') ? 502 : 500;
+                return problemJson(c, {status, detail});
             }
         }
     );
@@ -437,7 +429,7 @@ export const createProjectsRouter = () => {
 
     const loadProjectBoard = async (c: any): Promise<BoardContext | Response> => {
         const ctx = await resolveBoardForProject(c);
-        if (!ctx) return c.json({error: "Project not found"}, 404);
+        if (!ctx) return problemJson(c, {status: 404, detail: "Project not found"});
         return ctx;
     };
 
@@ -466,7 +458,7 @@ export const createProjectsRouter = () => {
     router.get("/:projectId", async (c) => {
         const {projects} = c.get("services");
         const project = await projects.get(c.req.param("projectId"));
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         return c.json(project, 200);
     });
 
@@ -476,13 +468,14 @@ export const createProjectsRouter = () => {
         const {boardId} = ctx;
         try {
             const data = await attempts.getLatestAttemptForCard(boardId, c.req.param("cardId"));
-            if (!data) return c.json({error: "Not found"}, 404);
+            if (!data) return problemJson(c, {status: 404, detail: "Attempt not found"});
             return c.json(data, 200);
         } catch (error) {
             console.error("[attempts:attempt] failed", error);
-            return c.json({
-                error: error instanceof Error ? error.message : "Failed to fetch attempt",
-            }, 500);
+            return problemJson(c, {
+                status: 502,
+                detail: error instanceof Error ? error.message : "Failed to fetch attempt",
+            });
         }
     });
 
@@ -496,15 +489,15 @@ export const createProjectsRouter = () => {
             const body = c.req.valid("json");
             try {
                 const card = await getCardById(c.req.param("cardId"));
-                if (!card) return c.json({error: "Card not found"}, 404);
+                if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
                 if (card.boardId && card.boardId !== boardId)
-                    return c.json({error: "Card does not belong to this project"}, 400);
+                    return problemJson(c, {status: 400, detail: "Card does not belong to this project"});
                 const column = await getColumnById(card.columnId);
                 const colTitle = (column?.title || "").trim().toLowerCase();
-                if (colTitle === "done") return c.json({error: "Task is done and locked"}, 409);
+                if (colTitle === "done") return problemJson(c, {status: 409, detail: "Task is done and locked"});
                 try {
                     const {blocked} = await projectDeps.isCardBlocked(card.id);
-                    if (blocked) return c.json({error: "Task is blocked by dependencies"}, 409);
+                    if (blocked) return problemJson(c, {status: 409, detail: "Task is blocked by dependencies"});
                 } catch {}
 
                 const events = c.get("events");
@@ -522,9 +515,10 @@ export const createProjectsRouter = () => {
                 return c.json(attempt, 201);
             } catch (error) {
                 console.error("[attempts:start:project] failed", error);
-                return c.json({
-                    error: error instanceof Error ? error.message : "Failed to start attempt",
-                }, 500);
+                return problemJson(c, {
+                    status: 502,
+                    detail: error instanceof Error ? error.message : "Failed to start attempt",
+                });
             }
         },
     );
@@ -535,7 +529,7 @@ export const createProjectsRouter = () => {
         const {projects} = c.get("services");
         const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         const settings = await projects.ensureSettings(projectId);
         return c.json({settings}, 200);
     });
@@ -544,7 +538,7 @@ export const createProjectsRouter = () => {
         const {projects} = c.get("services");
         const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         const preview = await projectTickets.previewNextTicketKey(projectId);
         return c.json({preview}, 200);
     });
@@ -556,7 +550,7 @@ export const createProjectsRouter = () => {
             const {projects} = c.get("services");
             const projectId = c.req.param("projectId");
             const project = await projects.get(projectId);
-            if (!project) return c.json({error: "Project not found"}, 404);
+            if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
 
             const body = c.req.valid("json");
             let {defaultAgent, defaultProfileId} = body as {
@@ -571,7 +565,7 @@ export const createProjectsRouter = () => {
 
             if (agentKey) {
                 const agent = getAgent(agentKey);
-                if (!agent) return c.json({error: "Unknown agent"}, 400);
+                if (!agent) return problemJson(c, {status: 400, detail: "Unknown agent"});
             }
 
             if (defaultProfileId !== undefined) {
@@ -581,11 +575,11 @@ export const createProjectsRouter = () => {
                         : defaultProfileId;
                 if (profileId) {
                     const profile = await agentProfilesGlobal.getGlobalAgentProfile(profileId);
-                    if (!profile) return c.json({error: "Profile not found"}, 400);
+                    if (!profile) return problemJson(c, {status: 400, detail: "Profile not found"});
                     if (agentKey && profile.agent !== agentKey) {
-                        return c.json(
-                            {error: "Profile does not match selected agent"},
-                            400
+                        return problemJson(
+                            c,
+                            {status: 400, detail: "Profile does not match selected agent"},
                         );
                     }
                     if (!agentKey) {
@@ -647,7 +641,7 @@ export const createProjectsRouter = () => {
                 return c.json({settings}, 200);
             } catch (error) {
                 console.error("[projects:settings:update] failed", error);
-                return c.json({error: "Failed to update project settings"}, 500);
+                return problemJson(c, {status: 502, detail: "Failed to update project settings"});
             }
         }
     );
@@ -656,13 +650,13 @@ export const createProjectsRouter = () => {
         const {projects} = c.get("services");
         const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         try {
             const branches = await listProjectBranches(projectId);
             return c.json({branches}, 200);
         } catch (error) {
             console.error("[projects:branches] failed", error);
-            return c.json({error: "Failed to list branches"}, 500);
+            return problemJson(c, {status: 502, detail: "Failed to list branches"});
         }
     });
 
@@ -671,7 +665,7 @@ export const createProjectsRouter = () => {
         const events = c.get("events");
         const body = c.req.valid("json");
         const project = await projects.update(c.req.param("projectId"), body);
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         events.publish("project.updated", {
             projectId: project.id,
             changes: body,
@@ -685,9 +679,9 @@ export const createProjectsRouter = () => {
         const events = c.get("events");
         const projectId = c.req.param("projectId");
         const project = await projects.get(projectId);
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         const removed = await projects.remove(projectId);
-        if (!removed) return c.json({error: "Project not found"}, 404);
+        if (!removed) return problemJson(c, {status: 404, detail: "Project not found"});
         events.publish("project.deleted", {projectId, projectName: project.name});
         return c.body(null, 204);
     });
@@ -696,7 +690,7 @@ export const createProjectsRouter = () => {
     router.get("/:projectId/github/origin", async (c) => {
         const {projects} = c.get("services");
         const project = await projects.get(c.req.param("projectId"));
-        if (!project) return c.json({error: "Project not found"}, 404);
+        if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         const originUrl = await getGitOriginUrl(project.repositoryPath);
         const parsed = originUrl ? parseGithubOwnerRepo(originUrl) : null;
         return c.json(
@@ -716,7 +710,7 @@ export const createProjectsRouter = () => {
             return c.json({profiles: rows}, 200);
         } catch (error) {
             console.error("[agents:profiles:list] failed", error);
-            return c.json({error: "Failed to list profiles"}, 500);
+            return problemJson(c, {status: 502, detail: "Failed to list profiles"});
         }
     });
 
@@ -731,12 +725,12 @@ export const createProjectsRouter = () => {
             try {
                 const events = c.get("events");
                 const agent = getAgent(agentKey);
-                if (!agent) return c.json({error: "Unknown agent"}, 400);
+                if (!agent) return problemJson(c, {status: 400, detail: "Unknown agent"});
                 const parsed = agent.profileSchema.safeParse(config);
                 if (!parsed.success)
-                    return c.json(
-                        {error: "Invalid profile", details: parsed.error.flatten()},
-                        400
+                    return problemJson(
+                        c,
+                        {status: 400, title: "Invalid profile", detail: parsed.error.message, errors: parsed.error.flatten()},
                     );
                 const row = await agentProfiles.createAgentProfile(
                     c.req.param("projectId"),
@@ -753,7 +747,7 @@ export const createProjectsRouter = () => {
                 return c.json(row, 201);
             } catch (error) {
                 console.error("[agents:profiles:create] failed", error);
-                return c.json({error: "Failed to create profile"}, 500);
+                return problemJson(c, {status: 502, detail: "Failed to create profile"});
             }
         }
     );
@@ -761,11 +755,11 @@ export const createProjectsRouter = () => {
     router.get("/:projectId/agents/profiles/:pid", async (c) => {
         try {
             const row = await agentProfiles.getAgentProfile(c.req.param("projectId"), c.req.param("pid"));
-            if (!row) return c.json({error: "Not found"}, 404);
+            if (!row) return problemJson(c, {status: 404, detail: "Profile not found"});
             return c.json(row, 200);
         } catch (error) {
             console.error("[agents:profiles:get] failed", error);
-            return c.json({error: "Failed to fetch profile"}, 500);
+            return problemJson(c, {status: 502, detail: "Failed to fetch profile"});
         }
     });
 
@@ -789,15 +783,15 @@ export const createProjectsRouter = () => {
                         c.req.param("projectId"),
                         c.req.param("pid")
                     );
-                    if (!existing) return c.json({error: "Not found"}, 404);
+                    if (!existing) return problemJson(c, {status: 404, detail: "Profile not found"});
                     const agentKey = patch.agent ?? existing.agent;
                     const agent = getAgent(agentKey);
-                    if (!agent) return c.json({error: "Unknown agent"}, 400);
+                    if (!agent) return problemJson(c, {status: 400, detail: "Unknown agent"});
                     const parsed = agent.profileSchema.safeParse(cfg);
                     if (!parsed.success)
-                        return c.json(
-                            {error: "Invalid profile", details: parsed.error.flatten()},
-                            400
+                        return problemJson(
+                            c,
+                            {status: 400, title: "Invalid profile", detail: parsed.error.message, errors: parsed.error.flatten()},
                         );
                     cfg = parsed.data;
                 }
@@ -806,7 +800,7 @@ export const createProjectsRouter = () => {
                     c.req.param("pid"),
                     {name: patch.name, config: cfg}
                 );
-                if (!row) return c.json({error: "Not found"}, 404);
+                if (!row) return problemJson(c, {status: 404, detail: "Profile not found"});
                 events.publish("agent.profile.changed", {
                     profileId: row.id,
                     agent: row.agent,
@@ -816,7 +810,7 @@ export const createProjectsRouter = () => {
                 return c.json(row, 200);
             } catch (error) {
                 console.error("[agents:profiles:update] failed", error);
-                return c.json({error: "Failed to update profile"}, 500);
+                return problemJson(c, {status: 502, detail: "Failed to update profile"});
             }
         }
     );
@@ -825,7 +819,7 @@ export const createProjectsRouter = () => {
         try {
             const events = c.get("events");
             const existing = await agentProfiles.getAgentProfile(c.req.param("projectId"), c.req.param("pid"));
-            if (!existing) return c.json({error: "Not found"}, 404);
+            if (!existing) return problemJson(c, {status: 404, detail: "Profile not found"});
             await agentProfiles.deleteAgentProfile(c.req.param("projectId"), c.req.param("pid"));
             events.publish("agent.profile.changed", {
                 profileId: existing.id,
@@ -836,7 +830,7 @@ export const createProjectsRouter = () => {
             return c.body(null, 204);
         } catch (error) {
             console.error("[agents:profiles:delete] failed", error);
-            return c.json({error: "Failed to delete profile"}, 500);
+            return problemJson(c, {status: 502, detail: "Failed to delete profile"});
         }
     });
 

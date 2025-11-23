@@ -33,6 +33,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/c
 import {toast} from '@/components/ui/toast'
 import {formatRelativeTime} from '@/lib/time'
 import {useAttemptEventStream} from '@/hooks/useAttemptEventStream'
+import {describeApiError} from '@/api/http'
 import {InspectorHeader} from './card-inspector/InspectorHeader'
 import {CardDetailsForm} from './card-inspector/CardDetailsForm'
 import {AttemptCreateForm} from './card-inspector/AttemptCreateForm'
@@ -120,7 +121,8 @@ export function CardInspector({
             await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
         },
         onError: (err) => {
-            toast({title: 'Follow-up failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'Follow-up failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
     const devAutomationMutation = useRunDevAutomation({
@@ -131,7 +133,8 @@ export function CardInspector({
             toast({title: 'Dev script completed', description: 'Check the automation log for output.'})
         },
         onError: (err) => {
-            toast({title: 'Dev script failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'Dev script failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
     const [stopping, setStopping] = useState(false)
@@ -477,8 +480,8 @@ export function CardInspector({
             const title = defaultEditor ? `Opening in ${defaultEditor.label}` : 'Opening editor'
             toast({title, description: `${res.command.cmd} ${res.command.args.join(' ')}`})
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Open failed'
-            toast({title: 'Open failed', description: message, variant: 'destructive'})
+            const {description, title} = describeApiError(err, 'Open failed')
+            toast({title, description, variant: 'destructive'})
         }
     }
 

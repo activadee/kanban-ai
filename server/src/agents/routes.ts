@@ -4,6 +4,7 @@ import {getAgent, listAgents} from './registry'
 import {buildAgentProfileSchema} from './schema'
 import {agentProfilesGlobal} from 'core'
 import {z} from 'zod'
+import {problemJson} from '../http/problem'
 
 export function createAgentsRouter() {
     const router = new Hono<AppEnv>()
@@ -17,13 +18,13 @@ export function createAgentsRouter() {
     router.get('/:agentKey/schema', async (c) => {
         const key = c.req.param('agentKey')
         const agent = getAgent(key)
-        if (!agent) return c.json({error: 'Unknown agent'}, 404)
+        if (!agent) return problemJson(c, {status: 404, detail: 'Unknown agent'})
         try {
             const schema = buildAgentProfileSchema(agent)
             return c.json(schema)
         } catch (err) {
             console.error('[agents:schema] failed', err)
-            return c.json({error: 'Failed to build profile schema'}, 500)
+            return problemJson(c, {status: 500, detail: 'Failed to build profile schema'})
         }
     })
 
@@ -36,13 +37,13 @@ export function createAgentsRouter() {
         try {
             const body = await c.req.json()
             const parsed = z.object({agent: z.string(), name: z.string().min(1), config: z.any()}).safeParse(body)
-            if (!parsed.success) return c.json({error: parsed.error.message}, 400)
+            if (!parsed.success) return problemJson(c, {status: 400, detail: parsed.error.message})
             const row = await agentProfilesGlobal.createGlobalAgentProfile(parsed.data.agent, parsed.data.name, parsed.data.config)
-            if (!row) return c.json({error: 'Failed to create'}, 500)
+            if (!row) return problemJson(c, {status: 500, detail: 'Failed to create profile'})
             return c.json(row, 201)
         } catch (err) {
             console.error('[agents:profiles:create] failed', err)
-            return c.json({error: 'Failed to create profile'}, 500)
+            return problemJson(c, {status: 500, detail: 'Failed to create profile'})
         }
     })
     router.patch('/profiles/:id', async (c) => {
@@ -50,28 +51,28 @@ export function createAgentsRouter() {
             const id = c.req.param('id')
             const body = await c.req.json()
             const parsed = z.object({name: z.string().min(1).optional(), config: z.any().optional()}).safeParse(body)
-            if (!parsed.success) return c.json({error: parsed.error.message}, 400)
+            if (!parsed.success) return problemJson(c, {status: 400, detail: parsed.error.message})
             const row = await agentProfilesGlobal.updateGlobalAgentProfile(id, {
                 name: parsed.data.name,
                 config: parsed.data.config
             })
-            if (!row) return c.json({error: 'Not found'}, 404)
+            if (!row) return problemJson(c, {status: 404, detail: 'Profile not found'})
             return c.json(row)
         } catch (err) {
             console.error('[agents:profiles:update] failed', err)
-            return c.json({error: 'Failed to update profile'}, 500)
+            return problemJson(c, {status: 500, detail: 'Failed to update profile'})
         }
     })
     router.delete('/profiles/:id', async (c) => {
         try {
             const id = c.req.param('id')
             const row = await agentProfilesGlobal.getGlobalAgentProfile(id)
-            if (!row) return c.json({error: 'Not found'}, 404)
+            if (!row) return problemJson(c, {status: 404, detail: 'Profile not found'})
             await agentProfilesGlobal.deleteGlobalAgentProfile(id)
-            return c.json({ok: true})
+            return c.body(null, 204)
         } catch (err) {
             console.error('[agents:profiles:delete] failed', err)
-            return c.json({error: 'Failed to delete profile'}, 500)
+            return problemJson(c, {status: 500, detail: 'Failed to delete profile'})
         }
     })
 

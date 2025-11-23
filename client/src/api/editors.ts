@@ -1,11 +1,10 @@
 import {SERVER_URL} from '@/lib/env'
+import {parseApiResponse} from '@/api/http'
 
 export type EditorInfo = { key: string; label: string; installed: boolean; bin?: string }
 
 export async function getEditors(): Promise<EditorInfo[]> {
     const res = await fetch(`${SERVER_URL}/editors`)
-    if (!res.ok) throw new Error('Failed to list editors')
-    const data = (await res.json()) as { editors: EditorInfo[] }
+    const data = await parseApiResponse<{ editors: EditorInfo[] }>(res)
     return data.editors ?? []
 }
-
