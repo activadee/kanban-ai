@@ -15,7 +15,7 @@ import {getAgent} from "../agents/registry";
 import {importGithubIssues} from "../github/import";
 import {listProjectBranches} from "./settings/git";
 // ticket preview uses core implementation
-const {getCardById, getColumnById} = projectsRepo;
+const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
 const {
     getBoardState: fetchBoardState,
     createBoardCard,
@@ -75,15 +75,21 @@ const updateCardSchema = z
         title: z.string().min(1).optional(),
         description: z.string().optional().nullable(),
         dependsOn: z.array(z.string()).optional(),
+        columnId: z.string().min(1, "Column ID is required").optional(),
+        index: z.number().int().min(0).optional(),
     })
-    .refine((data) => data.title !== undefined || data.description !== undefined || data.dependsOn !== undefined, {
-        message: "No updates provided",
-    });
+    .superRefine((data, ctx) => {
+        const hasContent = data.title !== undefined || data.description !== undefined || data.dependsOn !== undefined
+        const wantsMove = data.columnId !== undefined || data.index !== undefined
 
-const moveCardSchema = z.object({
-    toColumnId: z.string().min(1, "Target column ID is required"),
-    toIndex: z.number().int().min(0),
-});
+        if (wantsMove && (data.columnId === undefined || data.index === undefined)) {
+            ctx.addIssue({code: z.ZodIssueCode.custom, message: 'columnId and index are required to move a card'})
+        }
+
+        if (!hasContent && !wantsMove) {
+            ctx.addIssue({code: z.ZodIssueCode.custom, message: 'No updates provided'})
+        }
+    });
 
 type BoardContext = { boardId: string; project: ProjectSummary }
 
@@ -174,20 +180,93 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             }
 
             const body = c.req.valid("json");
+            const wantsMove = body.columnId !== undefined || body.index !== undefined;
+            const hasContentUpdate = body.title !== undefined || body.description !== undefined;
+            const hasDeps = Array.isArray(body.dependsOn);
+            const suppressBroadcast = wantsMove || hasDeps;
+
+            if (wantsMove) {
+                const targetColumn = await getColumnById(body.columnId!);
+                if (!targetColumn || targetColumn.boardId !== boardId) {
+                    return c.json({error: "Target column not found"}, 404);
+                }
+
+                // Prevent moving blocked cards into In Progress
+                if ((targetColumn.title || '').trim().toLowerCase() === 'in progress') {
+                    const {blocked} = await projectDeps.isCardBlocked(cardId);
+                    if (blocked) {
+                        return c.json({error: 'Task is blocked by dependencies'}, 409);
+                    }
+                }
+            }
 
             try {
-                const hasContentUpdate = body.title !== undefined || body.description !== undefined;
-                const hasDeps = Array.isArray(body.dependsOn);
                 if (hasContentUpdate) {
                     await updateBoardCard(cardId, {
                         title: body.title,
                         description: body.description ?? undefined,
-                    }, {suppressBroadcast: hasDeps});
+                    }, {suppressBroadcast});
                 }
+
                 if (hasDeps) {
                     await projectDeps.setDependencies(cardId, body.dependsOn as string[]);
                 }
-                if (hasContentUpdate || hasDeps) {
+
+                if (wantsMove) {
+                    const targetIndex = body.index as number;
+                    await moveBoardCard(cardId, body.columnId!, targetIndex);
+
+                    const toIso = (value: Date | string | number | null | undefined) => {
+                        if (!value) return new Date().toISOString();
+                        if (value instanceof Date) return value.toISOString();
+                        const date = new Date(value);
+                        return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+                    };
+
+                    const updatedCard = await getCardById(cardId);
+                    if (!updatedCard) return c.json({error: "Card not found"}, 404);
+
+                    let deps: string[] = [];
+                    try {
+                        deps = await projectDeps.listDependencies(cardId);
+                    } catch {
+                        deps = [];
+                    }
+
+                    const columnIds = Array.from(new Set([card.columnId, body.columnId!]));
+                    const columnRows = await Promise.all(columnIds.map((id) => getColumnById(id)));
+                    const columnCards = new Map<string, string[]>(columnIds.map((id) => [id, []]));
+                    const cardRows = await listCardsForColumns(columnIds);
+                    for (const row of cardRows) {
+                        const list = columnCards.get(row.columnId);
+                        if (!list) continue;
+                        list.push(row.id);
+                    }
+
+                    const columnsPayload: Record<string, { id: string; title: string; cardIds: string[] }> = {};
+                    for (const col of columnRows) {
+                        if (!col) continue;
+                        columnsPayload[col.id] = {
+                            id: col.id,
+                            title: col.title,
+                            cardIds: columnCards.get(col.id) ?? [],
+                        };
+                    }
+
+                    const cardPayload = {
+                        id: updatedCard.id,
+                        ticketKey: updatedCard.ticketKey ?? undefined,
+                        title: updatedCard.title,
+                        description: updatedCard.description ?? undefined,
+                        dependsOn: deps.length ? deps : undefined,
+                        createdAt: toIso(updatedCard.createdAt),
+                        updatedAt: toIso(updatedCard.updatedAt),
+                    };
+
+                    return c.json({card: cardPayload, columns: columnsPayload}, 200);
+                }
+
+                if (hasDeps) {
                     await broadcastBoard(boardId);
                 }
                 const state = await fetchBoardState(boardId);
@@ -197,51 +276,6 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 console.error('[board:cards:update] failed', error);
                 const status = msg === 'dependency_board_mismatch' || msg === 'dependency_cycle' ? 400 : 500;
                 return c.json({error: msg}, status);
-            }
-        },
-    );
-
-    boardRouter.post(
-        "/cards/:cardId/move",
-        zValidator("json", moveCardSchema),
-        async (c) => {
-            const ctx = await loadContext(c);
-            if (ctx instanceof Response) return ctx;
-            const {boardId} = ctx;
-            const cardId = c.req.param("cardId");
-
-            const card = await getCardById(cardId);
-            if (!card) return c.json({error: "Card not found"}, 404);
-            let cardBoardId = card.boardId ?? null;
-            if (!cardBoardId) {
-                const column = await getColumnById(card.columnId);
-                cardBoardId = column?.boardId ?? null;
-            }
-            if (cardBoardId !== boardId) {
-                return c.json({error: "Card does not belong to this board"}, 400);
-            }
-
-            const body = c.req.valid("json");
-            const targetColumn = await getColumnById(body.toColumnId);
-            if (!targetColumn || targetColumn.boardId !== boardId) {
-                return c.json({error: "Target column not found"}, 404);
-            }
-
-            // Prevent moving blocked cards into In Progress
-            if ((targetColumn.title || '').trim().toLowerCase() === 'in progress') {
-                const {blocked} = await projectDeps.isCardBlocked(cardId);
-                if (blocked) {
-                    return c.json({error: 'Task is blocked by dependencies'}, 409);
-                }
-            }
-
-            try {
-                await moveBoardCard(cardId, body.toColumnId, body.toIndex);
-                const state = await fetchBoardState(boardId);
-                return c.json({state}, 200);
-            } catch (error) {
-                console.error('[board:cards:move] failed', error);
-                return c.json({error: 'Failed to move card'}, 500);
             }
         },
     );

@@ -1,14 +1,21 @@
 import {SERVER_URL} from '@/lib/env'
-import type {BoardState} from 'shared'
+import type {BoardState, Card, Column, ColumnId} from 'shared'
 
 const jsonHeaders = {'Content-Type': 'application/json'}
 
 async function handle<T>(res: Response): Promise<T> {
     if (!res.ok) {
         const text = await res.text()
-        throw new Error(text || `Request failed (${res.status})`)
+        const error = new Error(text || `Request failed (${res.status})`)
+        ;(error as any).status = res.status
+        throw error
     }
     return (await res.json()) as T
+}
+
+export type MoveCardResponse = {
+    card: Card;
+    columns: Record<ColumnId, Column>;
 }
 
 export async function fetchBoardState(boardId: string): Promise<BoardState> {
@@ -63,10 +70,10 @@ export async function deleteCard(boardId: string, cardId: string) {
 }
 
 export async function moveCard(boardId: string, cardId: string, toColumnId: string, toIndex: number) {
-    const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}/move`, {
-        method: 'POST',
+    const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}`, {
+        method: 'PATCH',
         headers: jsonHeaders,
-        body: JSON.stringify({toColumnId, toIndex}),
+        body: JSON.stringify({columnId: toColumnId, index: toIndex}),
     })
-    return handle(res)
+    return handle<MoveCardResponse>(res)
 }

@@ -25,6 +25,7 @@ export type BoardHandlers = {
     onUpdateCard: (cardId: string, values: { title: string; description: string }) => Promise<void> | void
     onDeleteCard: (cardId: string) => Promise<void> | void
     onMoveCard: (cardId: string, toColumnId: string, toIndex: number) => Promise<void> | void
+    onMoveBlocked?: () => void
 }
 
 type Props = {
@@ -61,6 +62,7 @@ export function Board({projectId, boardId, state, handlers}: Props) {
         state,
         isCardBlocked: isBlocked,
         onMoveCard: (cardId, toColumnId, toIndex) => handlers.onMoveCard(cardId, toColumnId, toIndex),
+        onBlocked: handlers.onMoveBlocked,
     })
 
     const editingCard = editingCardId ? state.cards[editingCardId] ?? null : null
