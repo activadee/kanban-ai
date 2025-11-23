@@ -153,6 +153,10 @@ bun run type-check
 bun run test
 ```
 
+## Logging
+
+- Per-request server logs are silent by default; enable them with `LOG_LEVEL=debug`, `KANBANAI_DEBUG=1`, or `DEBUG=*`/`DEBUG=kanbanai*` when debugging API traffic.
+
 ## Configuration
 
 Project Settings (per project): base branch, preferred remote, setup/dev/cleanup scripts, default agent/profile,
