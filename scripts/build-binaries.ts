@@ -60,26 +60,20 @@ async function stripSourceMaps(dir: string) {
   )
 }
 
-function collectAssets(pattern: string) {
-  const glob = new Bun.Glob(pattern)
-  return Array.from(glob.scanSync({ cwd: root, onlyFiles: true }))
-}
-
 async function compileBinary(target: { id: string; bunTarget: string; binaryName: string }) {
   const outDir = path.join(root, 'cli', 'dist')
   await fs.promises.mkdir(outDir, { recursive: true })
   const outfile = path.join(outDir, target.binaryName)
 
-  const assets = [...collectAssets('client/dist/**/*'), ...collectAssets('server/drizzle/**/*')]
-  if (assets.length === 0) {
-    throw new Error('[build-binaries] no assets found to embed')
-  }
+  const staticDir = path.join(root, 'client', 'dist')
+  const migrationsDir = path.join(root, 'server', 'drizzle')
 
   const buildArgs = [
     'build',
     '--compile',
     'server/src/bin/standalone.ts',
-    ...assets,
+    `--embed=${path.relative(root, staticDir)}`,
+    `--embed=${path.relative(root, migrationsDir)}`,
     '--target',
     target.bunTarget,
     '--sourcemap=none',
