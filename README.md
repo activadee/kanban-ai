@@ -125,7 +125,7 @@ Scopes requested: `repo`, `read:user`, `user:email`.
 3) Drag a ticket to In Progress to start an Attempt. The server creates a worktree at
    `$HOME/.kanbanAI/worktrees/<project>/<task>` and launches your selected agent.
 4) Review changes: view diffs, commit (all changes are staged automatically), push, and Create PR (the PR flow will auto-push the branch if it isn't on the remote yet).
-5) When merged, move to Done. Worktrees remain available for manual inspection or cleanup.
+5) When merged, move to Done. We'll remove the attempt branch and worktree automatically so the repo stays tidy.
 
 ## Scripts
 
