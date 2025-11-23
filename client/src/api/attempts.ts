@@ -27,24 +27,24 @@ export async function getAttemptLogs(attemptId: string): Promise<AttemptLog[]> {
     return data.logs ?? []
 }
 
-export async function getAttemptDetailForCard(boardId: string, cardId: string): Promise<{
+export async function getAttemptDetailForCard(projectId: string, cardId: string): Promise<{
     attempt: Attempt;
     logs: AttemptLog[];
     conversation: ConversationItem[]
 }> {
-    const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}/attempt`)
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/cards/${cardId}/attempt`)
     return parseJson<{ attempt: Attempt; logs: AttemptLog[]; conversation: ConversationItem[] }>(res)
 }
 
 export async function startAttemptRequest(params: {
-    boardId: string;
+    projectId: string;
     cardId: string;
     agent: string;
     profileId?: string;
     baseBranch?: string;
     branchName?: string
 }) {
-    const res = await fetch(`${SERVER_URL}/boards/${params.boardId}/cards/${params.cardId}/attempts`, {
+    const res = await fetch(`${SERVER_URL}/projects/${params.projectId}/cards/${params.cardId}/attempts`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -58,7 +58,7 @@ export async function startAttemptRequest(params: {
 }
 
 export async function followupAttemptRequest(attemptId: string, payload: { prompt: string; profileId?: string }) {
-    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/followup`, {
+    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/messages`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
@@ -70,7 +70,11 @@ export async function followupAttemptRequest(attemptId: string, payload: { promp
 }
 
 export async function stopAttemptRequest(attemptId: string): Promise<void> {
-    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/stop`, {method: 'POST'})
+    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status: 'stopped'}),
+    })
     if (!res.ok) {
         const text = await res.text()
         throw new Error(text || `Stop failed (${res.status})`)

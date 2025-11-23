@@ -92,6 +92,13 @@ const updateCardSchema = z
         }
     });
 
+const startAttemptSchema = z.object({
+    agent: z.enum(["ECHO", "SHELL", "CODEX", "OPENCODE", "DROID"]),
+    profileId: z.string().optional(),
+    baseBranch: z.string().min(1).optional(),
+    branchName: z.string().min(1).optional(),
+});
+
 type BoardContext = { boardId: string; project: ProjectSummary }
 
 const resolveBoardForProject = async (c: any): Promise<BoardContext | null> => {
@@ -137,7 +144,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
         async (c) => {
             const ctx = await loadContext(c);
             if (ctx instanceof Response) return ctx;
-            const {boardId} = ctx;
+            const {boardId, project} = ctx;
 
             const body = c.req.valid("json");
             const column = await getColumnById(body.columnId);
@@ -166,7 +173,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
         async (c) => {
             const ctx = await loadContext(c);
             if (ctx instanceof Response) return ctx;
-            const {boardId} = ctx;
+            const {boardId, project} = ctx;
             const cardId = c.req.param("cardId");
 
             const card = await getCardById(cardId);
@@ -332,27 +339,24 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
     // Start an attempt for a card within this board
     boardRouter.post(
         "/cards/:cardId/attempts",
-        zValidator(
-            "json",
-            z.object({
-                agent: z.enum(["ECHO", "SHELL", "CODEX", "OPENCODE", "DROID"]),
-                profileId: z.string().optional(),
-                baseBranch: z.string().min(1).optional(),
-                branchName: z.string().min(1).optional(),
-            })
-        ),
+        zValidator("json", startAttemptSchema),
         async (c) => {
             const ctx = await loadContext(c);
             if (ctx instanceof Response) return ctx;
-            const {boardId} = ctx;
+            const {boardId, project} = ctx;
             const body = c.req.valid("json");
             try {
-                // Disallow starting attempts for tasks already in Done
+                // Disallow starting attempts for tasks already in Done/blocked
                 const card = await getCardById(c.req.param("cardId"));
                 if (!card) return c.json({error: "Card not found"}, 404);
                 const column = await getColumnById(card.columnId);
-                if (column?.title === "Done")
+                const colTitle = (column?.title || "").trim().toLowerCase();
+                if (colTitle === "done")
                     return c.json({error: "Task is done and locked"}, 409);
+                try {
+                    const {blocked} = await projectDeps.isCardBlocked(card.id);
+                    if (blocked) return c.json({error: "Task is blocked by dependencies"}, 409);
+                } catch {}
 
                 const events = c.get("events");
                 const attempt = await attempts.startAttempt(
@@ -365,6 +369,11 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                         branchName: body.branchName,
                     },
                     {events},
+                );
+                c.header("Deprecation", "true");
+                c.header(
+                    "Link",
+                    `</api/v1/projects/${project.id}/cards/${c.req.param("cardId")}/attempts>; rel="successor-version"`,
                 );
                 return c.json(attempt, 201);
             } catch (error) {
@@ -426,6 +435,12 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
 export const createProjectsRouter = () => {
     const router = new Hono<AppEnv>();
 
+    const loadProjectBoard = async (c: any): Promise<BoardContext | Response> => {
+        const ctx = await resolveBoardForProject(c);
+        if (!ctx) return c.json({error: "Project not found"}, 404);
+        return ctx;
+    };
+
     router.get("/", async (c) => {
         const {projects} = c.get("services");
         const result = await projects.list();
@@ -454,6 +469,65 @@ export const createProjectsRouter = () => {
         if (!project) return c.json({error: "Project not found"}, 404);
         return c.json(project, 200);
     });
+
+    router.get("/:projectId/cards/:cardId/attempt", async (c) => {
+        const ctx = await loadProjectBoard(c);
+        if (ctx instanceof Response) return ctx;
+        const {boardId} = ctx;
+        try {
+            const data = await attempts.getLatestAttemptForCard(boardId, c.req.param("cardId"));
+            if (!data) return c.json({error: "Not found"}, 404);
+            return c.json(data, 200);
+        } catch (error) {
+            console.error("[attempts:attempt] failed", error);
+            return c.json({
+                error: error instanceof Error ? error.message : "Failed to fetch attempt",
+            }, 500);
+        }
+    });
+
+    router.post(
+        "/:projectId/cards/:cardId/attempts",
+        zValidator("json", startAttemptSchema),
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            const {boardId} = ctx;
+            const body = c.req.valid("json");
+            try {
+                const card = await getCardById(c.req.param("cardId"));
+                if (!card) return c.json({error: "Card not found"}, 404);
+                if (card.boardId && card.boardId !== boardId)
+                    return c.json({error: "Card does not belong to this project"}, 400);
+                const column = await getColumnById(card.columnId);
+                const colTitle = (column?.title || "").trim().toLowerCase();
+                if (colTitle === "done") return c.json({error: "Task is done and locked"}, 409);
+                try {
+                    const {blocked} = await projectDeps.isCardBlocked(card.id);
+                    if (blocked) return c.json({error: "Task is blocked by dependencies"}, 409);
+                } catch {}
+
+                const events = c.get("events");
+                const attempt = await attempts.startAttempt(
+                    {
+                        boardId,
+                        cardId: c.req.param("cardId"),
+                        agent: body.agent,
+                        profileId: body.profileId,
+                        baseBranch: body.baseBranch,
+                        branchName: body.branchName,
+                    },
+                    {events},
+                );
+                return c.json(attempt, 201);
+            } catch (error) {
+                console.error("[attempts:start:project] failed", error);
+                return c.json({
+                    error: error instanceof Error ? error.message : "Failed to start attempt",
+                }, 500);
+            }
+        },
+    );
 
     router.route("/:projectId/board", createBoardRouter(resolveBoardForProject));
 

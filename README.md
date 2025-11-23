@@ -186,13 +186,14 @@ or the nested alias `/projects/:projectId/board/*`.
   `GET /projects/:projectId/github/origin`
 - Boards: `GET /boards/:boardId`, `POST /boards/:boardId/cards`, `PATCH /boards/:boardId/cards/:cardId`
   (content updates, dependency changes, and card moves), `DELETE /boards/:boardId/cards/:cardId`,
-  `POST /boards/:boardId/import/github/issues`, `POST /boards/:boardId/cards/:cardId/attempts`
+  `POST /boards/:boardId/import/github/issues` (board-scoped attempt creation is deprecated; use the project route below)
 - Card moves now piggyback on the `PATCH /boards/:boardId/cards/:cardId` endpoint by supplying both `columnId`
   and `index`; successful moves respond with the patched card plus updated column snapshots so the client can
   update the local board state without a refetch.
-- Attempts: `POST /attempts/boards/:boardId/cards/:cardId/attempts`, `GET /attempts/:id`, `POST /attempts/:id/stop`,
-  `GET /attempts/:id/logs` (`POST /attempts/:id/stop` now force-stops attempts stuck in running/queued states even if
-  the worker process is no longer tracked)
+- Attempts: `POST /projects/:projectId/cards/:cardId/attempts` (canonical), `GET /projects/:projectId/cards/:cardId/attempt`
+  for latest attempt + logs/messages, `GET /attempts/:id`, `PATCH /attempts/:id` with `{status:"stopped"}` to stop,
+  `POST /attempts/:id/messages` for follow-ups, `GET /attempts/:id/logs`. Older `/attempts/boards/*` and
+  `/attempts/:id/stop` paths now return HTTP 410 with pointers to the canonical shape.
 - Attempt Git: `GET /attempts/:id/git/status`, `GET /attempts/:id/git/file`,
   `POST /attempts/:id/git/commit|push|merge`, `POST /attempts/:id/github/pr`
 

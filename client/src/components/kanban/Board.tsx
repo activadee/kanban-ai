@@ -390,7 +390,7 @@ export function Board({ projectId, boardId, state, handlers }: Props) {
                     cardTitle={editingCard.title}
                     cardDescription={editingCard.description ?? ""}
                     cardTicketKey={editingCard.ticketKey ?? null}
-                    boardId={boardId}
+                    projectId={projectId}
                     cardId={editingCard.id}
                     onSubmit={async (values) => {
                         await handlers.onUpdateCard(editingCard.id, values);
