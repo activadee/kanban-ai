@@ -154,14 +154,19 @@ purges associated worktrees.
 
 ## API (selected)
 
-All endpoints are rooted at `/api/v1` (temporary shim also available at `/api`).
+All endpoints are rooted at `/api/v1` (temporary shim also available at `/api`). Project resources now expose a
+`boardId` (currently the same as `id`) so every board-scoped action can consistently target `/boards/:boardId/*`
+or the nested alias `/projects/:projectId/board/*`.
 
 - GitHub auth: `POST /auth/github/device/start`, `POST /auth/github/device/poll`, `GET /auth/github/check`,
   `POST /auth/github/logout`, `GET/PUT /auth/github/app`
 - Onboarding state: `GET /onboarding/status`, `PATCH /onboarding/progress`, `POST /onboarding/complete`
-- Projects: `GET/POST /projects`, `GET /projects/:id`, `GET/PATCH /projects/:id/settings`,
-  `GET /projects/:id/github/origin`, `POST /projects/:id/import/github/issues`
-- Attempts: `POST /attempts/projects/:boardId/cards/:cardId/attempts`, `GET /attempts/:id`, `POST /attempts/:id/stop`,
+- Projects: `GET/POST /projects`, `GET /projects/:projectId`, `GET/PATCH /projects/:projectId/settings`,
+  `GET /projects/:projectId/github/origin`
+- Boards: `GET /boards/:boardId`, `POST /boards/:boardId/cards`, `PATCH /boards/:boardId/cards/:cardId`,
+  `DELETE /boards/:boardId/cards/:cardId`, `POST /boards/:boardId/cards/:cardId/move`,
+  `POST /boards/:boardId/import/github/issues`, `POST /boards/:boardId/cards/:cardId/attempts`
+- Attempts: `POST /attempts/boards/:boardId/cards/:cardId/attempts`, `GET /attempts/:id`, `POST /attempts/:id/stop`,
   `GET /attempts/:id/logs` (`POST /attempts/:id/stop` now force-stops attempts stuck in running/queued states even if
   the worker process is no longer tracked)
 - Attempt Git: `GET /attempts/:id/git/status`, `GET /attempts/:id/git/file`,

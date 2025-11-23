@@ -95,8 +95,8 @@ export async function getProjectGithubOrigin(projectId: string): Promise<GitOrig
     return parseJson<GitOriginResponse>(res)
 }
 
-export async function importGithubIssues(projectId: string, payload: ImportIssuesRequest): Promise<ImportIssuesResponse> {
-    const res = await fetch(`${SERVER_URL}/projects/${projectId}/import/github/issues`, {
+export async function importGithubIssues(boardId: string, payload: ImportIssuesRequest): Promise<ImportIssuesResponse> {
+    const res = await fetch(`${SERVER_URL}/boards/${boardId}/import/github/issues`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),

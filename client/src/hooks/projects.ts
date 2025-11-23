@@ -118,11 +118,11 @@ export function useProjectGithubOrigin(projectId: string | undefined, options?: 
 }
 
 export function useImportGithubIssues(options?: UseMutationOptions<ImportIssuesResponse, Error, {
-    projectId: string;
+    boardId: string;
     payload: ImportIssuesRequest
 }>) {
     return useMutation({
-        mutationFn: ({projectId, payload}) => importGithubIssues(projectId, payload),
+        mutationFn: ({boardId, payload}) => importGithubIssues(boardId, payload),
         ...options,
     })
 }

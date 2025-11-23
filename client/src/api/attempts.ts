@@ -27,24 +27,24 @@ export async function getAttemptLogs(attemptId: string): Promise<AttemptLog[]> {
     return data.logs ?? []
 }
 
-export async function getAttemptDetailForCard(projectId: string, cardId: string): Promise<{
+export async function getAttemptDetailForCard(boardId: string, cardId: string): Promise<{
     attempt: Attempt;
     logs: AttemptLog[];
     conversation: ConversationItem[]
 }> {
-    const res = await fetch(`${SERVER_URL}/projects/${projectId}/cards/${cardId}/attempt`)
+    const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}/attempt`)
     return parseJson<{ attempt: Attempt; logs: AttemptLog[]; conversation: ConversationItem[] }>(res)
 }
 
 export async function startAttemptRequest(params: {
-    projectId: string;
+    boardId: string;
     cardId: string;
     agent: string;
     profileId?: string;
     baseBranch?: string;
     branchName?: string
 }) {
-    const res = await fetch(`${SERVER_URL}/projects/${params.projectId}/cards/${params.cardId}/attempts`, {
+    const res = await fetch(`${SERVER_URL}/boards/${params.boardId}/cards/${params.cardId}/attempts`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({

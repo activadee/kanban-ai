@@ -14,7 +14,7 @@ type HeartbeatState = {
     socket: WebSocket | null
 }
 
-export function useKanbanWS(projectId: string | null) {
+export function useKanbanWS(boardId: string | null) {
     const baseUrl = useMemo(() => {
         const env = import.meta.env
         const explicit = env.VITE_WS_URL as string | undefined
@@ -216,7 +216,7 @@ export function useKanbanWS(projectId: string | null) {
         clearReconnectTimer()
         clearCurrentSocket()
 
-        if (!projectId) {
+        if (!boardId) {
             hasHealthyConnectionRef.current = false
             setConnected(false)
             setReconnecting(false)
@@ -230,7 +230,7 @@ export function useKanbanWS(projectId: string | null) {
         hasHealthyConnectionRef.current = false
         reconnectAttemptsRef.current = 0
 
-        const url = `${baseUrl}?projectId=${encodeURIComponent(projectId)}`
+        const url = `${baseUrl}?boardId=${encodeURIComponent(boardId)}`
 
         function connect() {
             if (disposed || !shouldReconnectRef.current) return
@@ -278,10 +278,10 @@ export function useKanbanWS(projectId: string | null) {
                 wsRef.current = null
             }
         }
-    }, [baseUrl, projectId])
+    }, [baseUrl, boardId])
 
     function send(msg: WsMsg) {
-        if (!projectId) return
+        if (!boardId) return
         const ws = wsRef.current
         if (!ws || ws.readyState !== WebSocket.OPEN) return
         ws.send(JSON.stringify(msg))

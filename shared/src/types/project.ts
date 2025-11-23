@@ -1,7 +1,11 @@
+export type ProjectId = string
+export type BoardId = string
+
 export type ProjectStatus = 'Active' | 'Paused'
 
 export interface ProjectSummary {
-    id: string
+    id: ProjectId
+    boardId: BoardId
     name: string
     status: ProjectStatus
     createdAt: string
@@ -23,7 +27,8 @@ export interface UpdateProjectRequest {
 }
 
 export interface ProjectSettings {
-    projectId: string
+    projectId: ProjectId
+    boardId: BoardId
     baseBranch: string
     preferredRemote: string | null
     setupScript: string | null

@@ -5,10 +5,10 @@ import {secureHeaders} from 'hono/secure-headers'
 import type {UpgradeWebSocket} from 'hono/ws'
 import type {AppEnv, AppServices} from './env'
 import {projectsService, settingsService, bindAgentEventBus, registerAgent} from 'core'
-import {createProjectsRouter} from './projects/routes'
+import {createProjectsRouter, createBoardsRouter} from './projects/routes'
 import {createGithubRouter} from './github/routes'
 import {createFilesystemRouter} from './fs/routes'
-import {kanbanWebsocketHandlers, verifyProjectAccess} from './tasks/ws'
+import {kanbanWebsocketHandlers} from './tasks/ws'
 import {createAttemptsRouter} from './attempts/routes'
 import {createAgentsRouter} from './agents/routes'
 import {createGithubProjectRouter} from './github/pr-routes'
@@ -104,6 +104,7 @@ export const createApp = ({
     api.get('/healthz', (c) => c.json({ok: true}))
     api.get('/readyz', (c) => c.json({ok: ready}, ready ? 200 : 503))
     api.route('/projects', createProjectsRouter())
+    api.route('/boards', createBoardsRouter())
     // GitHub PR endpoints under /projects/:id/github/*
     api.route('/projects', createGithubProjectRouter())
     api.route('/auth/github', createGithubRouter())
@@ -119,12 +120,12 @@ export const createApp = ({
         api.get(
             '/ws',
             async (c, next) => {
-                const projectId = c.req.query('projectId')
-                if (!projectId) return c.json({error: 'Missing projectId'}, 400)
-                c.set('projectId', projectId)
+                const boardId = c.req.query('boardId') ?? c.req.query('projectId')
+                if (!boardId) return c.json({error: 'Missing boardId'}, 400)
+                c.set('boardId', boardId)
                 await next()
             },
-            upgradeWebSocket((c) => kanbanWebsocketHandlers(c.get('projectId')!)),
+            upgradeWebSocket((c) => kanbanWebsocketHandlers(c.get('boardId')!)),
         )
         api.get('/ws/dashboard', upgradeWebSocket(() => dashboardWebsocketHandlers()))
     } else {

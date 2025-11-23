@@ -31,6 +31,7 @@ function mapBoardToProject(record: Board): ProjectSummary {
 
     return {
         id: record.id,
+        boardId: record.id,
         name: record.name,
         status: 'Active',
         createdAt,
@@ -161,4 +162,3 @@ export const projectsService = {
 }
 
 export type ProjectsService = typeof projectsService
-

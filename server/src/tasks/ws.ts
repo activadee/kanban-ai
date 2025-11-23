@@ -17,11 +17,11 @@ function serialize(msg: WsMsg) {
     return JSON.stringify(msg)
 }
 
-export async function verifyProjectAccess(projectId: string) {
-    await ensureBoardExists(projectId)
+export async function verifyBoardAccess(boardId: string) {
+    await ensureBoardExists(boardId)
 }
 
-export function kanbanWebsocketHandlers(projectId: string) {
+export function kanbanWebsocketHandlers(boardId: string) {
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null
     let lastHeartbeatAt = Date.now()
 
@@ -48,23 +48,23 @@ export function kanbanWebsocketHandlers(projectId: string) {
     return {
         async onOpen(_evt: Event, ws: WSContext) {
             try {
-                await verifyProjectAccess(projectId)
+                await verifyBoardAccess(boardId)
             } catch (err) {
                 try {
-                    ws.close(1008, 'Project not found')
+                    ws.close(1008, 'Board not found')
                 } catch {
                 }
                 return
             }
-            addSocket(projectId, ws)
+            addSocket(boardId, ws)
             lastHeartbeatAt = Date.now()
             startHeartbeatWatch(ws)
             ws.send(serialize({type: 'hello', payload: {serverTime: new Date().toISOString()}}))
-            const board = await getBoardState(projectId)
+            const board = await getBoardState(boardId)
             ws.send(serialize({type: 'state', payload: board}))
             // Optionally, send recent attempt statuses/logs for context
             try {
-                const recent = await listAttemptsForBoard(projectId)
+                const recent = await listAttemptsForBoard(boardId)
                 for (const attempt of recent) {
                     ws.send(serialize({
                         type: 'attempt_status',
@@ -76,7 +76,7 @@ export function kanbanWebsocketHandlers(projectId: string) {
         },
         onClose(_evt: CloseEvent, ws: WSContext) {
             stopHeartbeatWatch()
-            removeSocket(projectId, ws)
+            removeSocket(boardId, ws)
         },
         async onMessage(event: MessageEvent, ws: WSContext) {
             try {
@@ -90,7 +90,7 @@ export function kanbanWebsocketHandlers(projectId: string) {
                     case 'pong':
                         break
                     case 'get_state': {
-                        const board = await getBoardState(projectId)
+                        const board = await getBoardState(boardId)
                         ws.send(serialize({type: 'state', payload: board}))
                         break
                     }
