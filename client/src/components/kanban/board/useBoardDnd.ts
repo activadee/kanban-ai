@@ -20,10 +20,11 @@ const isColumnData = (data: DragData | undefined): data is Extract<DragData, {
     type: 'column'
 }> => data?.type === 'column'
 
-export function useBoardDnd({state, onMoveCard, isCardBlocked}: {
+export function useBoardDnd({state, onMoveCard, isCardBlocked, onBlocked}: {
     state: BoardState
     onMoveCard: (cardId: string, toColumnId: string, toIndex: number) => void
     isCardBlocked: (cardId: string) => boolean
+    onBlocked?: () => void
 }) {
     const sensors = useSensors(
         useSensor(MouseSensor, {activationConstraint: {distance: 5}}),
@@ -77,7 +78,10 @@ export function useBoardDnd({state, onMoveCard, isCardBlocked}: {
 
         const targetCol = state.columns[toColumnId]
         const targetTitle = targetCol?.title?.trim().toLowerCase()
-        if (targetTitle === 'in progress' && isCardBlocked(activeId)) return
+        if (targetTitle === 'in progress' && isCardBlocked(activeId)) {
+            onBlocked?.()
+            return
+        }
 
         onMoveCard(activeId, toColumnId, toIndex)
     }, [isCardBlocked, onMoveCard, state])

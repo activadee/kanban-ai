@@ -7,6 +7,7 @@ import {Board} from '@/components/kanban/Board'
 import {ImportIssuesDialog} from '@/components/github/ImportIssuesDialog'
 import {ConnectionLostDialog} from '@/components/system/ConnectionLostDialog'
 import {useBoardState, useCreateCard, useDeleteCard, useMoveCard, useProject, useUpdateCard,} from '@/hooks'
+import type {MoveCardResponse} from '@/api/board'
 import {boardKeys} from '@/hooks/board'
 import {useKanbanWS} from '@/lib/ws'
 import {toast} from "@/components/ui/toast.tsx";
@@ -37,10 +38,27 @@ export function ProjectBoardPage() {
         queryClient.invalidateQueries({queryKey: boardKeys.state(boardId)})
     }
 
+    const applyMovePatch = (payload?: MoveCardResponse) => {
+        if (!project || !payload) return
+        queryClient.setQueryData(boardKeys.state(project.id), (prev) => {
+            if (!prev) return prev
+            const existingCard = prev.cards[payload.card.id] ?? {}
+            const nextCards = {...prev.cards, [payload.card.id]: {...existingCard, ...payload.card}}
+            const nextColumns = {...prev.columns}
+            for (const [colId, col] of Object.entries(payload.columns)) {
+                const existing = nextColumns[colId]
+                nextColumns[colId] = existing ? {...existing, title: col.title, cardIds: col.cardIds} : col
+            }
+            return {...prev, cards: nextCards, columns: nextColumns}
+        })
+    }
+
     const createCardMutation = useCreateCard({onSuccess: invalidateBoard})
     const updateCardMutation = useUpdateCard({onSuccess: invalidateBoard})
     const deleteCardMutation = useDeleteCard({onSuccess: invalidateBoard})
-    const moveCardMutation = useMoveCard({onSuccess: invalidateBoard})
+    const moveCardMutation = useMoveCard({
+        onSuccess: (data) => applyMovePatch(data),
+    })
 
     const connectionLabel = reconnecting ? 'Reconnecting…' : connected ? 'Connected' : 'Connecting…'
     const connectionBadgeVariant = reconnecting ? 'destructive' : connected ? 'secondary' : 'outline'
@@ -147,9 +165,25 @@ export function ProjectBoardPage() {
                                 await moveCardMutation.mutateAsync({boardId, cardId, toColumnId, toIndex})
                             } catch (err) {
                                 console.error('Move card failed', err)
-                                toast({title: 'Failed to move card', variant: 'destructive'})
+                                const status = (err as any)?.status
+                                if (status === 409) {
+                                    toast({
+                                        title: 'Task is blocked by dependencies',
+                                        description: 'Complete required dependencies before moving this card to In Progress.',
+                                        variant: 'destructive'
+                                    })
+                                } else {
+                                    toast({title: 'Failed to move card', variant: 'destructive'})
+                                }
                             }
                         },
+                        onMoveBlocked: () => {
+                            toast({
+                                title: 'Task is blocked by dependencies',
+                                description: 'Complete required dependencies before moving this card to In Progress.',
+                                variant: 'destructive'
+                            })
+                        }
                     }}
                 />
             </div>
