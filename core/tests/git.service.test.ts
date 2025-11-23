@@ -244,12 +244,26 @@ describe('git/service helpers for worktree paths', () => {
             created: [],
             modified: [],
             deleted: [],
-            not_added: [],
-            files: [],
+            not_added: ['c.txt'],
+            files: [
+                {path: 'a.txt', index: ' ', working_dir: 'M', from: undefined},
+                {path: 'b.txt', index: 'A', working_dir: ' ', from: undefined},
+                {path: 'new.txt', index: 'R', working_dir: ' ', from: 'old.txt'},
+            ],
         } as any)
         git.raw.mockImplementation(async (args: string[]) => {
             if (args[0] === 'rev-list') {
                 return '0\t3'
+            }
+            if (args[0] === 'diff') {
+                // Simulate `git diff --name-status -z`
+                return [
+                    'M', 'a.txt',
+                    'A', 'b.txt',
+                    'R100', 'old.txt', 'new.txt',
+                    'C100', 'src', ' new-with-space.txt ',
+                    'A', ' spaced-leading.txt',
+                ].join('\0') + '\0'
             }
             if (args[0] === 'show') {
                 const target = args[1]
@@ -265,6 +279,18 @@ describe('git/service helpers for worktree paths', () => {
         const status = await getStatusAgainstBaseAtPath('/tmp/work', 'base-ref')
         expect(status.ahead).toBe(3)
         expect(status.behind).toBe(0)
+        const expectedFiles = [
+            {path: 'a.txt', status: 'M', staged: false},
+            {path: 'b.txt', status: 'A', staged: true},
+            {path: ' spaced-leading.txt', status: 'A', staged: false},
+            {path: 'c.txt', status: '?', staged: false},
+            {path: 'new.txt', oldPath: 'old.txt', status: 'R', staged: true},
+            {path: ' new-with-space.txt ', oldPath: 'src', status: 'C', staged: false},
+        ]
+        const sortByPath = (a: any, b: any) => a.path.localeCompare(b.path)
+        expect(status.files.slice().sort(sortByPath)).toEqual(expectedFiles.sort(sortByPath))
+        expect(status.summary).toMatchObject({added: 3, modified: 2, untracked: 1, staged: 2})
+        expect(status.hasUncommitted).toBe(true)
 
         const worktree = await getFileContentAtPath('/tmp/work', 'a.txt', 'worktree')
         expect(worktree).toBe('local')

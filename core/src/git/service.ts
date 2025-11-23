@@ -1,5 +1,5 @@
 import simpleGit, {type SimpleGit} from 'simple-git'
-import type {FileChange, GitStatus} from 'shared'
+import type {FileChange, GitFileStatus, GitStatus} from 'shared'
 import {promises as fsp} from 'fs'
 import {resolve} from 'path'
 import {getRepositoryPath} from '../projects/repo'
@@ -129,6 +129,59 @@ function mapFileChanges(status: Awaited<ReturnType<SimpleGit['status']>>): FileC
         result.push(change)
     }
     return result
+}
+
+function parseNameStatusDiff(output: string): FileChange[] {
+    // --name-status -z emits tokens separated by NUL: <status>\0<path>\0[old\0new\0]
+    const tokens = output.split('\0').filter((t) => t.length > 0)
+    const files: FileChange[] = []
+
+    for (let i = 0; i < tokens.length; ) {
+        const statusToken = tokens[i++]
+        if (!statusToken) continue
+
+        const letter = (statusToken[0] || 'M') as GitFileStatus
+
+        if (letter === 'R' || letter === 'C') {
+            const oldPath = tokens[i++]
+            const newPath = tokens[i++]
+            const path = newPath || oldPath
+            if (!path) continue
+            files.push({path, oldPath: oldPath || undefined, status: letter, staged: false})
+            continue
+        }
+
+        const path = tokens[i++]
+        if (!path) continue
+        files.push({path, status: letter, staged: false})
+    }
+
+    return files
+}
+
+function mergeUntracked(files: FileChange[], untracked: string[]): FileChange[] {
+    const map = new Map<string, FileChange>()
+    for (const f of files) map.set(f.path, f)
+    for (const path of untracked || []) {
+        if (!map.has(path)) {
+            map.set(path, {path, status: '?', staged: false})
+        }
+    }
+    return Array.from(map.values())
+}
+
+function applyStagedFlags(files: FileChange[], status: Awaited<ReturnType<SimpleGit['status']>>): FileChange[] {
+    const stagedLookup = new Map<string, boolean>()
+    for (const f of status.files) {
+        const stagedFlag = f.index.trim()
+        const staged = Boolean(stagedFlag && stagedFlag !== ' ')
+        if (staged) stagedLookup.set(f.path, true)
+    }
+
+    return files.map((f) => ({
+        ...f,
+        staged: stagedLookup.get(f.path) ?? f.staged ?? false,
+    }))
 }
 
 export async function getStatus(projectId: string): Promise<GitStatus> {
@@ -326,27 +379,59 @@ export async function getStatusAgainstBaseAtPath(worktreePath: string, baseAnces
     const g = gitAtPath(worktreePath)
     const status = await g.status()
 
+    const baseRef = baseAncestorRef?.trim() || 'HEAD'
+
+    let diffFiles: FileChange[] = []
+    try {
+        const rawDiff = await g.raw(['diff', '--name-status', '-z', '--find-renames', '--find-copies', baseRef])
+        diffFiles = parseNameStatusDiff(rawDiff)
+    } catch {
+        // fall back to simple status listing if diff fails (e.g., shallow clone issues)
+        diffFiles = mapFileChanges(status)
+    }
+
+    const filesWithUntracked = mergeUntracked(diffFiles, status.not_added || [])
+    const files = applyStagedFlags(filesWithUntracked, status).sort((a, b) => a.path.localeCompare(b.path))
+
     let ahead = 0
     let behind = 0
     try {
-        const ref = baseAncestorRef?.trim() || 'HEAD'
-        const out = await g.raw(['rev-list', '--left-right', '--count', `${ref}...HEAD`])
+        const out = await g.raw(['rev-list', '--left-right', '--count', `${baseRef}...HEAD`])
         const [behindStr, aheadStr] = out.trim().split(/\s+/)
         behind = Number(behindStr || 0)
         ahead = Number(aheadStr || 0)
     } catch {
     }
 
-    const files = mapFileChanges(status)
     const summary = {
-        added: status.created.length,
-        modified: status.modified.length,
-        deleted: status.deleted.length,
-        untracked: status.not_added.length,
+        added: 0,
+        modified: 0,
+        deleted: 0,
+        untracked: 0,
         staged: files.filter((f) => f.staged).length,
     }
 
-    const hasUncommitted = summary.added + summary.modified + summary.deleted + summary.untracked > 0
+    for (const f of files) {
+        switch (f.status) {
+            case 'A':
+            case 'C':
+                summary.added += 1
+                break
+            case 'D':
+                summary.deleted += 1
+                break
+            case '?':
+                summary.untracked += 1
+                break
+            default:
+                summary.modified += 1
+                break
+        }
+    }
+
+    const hasUncommitted =
+        (status.files?.length || 0) +
+        (status.not_added?.length || 0) > 0
 
     return {
         branch: status.current || 'HEAD',
