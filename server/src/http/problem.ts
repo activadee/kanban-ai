@@ -23,7 +23,7 @@ export function normalizeProblem(problem: Partial<ProblemDetails> & {status: num
     }
 }
 
-export function problemJson(c: Context, problem: Partial<ProblemDetails> & {status: number}) {
+export function problemJson(c: Context, problem: Partial<ProblemDetails> & {status: number}): Response {
     const payload = normalizeProblem(problem)
     return c.json(payload, payload.status as any)
 }
