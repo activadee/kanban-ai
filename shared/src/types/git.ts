@@ -27,5 +27,10 @@ export type PRInfo = {
     url: string
     state: 'open' | 'closed'
     draft: boolean
+    title?: string
+    headRef?: string
+    baseRef?: string
+    createdAt?: string
+    updatedAt?: string
+    merged?: boolean
 }
-

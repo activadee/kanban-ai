@@ -4,6 +4,13 @@ import {projectsRepo} from 'core'
 
 const {getRepositoryPath} = projectsRepo
 
+type PullRequestState = 'open' | 'closed' | 'all'
+
+type ListPullRequestsOptions = {
+    state?: PullRequestState
+    branch?: string | null
+}
+
 async function getOwnerRepo(projectId: string): Promise<{ owner: string; repo: string }> {
     const repositoryPath = await getRepositoryPath(projectId)
     if (!repositoryPath) throw new Error('Project not found')
@@ -14,11 +21,32 @@ async function getOwnerRepo(projectId: string): Promise<{ owner: string; repo: s
     return parsed
 }
 
-export async function findOpenPR(projectId: string, token: string, branch: string): Promise<PRInfo | null> {
+function mapGithubPr(raw: any): PRInfo {
+    return {
+        number: raw?.number,
+        url: raw?.html_url,
+        state: raw?.state,
+        draft: Boolean(raw?.draft),
+        title: raw?.title,
+        headRef: raw?.head?.ref,
+        baseRef: raw?.base?.ref,
+        createdAt: raw?.created_at,
+        updatedAt: raw?.updated_at,
+        merged: Boolean(raw?.merged_at),
+    }
+}
+
+export async function listPullRequests(
+    projectId: string,
+    token: string,
+    {state = 'open', branch}: ListPullRequestsOptions = {},
+): Promise<PRInfo[]> {
     const {owner, repo} = await getOwnerRepo(projectId)
     const url = new URL(`https://api.github.com/repos/${owner}/${repo}/pulls`)
-    url.searchParams.set('state', 'open')
-    url.searchParams.set('head', `${owner}:${branch}`)
+    url.searchParams.set('state', state)
+    url.searchParams.set('per_page', '50')
+    const trimmedBranch = branch?.trim()
+    if (trimmedBranch) url.searchParams.set('head', `${owner}:${trimmedBranch}`)
     const res = await fetch(url.toString(), {
         headers: {
             Accept: 'application/vnd.github+json',
@@ -30,14 +58,28 @@ export async function findOpenPR(projectId: string, token: string, branch: strin
         throw new Error(`GitHub PR lookup failed (${res.status}): ${text}`)
     }
     const data = (await res.json()) as Array<any>
-    const first = data[0]
-    if (!first) return null
-    return {
-        number: first.number,
-        url: first.html_url,
-        state: first.state,
-        draft: Boolean(first.draft),
+    return data.map(mapGithubPr)
+}
+
+export async function getPullRequest(projectId: string, token: string, number: number): Promise<PRInfo> {
+    const {owner, repo} = await getOwnerRepo(projectId)
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}`, {
+        headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+    if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`GitHub PR fetch failed (${res.status}): ${text}`)
     }
+    const data = (await res.json()) as any
+    return mapGithubPr(data)
+}
+
+export async function findOpenPR(projectId: string, token: string, branch: string): Promise<PRInfo | null> {
+    const prs = await listPullRequests(projectId, token, {state: 'open', branch})
+    return prs[0] ?? null
 }
 
 export async function createPR(
@@ -60,10 +102,5 @@ export async function createPR(
         throw new Error(`GitHub PR create failed (${res.status}): ${text}`)
     }
     const data = (await res.json()) as any
-    return {
-        number: data.number,
-        url: data.html_url,
-        state: data.state,
-        draft: Boolean(data.draft),
-    }
+    return mapGithubPr(data)
 }

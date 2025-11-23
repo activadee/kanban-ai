@@ -1,7 +1,14 @@
 import {useQuery, type UseQueryOptions} from '@tanstack/react-query'
 import {useMutation, type UseMutationOptions} from '@tanstack/react-query'
 import type {PRInfo, FileChange} from 'shared'
-import {getAttemptGitStatus, getAttemptFileContent, commitAttempt, pushAttempt, createAttemptPR} from '@/api/git'
+import {
+    getAttemptGitStatus,
+    getAttemptFileContent,
+    commitAttempt,
+    pushAttempt,
+    createProjectPullRequest,
+    listProjectPullRequests,
+} from '@/api/git'
 import {SERVER_URL} from '@/lib/env'
 
 const gitKey = (attemptId: string, suffix: string) => ['attempt-git', attemptId, suffix] as const
@@ -51,12 +58,39 @@ export function useCommitAttempt(options?: UseMutationOptions<CommitResult, Erro
     })
 }
 
-type CreatePrArgs = { attemptId: string; base?: string; title: string; body?: string }
+type CreatePrArgs = {
+    projectId: string
+    attemptId?: string
+    cardId?: string
+    base?: string
+    branch?: string
+    title: string
+    body?: string
+}
 
-export function useCreateAttemptPR(options?: UseMutationOptions<PRInfo, Error, CreatePrArgs>) {
+export function useCreatePullRequest(options?: UseMutationOptions<PRInfo, Error, CreatePrArgs>) {
     return useMutation({
-        mutationFn: ({attemptId, base, title, body}: CreatePrArgs) =>
-            createAttemptPR(attemptId, {base, title, body, draft: false}),
+        mutationFn: ({projectId, ...payload}: CreatePrArgs) =>
+            createProjectPullRequest(projectId, {...payload, draft: false}),
+        ...options,
+    })
+}
+
+export function useProjectPullRequests(
+    projectId: string | undefined,
+    params?: {branch?: string; state?: 'open' | 'closed' | 'all'},
+    options?: Partial<UseQueryOptions<PRInfo[]>>,
+) {
+    const enabled = Boolean(projectId)
+    const branchKey = params?.branch?.trim() || 'all'
+    const stateKey = params?.state ?? 'open'
+    const key = projectId
+        ? ['project', projectId, 'pull-requests', branchKey, stateKey]
+        : ['project', 'pull-requests', 'disabled']
+    return useQuery({
+        queryKey: key,
+        queryFn: () => listProjectPullRequests(projectId!, {...params, branch: params?.branch?.trim() || undefined}),
+        enabled,
         ...options,
     })
 }
