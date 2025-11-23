@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import type {BoardState, WsMsg} from 'shared'
 import {eventBus} from '@/lib/events'
+import {resolveApiBase} from '@/lib/env'
 
 const HEARTBEAT_INTERVAL_MS = 15_000
 const HEARTBEAT_TIMEOUT_MS = 5_000
@@ -16,11 +17,13 @@ type HeartbeatState = {
 
 export function useKanbanWS(boardId: string | null) {
     const baseUrl = useMemo(() => {
-        const env = import.meta.env
-        const explicit = env.VITE_WS_URL as string | undefined
-        if (explicit) return explicit
-        const host = (env.VITE_SERVER_URL || 'http://localhost:3000/api/v1').replace(/\/?$/, '')
-        return host.replace(/^http/, 'ws') + '/ws'
+        // Prefer explicit override; useful when API and UI are on different hosts/ports.
+        const explicit = import.meta.env.VITE_WS_URL as string | undefined
+        if (explicit) return explicit.replace(/\/?$/, '')
+
+        // Derive from the API base to keep REST and WS on the same origin/port.
+        const apiBase = resolveApiBase()
+        return apiBase.replace(/^http/i, 'ws') + '/ws'
     }, [])
 
     const wsRef = useRef<WebSocket | null>(null)

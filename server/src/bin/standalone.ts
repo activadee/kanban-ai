@@ -37,8 +37,11 @@ if (import.meta.main) {
     const api = createApp({ upgradeWebSocket })
 
     const app = new Hono<AppEnv>()
-    app.all('/api/*', (c) => api.fetch(c.req.raw))
-    app.all('/api', (c) => api.fetch(c.req.raw))
+    // Forward the Bun env so websocket upgrades (upgradeWebSocket) keep working when
+    // the API app is nested under this static-serving wrapper.
+    const forward = (c: any) => api.fetch(c.req.raw, c.env)
+    app.all('/api/*', forward)
+    app.all('/api', forward)
 
     const staticMiddleware = serveStatic({ root: staticDir })
     app.use('/*', staticMiddleware)

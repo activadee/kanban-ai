@@ -10,6 +10,7 @@ const targets = [
   { id: 'win-x64', bunTarget: 'bun-windows-x64', binaryName: 'kanban-ai-win-x64.exe' },
 ]
 
+
 const args = Bun.argv.slice(2)
 const targetArgIndex = args.indexOf('--target')
 const targetFilter = targetArgIndex >= 0 && args[targetArgIndex + 1] ? args[targetArgIndex + 1] : undefined
@@ -85,7 +86,6 @@ async function compileBinary(target: { id: string; bunTarget: string; binaryName
   }
   return outfile
 }
-
 async function zipBinary(binaryPath: string, targetId: string, staging: { clientOut: string; drizzleOut: string }) {
   const zipDir = path.join(root, 'cli', 'dist')
   await fs.promises.mkdir(zipDir, { recursive: true })

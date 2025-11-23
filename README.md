@@ -87,7 +87,8 @@ Run KanbanAI as a single binary (API + UI) on one port without cloning the repo:
 npx kanban-ai -- --port 4000
 ```
 
-- Downloads the platform-specific binary + assets from the matching GitHub Release tag (cached at `~/.kanban-ai/<version>/<platform>`).
+- Downloads the platform-specific binary + assets from the matching GitHub Release tag (cached at `~/.kanbanAI/<version>/<platform>`).
+- On first run the launcher also ensures the Codex CLI is available: it checks `CODEX_PATH_OVERRIDE`/`CODEX_PATH`, then `PATH`, otherwise downloads the latest `@openai/codex-sdk` tarball from npm, extracts the platform `codex` binary, and caches it at `~/.kanbanAI/codex/<version>/<vendor>`.
 - Serves the UI and API on the same origin (`/api/v1`), SPA fallback included.
 - Respects `PORT` / `HOST` / `DATABASE_URL` and auto-sets `KANBANAI_STATIC_DIR` + `KANBANAI_MIGRATIONS_DIR` to the extracted assets.
 - Existing contributor workflows stay the same (`bun run dev`, `dev:server`, `dev:client`).

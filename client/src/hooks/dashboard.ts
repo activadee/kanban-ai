@@ -3,13 +3,15 @@ import {useQuery, useQueryClient, type UseQueryOptions} from '@tanstack/react-qu
 import type {DashboardOverview, WsMsg} from 'shared'
 import {getDashboardOverview} from '@/api/dashboard'
 import {dashboardKeys} from '@/lib/queryClient'
+import {resolveApiBase} from '@/lib/env'
 
 function resolveDashboardWsUrl() {
-    const env = import.meta.env
-    const explicit = env.VITE_WS_URL as string | undefined
+    const explicit = import.meta.env.VITE_WS_URL as string | undefined
     if (explicit) return `${explicit.replace(/\/?$/, '')}/dashboard`
-    const host = (env.VITE_SERVER_URL || 'http://localhost:3000/api/v1').replace(/\/?$/, '')
-    return host.replace(/^http/, 'ws') + '/ws/dashboard'
+
+    // Keep websocket origin/port in lockstep with the REST API base.
+    const apiBase = resolveApiBase()
+    return apiBase.replace(/^http/i, 'ws') + '/ws/dashboard'
 }
 
 type Options = Partial<UseQueryOptions<DashboardOverview>>
