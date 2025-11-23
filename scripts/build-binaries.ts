@@ -1,13 +1,21 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import AdmZip from 'adm-zip'
 
 const root = path.resolve(import.meta.dir, '..')
 
-const targets = [
-  { id: 'linux-x64', bunTarget: 'bun-linux-x64', binaryName: 'kanban-ai-linux-x64' },
-  { id: 'linux-arm64', bunTarget: 'bun-linux-arm64', binaryName: 'kanban-ai-linux-arm64' },
-  { id: 'darwin-arm64', bunTarget: 'bun-darwin-arm64', binaryName: 'kanban-ai-darwin-arm64' },
-  { id: 'win-x64', bunTarget: 'bun-windows-x64', binaryName: 'kanban-ai-win-x64.exe' },
+type Target = {
+  id: string
+  bunTarget: string
+  binaryName: string
+  zipName: string
+}
+
+const targets: Target[] = [
+  { id: 'linux-x64', bunTarget: 'bun-linux-x64', binaryName: 'kanban-ai-linux-x64', zipName: 'kanban-ai-linux-x64.zip' },
+  { id: 'linux-arm64', bunTarget: 'bun-linux-arm64', binaryName: 'kanban-ai-linux-arm64', zipName: 'kanban-ai-linux-arm64.zip' },
+  { id: 'darwin-arm64', bunTarget: 'bun-darwin-arm64', binaryName: 'kanban-ai-darwin-arm64', zipName: 'kanban-ai-darwin-arm64.zip' },
+  { id: 'win-x64', bunTarget: 'bun-windows-x64', binaryName: 'kanban-ai-win-x64.exe', zipName: 'kanban-ai-win-x64.zip' },
 ]
 
 const args = Bun.argv.slice(2)
@@ -48,6 +56,10 @@ async function ensureDrizzleMeta() {
   }
 }
 
+async function bundleMigrations() {
+  await run('bun', [path.join(root, 'scripts', 'bundle-drizzle-migrations.ts')])
+}
+
 async function stripSourceMaps(dir: string) {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true })
   await Promise.all(
@@ -60,25 +72,22 @@ async function stripSourceMaps(dir: string) {
   )
 }
 
-async function compileBinary(target: { id: string; bunTarget: string; binaryName: string }) {
+async function compileBinary(target: Target) {
   const outDir = path.join(root, 'cli', 'dist')
   await fs.promises.mkdir(outDir, { recursive: true })
   const outfile = path.join(outDir, target.binaryName)
-
-  const staticDir = path.join(root, 'client', 'dist')
-  const migrationsDir = path.join(root, 'server', 'drizzle')
 
   const buildArgs = [
     'build',
     '--compile',
     'server/src/bin/standalone.ts',
-    `--embed=${path.relative(root, staticDir)}`,
-    `--embed=${path.relative(root, migrationsDir)}`,
+    '--embed=client/dist/**',
+    '--embed=server/drizzle/**',
     '--asset-naming=[name].[ext]',
-    '--target',
-    target.bunTarget,
     '--sourcemap=none',
     '--minify',
+    '--target',
+    target.bunTarget,
     '--outfile',
     outfile,
   ] as const
@@ -93,18 +102,34 @@ async function compileBinary(target: { id: string; bunTarget: string; binaryName
   return outfile
 }
 
+async function packageZip(target: Target, binaryPath: string) {
+  const platformDir = path.join(root, 'cli', 'dist', target.id)
+  await fs.promises.mkdir(platformDir, { recursive: true })
+  const zipPath = path.join(platformDir, target.zipName)
+
+  const zip = new AdmZip()
+  zip.addLocalFile(binaryPath, undefined, path.basename(binaryPath))
+  await fs.promises.mkdir(path.dirname(zipPath), { recursive: true })
+  zip.writeZip(zipPath)
+
+  console.log(`[build-binaries] packaged ${zipPath}`)
+}
+
 async function main() {
   console.log('[build-binaries] building client')
   await ensureClientBuild()
 
   console.log('[build-binaries] verifying drizzle metadata')
   await ensureDrizzleMeta()
+  console.log('[build-binaries] bundling drizzle migrations')
+  await bundleMigrations()
 
   await fs.promises.rm(path.join(root, 'cli', 'dist'), { recursive: true, force: true })
 
   for (const target of selectedTargets) {
     console.log(`[build-binaries] compiling ${target.id}`)
-    await compileBinary(target)
+    const binaryPath = await compileBinary(target)
+    await packageZip(target, binaryPath)
   }
 }
 

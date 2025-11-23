@@ -1,18 +1,21 @@
 # kanban-ai CLI
 
-`npx kanban-ai` downloads the platform-specific KanbanAI single binary (API + UI + embedded migrations) from GitHub
-Releases, caches it at `~/.kanbanAI/<version>/<platform>`, and starts the server on one port (default `3000`).
+`npx kanban-ai` ships with per-platform zip archives inside the npm package. On first run it extracts the
+appropriate binary into `~/.kanbanAI/<version>/<platform>` and starts the server (default port `3000`). If the
+packaged version is behind, the launcher can fetch a newer release from GitHub unless `--offline`/`KANBANAI_OFFLINE=1`
+is set.
 
 ```bash
 npx kanban-ai -- --port 4000
 ```
 
-When run via `npx`/`bunx`, the launcher always checks npm + GitHub for the newest binary. Interactive shells are prompted
-(default Yes) to download and run the latest; non-interactive shells auto-use the latest binary.
+When run via `npx`/`bunx`, the launcher checks npm + GitHub for the newest binary unless offline. Interactive shells are
+prompted (default Yes) to download and run the latest; non-interactive shells auto-use the latest binary.
 
 ## Options
 
 - `--binary-version <version>`: download and run a specific release instead of matching the CLI package version.
+- `--offline` / `KANBANAI_OFFLINE=1`: force using packaged/cache assets; skip network lookups.
 - `--port`, `PORT`: override listen port (default: 3000)
 - `--host`, `HOST`: override listen address (default: 0.0.0.0)
 - `KANBANAI_STATIC_DIR`: optional override for the embedded client assets (defaults to `__embedded__`)

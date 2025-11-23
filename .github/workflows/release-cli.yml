@@ -63,7 +63,7 @@ jobs:
       run_tests: false
       download_artifacts: true
       artifacts_path: "."
-      artifact_glob: "**/kanban-ai-*"
+      artifact_glob: "cli/dist/**/*.zip"
     secrets:
       CODEX_AUTH_JSON_B64: ${{ secrets.CODEX_AUTH_JSON_B64 }}
 
@@ -78,6 +78,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag_name || 'main' }}
+
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-dist
+          path: cli/dist
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

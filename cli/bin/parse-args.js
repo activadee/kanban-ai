@@ -1,6 +1,7 @@
 function parseLauncherArgs(argv) {
   const passThrough = []
   let binaryVersion
+  let offline = Boolean(process.env.KANBANAI_OFFLINE)
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
@@ -24,10 +25,15 @@ function parseLauncherArgs(argv) {
       continue
     }
 
+    if (arg === '--offline') {
+      offline = true
+      continue
+    }
+
     passThrough.push(arg)
   }
 
-  return { binaryVersion, passThrough }
+  return { binaryVersion, passThrough, offline }
 }
 
 module.exports = { parseLauncherArgs }

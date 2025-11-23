@@ -14,6 +14,9 @@
     "./cli"
   ],
   "scripts": {
+    "predev": "bun run scripts/bundle-drizzle-migrations.ts",
+    "predev:server": "bun run scripts/bundle-drizzle-migrations.ts",
+    "predev:client": "bun run scripts/bundle-drizzle-migrations.ts",
     "dev": "turbo dev --filter=server --filter=client --filter=core --filter=shared",
     "dev:client": "turbo dev --filter=client",
     "dev:server": "turbo dev --filter=server",

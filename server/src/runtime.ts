@@ -1,12 +1,18 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { setAppReady } from './app'
+import { migrationData } from '../drizzle/migration-data.generated'
 
 const env = () => Bun.env ?? (process.env as Record<string, string | undefined>)
 const devRoot = path.resolve(fileURLToPath(new URL('../drizzle', import.meta.url)))
 let materializedDir: string | null = null
+
+export type ResolvedMigrations =
+  | { kind: 'folder'; path: string }
+  | { kind: 'bundled'; migrations: any[] }
 
 async function resolveEmbeddedFile(relativePath: string) {
   const clean = relativePath.replace(/^[/\\]/, '')
@@ -66,19 +72,57 @@ async function materializeEmbeddedMigrations(): Promise<string> {
   return materializedDir
 }
 
-export async function resolveMigrationsFolder(explicit?: string): Promise<string> {
-  if (explicit) return explicit === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(explicit)
+function buildBundledMigrations(): any[] | null {
+  if (!migrationData || Object.keys(migrationData).length === 0) return null
+  const journalRaw = migrationData['meta/_journal.json']
+  if (!journalRaw) return null
+
+  const journal = JSON.parse(journalRaw)
+  const migrations: any[] = []
+
+  for (const entry of journal.entries ?? []) {
+    const sqlText = migrationData[`${entry.tag}.sql`] || migrationData[entry.tag] || migrationData[entry.tag.replace(/^m/, '')]
+    if (!sqlText) {
+      throw new Error(`[runtime] bundled migration missing: ${entry.tag}`)
+    }
+    const statements = sqlText.split('--> statement-breakpoint').map((s: string) => s)
+    const hash = crypto.createHash('sha256').update(sqlText).digest('hex')
+    migrations.push({
+      sql: statements,
+      bps: entry.breakpoints,
+      folderMillis: entry.when,
+      hash,
+    })
+  }
+
+  return migrations
+}
+
+export async function resolveMigrations(explicit?: string): Promise<ResolvedMigrations> {
+  if (explicit) {
+    return {
+      kind: 'folder',
+      path: explicit === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(explicit),
+    }
+  }
 
   const fromEnv = env().KANBANAI_MIGRATIONS_DIR
-  if (fromEnv) return fromEnv === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(fromEnv)
+  if (fromEnv) {
+    return {
+      kind: 'folder',
+      path: fromEnv === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(fromEnv),
+    }
+  }
 
-  const cwdCandidate = path.resolve(process.cwd(), 'drizzle')
-  if (await Bun.file(path.join(cwdCandidate, 'meta/_journal.json')).exists()) return cwdCandidate
+  // Always prefer bundled migrations to avoid filesystem dependencies in dev/prod.
+  const bundled = buildBundledMigrations()
+  if (bundled && bundled.length) {
+    return { kind: 'bundled', migrations: bundled }
+  }
 
-  const devMeta = path.join(devRoot, 'meta/_journal.json')
-  if (await Bun.file(devMeta).exists()) return devRoot
-
-  if (await resolveEmbeddedFile('meta/_journal.json')) return await materializeEmbeddedMigrations()
+  if (await resolveEmbeddedFile('meta/_journal.json')) {
+    return { kind: 'folder', path: await materializeEmbeddedMigrations() }
+  }
 
   throw new Error(
     'server/drizzle not found. Set KANBANAI_MIGRATIONS_DIR or include a drizzle folder next to the executable.',

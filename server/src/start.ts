@@ -1,6 +1,6 @@
 import type { AppEnv } from "./env";
 import type { UpgradeWebSocket } from "hono/ws";
-import { resolveMigrationsFolder, markReady } from "./runtime";
+import { resolveMigrations, markReady } from "./runtime";
 import { db, sqliteDatabase } from "./db/client";
 import { registerCoreDbProvider } from "./db/provider";
 import { settingsService } from "core";
@@ -36,21 +36,12 @@ export async function createWebSocket(): Promise<{
 }
 
 async function bootstrapRuntime(migrationsDir?: string) {
-    const { migrate } = await import("drizzle-orm/bun-sqlite/migrator");
-    let resolvedMigrations: string | undefined;
-
-    try {
-        const bundle = (await import("../drizzle/migrations")).migrations;
-        if (bundle) {
-            await migrate(db, { migrations: bundle });
-            resolvedMigrations = "__bundle__";
-        }
-    } catch {}
-
-    if (!resolvedMigrations) {
-        const folder = await resolveMigrationsFolder(migrationsDir);
-        await migrate(db, { migrationsFolder: folder });
-        resolvedMigrations = folder;
+    const resolved = await resolveMigrations(migrationsDir);
+    if (resolved.kind === "folder") {
+        const { migrate } = await import("drizzle-orm/bun-sqlite/migrator");
+        await migrate(db, { migrationsFolder: resolved.path });
+    } else {
+        await (db as any).dialect.migrate(resolved.migrations, (db as any).session);
     }
 
     registerCoreDbProvider();
@@ -59,7 +50,7 @@ async function bootstrapRuntime(migrationsDir?: string) {
     } catch (error) {
         console.warn("[settings] init failed", error);
     }
-    return resolvedMigrations;
+    return resolved.kind === "folder" ? resolved.path : "__bundled__";
 }
 
 export async function startServer(options: StartOptions): Promise<StartResult> {

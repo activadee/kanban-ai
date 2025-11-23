@@ -33,6 +33,10 @@ async function resolveDesiredVersion({ binaryVersion, envVersion }) {
   const hasExplicitVersion = Boolean(binaryVersion || envVersion)
   const baseVersion = binaryVersion || envVersion || pkg.version
 
+  if (process.env.KANBANAI_OFFLINE) {
+    return { version: baseVersion, updated: false, baseVersion }
+  }
+
   if (hasExplicitVersion) return { version: baseVersion, updated: false, baseVersion }
 
   const latestCandidates = []

@@ -1,8 +1,8 @@
 const PLATFORM_MAP = {
-  'linux:x64': { id: 'linux-x64', binary: 'kanban-ai-linux-x64' },
-  'linux:arm64': { id: 'linux-arm64', binary: 'kanban-ai-linux-arm64' },
-  'darwin:arm64': { id: 'darwin-arm64', binary: 'kanban-ai-darwin-arm64' },
-  'win32:x64': { id: 'win-x64', binary: 'kanban-ai-win-x64.exe' },
+  'linux:x64': { id: 'linux-x64', binary: 'kanban-ai-linux-x64', zip: 'kanban-ai-linux-x64.zip' },
+  'linux:arm64': { id: 'linux-arm64', binary: 'kanban-ai-linux-arm64', zip: 'kanban-ai-linux-arm64.zip' },
+  'darwin:arm64': { id: 'darwin-arm64', binary: 'kanban-ai-darwin-arm64', zip: 'kanban-ai-darwin-arm64.zip' },
+  'win32:x64': { id: 'win-x64', binary: 'kanban-ai-win-x64.exe', zip: 'kanban-ai-win-x64.zip' },
 }
 
 const CODEX_PLATFORM_MAP = {

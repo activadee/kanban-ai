@@ -8,7 +8,11 @@ const { debug } = require('./utils')
 
 async function main() {
   try {
-    const { binaryVersion, passThrough } = parseLauncherArgs(process.argv.slice(2))
+    const { binaryVersion, passThrough, offline } = parseLauncherArgs(process.argv.slice(2))
+
+    if (offline) {
+      process.env.KANBANAI_OFFLINE = '1'
+    }
 
     const { version: desiredVersion, updated, baseVersion } = await resolveDesiredVersion({
       binaryVersion,

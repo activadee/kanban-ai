@@ -12,6 +12,10 @@ async function resolveStaticDir(explicit?: string) {
   const embeddedDir = 'client/dist'
   const embeddedIndex = Bun.file(`${embeddedDir}/index.html`)
 
+  // When built with Bun --compile and --embed globs, files live in the
+  // embedded filesystem. Bun.file() resolves those paths directly, so we can
+  // keep using the same directory string as the static root.
+
   const devDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist')
 
   const envDir = Bun.env.KANBANAI_STATIC_DIR
@@ -22,6 +26,10 @@ async function resolveStaticDir(explicit?: string) {
   if (await Bun.file(path.join(cwdDir, 'index.html')).exists()) return cwdDir
   if (await Bun.file(path.join(devDir, 'index.html')).exists()) return devDir
   if (await embeddedIndex.exists()) return embeddedDir
+
+  // Fallback: in case asset naming changes, look for any embedded index.html
+  const embeddedIndexAlt = (Bun.embeddedFiles as any)?.find((f: any) => typeof f?.name === 'string' && f.name.endsWith('index.html'))
+  if (embeddedIndexAlt?.name) return path.dirname(embeddedIndexAlt.name)
 
   return cwdDir
 }

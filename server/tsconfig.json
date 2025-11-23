@@ -42,7 +42,8 @@
     { "path": "../core" }
   ],
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "drizzle/**/*"
   ],
   "exclude": [
     "node_modules",
