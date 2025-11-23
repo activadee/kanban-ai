@@ -48,8 +48,8 @@ GITHUB_CLIENT_ID=your_github_oauth_app_client_id
 # Optional but recommended for higher limits
 GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
 
-# Optional: SQLite path (defaults to file:./drizzle/kanban.db)
-DATABASE_URL=file:./drizzle/kanban.db
+# Optional: SQLite path (defaults to OS data dir, e.g., ~/.local/share/kanbanai/kanban.db)
+DATABASE_URL=sqlite:/absolute/path/to/kanban.db
 
 # Codex SDK
 CODEX_API_KEY=your_codex_or_openai_api_key
@@ -77,7 +77,20 @@ On first launch you will be redirected to `/onboarding` to confirm preferences, 
 credentials, and the GitHub device-flow connection. Completing onboarding unlocks the main workspace; you can revisit it
 any time via `/onboarding`.
 
-Note: the API server no longer serves the built client. Run the Vite dev server for UI during development (`bun run dev:client`) and host `client/dist` separately for production.
+Note: the API server for development remains API-only. Run the Vite dev server for UI during development (`bun run dev:client`) and host `client/dist` separately for production; the standalone binary used by `npx kanban-ai` serves the built UI for demo/self-host setups.
+
+## One-Command Demo (`npx kanban-ai`)
+
+Run KanbanAI as a single binary (API + UI) on one port without cloning the repo:
+
+```bash
+npx kanban-ai -- --port 4000
+```
+
+- Downloads the platform-specific binary + assets from the matching GitHub Release tag (cached at `~/.kanban-ai/<version>/<platform>`).
+- Serves the UI and API on the same origin (`/api/v1`), SPA fallback included.
+- Respects `PORT` / `HOST` / `DATABASE_URL` and auto-sets `KANBANAI_STATIC_DIR` + `KANBANAI_MIGRATIONS_DIR` to the extracted assets.
+- Existing contributor workflows stay the same (`bun run dev`, `dev:server`, `dev:client`).
 
 ## Initial Onboarding
 
@@ -146,8 +159,13 @@ starts or resumes, the server now resolves the referenced profile, validates it 
 info message when a named profile is used. Missing, mismatched, or invalid profile JSON automatically falls back to the
 agent’s default profile with a warning, so attempts continue without manual cleanup.
 
-Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatically on server start; default file lives
-at `server/drizzle/kanban.db` (configurable with `DATABASE_URL`).
+Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatically on server start; the default database
+lives in your OS application data directory (e.g., `~/.local/share/kanbanai/kanban.db` on Linux, `%LOCALAPPDATA%/KanbanAI`
+on Windows). Override with `DATABASE_URL` (`file:/absolute/path` or `sqlite:/absolute/path`).
+
+Static assets & migrations (standalone binary): the compiled binary serves from `KANBANAI_STATIC_DIR` (default
+`./client-dist` relative to the current working directory) and looks for migrations in `KANBANAI_MIGRATIONS_DIR` (default
+`./drizzle`). The `npx kanban-ai` launcher sets both when it extracts a release bundle.
 
 Worktrees: created under `$HOME/.kanbanAI/worktrees`. Remove them manually when no longer needed; project deletion also
 purges associated worktrees.

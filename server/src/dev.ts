@@ -1,12 +1,8 @@
-import type { AppEnv } from './env'
-import type { UpgradeWebSocket } from 'hono/ws'
 import { createApp } from './app'
-import { resolveMigrationsFolder, markReady } from './runtime'
+import { createWebSocket, startServer } from './start'
 
 if (import.meta.main) {
   const run = async () => {
-    const { migrate } = await import('drizzle-orm/bun-sqlite/migrator')
-    const { createBunWebSocket } = await import('hono/bun')
     const args = Bun.argv.slice(2)
     const getArg = (name: string, alias?: string): string | undefined => {
       const i = args.indexOf(name)
@@ -25,21 +21,11 @@ if (import.meta.main) {
 
     const port = Number(getArg('--port', '-p') ?? Bun.env.PORT ?? 3000)
     const host = getArg('--host') ?? Bun.env.HOST ?? '127.0.0.1'
-    const { db, sqliteDatabase } = await import('./db/client')
-    const { registerCoreDbProvider } = await import('./db/provider')
-    const migrationsFolder = await resolveMigrationsFolder()
-    await migrate(db, { migrationsFolder })
-    registerCoreDbProvider()
-    const { settingsService } = await import('core')
-    try { await settingsService.ensure() } catch (e) { console.warn('[settings] init failed', e) }
-    const { upgradeWebSocket, websocket } = createBunWebSocket()
-    const app = createApp({ upgradeWebSocket: upgradeWebSocket as UpgradeWebSocket<AppEnv> })
-    const server = Bun.serve({ port, hostname: host, fetch: app.fetch, websocket })
-    const url = `http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`
-    const dbFile = sqliteDatabase.filename ?? 'db'
+    const { upgradeWebSocket, websocket } = await createWebSocket()
+    const app = createApp({ upgradeWebSocket })
+    const { url, dbFile } = await startServer({ port, host, fetch: app.fetch, websocket })
     console.log(`[server] listening on ${url}`)
     console.log(`[server] database: ${dbFile}`)
-    markReady()
   }
   run().catch((error) => { console.error('[server] failed to start', error); process.exit(1) })
 }
