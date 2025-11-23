@@ -19,48 +19,23 @@ const {
 
 const {getGithubConnection} = githubRepo
 
-const startSchema = z.object({
-    agent: z.enum(['ECHO', 'SHELL', 'CODEX']),
-    baseBranch: z.string().min(1).optional(),
-    branchName: z.string().min(1).optional(),
+const stopSchema = z.object({
+    status: z.enum(['stopped']),
+})
+
+const messageSchema = z.object({
+    prompt: z.string().min(1),
     profileId: z.string().optional(),
 })
 
 export const createAttemptsRouter = () => {
     const router = new Hono<AppEnv>()
 
-    // Nested start under board/card
-    router.post('/boards/:boardId/cards/:cardId/attempts', zValidator('json', startSchema), async (c) => {
-        const {agent, baseBranch, branchName, profileId} = c.req.valid('json')
-        const events = c.get('events')
-        // Disallow starting attempts if task is done or blocked
-        try {
-            const {getCardById, getColumnById} = projectsRepo
-            const card = await getCardById(c.req.param('cardId'))
-            if (card) {
-                const col = await getColumnById(card.columnId)
-                const title = (col?.title || '').trim().toLowerCase()
-                if (title === 'done') return c.json({error: 'Task is done and locked'}, 409)
-            }
-        } catch {
-        }
-        try {
-            const {blocked} = await projectDeps.isCardBlocked(c.req.param('cardId'))
-            if (blocked) return c.json({error: 'Task is blocked by dependencies'}, 409)
-        } catch {
-        }
-        const attempt = await attempts.startAttempt(
-            {
-                boardId: c.req.param('boardId'),
-                cardId: c.req.param('cardId'),
-                agent,
-                baseBranch,
-                branchName,
-                profileId,
-            },
-            {events},
-        )
-        return c.json(attempt, 201)
+    // Deprecated start path kept only to signal new canonical route
+    router.post('/boards/:boardId/cards/:cardId/attempts', async (c) => {
+        c.header('Deprecation', 'true')
+        c.header('Link', '</api/v1/projects/{projectId}/cards/{cardId}/attempts>; rel="successor-version"')
+        return c.json({error: 'Moved to /projects/:projectId/cards/:cardId/attempts'}, 410)
     })
 
     router.get('/:id', async (c) => {
@@ -69,11 +44,26 @@ export const createAttemptsRouter = () => {
         return c.json(attempt)
     })
 
-    router.post('/:id/stop', async (c) => {
+    router.patch('/:id', zValidator('json', stopSchema), async (c) => {
+        const {status} = c.req.valid('json')
+        if (status !== 'stopped') return c.json({error: 'Only status=stopped is supported'}, 400)
+
         const events = c.get('events')
+        const attempt = await attempts.getAttempt(c.req.param('id'))
+        if (!attempt) return c.json({error: 'Not found'}, 404)
+
         const ok = await attempts.stopAttempt(c.req.param('id'), {events})
         if (!ok) return c.json({error: 'Not running'}, 409)
-        return c.json({ok: true})
+        const updated = await attempts.getAttempt(c.req.param('id'))
+        return c.json({attempt: updated ?? null, status: updated?.status ?? 'stopped'})
+    })
+
+    // Keep old stop path as a deprecation hint
+    router.post('/:id/stop', async (c) => {
+        c.header('Deprecation', 'true')
+        const id = c.req.param('id')
+        c.header('Link', `</api/v1/attempts/${id}>; rel="successor-version"`)
+        return c.json({error: 'Use PATCH /attempts/:id with status=stopped'}, 410)
     })
 
     router.get('/:id/logs', async (c) => {
@@ -179,13 +169,9 @@ export const createAttemptsRouter = () => {
         }
     })
 
-    router.post('/:id/followup', zValidator('json', z.object({
-        prompt: z.string().min(1),
-        profileId: z.string().optional()
-    })), async (c) => {
+    router.post('/:id/messages', zValidator('json', messageSchema), async (c) => {
         const {prompt, profileId} = c.req.valid('json')
         try {
-            // Disallow follow-up if card is in Done
             const attempt = await attempts.getAttempt(c.req.param('id'))
             if (!attempt) return c.json({error: 'Not found'}, 404)
             const {getCardById, getColumnById} = projectsRepo
@@ -195,13 +181,25 @@ export const createAttemptsRouter = () => {
                 const title = (column?.title || '').trim().toLowerCase()
                 if (title === 'done') return c.json({error: 'Task is done and locked'}, 409)
             }
+            try {
+                const {blocked} = await projectDeps.isCardBlocked(attempt.cardId)
+                if (blocked) return c.json({error: 'Task is blocked by dependencies'}, 409)
+            } catch {
+            }
 
             const events = c.get('events')
-            const att = await attempts.followupAttempt(c.req.param('id'), prompt, profileId, {events})
-            return c.json(att, 201)
+            await attempts.followupAttempt(c.req.param('id'), prompt, profileId, {events})
+            return c.json({ok: true}, 201)
         } catch (err) {
             return c.json({error: err instanceof Error ? err.message : 'Follow-up failed'}, 400)
         }
+    })
+
+    // Deprecated follow-up path
+    router.post('/:id/followup', async (c) => {
+        c.header('Deprecation', 'true')
+        c.header('Link', '</api/v1/attempts/{id}/messages>; rel="successor-version"')
+        return c.json({error: 'Use POST /attempts/:id/messages'}, 410)
     })
 
     // ---- Attempt-scoped Git write operations ----

@@ -39,7 +39,7 @@ export const attemptKeys = {
 
 export const cardAttemptKeys = {
     all: ['card-attempt'] as const,
-    detail: (boardId: string, cardId: string) => [...cardAttemptKeys.all, boardId, cardId] as const,
+    detail: (projectId: string, cardId: string) => [...cardAttemptKeys.all, projectId, cardId] as const,
 }
 
 export const githubKeys = {

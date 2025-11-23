@@ -119,7 +119,7 @@ export function CardInspector({
             setFollowup('')
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(vars.attemptId)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(vars.attemptId)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
         },
         onError: (err) => {
             toast({title: 'Follow-up failed', description: err.message, variant: 'destructive'})
@@ -129,7 +129,7 @@ export function CardInspector({
         onSuccess: async (_item, variables) => {
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(variables.attemptId)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(variables.attemptId)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
             toast({title: 'Dev script completed', description: 'Check the automation log for output.'})
         },
         onError: (err) => {
@@ -242,7 +242,7 @@ export function CardInspector({
     const messagesEndRef = useRef<HTMLDivElement | null>(null)
     const initialScrolledForCardRef = useRef<string | null>(null)
 
-    const attemptDetailQuery = useCardAttempt(boardId, card.id)
+    const attemptDetailQuery = useCardAttempt(projectId, card.id)
 
     const lastUsedProfileId = useMemo(() => {
         const items = attemptDetailQuery.data?.conversation ?? []
@@ -352,7 +352,7 @@ export function CardInspector({
         attemptId: attempt?.id,
         onStatus: (status) => {
             setAttempt((prev) => (prev ? {...prev, status} as Attempt : prev))
-            queryClient.setQueryData(cardAttemptKeys.detail(boardId, card.id), (prev: {
+            queryClient.setQueryData(cardAttemptKeys.detail(projectId, card.id), (prev: {
                 attempt: Attempt;
                 logs: AttemptLog[];
                 conversation: ConversationItem[]
@@ -366,7 +366,7 @@ export function CardInspector({
             if (!id) return
             const entry = {id: crypto.randomUUID(), attemptId: id, ts: p.ts, level: p.level, message: p.message}
             setLogs((prev) => [...prev, entry])
-            queryClient.setQueryData(cardAttemptKeys.detail(boardId, card.id), (prev: {
+            queryClient.setQueryData(cardAttemptKeys.detail(projectId, card.id), (prev: {
                 attempt: Attempt;
                 logs: AttemptLog[];
                 conversation: ConversationItem[]
@@ -380,7 +380,7 @@ export function CardInspector({
                 if (item.id && prev.some((m) => m.id === item.id)) return prev
                 return [...prev, item]
             })
-            queryClient.setQueryData(cardAttemptKeys.detail(boardId, card.id), (prev: {
+            queryClient.setQueryData(cardAttemptKeys.detail(projectId, card.id), (prev: {
                 attempt: Attempt;
                 logs: AttemptLog[];
                 conversation: ConversationItem[]
@@ -393,7 +393,7 @@ export function CardInspector({
         },
         onSession: (sessionId) => {
             setAttempt((prev) => (prev ? {...prev, sessionId} as Attempt : prev))
-            queryClient.setQueryData(cardAttemptKeys.detail(boardId, card.id), (prev: {
+            queryClient.setQueryData(cardAttemptKeys.detail(projectId, card.id), (prev: {
                 attempt: Attempt;
                 logs: AttemptLog[];
                 conversation: ConversationItem[]
@@ -435,15 +435,15 @@ export function CardInspector({
             setConversation([])
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(att.id)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(att.id)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
         },
     })
 
     const startAttempt = async () => {
-        if (!boardId) return
+        if (!projectId) return
         setStarting(true)
         try {
-            await startMutation.mutateAsync({boardId, cardId: card.id, agent, profileId})
+            await startMutation.mutateAsync({projectId, cardId: card.id, agent, profileId})
         } catch (err) {
             console.error('Start attempt failed', err)
         } finally {
@@ -466,7 +466,7 @@ export function CardInspector({
     const stopMutation = useStopAttempt({
         onSuccess: async (_data, variables) => {
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(variables.attemptId)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
         },
     })
 

@@ -31,7 +31,7 @@ type EditProps = BaseDialogProps & {
     cardTicketKey?: string | null;
     onSubmit: (values: CardFormValues) => Promise<void> | void;
     onDelete: () => Promise<void> | void;
-    boardId?: string;
+    projectId: string;
     cardId?: string;
 };
 
@@ -43,7 +43,7 @@ export function EditCardDialog({
     cardTicketKey,
     onSubmit,
     onDelete,
-    boardId,
+    projectId,
     cardId,
 }: EditProps) {
     const [values, setValues] = useState<CardFormValues>({
@@ -74,8 +74,8 @@ export function EditCardDialog({
         if (open && agents.length && !agent) setAgent(agents[0].key);
     }, [open, agents, agent]);
 
-    const attemptDetailQuery = useCardAttempt(boardId, cardId, {
-        enabled: Boolean(open && boardId && cardId),
+    const attemptDetailQuery = useCardAttempt(projectId, cardId, {
+        enabled: Boolean(open && projectId && cardId),
     });
     const logsQuery = useAttemptLogs(attempt?.id, {
         enabled: Boolean(attempt?.id),
@@ -100,7 +100,7 @@ export function EditCardDialog({
             );
             if (attempt?.id) {
                 queryClient.invalidateQueries({
-                    queryKey: cardAttemptKeys.detail(boardId!, cardId!),
+                    queryKey: cardAttemptKeys.detail(projectId, cardId!),
                 });
             }
         },
@@ -120,7 +120,7 @@ export function EditCardDialog({
                 queryKey: attemptKeys.logs(attempt.id),
             });
             queryClient.invalidateQueries({
-                queryKey: cardAttemptKeys.detail(boardId!, cardId!),
+                queryKey: cardAttemptKeys.detail(projectId, cardId!),
             });
         },
         onMessage: (item) => {
@@ -130,7 +130,7 @@ export function EditCardDialog({
                 return [...prev, item];
             });
             queryClient.invalidateQueries({
-                queryKey: cardAttemptKeys.detail(boardId!, cardId!),
+                queryKey: cardAttemptKeys.detail(projectId, cardId!),
             });
         },
     });
@@ -165,7 +165,7 @@ export function EditCardDialog({
             setAttempt(att);
             setConversation([]);
             await queryClient.invalidateQueries({
-                queryKey: cardAttemptKeys.detail(boardId!, cardId!),
+                queryKey: cardAttemptKeys.detail(projectId, cardId!),
             });
             await queryClient.invalidateQueries({
                 queryKey: attemptKeys.logs(att.id),
@@ -174,9 +174,9 @@ export function EditCardDialog({
     });
 
     const startAttempt = async () => {
-        if (!boardId || !cardId) return;
+        if (!projectId || !cardId) return;
         try {
-            await startMutation.mutateAsync({ boardId, cardId, agent });
+            await startMutation.mutateAsync({ projectId, cardId, agent });
         } catch (err) {
             console.error("Start attempt failed", err);
         }
@@ -185,7 +185,7 @@ export function EditCardDialog({
     const stopMutation = useStopAttempt({
         onSuccess: async (_data, { attemptId }) => {
             await queryClient.invalidateQueries({
-                queryKey: cardAttemptKeys.detail(boardId!, cardId!),
+                queryKey: cardAttemptKeys.detail(projectId, cardId!),
             });
             await queryClient.invalidateQueries({
                 queryKey: attemptKeys.detail(attemptId),
@@ -279,7 +279,7 @@ export function EditCardDialog({
                             <Button
                                 size="sm"
                                 onClick={startAttempt}
-                                disabled={!boardId || !cardId}
+                                disabled={!projectId || !cardId}
                             >
                                 Start
                             </Button>

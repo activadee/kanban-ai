@@ -16,12 +16,12 @@ type CardAttemptResult = { attempt: Attempt; logs: AttemptLog[]; conversation: C
 
 type CardAttemptOptions = Partial<UseQueryOptions<CardAttemptResult>>
 
-export function useCardAttempt(boardId: string | undefined, cardId: string | undefined, options?: CardAttemptOptions) {
-    const enabled = Boolean(boardId && cardId)
-    const key = enabled ? cardAttemptKeys.detail(boardId!, cardId!) : (['card-attempt', 'disabled'] as const)
+export function useCardAttempt(projectId: string | undefined, cardId: string | undefined, options?: CardAttemptOptions) {
+    const enabled = Boolean(projectId && cardId)
+    const key = enabled ? cardAttemptKeys.detail(projectId!, cardId!) : (['card-attempt', 'disabled'] as const)
     return useQuery({
         queryKey: key,
-        queryFn: () => getAttemptDetailForCard(boardId!, cardId!),
+        queryFn: () => getAttemptDetailForCard(projectId!, cardId!),
         enabled,
         ...options,
     })
@@ -54,7 +54,7 @@ export function useAttemptLogs(attemptId: string | undefined, options?: AttemptL
 }
 
 type StartAttemptArgs = {
-    boardId: string;
+    projectId: string;
     cardId: string;
     agent: string;
     profileId?: string;
@@ -68,7 +68,7 @@ export function useStartAttempt(options?: StartAttemptOptions) {
     return useMutation({
         mutationFn: (args: StartAttemptArgs) =>
             startAttemptRequest({
-                boardId: args.boardId,
+                projectId: args.projectId,
                 cardId: args.cardId,
                 agent: args.agent,
                 profileId: args.profileId,
