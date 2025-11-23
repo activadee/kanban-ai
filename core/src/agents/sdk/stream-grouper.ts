@@ -33,8 +33,7 @@ export class StreamGrouper {
             return
         }
 
-        const trimmed = text.trim()
-        if (!trimmed.length) return
+        if (!text.length) return
         ctx.emit({
             type: 'conversation',
             item: {
