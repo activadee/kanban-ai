@@ -141,7 +141,7 @@ export const createApp = ({
     api.get('/readyz', (c) => c.json({ok: ready}, ready ? 200 : 503))
     api.route('/projects', createProjectsRouter())
     api.route('/boards', createBoardsRouter())
-    // GitHub PR endpoints under /projects/:id/github/*
+    // GitHub PR endpoints under /projects/:projectId/pull-requests
     api.route('/projects', createGithubProjectRouter())
     api.route('/auth/github', createGithubRouter())
     api.route('/fs', createFilesystemRouter())

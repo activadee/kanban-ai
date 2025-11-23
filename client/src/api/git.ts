@@ -1,6 +1,6 @@
-// (no project-scoped git types used here now)
 import {SERVER_URL} from '@/lib/env'
 import {parseApiResponse} from '@/api/http'
+import type {PRInfo} from 'shared'
 
 export async function getFileContent(projectId: string, path: string, source: 'worktree' | 'index' | 'head' | 'base'): Promise<string | null> {
     const url = new URL(`${SERVER_URL}/projects/${projectId}/git/file`)
@@ -56,20 +56,38 @@ export async function pushAttempt(attemptId: string, setUpstream?: boolean): Pro
     return data
 }
 
-export async function createAttemptPR(attemptId: string, payload: {
-    base?: string;
-    title: string;
-    body?: string;
+export type CreatePullRequestPayload = {
+    title: string
+    base?: string
+    body?: string
     draft?: boolean
-}): Promise<import('shared').PRInfo> {
-    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/github/pr`, {
+    branch?: string
+    attemptId?: string
+    cardId?: string
+}
+
+export async function createProjectPullRequest(projectId: string, payload: CreatePullRequestPayload): Promise<PRInfo> {
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/pull-requests`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
     })
-    const data = await parseApiResponse<{ pr: import('shared').PRInfo | null }>(res)
+    const data = await parseApiResponse<{ pr: PRInfo | null }>(res)
     if (!data?.pr) {
         throw new Error('PR response missing payload')
     }
     return data.pr
+}
+
+export async function listProjectPullRequests(
+    projectId: string,
+    params?: { branch?: string; state?: 'open' | 'closed' | 'all' },
+): Promise<PRInfo[]> {
+    const url = new URL(`${SERVER_URL}/projects/${projectId}/pull-requests`)
+    const branch = params?.branch?.trim()
+    if (branch) url.searchParams.set('branch', branch)
+    if (params?.state) url.searchParams.set('state', params.state)
+    const res = await fetch(url.toString())
+    const data = await parseApiResponse<{ pullRequests: PRInfo[] }>(res)
+    return data.pullRequests ?? []
 }

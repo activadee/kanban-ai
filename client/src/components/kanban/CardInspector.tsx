@@ -777,9 +777,17 @@ export function CardInspector({
                                   onOpenChange={setChangesOpen} title={`Changes — ${values.title}`}/>
             <CommitDialog attemptId={attempt?.id ?? ''} open={commitOpen && Boolean(attempt?.id)}
                           onOpenChange={setCommitOpen}/>
-            <CreatePrDialog attemptId={attempt?.id ?? ''} baseBranch={attempt?.baseBranch}
-                            defaultTitle={prDefaults.title} defaultBody={prDefaults.body}
-                            open={prOpen && Boolean(attempt?.id)} onOpenChange={setPrOpen}/>
+            <CreatePrDialog
+                projectId={projectId}
+                attemptId={attempt?.id}
+                cardId={card.id}
+                branch={attempt?.branchName}
+                baseBranch={attempt?.baseBranch}
+                defaultTitle={prDefaults.title}
+                defaultBody={prDefaults.body}
+                open={prOpen && Boolean(attempt?.id)}
+                onOpenChange={setPrOpen}
+            />
             <MergeBaseDialog attemptId={attempt?.id ?? ''} open={mergeOpen && Boolean(attempt?.id)}
                              onOpenChange={setMergeOpen}/>
         </div>

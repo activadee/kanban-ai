@@ -200,7 +200,9 @@ or the nested alias `/projects/:projectId/board/*`.
   `POST /attempts/:id/messages` for follow-ups, `GET /attempts/:id/logs`. Older `/attempts/boards/*` and
   `/attempts/:id/stop` paths now return HTTP 410 with pointers to the canonical shape.
 - Attempt Git: `GET /attempts/:id/git/status`, `GET /attempts/:id/git/file`,
-  `POST /attempts/:id/git/commit|push|merge`, `POST /attempts/:id/github/pr`
+  `POST /attempts/:id/git/commit|push|merge`
+- Pull Requests: `GET /projects/:projectId/pull-requests?branch=`, `POST /projects/:projectId/pull-requests`
+  (legacy `/projects/:projectId/github/pr` has been retired)
 
 Types for requests/responses and WebSocket messages are exported from the `shared` package.
 
