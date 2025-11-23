@@ -86,4 +86,49 @@ describe('tasks/cleanup', () => {
         expect(branchLocal).not.toHaveBeenCalled()
         expect(deleteLocalBranch).not.toHaveBeenCalled()
     })
+
+    it('skips cleanup when attempt is still running', async () => {
+        ;(getAttemptForCard as any).mockResolvedValue({
+            id: 'att-3',
+            boardId: 'board-1',
+            cardId: 'card-1',
+            agent: 'X',
+            status: 'running',
+            baseBranch: 'main',
+            branchName: 'feature/run',
+            worktreePath: '/tmp/wt3',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        })
+        ;(getRepositoryPath as any).mockResolvedValue('/repo/path')
+
+        const result = await cleanupCardWorkspace('board-1', 'card-1')
+
+        expect(result).toEqual({worktreeRemoved: false, branchRemoved: false, skipped: 'in_progress'})
+        expect(removeWorktree).not.toHaveBeenCalled()
+        expect(deleteLocalBranch).not.toHaveBeenCalled()
+        expect(updateAttempt).not.toHaveBeenCalled()
+    })
+
+    it('keeps worktreePath when removal fails', async () => {
+        ;(getAttemptForCard as any).mockResolvedValue({
+            id: 'att-4',
+            boardId: 'board-1',
+            cardId: 'card-1',
+            agent: 'X',
+            status: 'succeeded',
+            baseBranch: 'main',
+            branchName: 'feature/fail',
+            worktreePath: '/tmp/wt4',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        })
+        ;(getRepositoryPath as any).mockResolvedValue('/repo/path')
+        ;(removeWorktree as any).mockRejectedValue(new Error('boom'))
+
+        const result = await cleanupCardWorkspace('board-1', 'card-1')
+
+        expect(result.worktreeRemoved).toBe(false)
+        expect(updateAttempt).not.toHaveBeenCalled()
+    })
 })

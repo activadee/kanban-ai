@@ -18,7 +18,7 @@
     - Runner emits `attempt.completed` with final status. Git auto-commit is delegated via
       `attempt.autocommit.requested` (handled by the git listener).
     - On abort, `attempt.stopped` fires and the status transitions to `stopping/stopped`.
-    - When a card is moved to **Done**, a tasks listener tears down the attempt worktree and deletes its branch.
+    - When a card is moved to **Done** and its attempt is finished, a tasks listener tears down the attempt worktree and deletes its branch.
 3. **Git Helpers**
     - Attempt routes proxy to the git service (`commitAtPath`, etc.) with metadata so those helpers emit
       `git.*` events automatically.

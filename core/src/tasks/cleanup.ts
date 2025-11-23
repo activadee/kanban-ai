@@ -2,11 +2,12 @@ import simpleGit from 'simple-git'
 import {getAttemptForCard, updateAttempt} from '../attempts/repo'
 import {getRepositoryPath} from '../projects/repo'
 import {removeWorktree} from '../ports/worktree'
+import type {AttemptStatus} from 'shared'
 
 export type CleanupResult = {
     worktreeRemoved: boolean
     branchRemoved: boolean
-    skipped?: 'no_attempt' | 'no_repo'
+    skipped?: 'no_attempt' | 'no_repo' | 'in_progress'
 }
 
 /**
@@ -16,6 +17,11 @@ export type CleanupResult = {
 export async function cleanupCardWorkspace(boardId: string, cardId: string): Promise<CleanupResult> {
     const attempt = await getAttemptForCard(boardId, cardId)
     if (!attempt) return {worktreeRemoved: false, branchRemoved: false, skipped: 'no_attempt'}
+
+    const status = attempt.status as AttemptStatus
+    if (status === 'queued' || status === 'running' || status === 'stopping') {
+        return {worktreeRemoved: false, branchRemoved: false, skipped: 'in_progress'}
+    }
 
     const repoPath = await getRepositoryPath(boardId)
     if (!repoPath) return {worktreeRemoved: false, branchRemoved: false, skipped: 'no_repo'}
@@ -58,12 +64,13 @@ export async function cleanupCardWorkspace(boardId: string, cardId: string): Pro
         }
     }
 
-    try {
-        await updateAttempt(attempt.id, {worktreePath: null, updatedAt: new Date()})
-    } catch (error) {
-        console.error('[tasks:cleanup] failed to update attempt after cleanup', error)
+    if (worktreeRemoved) {
+        try {
+            await updateAttempt(attempt.id, {worktreePath: null, updatedAt: new Date()})
+        } catch (error) {
+            console.error('[tasks:cleanup] failed to update attempt after cleanup', error)
+        }
     }
 
     return {worktreeRemoved, branchRemoved}
 }
-
