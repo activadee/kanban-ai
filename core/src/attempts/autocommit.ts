@@ -2,7 +2,7 @@ import simpleGit, {type SimpleGit} from 'simple-git'
 import type {AppEventBus} from '../events/bus'
 import {insertAttemptLog, listConversationItemsDescending} from './repo'
 import {getCardById} from '../projects/repo'
-import {ensureGitAuthorIdentity} from '../git/service'
+import {ensureGitAuthorIdentity, pushAtPath} from '../git/service'
 
 type SimpleGitCommitResult = Awaited<ReturnType<SimpleGit['commit']>>
 
@@ -67,11 +67,13 @@ type AutoCommitParams = {
     cardId: string
     worktreePath: string
     profileId?: string | null
+    autoPushOnAutocommit?: boolean
+    preferredRemote?: string | null
     events: AppEventBus
 }
 
 export async function performAutoCommit(params: AutoCommitParams) {
-    const {attemptId, boardId, cardId, worktreePath, profileId, events} = params
+    const {attemptId, boardId, cardId, worktreePath, profileId, autoPushOnAutocommit, preferredRemote, events} = params
     const git = simpleGit({baseDir: worktreePath})
     const status = await git.status()
     const hasChanges =
@@ -125,4 +127,46 @@ export async function performAutoCommit(params: AutoCommitParams) {
         message: logMessage,
         ts: timestamp.toISOString(),
     })
+
+    if (autoPushOnAutocommit) {
+        const targetBranch = status.current || 'HEAD'
+        const targetRemote = preferredRemote?.trim() || (status.tracking?.split('/')?.[0] ?? 'origin')
+        try {
+            await pushAtPath(worktreePath, {remote: targetRemote, branch: targetBranch}, {projectId: boardId, attemptId})
+            const pushTs = new Date()
+            const pushMessage = `[autopush] pushed ${targetRemote}/${targetBranch}`
+            await insertAttemptLog({
+                id: `log-${crypto.randomUUID()}`,
+                attemptId,
+                ts: pushTs,
+                level: 'info',
+                message: pushMessage,
+            })
+            events.publish('attempt.log.appended', {
+                attemptId,
+                boardId,
+                level: 'info',
+                message: pushMessage,
+                ts: pushTs.toISOString(),
+            })
+        } catch (error) {
+            const errorTs = new Date()
+            const errMsg = `[autopush] failed: ${(error as Error).message || error}`
+            await insertAttemptLog({
+                id: `log-${crypto.randomUUID()}`,
+                attemptId,
+                ts: errorTs,
+                level: 'error',
+                message: errMsg,
+            })
+            events.publish('attempt.log.appended', {
+                attemptId,
+                boardId,
+                level: 'error',
+                message: errMsg,
+                ts: errorTs.toISOString(),
+            })
+            throw error
+        }
+    }
 }

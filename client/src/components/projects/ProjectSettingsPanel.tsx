@@ -38,6 +38,7 @@ type FormState = {
     defaultAgent: string;
     defaultProfileId: string;
     autoCommitOnFinish: boolean;
+    autoPushOnAutocommit: boolean;
     ticketPrefix: string;
 };
 
@@ -53,6 +54,7 @@ function mapSettingsToForm(settings: ProjectSettings | null): FormState {
             defaultAgent: "",
             defaultProfileId: "",
             autoCommitOnFinish: false,
+            autoPushOnAutocommit: false,
             ticketPrefix: "",
         };
     }
@@ -66,6 +68,7 @@ function mapSettingsToForm(settings: ProjectSettings | null): FormState {
         defaultAgent: settings.defaultAgent ?? "",
         defaultProfileId: settings.defaultProfileId ?? "",
         autoCommitOnFinish: settings.autoCommitOnFinish ?? false,
+        autoPushOnAutocommit: settings.autoPushOnAutocommit ?? false,
         ticketPrefix: settings.ticketPrefix ?? "",
     };
 }
@@ -192,6 +195,8 @@ export function ProjectSettingsPanel({
             (initialSettings.defaultProfileId ?? "") ||
             form.autoCommitOnFinish !==
             (initialSettings.autoCommitOnFinish ?? false) ||
+            form.autoPushOnAutocommit !==
+            (initialSettings.autoPushOnAutocommit ?? false) ||
             (form.ticketPrefix || "") !== (initialSettings.ticketPrefix ?? "")
         );
     }, [form, initialSettings]);
@@ -231,6 +236,11 @@ export function ProjectSettingsPanel({
             form.autoCommitOnFinish !== (initialSettings.autoCommitOnFinish ?? false)
         )
             payload.autoCommitOnFinish = form.autoCommitOnFinish;
+        if (
+            form.autoPushOnAutocommit !==
+            (initialSettings.autoPushOnAutocommit ?? false)
+        )
+            payload.autoPushOnAutocommit = form.autoPushOnAutocommit;
         if ((form.ticketPrefix || "") !== (initialSettings.ticketPrefix ?? ""))
             payload.ticketPrefix = form.ticketPrefix || initialSettings.ticketPrefix;
 
@@ -377,7 +387,12 @@ export function ProjectSettingsPanel({
                                             id="auto-commit-on-finish"
                                             checked={form.autoCommitOnFinish}
                                             onCheckedChange={(checked) =>
-                                                updateForm({autoCommitOnFinish: checked === true})
+                                                updateForm({
+                                                    autoCommitOnFinish: checked === true,
+                                                    autoPushOnAutocommit: checked === true
+                                                        ? form.autoPushOnAutocommit
+                                                        : false,
+                                                })
                                             }
                                         />
                                         <div className="space-y-1">
@@ -387,7 +402,27 @@ export function ProjectSettingsPanel({
                                             <p className="text-xs text-muted-foreground">
                                                 When the agent succeeds, commit all changes in the
                                                 worktree using the last assistant message as the commit
-                                                message. Does not push.
+                                                message. Does not push unless auto-push is enabled.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        className="flex items-center gap-3 rounded-md border border-dashed border-border/60 bg-background/80 p-3">
+                                        <Checkbox
+                                            id="auto-push-after-autocommit"
+                                            checked={form.autoPushOnAutocommit}
+                                            disabled={!form.autoCommitOnFinish}
+                                            onCheckedChange={(checked) =>
+                                                updateForm({autoPushOnAutocommit: checked === true})
+                                            }
+                                        />
+                                        <div className="space-y-1">
+                                            <Label htmlFor="auto-push-after-autocommit">
+                                                Auto-push after auto-commit
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">
+                                                If auto-commit is enabled, also push the branch to the
+                                                preferred remote (or tracking remote) after committing.
                                             </p>
                                         </div>
                                     </div>

@@ -52,6 +52,7 @@ const updateProjectSettingsSchema = z
         defaultAgent: z.string().optional().nullable(),
         defaultProfileId: z.string().optional().nullable(),
         autoCommitOnFinish: z.boolean().optional(),
+        autoPushOnAutocommit: z.boolean().optional(),
         ticketPrefix: z
             .string()
             .min(1, "Ticket prefix cannot be empty")
@@ -551,6 +552,8 @@ export const createProjectsRouter = () => {
                 updates.defaultProfileId = defaultProfileId;
             if (body.autoCommitOnFinish !== undefined)
                 updates.autoCommitOnFinish = body.autoCommitOnFinish;
+            if (body.autoPushOnAutocommit !== undefined)
+                updates.autoPushOnAutocommit = body.autoPushOnAutocommit;
 
             if (body.ticketPrefix !== undefined) {
                 const sanitized = ticketKeys.sanitizeTicketPrefix(body.ticketPrefix);

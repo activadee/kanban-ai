@@ -153,7 +153,7 @@ bun run test
 ## Configuration
 
 Project Settings (per project): base branch, preferred remote, setup/dev/cleanup scripts, default agent/profile,
-auto-commit-on-finish (automatically triggers an autocommit when a successful attempt finishes).
+auto-commit-on-finish (automatically triggers an autocommit when a successful attempt finishes) with optional auto-push.
 
 Agent profiles can be stored per project or as workspace-global entries (IDs beginning with `apg-`). When an attempt
 starts or resumes, the server now resolves the referenced profile, validates it against the agent’s schema, and logs an

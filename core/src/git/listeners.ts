@@ -14,6 +14,8 @@ export function registerGitListeners(bus: AppEventBus) {
                 cardId: payload.cardId,
                 worktreePath: payload.worktreePath,
                 profileId: payload.profileId ?? undefined,
+                autoPushOnAutocommit: settings.autoPushOnAutocommit,
+                preferredRemote: settings.preferredRemote ?? null,
             })
         } catch (error) {
             console.error('[core:git] auto-commit request failed', error)
@@ -28,6 +30,8 @@ export function registerGitListeners(bus: AppEventBus) {
                 cardId: payload.cardId,
                 worktreePath: payload.worktreePath,
                 profileId: payload.profileId ?? null,
+                autoPushOnAutocommit: payload.autoPushOnAutocommit ?? false,
+                preferredRemote: payload.preferredRemote ?? null,
                 events: bus,
             })
         } catch (error) {

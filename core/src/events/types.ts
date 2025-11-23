@@ -132,6 +132,8 @@ export interface AttemptAutocommitRequestedEvent {
     worktreePath: string
     cardId: string
     profileId?: string
+    autoPushOnAutocommit?: boolean
+    preferredRemote?: string | null
 }
 
 export interface AttemptStoppedEvent {

@@ -38,6 +38,7 @@ export interface ProjectSettings {
     defaultAgent: string | null
     defaultProfileId: string | null
     autoCommitOnFinish: boolean
+    autoPushOnAutocommit: boolean
     ticketPrefix: string
     nextTicketNumber: number
     createdAt: string
@@ -54,6 +55,7 @@ export interface UpdateProjectSettingsRequest {
     defaultAgent?: string | null
     defaultProfileId?: string | null
     autoCommitOnFinish?: boolean
+    autoPushOnAutocommit?: boolean
     ticketPrefix?: string
 }
 
