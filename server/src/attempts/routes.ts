@@ -347,5 +347,22 @@ export const createAttemptsRouter = () => {
         }
     })
 
+    router.post('/:id/automation/dev/stop', async (c) => {
+        const events = c.get('events')
+        try {
+            const item = await attempts.stopDevAutomation(c.req.param('id'), {events})
+            return c.json({item})
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to stop dev automation'
+            let status: ContentfulStatusCode = 500
+            if (message === 'Attempt not found') status = 404
+            else if (message === 'No running dev process to stop') status = 409
+            if (status >= 500) {
+                console.error('[attempts:automation:dev:stop] failed', error)
+            }
+            return c.json({error: message}, {status})
+        }
+    })
+
     return router
 }

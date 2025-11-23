@@ -28,6 +28,7 @@ import {
     useOpenAttemptEditor,
     useProjectSettings,
     useRunDevAutomation,
+    useStopDevAutomation,
 } from '@/hooks'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {toast} from '@/components/ui/toast'
@@ -135,6 +136,15 @@ export function CardInspector({
         onError: (err) => {
             toast({title: 'Dev script failed', description: err.message, variant: 'destructive'})
         },
+    })
+    const stopDevAutomationMutation = useStopDevAutomation({
+        onSuccess: async (_item, variables) => {
+            await queryClient.invalidateQueries({queryKey: attemptKeys.detail(variables.attemptId)})
+            await queryClient.invalidateQueries({queryKey: attemptKeys.logs(variables.attemptId)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(boardId, card.id)})
+            toast({title: 'Dev script stopped', description: 'Background dev process was signaled to stop.'})
+        },
+        onError: (err) => toast({title: 'Stop dev failed', description: err.message, variant: 'destructive'}),
     })
     const [stopping, setStopping] = useState(false)
     const [profileId, setProfileId] = useState<string | undefined>(undefined)
@@ -598,14 +608,16 @@ export function CardInspector({
             actions: agentActions,
         })
 
-        const devStatus: ProcessStatus = devAutomationMutation.isPending
+        const devStatus: ProcessStatus = devAutomationMutation.isPending || stopDevAutomationMutation.isPending
             ? 'running'
             : latestDevAutomation
                 ? latestDevAutomation.status === 'succeeded'
                     ? 'succeeded'
                     : latestDevAutomation.status === 'failed'
                         ? 'failed'
-                        : 'idle'
+                        : latestDevAutomation.status === 'running'
+                            ? 'running'
+                            : 'idle'
                 : 'idle'
         const devRelative = latestDevAutomation
             ? formatRelativeTime(latestDevAutomation.completedAt ?? latestDevAutomation.timestamp)
@@ -614,14 +626,28 @@ export function CardInspector({
             if (!devScriptConfigured) return 'Configure a dev script in Project Settings.'
             if (!attempt) return 'Start an attempt to provision a worktree.'
             if (!latestDevAutomation) return 'Ready to launch.'
+            if (latestDevAutomation.status === 'running') return 'Running…'
             const prefix = latestDevAutomation.status === 'succeeded' ? 'Succeeded' : 'Failed'
             return devRelative ? `${prefix} ${devRelative}` : prefix
         })()
         const devDescription = devScriptConfigured
             ? 'Start and monitor the project dev script.'
             : 'Add a dev script in Project Settings to enable quick launches.'
-        const devActions: ProcessAction[] = [
-            {
+        const devActions: ProcessAction[] = []
+
+        if (latestDevAutomation?.status === 'running') {
+            devActions.push({
+                id: 'stop-dev',
+                label: stopDevAutomationMutation.isPending ? 'Stopping…' : 'Stop dev',
+                onClick: () => {
+                    if (!attempt) return
+                    stopDevAutomationMutation.mutate({attemptId: attempt.id})
+                },
+                disabled: stopDevAutomationMutation.isPending,
+                variant: 'outline',
+            })
+        } else {
+            devActions.push({
                 id: 'run-dev',
                 label: devAutomationMutation.isPending ? 'Running…' : 'Run dev',
                 onClick: handleRunDevScript,
@@ -632,8 +658,8 @@ export function CardInspector({
                     : !attempt
                         ? 'Start an attempt to create a worktree first.'
                         : undefined,
-            },
-        ]
+            })
+        }
 
         entries.push({
             id: 'dev-server',

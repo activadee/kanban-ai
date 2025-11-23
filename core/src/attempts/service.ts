@@ -30,6 +30,7 @@ import {
     insertConversationItem,
     listConversationItems as repoListConversationItems,
     getNextConversationSeq,
+    listConversationItemsDescending,
 } from "./repo";
 
 type StartAttemptInput = {
@@ -692,6 +693,80 @@ export async function runAttemptAutomation(
         events,
     );
     return saved;
+}
+
+export async function stopDevAutomation(
+    attemptId: string,
+    deps?: AttemptServiceDeps,
+): Promise<ConversationAutomationItem> {
+    const events = requireEvents(deps);
+    const attempt = await getAttemptById(attemptId);
+    if (!attempt) throw new Error("Attempt not found");
+
+    const rows = await listConversationItemsDescending(attemptId, 50);
+    let target: ConversationAutomationItem | null = null;
+    for (const row of rows) {
+        try {
+            const parsed = JSON.parse(row.itemJson) as ConversationItem;
+            if (parsed.type === "automation" && parsed.stage === "dev") {
+                target = parsed as ConversationAutomationItem;
+                break;
+            }
+        } catch {
+            continue;
+        }
+    }
+
+    const pid = target?.metadata && typeof (target.metadata as any).pid === "number"
+        ? (target.metadata as any).pid
+        : null;
+
+    if (!pid) throw new Error("No running dev process to stop");
+
+    const now = new Date();
+    let status: ConversationAutomationItem["status"] = "succeeded";
+    let stderr: string | null = null;
+    let stdout: string | null = null;
+
+    try {
+        process.kill(pid, "SIGTERM");
+        stdout = `Sent SIGTERM to pid ${pid}`;
+    } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code === "ESRCH") {
+            stdout = `Process ${pid} already exited`;
+        } else {
+            status = "failed";
+            stderr = err.message;
+        }
+    }
+
+    const item: ConversationAutomationItem = {
+        type: "automation",
+        stage: "dev",
+        command: `kill ${pid}`,
+        cwd: target?.cwd ?? attempt.worktreePath ?? process.cwd(),
+        status,
+        startedAt: now.toISOString(),
+        completedAt: now.toISOString(),
+        durationMs: 0,
+        exitCode: null,
+        stdout,
+        stderr,
+        metadata: {
+            action: "stop",
+            pid,
+        },
+        timestamp: now.toISOString(),
+    };
+
+    return appendAutomationConversationItem(
+        attemptId,
+        attempt.boardId,
+        item,
+        events,
+        await getNextConversationSeq(attemptId),
+    );
 }
 
 export async function followupAttempt(

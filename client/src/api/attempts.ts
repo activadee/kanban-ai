@@ -94,3 +94,9 @@ export async function runDevAutomationRequest(attemptId: string): Promise<Conver
     const data = await parseJson<{ item: ConversationAutomationItem }>(res)
     return data.item
 }
+
+export async function stopDevAutomationRequest(attemptId: string): Promise<ConversationAutomationItem> {
+    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/automation/dev/stop`, {method: 'POST'})
+    const data = await parseJson<{ item: ConversationAutomationItem }>(res)
+    return data.item
+}

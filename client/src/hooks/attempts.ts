@@ -10,6 +10,7 @@ import {
     startAttemptRequest,
     stopAttemptRequest,
     runDevAutomationRequest,
+    stopDevAutomationRequest,
 } from '@/api/attempts'
 
 type CardAttemptResult = { attempt: Attempt; logs: AttemptLog[]; conversation: ConversationItem[] }
@@ -119,6 +120,15 @@ type RunDevAutomationOptions = UseMutationOptions<ConversationAutomationItem, Er
 export function useRunDevAutomation(options?: RunDevAutomationOptions) {
     return useMutation({
         mutationFn: ({attemptId}: { attemptId: string }) => runDevAutomationRequest(attemptId),
+        ...options,
+    })
+}
+
+type StopDevAutomationOptions = UseMutationOptions<ConversationAutomationItem, Error, { attemptId: string }>
+
+export function useStopDevAutomation(options?: StopDevAutomationOptions) {
+    return useMutation({
+        mutationFn: ({attemptId}: { attemptId: string }) => stopDevAutomationRequest(attemptId),
         ...options,
     })
 }
