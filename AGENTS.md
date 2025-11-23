@@ -46,5 +46,5 @@ cli/      # npx launcher + packaged single binaries
 - 2025-11-22: removed CLI workspace/binary packaging and server-side static client serving; UI is now served independently via Vite.
 
 <!-- MANUAL ADDITIONS START -->
-* CLI package now ships per-platform zip archives in `cli/dist/<platform>/kanban-ai-<platform>.zip`; launcher prefers these before hitting GitHub. Use `KANBANAI_OFFLINE=1` or `--offline` to skip network fetches.
+* CLI npm package no longer includes binaries (npm size limits). Launcher downloads zips from GitHub Releases and caches them; offline mode only works once cached.
 <!-- MANUAL ADDITIONS END -->

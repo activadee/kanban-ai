@@ -69,7 +69,7 @@ jobs:
 
   publish-npm:
     name: Publish CLI to npm
-    needs: build
+    needs: [build, release]
     runs-on: ubuntu-latest
     # Only run when manually dispatched AND publish_npm is explicitly enabled.
     if: github.event_name == 'workflow_dispatch' && inputs.publish_npm == true
@@ -84,6 +84,9 @@ jobs:
         with:
           name: cli-dist
           path: cli/dist
+
+      - name: Strip binaries before npm publish (keep GitHub releases authoritative)
+        run: rm -rf cli/dist
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2

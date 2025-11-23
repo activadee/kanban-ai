@@ -7,7 +7,6 @@
   },
   "files": [
     "bin",
-    "dist",
     "README.md",
     "package.json"
   ],
