@@ -5,9 +5,13 @@
 const DEV_DEFAULT = 'http://localhost:3000/api/v1'
 
 function defaultApiBase() {
+    // In dev we want to talk to the separate API server (defaults to :3000).
+    if (import.meta.env.DEV) return DEV_DEFAULT
+
     if (typeof window !== 'undefined') {
         return `${window.location.origin.replace(/\/?$/, '')}/api/v1`
     }
+
     return DEV_DEFAULT
 }
 

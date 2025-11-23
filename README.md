@@ -58,9 +58,10 @@ CODEX_API_KEY=your_codex_or_openai_api_key
 # CODEX_PATH_OVERRIDE=/custom/path/to/codex
 ```
 
-- Client (`client/.env`):
+- Client (`client/.env`, optional unless you need a custom API origin):
 
 ```env
+# Optional: override the API base (dev defaults to http://localhost:3000/api/v1)
 VITE_SERVER_URL=http://localhost:3000/api/v1
 ```
 
