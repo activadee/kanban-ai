@@ -49,6 +49,7 @@ export const cards = sqliteTable(
         columnId: text('column_id').notNull().references(() => columns.id, {onDelete: 'cascade'}),
         boardId: text('board_id').references(() => boards.id, {onDelete: 'cascade'}),
         ticketKey: text('ticket_key'),
+        prUrl: text('pr_url'),
         createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
         updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
     },

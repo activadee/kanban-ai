@@ -2,7 +2,7 @@ import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card as UICard, CardContent} from "@/components/ui/card"
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
-import {Bot} from 'lucide-react'
+import {Bot, GitPullRequest} from 'lucide-react'
 import type {Card as TCard} from 'shared'
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
 }
 
 export function KanbanCard({card, done = false, showAgentComingSoon = false, blocked = false, blockers = []}: Props) {
-    const showHeaderRow = Boolean(card.ticketKey) || showAgentComingSoon
+    const showHeaderRow = Boolean(card.ticketKey) || showAgentComingSoon || Boolean(card.prUrl)
 
     const cardInner = (
         <UICard
@@ -22,7 +22,7 @@ export function KanbanCard({card, done = false, showAgentComingSoon = false, blo
             <CardContent className="p-3">
                 {showHeaderRow ? (
                     <div className="mb-2 flex items-start justify-between gap-2">
-                        <div>
+                        <div className="flex flex-wrap items-center gap-2">
                             {card.ticketKey ? (
                                 <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
                                     {card.ticketKey}
@@ -30,13 +30,39 @@ export function KanbanCard({card, done = false, showAgentComingSoon = false, blo
                             ) : null}
                             {blocked && !done ? (
                                 <Badge variant="outline"
-                                       className="ml-2 border-destructive/50 text-destructive">Blocked</Badge>
+                                       className="border-destructive/50 text-destructive">Blocked</Badge>
                             ) : null}
                         </div>
-                        {showAgentComingSoon ? (
-                            <TooltipProvider delayDuration={200}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1">
+                            {card.prUrl ? (
+                                <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                asChild
+                                                aria-label="Open pull request"
+                                                className="text-muted-foreground"
+                                            >
+                                                <a href={card.prUrl}
+                                                   target="_blank"
+                                                   rel="noreferrer noopener"
+                                                   onClick={(event) => event.stopPropagation()}
+                                                   onPointerDown={(event) => event.stopPropagation()}
+                                                >
+                                                    <GitPullRequest className="size-4"/>
+                                                </a>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent align="end">Open pull request</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            ) : null}
+                            {showAgentComingSoon ? (
+                                <TooltipProvider delayDuration={200}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
                     <span className="inline-flex">
                       <Button
                           variant="ghost"
@@ -48,11 +74,12 @@ export function KanbanCard({card, done = false, showAgentComingSoon = false, blo
                         <Bot className="size-4"/>
                       </Button>
                     </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent align="end">Review with Agents coming soon</TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        ) : null}
+                                        </TooltipTrigger>
+                                        <TooltipContent align="end">Review with Agents coming soon</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            ) : null}
+                        </div>
                     </div>
                 ) : null}
                 <div

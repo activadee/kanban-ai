@@ -257,6 +257,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                     const cardPayload = {
                         id: updatedCard.id,
                         ticketKey: updatedCard.ticketKey ?? undefined,
+                        prUrl: updatedCard.prUrl ?? undefined,
                         title: updatedCard.title,
                         description: updatedCard.description ?? undefined,
                         dependsOn: deps.length ? deps : undefined,

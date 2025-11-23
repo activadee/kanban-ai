@@ -11,6 +11,7 @@ export type ColumnKey = 'backlog' | 'inProgress' | 'review' | 'done'
 export interface Card {
     id: CardId
     ticketKey?: string | null
+    prUrl?: string | null
     title: string
     description?: string
     /**
