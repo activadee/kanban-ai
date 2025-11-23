@@ -20,26 +20,47 @@ type McpState = {
 
 // Aggregates streamed reasoning/tool events into conversation items.
 export class StreamGrouper {
+    constructor(private options: {emitThinkingImmediately?: boolean} = {}) {}
+
     private reasoningBuf = ''
     private execPending = new Map<string, ExecState>()
     private lastExecKey: string | null = null
     private mcpPending = new Map<string, McpState>()
 
-    appendReasoning(text: string) {
-        this.reasoningBuf += text
+    appendReasoning(ctx: AgentContext, text: string) {
+        if (!this.options.emitThinkingImmediately) {
+            this.reasoningBuf += text
+            return
+        }
+
+        const trimmed = text.trim()
+        if (!trimmed.length) return
+        ctx.emit({
+            type: 'conversation',
+            item: {
+                type: 'thinking',
+                timestamp: nowIso(),
+                text,
+                format: 'markdown',
+            },
+        })
     }
 
     flushReasoning(ctx: AgentContext) {
-        if (this.reasoningBuf.trim().length) {
-            const item: ConversationItem = {
+        if (!this.reasoningBuf.trim().length) {
+            this.reasoningBuf = ''
+            return
+        }
+        ctx.emit({
+            type: 'conversation',
+            item: {
                 type: 'thinking',
                 timestamp: nowIso(),
                 text: this.reasoningBuf.trim(),
                 format: 'markdown',
-            }
-            ctx.emit({type: 'conversation', item})
-            this.reasoningBuf = ''
-        }
+            },
+        })
+        this.reasoningBuf = ''
     }
 
     execBegin(key: string, info: { cmd: string; cwd?: string }) {

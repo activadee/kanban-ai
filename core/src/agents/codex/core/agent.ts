@@ -51,7 +51,7 @@ class CodexImpl extends SdkAgent<CodexProfile> {
     }
 
     private getGrouper(id: string) {
-        if (!this.groupers.has(id)) this.groupers.set(id, new StreamGrouper())
+        if (!this.groupers.has(id)) this.groupers.set(id, new StreamGrouper({emitThinkingImmediately: true}))
         return this.groupers.get(id) as StreamGrouper
     }
 
@@ -73,7 +73,7 @@ class CodexImpl extends SdkAgent<CodexProfile> {
 
     private handleReasoning(item: ReasoningItem, ctx: AgentContext) {
         const g = this.getGrouper(ctx.attemptId)
-        g.appendReasoning(item.text)
+        g.appendReasoning(ctx, item.text)
     }
 
     private handleCommand(item: CommandExecutionItem, eventType: ThreadEvent['type'], ctx: AgentContext) {
@@ -243,7 +243,7 @@ class CodexImpl extends SdkAgent<CodexProfile> {
     }
 
     async run(ctx: AgentContext, profile: CodexProfile): Promise<number> {
-        this.groupers.set(ctx.attemptId, new StreamGrouper())
+        this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
         const prompt = this.buildPrompt(profile, ctx)
         if (prompt) {
             ctx.emit({
@@ -267,7 +267,7 @@ class CodexImpl extends SdkAgent<CodexProfile> {
     }
 
     async resume(ctx: AgentContext, profile: CodexProfile): Promise<number> {
-        this.groupers.set(ctx.attemptId, new StreamGrouper())
+        this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
         const prompt = (ctx.followupPrompt ?? '').trim()
         if (prompt.length) {
             ctx.emit({
