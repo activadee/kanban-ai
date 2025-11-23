@@ -3,7 +3,7 @@ import type {ContentfulStatusCode} from 'hono/utils/http-status'
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
-import {projectsRepo, projectDeps, attempts, git, type FileSource, githubRepo, settingsService} from 'core'
+import {projectsRepo, projectDeps, attempts, git, type FileSource, githubRepo, settingsService, tasks} from 'core'
 import {openEditorAtPath} from '../editor/service'
 import {createPR, findOpenPR} from '../github/pr'
 
@@ -282,6 +282,12 @@ export const createAttemptsRouter = () => {
                 attemptId: attempt.id,
                 pr,
             })
+            try {
+                await projectsRepo.updateCard(attempt.cardId, {prUrl: pr.url, updatedAt: new Date()})
+                await tasks.broadcastBoard(attempt.boardId)
+            } catch (error) {
+                console.error('[attempts:pr] failed to persist PR url', error)
+            }
             return c.json({pr}, 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'PR failed'
