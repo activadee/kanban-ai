@@ -26,6 +26,38 @@ let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
 import * as console from "node:console";
 
+const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
+
+const isFalseyFlag = (value: string) => ['0', 'false', 'off', 'quiet', 'silent'].includes(value)
+
+const matchesDebugNamespace = (value: string) =>
+    value.split(/[\s,]+/).some((token) => token === '*' || token.startsWith('kanbanai') || token.startsWith('kanban-ai'))
+
+const isDebugLoggingEnabled = () => {
+    const { LOG_LEVEL, KANBANAI_DEBUG, DEBUG } = env()
+
+    const normalizedLevel = LOG_LEVEL?.toLowerCase()
+    if (normalizedLevel) {
+        if (isFalseyFlag(normalizedLevel)) return false
+        if (['debug', 'verbose', 'trace'].includes(normalizedLevel) || normalizedLevel.startsWith('debug')) return true
+    }
+
+    const normalizedKanban = KANBANAI_DEBUG?.toLowerCase()
+    if (normalizedKanban) {
+        if (isFalseyFlag(normalizedKanban)) return false
+        return true
+    }
+
+    const normalizedDebug = DEBUG?.toLowerCase()
+    if (normalizedDebug) {
+        if (isFalseyFlag(normalizedDebug)) return false
+        if (['1', 'true', 'on', 'yes', 'debug', 'verbose', 'trace'].includes(normalizedDebug)) return true
+        if (matchesDebugNamespace(normalizedDebug)) return true
+    }
+
+    return false
+}
+
 function createMetricsRouter() {
     const router = new Hono<AppEnv>()
     router.get('/', (c) =>
@@ -70,7 +102,9 @@ export const createApp = ({
         await next()
     })
 
-    app.use('*', logger())
+    if (isDebugLoggingEnabled()) {
+        app.use('*', logger((...args) => console.debug(...args)))
+    }
 
     const isApiWebSocket = (path: string) => path.startsWith('/api/ws') || path.startsWith('/api/v1/ws')
 
