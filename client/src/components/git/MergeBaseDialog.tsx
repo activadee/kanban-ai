@@ -2,6 +2,7 @@ import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from '@/
 import {Button} from '@/components/ui/button'
 import {toast} from '@/components/ui/toast'
 import {useMergeAttemptBase} from '@/hooks'
+import {describeApiError} from '@/api/http'
 
 export function MergeBaseDialog({attemptId, open, onOpenChange}: {
     attemptId: string;
@@ -14,7 +15,8 @@ export function MergeBaseDialog({attemptId, open, onOpenChange}: {
             onOpenChange(false)
         },
         onError: (err) => {
-            toast({title: 'Merge failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'Merge failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
     return (

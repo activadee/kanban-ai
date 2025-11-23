@@ -14,6 +14,7 @@ import {NavButton} from './sidebar/NavButton'
 import {AgentsSection} from './sidebar/AgentsSection'
 import {GitHubAccountBox} from './sidebar/GitHubAccountBox'
 import {ProjectsList} from './sidebar/ProjectsList'
+import {describeApiError} from '@/api/http'
 
 // NavButton moved to './sidebar/NavButton'
 
@@ -128,7 +129,8 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
                         setDeleteError(null)
                     } catch (err) {
                         console.error('sidebar delete project failed', err)
-                        setDeleteError(err instanceof Error ? err.message : 'Unable to delete project. Please try again.')
+                        const {description} = describeApiError(err, 'Unable to delete project. Please try again.')
+                        setDeleteError(description || 'Unable to delete project. Please try again.')
                     } finally {
                         setDeleteLoading(false)
                     }

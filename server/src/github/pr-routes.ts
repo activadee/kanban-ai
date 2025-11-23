@@ -5,6 +5,7 @@ import type {AppEnv} from '../env'
 import {githubRepo} from 'core'
 import {createPR, findOpenPR} from './pr'
 import {git} from 'core'
+import {problemJson} from '../http/problem'
 
 const createPrSchema = z.object({
     base: z.string().min(1),
@@ -29,7 +30,7 @@ export function createGithubProjectRouter() {
             return c.json({pr}, 200)
         } catch (error) {
             console.error('[github:pr:get] failed', error)
-            return c.json({error: 'Failed to lookup PR'}, 500)
+            return problemJson(c, {status: 502, detail: 'Failed to lookup PR'})
         }
     })
 
@@ -38,13 +39,17 @@ export function createGithubProjectRouter() {
         const {base, title, body, draft, branch} = c.req.valid('json')
         try {
             const auth = await githubRepo.getGithubConnection()
-            if (!auth) return c.json({error: 'auth_required'}, 401)
+            if (!auth) return problemJson(c, {status: 401, title: 'GitHub authentication required', detail: 'Connect GitHub before creating pull requests'})
             let head = branch
             if (!head) {
                 const st = await git.getStatus(c.req.param('id'))
                 head = st.branch
             }
-            if (!auth.accessToken) return c.json({error: 'auth_required'}, 401)
+            if (!auth.accessToken) return problemJson(c, {
+                status: 401,
+                title: 'GitHub authentication required',
+                detail: 'Connect GitHub before creating pull requests'
+            })
             // Ensure branch is available on the remote before creating the PR to avoid 422 "head invalid"
             await git.push(c.req.param('id'), {branch: head, token: auth.accessToken, setUpstream: true})
             const pr = await createPR(c.req.param('id'), auth.accessToken, {base, head: head!, title, body, draft})
@@ -52,7 +57,8 @@ export function createGithubProjectRouter() {
         } catch (error) {
             console.error('[github:pr:create] failed', error)
             const message = error instanceof Error ? error.message : 'Failed to create PR'
-            return c.json({error: message}, 400)
+            const status = message.toLowerCase().includes('auth') ? 401 : 502
+            return problemJson(c, {status, detail: message})
         }
     })
 

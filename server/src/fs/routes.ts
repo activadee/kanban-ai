@@ -1,6 +1,7 @@
 import {Hono} from 'hono'
 import type {AppEnv} from '../env'
 import {discoverGitRepositories} from 'core'
+import {problemJson} from '../http/problem'
 
 export const createFilesystemRouter = () => {
     const router = new Hono<AppEnv>()
@@ -12,7 +13,7 @@ export const createFilesystemRouter = () => {
             return c.json({entries}, 200)
         } catch (error) {
             console.error('[fs:git-repos] failed', error)
-            return c.json({error: 'Failed to scan for git repositories'}, 500)
+            return problemJson(c, {status: 502, detail: 'Failed to scan for git repositories'})
         }
     })
 

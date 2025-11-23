@@ -1,35 +1,21 @@
 import type {AgentProfileRow, AgentProfileSchemaResponse, AgentsListResponse} from 'shared'
 import {SERVER_URL} from '@/lib/env'
-
-async function parseJson<T>(response: Response): Promise<T> {
-    const text = await response.text()
-    let data: unknown = null
-    try {
-        data = text ? JSON.parse(text) : null
-    } catch {
-        // Non-JSON response body; treat as plain text and fall through to status handling
-    }
-    if (!response.ok) {
-        const message = typeof data === 'object' && data && 'error' in data ? (data as { error?: string }).error : null
-        throw new Error(message || `Request failed with status ${response.status}`)
-    }
-    return data as T
-}
+import {parseApiResponse} from '@/api/http'
 
 export async function listAgents(): Promise<AgentsListResponse> {
     const res = await fetch(`${SERVER_URL}/agents`)
-    return parseJson<AgentsListResponse>(res)
+    return parseApiResponse<AgentsListResponse>(res)
 }
 
 export async function listAgentProfiles(): Promise<AgentProfileRow[]> {
     const res = await fetch(`${SERVER_URL}/agents/profiles`)
-    const data = await parseJson<{ profiles: AgentProfileRow[] }>(res)
+    const data = await parseApiResponse<{ profiles: AgentProfileRow[] }>(res)
     return data.profiles
 }
 
 export async function getAgentSchema(agentKey: string): Promise<AgentProfileSchemaResponse> {
     const res = await fetch(`${SERVER_URL}/agents/${agentKey}/schema`)
-    return parseJson<AgentProfileSchemaResponse>(res)
+    return parseApiResponse<AgentProfileSchemaResponse>(res)
 }
 
 export async function createAgentProfileRequest(payload: {
@@ -42,15 +28,12 @@ export async function createAgentProfileRequest(payload: {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
     })
-    return parseJson<AgentProfileRow>(res)
+    return parseApiResponse<AgentProfileRow>(res)
 }
 
 export async function deleteAgentProfileRequest(profileId: string): Promise<void> {
     const res = await fetch(`${SERVER_URL}/agents/profiles/${profileId}`, {method: 'DELETE'})
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Failed to delete profile (${res.status})`)
-    }
+    await parseApiResponse(res)
 }
 
 export async function updateAgentProfileRequest(profileId: string, payload: {
@@ -62,5 +45,5 @@ export async function updateAgentProfileRequest(profileId: string, payload: {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
     })
-    return parseJson<AgentProfileRow>(res)
+    return parseApiResponse<AgentProfileRow>(res)
 }

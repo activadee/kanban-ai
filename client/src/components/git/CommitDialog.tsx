@@ -6,6 +6,7 @@ import {Checkbox} from '@/components/ui/checkbox'
 import {Button} from '@/components/ui/button'
 import {toast} from '@/components/ui/toast'
 import {useCommitAttempt} from '@/hooks'
+import {describeApiError} from '@/api/http'
 
 export function CommitDialog({attemptId, open, onOpenChange}: {
     attemptId: string;
@@ -29,7 +30,8 @@ export function CommitDialog({attemptId, open, onOpenChange}: {
             setBody('')
         },
         onError: (err) => {
-            toast({title: 'Commit failed', description: err.message, variant: 'destructive'})
+            const {title, description} = describeApiError(err, 'Commit failed')
+            toast({title, description, variant: 'destructive'})
         },
     })
 

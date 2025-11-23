@@ -1,12 +1,9 @@
 import type {OnboardingStatus} from 'shared'
 import {SERVER_URL} from '@/lib/env'
+import {parseApiResponse} from '@/api/http'
 
 async function parseStatusResponse(res: Response): Promise<OnboardingStatus> {
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || 'Failed to load onboarding status')
-    }
-    const data = (await res.json()) as { status: OnboardingStatus }
+    const data = await parseApiResponse<{ status: OnboardingStatus }>(res)
     return data.status
 }
 

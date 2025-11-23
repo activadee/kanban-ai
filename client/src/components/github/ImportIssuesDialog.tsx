@@ -6,6 +6,7 @@ import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
 import type {ImportIssuesRequest, ImportIssuesResponse} from 'shared'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {describeApiError} from '@/api/http'
 
 export function ImportIssuesDialog({
                                        projectId,
@@ -50,7 +51,8 @@ export function ImportIssuesDialog({
         },
         onError: (err: unknown) => {
             console.error('Import failed', err)
-            setError(err instanceof Error ? err.message : 'Import failed')
+            const {description} = describeApiError(err, 'Import failed')
+            setError(description || 'Import failed')
         },
     })
 
@@ -63,7 +65,8 @@ export function ImportIssuesDialog({
             await importMutation.mutateAsync({boardId, payload})
         } catch (err) {
             console.error('Import failed', err)
-            setError(err instanceof Error ? err.message : 'Import failed')
+            const {description} = describeApiError(err, 'Import failed')
+            setError(description || 'Import failed')
         }
     }
 

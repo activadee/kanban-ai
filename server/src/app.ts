@@ -21,6 +21,8 @@ import {createDashboardRouter} from './dashboard/routes'
 import {registerWorktreeProvider} from './ports/worktree'
 import {CodexAgent, OpencodeAgent, DroidAgent} from 'core'
 import {dashboardWebsocketHandlers} from './dashboard/ws'
+import {HTTPException} from 'hono/http-exception'
+import {ProblemError, problemJson} from './http/problem'
 // Readiness flag for /api/v1/readyz (shimmed on /api/readyz temporarily)
 let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
@@ -155,7 +157,7 @@ export const createApp = ({
             '/ws',
             async (c, next) => {
                 const boardId = c.req.query('boardId') ?? c.req.query('projectId')
-                if (!boardId) return c.json({error: 'Missing boardId'}, 400)
+                if (!boardId) return problemJson(c, {status: 400, detail: 'Missing boardId'})
                 c.set('boardId', boardId)
                 await next()
             },
@@ -163,8 +165,8 @@ export const createApp = ({
         )
         api.get('/ws/dashboard', upgradeWebSocket(() => dashboardWebsocketHandlers()))
     } else {
-        api.get('/ws', (c) => c.json({error: 'WebSocket support not configured'}, 503))
-        api.get('/ws/dashboard', (c) => c.json({error: 'WebSocket support not configured'}, 503))
+        api.get('/ws', (c) => problemJson(c, {status: 503, detail: 'WebSocket support not configured'}))
+        api.get('/ws/dashboard', (c) => problemJson(c, {status: 503, detail: 'WebSocket support not configured'}))
     }
 
     api.route('/metrics', createMetricsRouter())
@@ -172,11 +174,17 @@ export const createApp = ({
     app.route('/api/v1', api)
     app.route('/api', api)
 
-    app.notFound((c) => c.json({error: 'Not Found'}, 404))
+    app.notFound((c) => problemJson(c, {status: 404, detail: 'Not Found'}))
 
     app.onError((err, c) => {
         console.error('[app:error]', err)
-        return c.json({error: 'Internal Server Error'}, 500)
+        if (err instanceof ProblemError) {
+            return problemJson(c, err.toProblem())
+        }
+        if (err instanceof HTTPException) {
+            return problemJson(c, {status: err.status, detail: err.message})
+        }
+        return problemJson(c, {status: 500, title: 'Internal Server Error', detail: 'Unexpected error'})
     })
 
     return app

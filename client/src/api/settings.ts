@@ -1,10 +1,10 @@
 import type {AppSettingsResponse, UpdateAppSettingsRequest} from 'shared'
 import {SERVER_URL} from '@/lib/env'
+import {parseApiResponse} from '@/api/http'
 
 export async function getAppSettings(): Promise<AppSettingsResponse['settings']> {
     const res = await fetch(`${SERVER_URL}/settings`)
-    if (!res.ok) throw new Error('Failed to load settings')
-    const data = (await res.json()) as AppSettingsResponse
+    const data = await parseApiResponse<AppSettingsResponse>(res)
     return data.settings
 }
 
@@ -14,7 +14,6 @@ export async function patchAppSettings(update: UpdateAppSettingsRequest): Promis
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(update),
     })
-    if (!res.ok) throw new Error('Failed to update settings')
-    const data = (await res.json()) as AppSettingsResponse
+    const data = await parseApiResponse<AppSettingsResponse>(res)
     return data.settings
 }
