@@ -4,9 +4,11 @@
   "workspaces": {
     "": {
       "name": "kanbanAI",
+      "dependencies": {
+        "adm-zip": "^0.5.16",
+      },
       "devDependencies": {
         "@vitest/coverage-v8": "^4.0.12",
-        "adm-zip": "^0.5.16",
         "bun-types": "latest",
         "turbo": "^2.5.5",
         "vitest": "^4.0.12",
