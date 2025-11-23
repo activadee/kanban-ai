@@ -74,6 +74,7 @@ async function compileBinary(target: { id: string; bunTarget: string; binaryName
     'server/src/bin/standalone.ts',
     `--embed=${path.relative(root, staticDir)}`,
     `--embed=${path.relative(root, migrationsDir)}`,
+    '--asset-naming=[name].[ext]',
     '--target',
     target.bunTarget,
     '--sourcemap=none',

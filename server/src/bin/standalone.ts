@@ -9,10 +9,10 @@ import { createWebSocket, startServer } from '../start'
 async function resolveStaticDir(explicit?: string) {
   if (explicit) return path.resolve(explicit)
 
-  const embeddedDir = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '../../../client/dist',
-  )
+  const embeddedDir = 'client/dist'
+  const embeddedIndex = Bun.file(`${embeddedDir}/index.html`)
+
+  const devDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist')
 
   const envDir = Bun.env.KANBANAI_STATIC_DIR
   if (envDir === '__embedded__') return embeddedDir
@@ -20,7 +20,8 @@ async function resolveStaticDir(explicit?: string) {
 
   const cwdDir = path.resolve(process.cwd(), 'client-dist')
   if (await Bun.file(path.join(cwdDir, 'index.html')).exists()) return cwdDir
-  if (await Bun.file(path.join(embeddedDir, 'index.html')).exists()) return embeddedDir
+  if (await Bun.file(path.join(devDir, 'index.html')).exists()) return devDir
+  if (await embeddedIndex.exists()) return embeddedDir
 
   return cwdDir
 }
