@@ -39,8 +39,8 @@ export function ProjectBoardPage() {
     }
 
     const applyMovePatch = (payload?: MoveCardResponse) => {
-        if (!project || !payload) return
-        queryClient.setQueryData(boardKeys.state(project.id), (prev) => {
+        if (!boardId || !payload) return
+        queryClient.setQueryData(boardKeys.state(boardId), (prev) => {
             if (!prev) return prev
             const existingCard = prev.cards[payload.card.id] ?? {}
             const nextCards = {...prev.cards, [payload.card.id]: {...existingCard, ...payload.card}}
