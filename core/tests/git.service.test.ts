@@ -162,6 +162,7 @@ describe('git/service repository status and content', () => {
         git.revparse
             .mockResolvedValueOnce('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
             .mockResolvedValueOnce('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
+            .mockResolvedValue('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
         git.status.mockResolvedValue({current: 'feature', tracking: 'origin/feature'} as any)
         git.raw.mockResolvedValue('0\t0')
         gitInstances.set('/repos/app', git)
@@ -178,14 +179,32 @@ describe('git/service repository status and content', () => {
             'push',
             '-u',
             'origin',
-            'feature',
+            'feature:feature',
         ])
 
         await push('proj', {remote: 'upstream', branch: 'main'})
         expect(git.raw).toHaveBeenCalledWith([
             'push',
             'upstream',
-            'main',
+            'main:main',
+        ])
+    })
+
+    it('pushes HEAD to the target branch when the local ref is missing', async () => {
+        const {push} = await loadService()
+        getRepositoryPathMock.mockResolvedValue('/repos/app')
+        const git = createGitMock('/repos/app')
+        git.status.mockResolvedValue({current: null, tracking: null} as any)
+        git.revparse.mockRejectedValueOnce(new Error('bad ref'))
+        git.raw.mockResolvedValue('')
+        gitInstances.set('/repos/app', git)
+
+        await push('proj', {branch: 'feature/missing', setUpstream: true})
+
+        expect(git.raw).toHaveBeenCalledWith([
+            'push',
+            'origin',
+            'HEAD:feature/missing',
         ])
     })
 
@@ -324,6 +343,7 @@ describe('git/service helpers for worktree paths', () => {
         git.revparse
             .mockResolvedValueOnce('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
             .mockResolvedValueOnce('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
+            .mockResolvedValue('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
         git.status.mockResolvedValue({current: 'feature', tracking: 'origin/feature'} as any)
         git.raw.mockResolvedValue('0\t0')
         gitInstances.set('/tmp/work', git)

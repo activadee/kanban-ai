@@ -297,15 +297,20 @@ export async function commit(projectId: string, subject: string, body?: string):
     return commitWithHash(g, message, {stageAll: true})
 }
 
-export async function push(
-    projectId: string,
+type PushResolution = { args: string[]; targetBranch: string; targetRemote: string }
+
+async function resolvePushArgs(
+    g: ReturnType<typeof git>,
+    st: Awaited<ReturnType<typeof g.status>>,
     {remote, branch, token, setUpstream}: { remote?: string; branch?: string; token?: string; setUpstream?: boolean },
-): Promise<void> {
-    const repoPath = await getRepoPath(projectId)
-    const g = git(repoPath)
-    const st = await g.status()
+): Promise<PushResolution> {
     const targetBranch = branch?.trim() || st.current || 'HEAD'
     const targetRemote = remote?.trim() || st.tracking?.split('/')?.[0] || 'origin'
+
+    // Prefer the requested branch as the source; fall back to current branch; finally HEAD.
+    const preferredSource = branch?.trim() || st.current || 'HEAD'
+    const sourceExists = await g.revparse([preferredSource]).then(() => true).catch(() => false)
+    const sourceRef = sourceExists ? preferredSource : 'HEAD'
 
     const args: string[] = []
     if (token) {
@@ -313,9 +318,19 @@ export async function push(
         args.push('-c', `http.extraHeader=Authorization: Basic ${basic}`)
     }
     args.push('push')
-    if (setUpstream) args.push('-u')
-    args.push(targetRemote, targetBranch)
+    if (setUpstream && st.current) args.push('-u')
+    args.push(targetRemote, `${sourceRef}:${targetBranch}`)
+    return {args, targetBranch, targetRemote}
+}
 
+export async function push(
+    projectId: string,
+    opts: { remote?: string; branch?: string; token?: string; setUpstream?: boolean },
+): Promise<void> {
+    const repoPath = await getRepoPath(projectId)
+    const g = git(repoPath)
+    const st = await g.status()
+    const {args} = await resolvePushArgs(g, st, opts)
     await g.raw(args)
 }
 
@@ -492,18 +507,7 @@ export async function pushAtPath(
 ) {
     const g = gitAtPath(worktreePath)
     const status = await g.status()
-    const targetBranch = branch?.trim() || status.current || 'HEAD'
-    const targetRemote = remote?.trim() || status.tracking?.split('/')?.[0] || 'origin'
-
-    const args: string[] = []
-    if (token) {
-        const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
-        args.push('-c', `http.extraHeader=Authorization: Basic ${basic}`)
-    }
-    args.push('push')
-    if (setUpstream) args.push('-u')
-    args.push(targetRemote, targetBranch)
-
+    const {args, targetBranch, targetRemote} = await resolvePushArgs(g as any, status, {remote, branch, token, setUpstream})
     await g.raw(args)
 
     const ts = new Date().toISOString()
