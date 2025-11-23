@@ -8,10 +8,10 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
-  build-and-release:
+  build:
+    name: Build binaries
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,9 +27,25 @@ jobs:
       - name: Build binaries
         run: bun run build:binary
 
-      - name: Publish release assets
-        uses: softprops/action-gh-release@v2
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: cli/dist/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: cli-dist
+          path: cli/dist
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    uses: activadee/codex-shared-workflows/.github/workflows/release.yml@main
+    with:
+      tag_name: ${{ github.ref_name }}
+      release_title: ${{ github.ref_name }}
+      target: ${{ github.sha }}
+      run_tests: false
+      download_artifacts: true
+      artifacts_path: release-artifacts
+      artifact_glob: release-artifacts/cli/dist/*.zip
+      draft: false
+    secrets:
+      CODEX_AUTH_JSON_B64: ${{ secrets.CODEX_AUTH_JSON_B64 }}
