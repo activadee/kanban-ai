@@ -117,12 +117,18 @@ async function download(url, dest) {
     throw new Error(`Failed to download ${url}: ${res.status} ${res.statusText}`)
   }
   await fs.promises.mkdir(path.dirname(dest), { recursive: true })
-  const fileStream = fs.createWriteStream(dest)
-  await new Promise((resolve, reject) => {
-    res.body.pipe(fileStream)
-    res.body.on('error', reject)
-    fileStream.on('finish', resolve)
-  })
+  // Bun's fetch returns a Web ReadableStream; Node's returns a stream with .pipe.
+  if (typeof res.body.pipe === 'function') {
+    const fileStream = fs.createWriteStream(dest)
+    await new Promise((resolve, reject) => {
+      res.body.pipe(fileStream)
+      res.body.on('error', reject)
+      fileStream.on('finish', resolve)
+    })
+  } else {
+    const buf = Buffer.from(await res.arrayBuffer())
+    await fs.promises.writeFile(dest, buf)
+  }
   return dest
 }
 
