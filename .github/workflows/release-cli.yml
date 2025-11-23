@@ -5,6 +5,21 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag to create (e.g. v0.1.0)"
+        required: true
+      release_title:
+        description: "Display name (defaults to tag)"
+        required: false
+      target:
+        description: "Commit/branch to release"
+        default: "main"
+        required: true
+      draft:
+        description: "Create as a draft release"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,13 +54,13 @@ jobs:
     needs: build
     uses: activadee/codex-shared-workflows/.github/workflows/release.yml@main
     with:
-      tag_name: ${{ github.ref_name }}
-      release_title: ${{ github.ref_name }}
-      target: ${{ github.sha }}
+      tag_name: ${{ inputs.tag_name }}
+      release_title: ${{ inputs.release_title }}
+      target: ${{ inputs.target }}
+      draft: ${{ inputs.draft }}
       run_tests: false
       download_artifacts: true
       artifacts_path: release-artifacts
       artifact_glob: release-artifacts/cli/dist/*.zip
-      draft: false
     secrets:
       CODEX_AUTH_JSON_B64: ${{ secrets.CODEX_AUTH_JSON_B64 }}
