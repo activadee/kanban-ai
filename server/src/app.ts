@@ -26,6 +26,21 @@ let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
 import * as console from "node:console";
 
+const env = () => Bun.env ?? (process.env as Record<string, string | undefined>)
+
+const isDebugLoggingEnabled = () => {
+    const flag = env().LOG_LEVEL ?? env().KANBANAI_DEBUG ?? env().DEBUG
+    if (!flag) return false
+    const normalized = flag.toString().toLowerCase()
+    if (['0', 'false', 'off', 'quiet', 'silent'].includes(normalized)) return false
+    return normalized === 'debug'
+        || normalized === 'verbose'
+        || normalized === '1'
+        || normalized === 'true'
+        || normalized === 'on'
+        || normalized.startsWith('debug')
+}
+
 function createMetricsRouter() {
     const router = new Hono<AppEnv>()
     router.get('/', (c) =>
@@ -70,7 +85,9 @@ export const createApp = ({
         await next()
     })
 
-    app.use('*', logger())
+    if (isDebugLoggingEnabled()) {
+        app.use('*', logger((...args) => console.debug(...args)))
+    }
 
     const isApiWebSocket = (path: string) => path.startsWith('/api/ws') || path.startsWith('/api/v1/ws')
 
