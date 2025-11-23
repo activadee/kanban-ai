@@ -155,7 +155,7 @@ bun run test
 
 ## Logging
 
-- Per-request server logs are silent by default; enable them with `KANBANAI_DEBUG=1` or `LOG_LEVEL=debug` when debugging API traffic.
+- Per-request server logs are silent by default; enable them with `LOG_LEVEL=debug`, `KANBANAI_DEBUG=1`, or `DEBUG=1`/`DEBUG=kanbanai*` when debugging API traffic.
 
 ## Configuration
 
