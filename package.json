@@ -40,10 +40,11 @@
     "turbo"
   ],
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.12",
+    "baseline-browser-mapping": "^2.8.31",
     "bun-types": "latest",
     "turbo": "^2.5.5",
-    "vitest": "^4.0.12",
-    "@vitest/coverage-v8": "^4.0.12"
+    "vitest": "^4.0.12"
   },
   "peerDependencies": {
     "typescript": "^5.7.3"
