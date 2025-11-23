@@ -33,25 +33,3 @@ jobs:
           files: cli/dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-npm:
-    needs: build-and-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.2.4'
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Smoke build (linux-x64)
-        run: bun run build:binary:linux-x64
-
-      - name: Publish CLI to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --workspace cli
