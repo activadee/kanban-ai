@@ -24,8 +24,7 @@ export function MergeBaseDialog({attemptId, open, onOpenChange}: {
                     <DialogTitle>Merge</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-muted-foreground">This merges your attempt branch into the project’s base
-                    branch (no push). The task moves to Done; the worktree stays available until you clean it up
-                    manually.</p>
+                    branch (no push). The task moves to Done and we now clean up its worktree and branch automatically.</p>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={() => mergeMut.mutate({attemptId})}

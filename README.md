@@ -126,7 +126,7 @@ Scopes requested: `repo`, `read:user`, `user:email`.
 3) Drag a ticket to In Progress to start an Attempt. The server creates a worktree at
    `$HOME/.kanbanAI/worktrees/<project>/<task>` and launches your selected agent.
 4) Review changes: view diffs, commit (all changes are staged automatically), push, and Create PR (the PR flow will auto-push the branch if it isn't on the remote yet).
-5) When merged, move to Done. Worktrees remain available for manual inspection or cleanup.
+5) When merged, move to Done. We'll remove the attempt branch and worktree automatically so the repo stays tidy.
 
 ## Scripts
 
@@ -169,8 +169,8 @@ Static assets & migrations (standalone binary): the compiled binary serves from 
 `./client-dist` relative to the current working directory) and looks for migrations in `KANBANAI_MIGRATIONS_DIR` (default
 `./drizzle`). The `npx kanban-ai` launcher sets both when it extracts a release bundle.
 
-Worktrees: created under `$HOME/.kanbanAI/worktrees`. Remove them manually when no longer needed; project deletion also
-purges associated worktrees.
+Worktrees: created under `$HOME/.kanbanAI/worktrees`. Moving a ticket to **Done** now removes its attempt branch and
+worktree automatically; project deletion also purges associated worktrees.
 
 ## API (selected)
 
