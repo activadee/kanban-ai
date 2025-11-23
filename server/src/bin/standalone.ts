@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import { serveStatic } from 'hono/bun'
 import type { AppEnv } from '../env'
@@ -8,7 +9,10 @@ import { createWebSocket, startServer } from '../start'
 async function resolveStaticDir(explicit?: string) {
   if (explicit) return path.resolve(explicit)
 
-  const embeddedDir = new URL('../../client/dist', import.meta.url).pathname
+  const embeddedDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../../client/dist',
+  )
 
   const envDir = Bun.env.KANBANAI_STATIC_DIR
   if (envDir === '__embedded__') return embeddedDir

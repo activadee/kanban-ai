@@ -17,9 +17,13 @@ function detectPlatform() {
 async function ensureBinary(versionOverride) {
   const platform = detectPlatform()
   const assetName = platform.binary
-  const version = versionOverride || process.env.KANBANAI_VERSION || pkg.version
+  const envVersion = process.env.KANBANAI_VERSION
+  const version = versionOverride ?? envVersion ?? pkg.version
   process.env.KANBANAI_VERSION = version
-  const skipPackaged = Boolean(versionOverride || (process.env.KANBANAI_VERSION && process.env.KANBANAI_VERSION !== pkg.version))
+  const skipPackaged = Boolean(
+    (versionOverride && versionOverride !== pkg.version) ||
+    (envVersion && envVersion !== pkg.version),
+  )
 
   const cacheRoot = process.env.KANBANAI_CACHE_DIR || path.join(os.homedir(), '.kanbanAI')
   const targetDir = path.join(cacheRoot, version, platform.id)
