@@ -74,7 +74,6 @@ type ProcessEntry = {
 
 export function CardInspector({
                                   projectId,
-                                  boardId,
                                   card,
                                   locked = false,
                                   blocked = false,
@@ -85,7 +84,6 @@ export function CardInspector({
                                   onClose,
                               }: {
     projectId: string
-    boardId: string
     card: TCard
     locked?: boolean
     blocked?: boolean

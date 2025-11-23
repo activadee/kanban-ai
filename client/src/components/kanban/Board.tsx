@@ -44,12 +44,11 @@ export type BoardHandlers = {
 
 type Props = {
     projectId: string;
-    boardId: string;
     state: BoardState;
     handlers: BoardHandlers;
 };
 
-export function Board({ projectId, boardId, state, handlers }: Props) {
+export function Board({ projectId, state, handlers }: Props) {
     const columns = useMemo<ColumnType[]>(
         () => state.columnOrder.map((id) => state.columns[id]).filter(Boolean),
         [state],
@@ -172,7 +171,6 @@ export function Board({ projectId, boardId, state, handlers }: Props) {
                                 {resolvedSelectedId && selectedCard && (
                                     <CardInspector
                                         projectId={projectId}
-                                        boardId={boardId}
                                         card={selectedCard}
                                         availableCards={Object.values(
                                             state.cards,
@@ -278,7 +276,6 @@ export function Board({ projectId, boardId, state, handlers }: Props) {
                                         <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4">
                                             <CardInspector
                                                 projectId={projectId}
-                                                boardId={boardId}
                                                 card={selectedCard}
                                                 availableCards={Object.values(
                                                     state.cards,

@@ -2,6 +2,7 @@
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const readline = require('readline')
 const { spawn } = require('child_process')
 const AdmZip = require('adm-zip')
 const pkg = require('../package.json')
@@ -26,6 +27,67 @@ function debug(...args) {
   if (process.env.KANBANAI_DEBUG) {
     console.log('[kanban-ai]', ...args)
   }
+}
+
+function isInteractive() {
+  return process.stdin.isTTY && process.stdout.isTTY && !process.env.CI
+}
+
+function normalizeVersion(version) {
+  const core = version.replace(/^v/, '').split('-')[0]
+  return core.split('.').map((part) => Number.parseInt(part, 10) || 0)
+}
+
+function compareSemver(a, b) {
+  const av = normalizeVersion(a)
+  const bv = normalizeVersion(b)
+  const len = Math.max(av.length, bv.length)
+
+  for (let i = 0; i < len; i += 1) {
+    const diff = (av[i] || 0) - (bv[i] || 0)
+    if (diff > 0) return 1
+    if (diff < 0) return -1
+  }
+  return 0
+}
+
+async function fetchLatestCliVersion() {
+  try {
+    const res = await fetch('https://registry.npmjs.org/kanban-ai/latest')
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.version) return data.version
+    }
+  } catch (error) {
+    debug('failed to fetch latest cli version', error?.message || error)
+  }
+  return null
+}
+
+async function fetchLatestGitHubReleaseVersion() {
+  try {
+    const res = await fetch('https://api.github.com/repos/activadee/kanban-ai/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.tag_name) return data.tag_name.replace(/^v/, '')
+    }
+  } catch (error) {
+    debug('failed to fetch latest github release', error?.message || error)
+  }
+  return null
+}
+
+async function promptYesNo(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+    rl.question(question, (answer) => {
+      rl.close()
+      const normalized = answer.trim().toLowerCase()
+      resolve(normalized === '' || normalized === 'y' || normalized === 'yes')
+    })
+  })
 }
 
 function parseLauncherArgs(argv) {
@@ -319,9 +381,65 @@ async function main() {
   try {
     const { binaryVersion, passThrough } = parseLauncherArgs(process.argv.slice(2))
     const hasExplicitVersion = Boolean(binaryVersion || process.env.KANBANAI_VERSION)
-    const { binaryPath, targetDir, version } = await ensureBinary(binaryVersion)
+    const baseVersion = binaryVersion || process.env.KANBANAI_VERSION || pkg.version
+
+    const { version: desiredVersion, updated } = await (async () => {
+      if (hasExplicitVersion) return { version: baseVersion, updated: false }
+
+      const latestCandidates = []
+      const npmLatest = await fetchLatestCliVersion()
+      if (npmLatest) latestCandidates.push(npmLatest)
+      const githubLatest = await fetchLatestGitHubReleaseVersion()
+      if (githubLatest) latestCandidates.push(githubLatest)
+
+      if (!latestCandidates.length) return { version: baseVersion, updated: false }
+
+      const latest = latestCandidates.reduce((max, curr) => (compareSemver(curr, max) > 0 ? curr : max), latestCandidates[0])
+
+      if (!latest || compareSemver(latest, baseVersion) <= 0) {
+        return { version: baseVersion, updated: false }
+      }
+
+      if (!isInteractive()) {
+        console.log(
+          `[kanban-ai] A newer KanbanAI binary is available (current ${baseVersion}, latest ${latest}). Run with --binary-version ${latest} to use it.`,
+        )
+        return { version: baseVersion, updated: false }
+      }
+
+      const shouldUpdate = await promptYesNo(
+        `[kanban-ai] A newer KanbanAI binary is available (current ${baseVersion}, latest ${latest}). Download and use it now? [Y/n] `,
+      )
+
+      if (shouldUpdate) {
+        return { version: latest, updated: true }
+      }
+
+      return { version: baseVersion, updated: false }
+    })()
+
+    let binaryPath
+    let targetDir
+    let version
+
+    try {
+      const ensured = await ensureBinary(desiredVersion)
+      binaryPath = ensured.binaryPath
+      targetDir = ensured.targetDir
+      version = ensured.version
+    } catch (error) {
+      if (updated && desiredVersion !== baseVersion) {
+        console.warn(`[kanban-ai] failed to download ${desiredVersion}, falling back to ${baseVersion}: ${error?.message || error}`)
+        const ensured = await ensureBinary(baseVersion)
+        binaryPath = ensured.binaryPath
+        targetDir = ensured.targetDir
+        version = ensured.version
+      } else {
+        throw error
+      }
+    }
     const codexPath = await ensureCodexBinary()
-    if (hasExplicitVersion) {
+    if (hasExplicitVersion || updated || version !== pkg.version) {
       console.log(`[kanban-ai] using binary version ${version}`)
     }
     console.log(`[kanban-ai] codex: using ${codexPath}`)

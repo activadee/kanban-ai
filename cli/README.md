@@ -7,6 +7,10 @@
 npx kanban-ai -- --port 4000
 ```
 
+When run interactively via `npx`/`bunx`, the launcher checks both npm (CLI package) and the latest GitHub release tag
+for a newer KanbanAI binary. If a newer version exists, it prompts to download and use it for that run. Non-interactive
+shells simply print a hint (`--binary-version <latest>`) without prompting.
+
 ## Options
 
 - `--binary-version <version>`: download and run a specific release instead of matching the CLI package version (bypasses any locally packaged zip when the version differs)

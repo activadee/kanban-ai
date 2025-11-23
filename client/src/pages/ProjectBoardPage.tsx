@@ -175,7 +175,6 @@ export function ProjectBoardPage() {
             <div className="flex-1 min-h-0 px-4 pb-4">
                 <Board
                     projectId={project.id}
-                    boardId={boardId}
                     state={boardState}
                     handlers={{
                         onCreateCard: async (
