@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import AdmZip from 'adm-zip'
+
 const root = path.resolve(import.meta.dir, '..')
 
 const targets = [
@@ -9,7 +9,6 @@ const targets = [
   { id: 'darwin-arm64', bunTarget: 'bun-darwin-arm64', binaryName: 'kanban-ai-darwin-arm64' },
   { id: 'win-x64', bunTarget: 'bun-windows-x64', binaryName: 'kanban-ai-win-x64.exe' },
 ]
-
 
 const args = Bun.argv.slice(2)
 const targetArgIndex = args.indexOf('--target')
@@ -35,25 +34,18 @@ async function ensureClientBuild() {
   if (!fs.existsSync(clientDist)) {
     throw new Error('[build-binaries] client/dist missing after build')
   }
+  await stripSourceMaps(clientDist)
 }
 
-async function prepareStaging() {
-  const stagingRoot = path.join(root, 'dist', 'staging')
-  const clientOut = path.join(stagingRoot, 'client-dist')
-  const drizzleOut = path.join(stagingRoot, 'drizzle')
-  await fs.promises.rm(stagingRoot, { recursive: true, force: true })
-  await fs.promises.mkdir(stagingRoot, { recursive: true })
-
-  const clientDist = path.join(root, 'client', 'dist')
+async function ensureDrizzleMeta() {
   const drizzleDir = path.join(root, 'server', 'drizzle')
-  if (!fs.existsSync(path.join(drizzleDir, 'meta'))) {
+  if (!(await fs.promises.stat(drizzleDir).catch(() => null))) {
+    throw new Error('[build-binaries] drizzle folder missing. Run migrations first.')
+  }
+  const journal = path.join(drizzleDir, 'meta', '_journal.json')
+  if (!(await fs.promises.stat(journal).catch(() => null))) {
     throw new Error('[build-binaries] drizzle metadata not found. Run migrations first.')
   }
-
-  await fs.promises.cp(clientDist, clientOut, { recursive: true })
-  await fs.promises.cp(drizzleDir, drizzleOut, { recursive: true })
-  await stripSourceMaps(clientOut)
-  return { stagingRoot, clientOut, drizzleOut }
 }
 
 async function stripSourceMaps(dir: string) {
@@ -69,47 +61,49 @@ async function stripSourceMaps(dir: string) {
 }
 
 async function compileBinary(target: { id: string; bunTarget: string; binaryName: string }) {
-  const binDir = path.join(root, 'dist', 'bin')
-  await fs.promises.mkdir(binDir, { recursive: true })
-  const outfile = path.join(binDir, target.binaryName)
-  await run('bun', [
+  const outDir = path.join(root, 'cli', 'dist')
+  await fs.promises.mkdir(outDir, { recursive: true })
+  const outfile = path.join(outDir, target.binaryName)
+
+  const staticDir = path.join(root, 'client', 'dist')
+  const migrationsDir = path.join(root, 'server', 'drizzle')
+
+  const buildArgs = [
     'build',
     '--compile',
     'server/src/bin/standalone.ts',
+    `--embed=${path.relative(root, staticDir)}`,
+    `--embed=${path.relative(root, migrationsDir)}`,
     '--target',
     target.bunTarget,
+    '--sourcemap=none',
+    '--minify',
     '--outfile',
     outfile,
-  ])
+  ] as const
+
+  await run('bun', [...buildArgs])
+
   if (!outfile.endsWith('.exe')) {
     await fs.promises.chmod(outfile, 0o755)
   }
+
+  console.log(`[build-binaries] built ${outfile}`)
   return outfile
-}
-async function zipBinary(binaryPath: string, targetId: string, staging: { clientOut: string; drizzleOut: string }) {
-  const zipDir = path.join(root, 'cli', 'dist')
-  await fs.promises.mkdir(zipDir, { recursive: true })
-  const zipPath = path.join(zipDir, `kanban-ai-${targetId}.zip`)
-  const zip = new AdmZip()
-  zip.addLocalFile(binaryPath, '')
-  zip.addLocalFolder(staging.clientOut, 'client-dist')
-  zip.addLocalFolder(staging.drizzleOut, 'drizzle')
-  zip.writeZip(zipPath)
-  console.log(`[build-binaries] packed ${zipPath}`)
-  return zipPath
 }
 
 async function main() {
   console.log('[build-binaries] building client')
   await ensureClientBuild()
 
-  console.log('[build-binaries] preparing assets')
-  const staging = await prepareStaging()
+  console.log('[build-binaries] verifying drizzle metadata')
+  await ensureDrizzleMeta()
+
+  await fs.promises.rm(path.join(root, 'cli', 'dist'), { recursive: true, force: true })
 
   for (const target of selectedTargets) {
     console.log(`[build-binaries] compiling ${target.id}`)
-    const binary = await compileBinary(target)
-    await zipBinary(binary, target.id, staging)
+    await compileBinary(target)
   }
 }
 

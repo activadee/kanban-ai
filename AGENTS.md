@@ -1,10 +1,10 @@
 # KanbanAI Development Guidelines
 
-Last updated: 2025-12-01
+Last updated: 2025-11-23
 
 ## Active Technologies
 
-- TypeScript (workspace), Bun runtime 1.2.x
+- TypeScript (workspace), Bun runtime 1.3.x
 - Monorepo orchestration: Turbo
 - Server: Hono, Drizzle ORM (SQLite)
 - Client: React + Vite
@@ -16,7 +16,7 @@ client/   # React + Vite app (UI)
 server/   # Hono API + app factory (createApp)
 shared/   # Shared types/interfaces
 core/     # Core logic + tests/coverage gates
-cli/      # npx launcher + packaged binaries/assets
+cli/      # npx launcher + packaged single binaries
 ```
 
 ## Commands
@@ -36,14 +36,14 @@ cli/      # npx launcher + packaged binaries/assets
 
 ## CI Packaging
 
-- `scripts/build-binaries.ts` compiles the standalone binary via Bun, stages `client-dist` + `drizzle` assets, and zips release payloads into `cli/dist/kanban-ai-<platform>.zip`.
-- `.github/workflows/release-cli.yml` runs on tags (`v*`) to build all targets, upload the zipped bundles as GitHub Release assets, and publish the `cli/` workspace to npm (`npx kanban-ai`).
-- The CLI launcher (`cli/bin/kanban-ai.js`) downloads/caches the matching zip, sets `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR`, and starts the bundled binary.
+- `scripts/build-binaries.ts` runs `bun build --compile` with embedded `client/dist` + `server/drizzle` assets, emitting per-platform binaries at `cli/dist/kanban-ai-<platform>`.
+- `.github/workflows/release-cli.yml` builds all targets, uploads the raw binaries as GitHub Release assets, and publishes the `cli/` workspace to npm (`npx kanban-ai`).
+- The CLI launcher (`cli/bin/kanban-ai.js`) downloads/caches the platform binary directly (no zip or static-dir staging), auto-checks for the latest release on every run, and defaults to using it; overrides remain supported via `KANBANAI_*` env vars if needed. Defaults point `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR` to the embedded bundle (`__embedded__`).
 
 ## Recent Changes
 
+- 2025-11-23: upgraded to Bun 1.3 single-exe packaging; release artifacts are plain binaries with embedded client + drizzle assets; CLI downloads binaries directly.
 - 2025-11-22: removed CLI workspace/binary packaging and server-side static client serving; UI is now served independently via Vite.
-- 2025-12-01: reintroduced a CLI workspace with `npx kanban-ai`, added a standalone binary entrypoint that serves bundled UI assets, and automated release packaging via `release-cli` workflow.
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

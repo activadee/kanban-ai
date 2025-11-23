@@ -28,7 +28,7 @@ Built on the bhvr monorepo template.
 ## Prerequisites
 
 - Git 2.40+
-- Bun 1.2.4+ (repo is configured for `bun@1.2.4`)
+- Bun 1.3.3+ (repo is configured for `bun@1.3.3`)
 
 ## Quick Start (Local Dev)
 
@@ -88,12 +88,12 @@ Run KanbanAI as a single binary (API + UI) on one port without cloning the repo:
 npx kanban-ai -- --port 4000
 ```
 
-- Downloads the platform-specific binary + assets from the matching GitHub Release tag (cached at `~/.kanbanAI/<version>/<platform>`).
-- Override the release tag with `--binary-version <version>` (or `KANBANAI_VERSION`) when you need to pin a specific build; if that differs from the bundled CLI version, the launcher bypasses any locally packaged zip and downloads the requested release.
-- When launched via `npx`/`bunx`, the CLI checks the published npm package and the latest GitHub release for a newer binary. Interactive shells are prompted to download and use the newer version for that run; non-interactive shells emit a hint (`--binary-version <latest>`) instead of prompting.
+- Downloads the platform-specific single binary (with embedded UI + migrations) from the matching GitHub Release tag, cached at `~/.kanbanAI/<version>/<platform>`.
+- Override the release tag with `--binary-version <version>` (or `KANBANAI_VERSION`) when you need to pin a specific build; if that differs from the bundled CLI version, the launcher bypasses any locally packaged binary and downloads the requested release.
+- When launched via `npx`/`bunx`, the CLI always checks npm + GitHub for the latest binary. Interactive shells are prompted (default Yes); non-interactive shells auto-use the latest.
 - On first run the launcher also ensures the Codex CLI is available: it checks `CODEX_PATH_OVERRIDE`/`CODEX_PATH`, then `PATH`, otherwise downloads the latest `@openai/codex-sdk` tarball from npm, extracts the platform `codex` binary, and caches it at `~/.kanbanAI/codex/<version>/<vendor>`.
 - Serves the UI and API on the same origin (`/api/v1`), SPA fallback included.
-- Respects `PORT` / `HOST` / `DATABASE_URL` and auto-sets `KANBANAI_STATIC_DIR` + `KANBANAI_MIGRATIONS_DIR` to the extracted assets.
+- Respects `PORT` / `HOST` / `DATABASE_URL`; static assets and migrations are embedded by default, but `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR` overrides still work.
 - Existing contributor workflows stay the same (`bun run dev`, `dev:server`, `dev:client`).
 
 ## Initial Onboarding
@@ -171,9 +171,7 @@ Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatical
 lives in your OS application data directory (e.g., `~/.local/share/kanbanai/kanban.db` on Linux, `%LOCALAPPDATA%/KanbanAI`
 on Windows). Override with `DATABASE_URL` (`file:/absolute/path` or `sqlite:/absolute/path`).
 
-Static assets & migrations (standalone binary): the compiled binary serves from `KANBANAI_STATIC_DIR` (default
-`./client-dist` relative to the current working directory) and looks for migrations in `KANBANAI_MIGRATIONS_DIR` (default
-`./drizzle`). The `npx kanban-ai` launcher sets both when it extracts a release bundle.
+Static assets & migrations (standalone binary): assets and drizzle migrations are embedded in the compiled binary. Overrides via `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR` still work if you want to point at external folders (e.g., custom branding or out-of-band migrations); when unset, the binary falls back to its embedded bundle.
 
 Worktrees: created under `$HOME/.kanbanAI/worktrees`. Moving a ticket to **Done** now removes its attempt branch and
 worktree automatically; project deletion also purges associated worktrees.

@@ -1,9 +1,29 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import { serveStatic } from 'hono/bun'
 import type { AppEnv } from '../env'
 import { createApp } from '../app'
 import { createWebSocket, startServer } from '../start'
+
+async function resolveStaticDir(explicit?: string) {
+  if (explicit) return path.resolve(explicit)
+
+  const embeddedDir = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../../client/dist',
+  )
+
+  const envDir = Bun.env.KANBANAI_STATIC_DIR
+  if (envDir === '__embedded__') return embeddedDir
+  if (envDir) return path.resolve(envDir)
+
+  const cwdDir = path.resolve(process.cwd(), 'client-dist')
+  if (await Bun.file(path.join(cwdDir, 'index.html')).exists()) return cwdDir
+  if (await Bun.file(path.join(embeddedDir, 'index.html')).exists()) return embeddedDir
+
+  return cwdDir
+}
 
 if (import.meta.main) {
   const run = async () => {
@@ -18,14 +38,14 @@ if (import.meta.main) {
     const hasFlag = (name: string) => args.includes(name)
 
     if (hasFlag('--help') || hasFlag('-h')) {
-      const usage = `\nkanbanai — single-binary server (API + UI)\n\nUsage:\n  ./kanban-ai [--host <host>] [--port <port>] [--static-dir <path>] [--migrations-dir <path>]\n\nEnvironment:\n  HOST / PORT                Override listen address (defaults: 0.0.0.0:3000)\n  KANBANAI_STATIC_DIR        Folder containing client-dist (default: ./client-dist)\n  KANBANAI_MIGRATIONS_DIR    Folder containing drizzle migrations (default: ./drizzle)\n`
+      const usage = `\nkanbanai — single-binary server (API + UI)\n\nUsage:\n  ./kanban-ai [--host <host>] [--port <port>] [--static-dir <path>] [--migrations-dir <path>]\n\nEnvironment:\n  HOST / PORT                Override listen address (defaults: 0.0.0.0:3000)\n  KANBANAI_STATIC_DIR        Optional override for client assets (default: embedded bundle or ./client-dist)\n  KANBANAI_MIGRATIONS_DIR    Optional override for drizzle migrations (default: embedded bundle)\n`
       console.log(usage)
       return
     }
 
     const host = getArg('--host') ?? Bun.env.HOST ?? '0.0.0.0'
     const port = Number(getArg('--port', '-p') ?? Bun.env.PORT ?? 3000)
-    const staticDir = path.resolve(getArg('--static-dir') ?? Bun.env.KANBANAI_STATIC_DIR ?? 'client-dist')
+    const staticDir = await resolveStaticDir(getArg('--static-dir'))
     const migrationsDir = getArg('--migrations-dir') ?? Bun.env.KANBANAI_MIGRATIONS_DIR
 
     const indexFile = Bun.file(path.join(staticDir, 'index.html'))
