@@ -83,6 +83,25 @@ export function createGithubProjectRouter() {
             const auth = await githubRepo.getGithubConnection()
             if (!auth?.accessToken) return authRequired(c, 'creating pull requests')
 
+            // Validate attempt/card ownership to prevent cross-project mutations
+            const attempt = attemptId ? await attempts.getAttempt(attemptId) : null
+            if (attempt && attempt.boardId !== projectId) {
+                return problemJson(c, {status: 400, detail: 'Attempt does not belong to this project'})
+            }
+
+            const card = cardId ? await projectsRepo.getCardById(cardId) : attempt?.cardId ? await projectsRepo.getCardById(attempt.cardId) : null
+            let cardBoardId: string | null = null
+            if (card) {
+                cardBoardId = card.boardId ?? null
+                if (!cardBoardId) {
+                    const column = await projectsRepo.getColumnById(card.columnId)
+                    cardBoardId = column?.boardId ?? null
+                }
+                if (cardBoardId && cardBoardId !== projectId) {
+                    return problemJson(c, {status: 400, detail: 'Card does not belong to this project'})
+                }
+            }
+
             const settings = await services.projects.ensureSettings(projectId)
             const remote = settings.preferredRemote?.trim() || 'origin'
             const status = await git.getStatus(projectId)
@@ -106,10 +125,9 @@ export function createGithubProjectRouter() {
 
             // Persist PR URL on the card when available
             try {
-                const attempt = attemptId ? await attempts.getAttempt(attemptId) : null
-                const targetCardId = cardId ?? attempt?.cardId
-                const boardId = attempt?.boardId ?? projectId
-                if (targetCardId) {
+                const targetCardId = card?.id ?? attempt?.cardId
+                const boardId = cardBoardId ?? attempt?.boardId ?? projectId
+                if (targetCardId && boardId) {
                     await projectsRepo.updateCard(targetCardId, {prUrl: pr.url, updatedAt: new Date()})
                     await tasks.broadcastBoard(boardId)
                 }
