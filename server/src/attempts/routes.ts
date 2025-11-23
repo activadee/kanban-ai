@@ -256,15 +256,24 @@ export const createAttemptsRouter = () => {
         const {base, title, body, draft} = c.req.valid('json')
         const attempt = await attempts.getAttempt(c.req.param('id'))
         if (!attempt) return c.json({error: 'Not found'}, 404)
+        if (!attempt.worktreePath) return c.json({error: 'No worktree for attempt'}, 409)
         const auth = await getGithubConnection().catch(() => null)
         if (!auth) return c.json({error: 'auth_required'}, 401)
         try {
             const {projects} = c.get('services')
             const settings = await projects.ensureSettings(attempt.boardId)
-            const head = attempt.branchName
+            const head = attempt.branchName?.trim()
+            if (!head) return c.json({error: 'Branch name missing'}, 409)
             const baseBranch = (base || settings.baseBranch || 'main').trim()
+            const remote = settings.preferredRemote?.trim() || 'origin'
             // Reuse open PR if exists
             const token = auth.accessToken || ''
+            // Ensure the branch exists on the remote before creating the PR to avoid GitHub "head invalid" errors
+            await pushAtPath(
+                attempt.worktreePath,
+                {remote, branch: head, token: token || undefined, setUpstream: true},
+                {projectId: attempt.boardId, attemptId: attempt.id},
+            )
             const existing = await findOpenPR(attempt.boardId, token, head).catch(() => null)
             const pr = existing ?? await createPR(attempt.boardId, token, {base: baseBranch, head, title, body, draft})
             const events = c.get('events')

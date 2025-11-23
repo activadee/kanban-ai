@@ -307,16 +307,16 @@ export async function push(
     const targetBranch = branch?.trim() || st.current || 'HEAD'
     const targetRemote = remote?.trim() || st.tracking?.split('/')?.[0] || 'origin'
 
+    const args: string[] = []
     if (token) {
-        const args = ['-c', `http.extraHeader=Authorization: Bearer ${token}`, 'push']
-        if (setUpstream) args.push('-u')
-        args.push(targetRemote, targetBranch)
-        await g.raw(args)
-    } else {
-        const args: string[] = []
-        if (setUpstream) args.push('-u')
-        await g.push(targetRemote, targetBranch, args)
+        const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
+        args.push('-c', `http.extraHeader=Authorization: Basic ${basic}`)
     }
+    args.push('push')
+    if (setUpstream) args.push('-u')
+    args.push(targetRemote, targetBranch)
+
+    await g.raw(args)
 }
 
 export type FileSource = 'worktree' | 'index' | 'head' | 'base'
@@ -495,16 +495,16 @@ export async function pushAtPath(
     const targetBranch = branch?.trim() || status.current || 'HEAD'
     const targetRemote = remote?.trim() || status.tracking?.split('/')?.[0] || 'origin'
 
+    const args: string[] = []
     if (token) {
-        const args = ['-c', `http.extraHeader=Authorization: Bearer ${token}`, 'push']
-        if (setUpstream) args.push('-u')
-        args.push(targetRemote, targetBranch)
-        await g.raw(args)
-    } else {
-        const args: string[] = []
-        if (setUpstream) args.push('-u')
-        await g.push(targetRemote, targetBranch, args)
+        const basic = Buffer.from(`x-access-token:${token}`).toString('base64')
+        args.push('-c', `http.extraHeader=Authorization: Basic ${basic}`)
     }
+    args.push('push')
+    if (setUpstream) args.push('-u')
+    args.push(targetRemote, targetBranch)
+
+    await g.raw(args)
 
     const ts = new Date().toISOString()
     publishPushCompleted(meta, targetRemote, targetBranch, ts)
