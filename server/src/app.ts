@@ -26,7 +26,7 @@ let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
 import * as console from "node:console";
 
-const env = () => Bun.env ?? (process.env as Record<string, string | undefined>)
+const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
 
 const isDebugLoggingEnabled = () => {
     const flag = env().LOG_LEVEL ?? env().KANBANAI_DEBUG ?? env().DEBUG
