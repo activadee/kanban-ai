@@ -64,6 +64,21 @@ async function fetchLatestCliVersion() {
   return null
 }
 
+async function fetchLatestGitHubReleaseVersion() {
+  try {
+    const res = await fetch('https://api.github.com/repos/activadee/kanban-ai/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.tag_name) return data.tag_name.replace(/^v/, '')
+    }
+  } catch (error) {
+    debug('failed to fetch latest github release', error?.message || error)
+  }
+  return null
+}
+
 async function promptYesNo(question) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
@@ -371,7 +386,16 @@ async function main() {
     const { version: desiredVersion, updated } = await (async () => {
       if (hasExplicitVersion) return { version: baseVersion, updated: false }
 
-      const latest = await fetchLatestCliVersion()
+      const latestCandidates = []
+      const npmLatest = await fetchLatestCliVersion()
+      if (npmLatest) latestCandidates.push(npmLatest)
+      const githubLatest = await fetchLatestGitHubReleaseVersion()
+      if (githubLatest) latestCandidates.push(githubLatest)
+
+      if (!latestCandidates.length) return { version: baseVersion, updated: false }
+
+      const latest = latestCandidates.reduce((max, curr) => (compareSemver(curr, max) > 0 ? curr : max), latestCandidates[0])
+
       if (!latest || compareSemver(latest, baseVersion) <= 0) {
         return { version: baseVersion, updated: false }
       }
