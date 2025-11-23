@@ -60,7 +60,7 @@ jobs:
       draft: ${{ inputs.draft }}
       run_tests: false
       download_artifacts: true
-      artifacts_path: release-artifacts
-      artifact_glob: release-artifacts/cli/dist/*.zip
+      artifacts_path: "."
+      artifact_glob: "**/**.zip"
     secrets:
       CODEX_AUTH_JSON_B64: ${{ secrets.CODEX_AUTH_JSON_B64 }}
