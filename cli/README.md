@@ -9,6 +9,7 @@ npx kanban-ai -- --port 4000
 
 ## Options
 
+- `--binary-version <version>`: download and run a specific release instead of matching the CLI package version
 - `--port`, `PORT`: override listen port (default: 3000)
 - `--host`, `HOST`: override listen address (default: 0.0.0.0)
 - `KANBANAI_STATIC_DIR`: path to `client-dist` (auto-set by the CLI)
@@ -33,4 +34,5 @@ Tunable env vars:
 - `KANBANAI_CACHE_DIR`: shared cache root (affects both app bundle and Codex cache).
 
 On first run the CLI downloads a zip named `kanban-ai-<platform>.zip` from the release tag matching the CLI version
-(e.g., `v0.4.0`). Subsequent runs reuse the extracted cache unless you delete it or set a different version.
+(e.g., `v0.4.0`). Use `--binary-version <version>` or `KANBANAI_VERSION` to override the release tag. Subsequent runs
+reuse the extracted cache unless you delete it or set a different version.
