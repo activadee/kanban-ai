@@ -31,7 +31,7 @@ async function resolveCodexVersion() {
     if (pkgJson?.version) return pkgJson.version
   } catch {}
 
-  return '0.61.0'
+  return '0.63.0'
 }
 
 async function ensureCodexBinary() {
