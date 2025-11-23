@@ -110,7 +110,18 @@ export function createGithubProjectRouter() {
             const baseBranch = (base ?? settings.baseBranch ?? 'main').trim()
 
             // Ensure branch exists remotely to avoid GitHub 422 errors
-            await git.push(projectId, {remote, branch: head, token: auth.accessToken, setUpstream: true})
+            if (attempt?.worktreePath) {
+                await git.pushAtPath(
+                    attempt.worktreePath,
+                    {remote, branch: head, token: auth.accessToken, setUpstream: true},
+                    {projectId, attemptId: attempt.id},
+                )
+            } else {
+                await git.push(projectId, {remote, branch: head, token: auth.accessToken, setUpstream: true})
+                const ts = new Date().toISOString()
+                events.publish('git.push.completed', {projectId, attemptId, remote, branch: head, ts})
+                events.publish('git.status.changed', {projectId})
+            }
 
             const existing = await findOpenPR(projectId, auth.accessToken, head).catch(() => null)
             const pr = existing ?? await createPR(projectId, auth.accessToken, {
