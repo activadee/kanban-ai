@@ -68,10 +68,15 @@ function findInPath(binary) {
   const candidates = []
 
   if (process.platform === 'win32') {
-    const exts = (process.env.PATHEXT || '.EXE;.BAT;.CMD').split(';')
+    const exts = (process.env.PATHEXT || '.EXE;.BAT;.CMD')
+      .split(';')
+      .filter(Boolean)
+      .map((ext) => ext.toLowerCase())
+    const binaryLower = binary.toLowerCase()
     for (const dir of parts) {
       for (const ext of exts) {
-        candidates.push(path.join(dir, binary.endsWith(ext) ? binary : `${binary}${ext.toLowerCase()}`))
+        const candidateName = binaryLower.endsWith(ext) ? binary : `${binary}${ext}`
+        candidates.push(path.join(dir, candidateName))
       }
     }
   } else {
