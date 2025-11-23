@@ -1,9 +1,6 @@
 name: Release CLI
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag_name:
@@ -20,9 +17,14 @@ on:
         description: "Create as a draft release"
         type: boolean
         default: false
+      publish_npm:
+        description: "Whether to publish the CLI package to npm"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   build:
@@ -64,3 +66,63 @@ jobs:
       artifact_glob: "**/**.zip"
     secrets:
       CODEX_AUTH_JSON_B64: ${{ secrets.CODEX_AUTH_JSON_B64 }}
+
+  publish-npm:
+    name: Publish CLI to npm
+    needs: build
+    runs-on: ubuntu-latest
+    # Only run when manually dispatched AND publish_npm is explicitly enabled.
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_npm == true
+    steps:
+      - name: Checkout tag to publish
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag_name || 'main' }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.2.4'
+
+      - name: Derive version from tag
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="${{ inputs.tag_name }}"
+          fi
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "VERSION=${TAG#v}" >> $GITHUB_ENV
+
+      - name: Install CLI deps (bun)
+        run: |
+          bun install --ignore-scripts
+
+      - name: Sync CLI package version to tag
+        env:
+          VERSION: ${{ env.VERSION }}
+        run: |
+          cd cli
+          bun -e "const fs=require('fs');const p='package.json';const pkg=JSON.parse(fs.readFileSync(p,'utf8'));pkg.version=process.env.VERSION;fs.writeFileSync(p, JSON.stringify(pkg,null,2));console.log(pkg.name);console.log(pkg.version);"
+
+      - name: Configure npm auth for publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "NPM_TOKEN is not set; cannot publish." >&2
+            exit 1
+          fi
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+          echo "registry=https://registry.npmjs.org" >> ~/.npmrc
+          cat ~/.npmrc | sed 's/_authToken=.*/_authToken=[REDACTED]/'
+
+      - name: Publish cli package
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_USERCONFIG: $HOME/.npmrc
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+        run: |
+          cd cli
+          bun publish --access public --registry https://registry.npmjs.org

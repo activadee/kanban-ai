@@ -4,9 +4,6 @@
   "description": "A monorepo template built with Bun, Hono, Vite, and React",
   "author": "Steve Simkins",
   "license": "MIT",
-  "bin": {
-    "kanban-ai": "cli/bin/kanban-ai.js"
-  },
   "homepage": "https://github.com/stevedylandev/bhvr",
   "packageManager": "bun@1.2.4",
   "workspaces": [
@@ -42,9 +39,6 @@
     "monorepo",
     "turbo"
   ],
-  "dependencies": {
-    "adm-zip": "^0.5.16"
-  },
   "devDependencies": {
     "bun-types": "latest",
     "turbo": "^2.5.5",
