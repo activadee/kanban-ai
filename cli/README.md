@@ -9,7 +9,7 @@ npx kanban-ai -- --port 4000
 
 ## Options
 
-- `--binary-version <version>`: download and run a specific release instead of matching the CLI package version
+- `--binary-version <version>`: download and run a specific release instead of matching the CLI package version (bypasses any locally packaged zip when the version differs)
 - `--port`, `PORT`: override listen port (default: 3000)
 - `--host`, `HOST`: override listen address (default: 0.0.0.0)
 - `KANBANAI_STATIC_DIR`: path to `client-dist` (auto-set by the CLI)

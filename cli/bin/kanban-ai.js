@@ -164,9 +164,9 @@ async function download(url, dest) {
   return dest
 }
 
-async function ensureZip(platformId, zipName, version) {
+async function ensureZip(platformId, zipName, version, { skipLocalPackaged = false } = {}) {
   const localZip = path.join(__dirname, '..', 'dist', zipName)
-  if (pathExists(localZip)) {
+  if (!skipLocalPackaged && pathExists(localZip)) {
     debug('using packaged zip', localZip)
     return localZip
   }
@@ -196,6 +196,7 @@ async function ensureBinary(versionOverride) {
   const zipName = `kanban-ai-${platform.id}.zip`
   const version = versionOverride || process.env.KANBANAI_VERSION || pkg.version
   process.env.KANBANAI_VERSION = version
+  const skipLocalPackaged = Boolean(versionOverride || (process.env.KANBANAI_VERSION && process.env.KANBANAI_VERSION !== pkg.version))
   const cacheRoot = process.env.KANBANAI_CACHE_DIR || path.join(os.homedir(), '.kanbanAI')
   const targetDir = path.join(cacheRoot, version, platform.id)
   const binaryPath = path.join(targetDir, platform.binary)
@@ -204,7 +205,7 @@ async function ensureBinary(versionOverride) {
     return { binaryPath, targetDir, version }
   }
 
-  const zipPath = await ensureZip(platform.id, zipName, version)
+  const zipPath = await ensureZip(platform.id, zipName, version, { skipLocalPackaged })
   await extract(zipPath, targetDir)
 
   if (process.platform !== 'win32') {
