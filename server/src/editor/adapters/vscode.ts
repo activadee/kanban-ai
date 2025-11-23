@@ -1,7 +1,7 @@
 import os from 'os'
 import nodePath from 'path'
 import {createAdapter} from './base'
-import {isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
+import {currentWSLDistroName, isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
 
 function collectVSCodeCommandCandidates(): string[] {
     const platform = os.platform()
@@ -41,7 +41,7 @@ export const vsCodeAdapter = createAdapter({
     // -n forces a new window instead of reusing the existing one
     argsFor: (path, bin) => {
         if (isWSL() && /\.exe$/i.test(bin)) {
-            const distro = process.env.WSL_DISTRO_NAME || 'wsl'
+            const distro = currentWSLDistroName() || 'wsl'
             return ['-n', '--remote', `wsl+${distro}`, path]
         }
         return ['-n', path]

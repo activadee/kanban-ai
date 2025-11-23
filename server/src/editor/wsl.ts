@@ -72,6 +72,59 @@ export function normalizePathForWindowsBinary(binary: string | null, targetPath:
     return converted ?? targetPath
 }
 
+function parseDistroName(raw: string): string | null {
+    const value = raw.trim()
+    if (!value) return null
+    const patterns = [
+        /\\\\wsl(?:\.localhost)?\$?\\([^\\/]+)(?:[\\/]|$)/i,
+        /\/\/wsl(?:\.localhost)?\$?\/([^\\/]+)(?:[\\/]|$)/i,
+    ]
+    for (const pattern of patterns) {
+        const match = value.match(pattern)
+        if (match?.[1]) return match[1]
+    }
+    return null
+}
+
+/**
+ * Best-effort detection of the current WSL distro name. Some environments
+ * (notably older WSL builds or shells launched outside systemd) do not expose
+ * `WSL_DISTRO_NAME`, which breaks VS Code remote targets. This helper derives
+ * the distro name from `wslpath -m /` (\`//wsl.localhost/<distro>/\`) and falls
+ * back to `wsl.exe -l -q` when available.
+ */
+export function currentWSLDistroName(): string | null {
+    if (!isWSL()) return null
+
+    const envName = process.env.WSL_DISTRO_NAME?.trim()
+    if (envName) return envName
+
+    try {
+        const res = spawnSync('wslpath', ['-m', '/'], {encoding: 'utf8'})
+        if (res.status === 0 && res.stdout) {
+            const parsed = parseDistroName(res.stdout)
+            if (parsed) return parsed
+        }
+    } catch {
+        // ignore and try next strategy
+    }
+
+    try {
+        const res = spawnSync('wsl.exe', ['-l', '-q'], {encoding: 'utf8'})
+        if (res.status === 0 && res.stdout) {
+            const lines = res.stdout.split(/\r?\n/)
+            for (const line of lines) {
+                const name = line.replace(/^\s*\*?\s*/, '').trim()
+                if (name) return name
+            }
+        }
+    } catch {
+        // ignore — no further fallbacks
+    }
+
+    return null
+}
+
 export function windowsToolboxPaths(localAppData: string | null | undefined, appName: string): string[] {
     if (!localAppData) return []
     const base = nodePath.join(localAppData, 'JetBrains', 'Toolbox', 'apps', appName)
