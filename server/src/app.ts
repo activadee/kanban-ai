@@ -28,17 +28,33 @@ import * as console from "node:console";
 
 const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
 
+const isFalseyFlag = (value: string) => ['0', 'false', 'off', 'quiet', 'silent'].includes(value)
+
+const matchesDebugNamespace = (value: string) =>
+    value.split(/[\s,]+/).some((token) => token === '*' || token.startsWith('kanbanai') || token.startsWith('kanban-ai'))
+
 const isDebugLoggingEnabled = () => {
-    const flag = env().LOG_LEVEL ?? env().KANBANAI_DEBUG ?? env().DEBUG
-    if (!flag) return false
-    const normalized = flag.toString().toLowerCase()
-    if (['0', 'false', 'off', 'quiet', 'silent'].includes(normalized)) return false
-    return normalized === 'debug'
-        || normalized === 'verbose'
-        || normalized === '1'
-        || normalized === 'true'
-        || normalized === 'on'
-        || normalized.startsWith('debug')
+    const { LOG_LEVEL, KANBANAI_DEBUG, DEBUG } = env()
+
+    const normalizedLevel = LOG_LEVEL?.toLowerCase()
+    if (normalizedLevel) {
+        if (isFalseyFlag(normalizedLevel)) return false
+        if (['debug', 'verbose', 'trace'].includes(normalizedLevel) || normalizedLevel.startsWith('debug')) return true
+    }
+
+    const normalizedKanban = KANBANAI_DEBUG?.toLowerCase()
+    if (normalizedKanban) {
+        if (isFalseyFlag(normalizedKanban)) return false
+        return true
+    }
+
+    const normalizedDebug = DEBUG?.toLowerCase()
+    if (normalizedDebug) {
+        if (isFalseyFlag(normalizedDebug)) return false
+        if (matchesDebugNamespace(normalizedDebug)) return true
+    }
+
+    return false
 }
 
 function createMetricsRouter() {
