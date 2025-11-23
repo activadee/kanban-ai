@@ -51,6 +51,7 @@ const isDebugLoggingEnabled = () => {
     const normalizedDebug = DEBUG?.toLowerCase()
     if (normalizedDebug) {
         if (isFalseyFlag(normalizedDebug)) return false
+        if (['1', 'true', 'on', 'yes', 'debug', 'verbose', 'trace'].includes(normalizedDebug)) return true
         if (matchesDebugNamespace(normalizedDebug)) return true
     }
 
