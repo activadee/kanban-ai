@@ -132,27 +132,26 @@ function mapFileChanges(status: Awaited<ReturnType<SimpleGit['status']>>): FileC
 }
 
 function parseNameStatusDiff(output: string): FileChange[] {
-    // Use -z output to preserve leading/trailing whitespace in filenames
-    const records = output.split('\0').filter(Boolean)
+    // --name-status -z emits tokens separated by NUL: <status>\0<path>\0[old\0new\0]
+    const tokens = output.split('\0').filter((t) => t.length > 0)
     const files: FileChange[] = []
 
-    for (const record of records) {
-        const parts = record.split('\t')
-        const statusToken = parts.shift()
+    for (let i = 0; i < tokens.length; ) {
+        const statusToken = tokens[i++]
         if (!statusToken) continue
 
         const letter = (statusToken[0] || 'M') as GitFileStatus
 
         if (letter === 'R' || letter === 'C') {
-            const oldPath = parts[0]
-            const newPath = parts[1]
+            const oldPath = tokens[i++]
+            const newPath = tokens[i++]
             const path = newPath || oldPath
             if (!path) continue
             files.push({path, oldPath: oldPath || undefined, status: letter, staged: false})
             continue
         }
 
-        const path = parts[0]
+        const path = tokens[i++]
         if (!path) continue
         files.push({path, status: letter, staged: false})
     }

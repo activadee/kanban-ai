@@ -271,12 +271,13 @@ describe('git/service helpers for worktree paths', () => {
                 return '0\t3'
             }
             if (args[0] === 'diff') {
+                // Simulate `git diff --name-status -z`
                 return [
-                    'M\ta.txt',
-                    'A\tb.txt',
-                    'R100\told.txt\tnew.txt',
-                    'C100\tsrc\t new-with-space.txt ',
-                    'A\t spaced-leading.txt',
+                    'M', 'a.txt',
+                    'A', 'b.txt',
+                    'R100', 'old.txt', 'new.txt',
+                    'C100', 'src', ' new-with-space.txt ',
+                    'A', ' spaced-leading.txt',
                 ].join('\0') + '\0'
             }
             if (args[0] === 'show') {
