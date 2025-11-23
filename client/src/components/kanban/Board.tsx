@@ -1,106 +1,155 @@
-import {useEffect, useMemo, useState} from 'react'
-import {Column} from './Column'
-import {Separator} from '@/components/ui/separator'
-import type {BoardState, Column as ColumnType} from 'shared'
-import {Button} from '@/components/ui/button'
-import {DndContext, DragOverlay} from '@dnd-kit/core'
-import {KanbanCard} from './Card'
-import {CreateCardDialog, EditCardDialog} from './CardDialogs'
-import {ClipboardList} from 'lucide-react'
-import {CardInspector} from './CardInspector'
-import {ResizablePanelGroup, ResizablePanel, ResizableHandle} from '@/components/ui/resizable'
-import {Sheet, SheetContent} from '@/components/ui/sheet'
-import {useMediaQuery} from '@/lib/useMediaQuery'
-import {useBoardDnd} from './board/useBoardDnd'
-import {makeIsCardBlocked} from './board/isCardBlocked'
+import { useMemo, useState } from "react";
+import { Column } from "./Column";
+import { Separator } from "@/components/ui/separator";
+import type { BoardState, Column as ColumnType } from "shared";
+import { Button } from "@/components/ui/button";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
+import { KanbanCard } from "./Card";
+import { CreateCardDialog, EditCardDialog } from "./CardDialogs";
+import { ClipboardList } from "lucide-react";
+import { CardInspector } from "./CardInspector";
+import {
+    ResizablePanelGroup,
+    ResizablePanel,
+    ResizableHandle,
+} from "@/components/ui/resizable";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { useBoardDnd } from "./board/useBoardDnd";
+import { makeIsCardBlocked } from "./board/isCardBlocked";
 
 //
 
 export type BoardHandlers = {
-    onCreateCard: (columnId: string, values: {
-        title: string;
-        description: string;
-        dependsOn?: string[]
-    }) => Promise<void> | void
-    onUpdateCard: (cardId: string, values: { title: string; description: string }) => Promise<void> | void
-    onDeleteCard: (cardId: string) => Promise<void> | void
-    onMoveCard: (cardId: string, toColumnId: string, toIndex: number) => Promise<void> | void
-    onMoveBlocked?: () => void
-}
+    onCreateCard: (
+        columnId: string,
+        values: {
+            title: string;
+            description: string;
+            dependsOn?: string[];
+        },
+    ) => Promise<void> | void;
+    onUpdateCard: (
+        cardId: string,
+        values: { title: string; description: string },
+    ) => Promise<void> | void;
+    onDeleteCard: (cardId: string) => Promise<void> | void;
+    onMoveCard: (
+        cardId: string,
+        toColumnId: string,
+        toIndex: number,
+    ) => Promise<void> | void;
+    onMoveBlocked?: () => void;
+};
 
 type Props = {
-    projectId: string
-    boardId: string
-    state: BoardState
-    handlers: BoardHandlers
-}
+    projectId: string;
+    boardId: string;
+    state: BoardState;
+    handlers: BoardHandlers;
+};
 
-export function Board({projectId, boardId, state, handlers}: Props) {
-    const columns = useMemo<ColumnType[]>(() => state.columnOrder.map((id) => state.columns[id]).filter(Boolean), [state])
-    const totalCards = useMemo(() => Object.keys(state.cards).length, [state.cards])
-    const [creatingColumnId, setCreatingColumnId] = useState<string | null>(null)
-    const [editingCardId, setEditingCardId] = useState<string | null>(null)
-    const [selectedId, setSelectedId] = useState<string | null>(null)
-    const selectedCard = selectedId ? state.cards[selectedId] : undefined
+export function Board({ projectId, boardId, state, handlers }: Props) {
+    const columns = useMemo<ColumnType[]>(
+        () => state.columnOrder.map((id) => state.columns[id]).filter(Boolean),
+        [state],
+    );
+    const totalCards = useMemo(
+        () => Object.keys(state.cards).length,
+        [state.cards],
+    );
+    const [creatingColumnId, setCreatingColumnId] = useState<string | null>(
+        null,
+    );
+    const [editingCardId, setEditingCardId] = useState<string | null>(null);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const resolvedSelectedId = useMemo(
+        () => (selectedId && state.cards[selectedId] ? selectedId : null),
+        [selectedId, state.cards],
+    );
+    const selectedCard = resolvedSelectedId
+        ? state.cards[resolvedSelectedId]
+        : undefined;
 
     // Compute Done set and helper for blocked status
-    const doneColumnIds = useMemo(() =>
-        Object.values(state.columns)
-            .filter((c) => (c.key === 'done') || c.title.trim().toLowerCase() === 'done')
-            .map((c) => c.id), [state.columns])
-    const doneCardIds = useMemo(() => new Set(doneColumnIds.flatMap((cid) => state.columns[cid]?.cardIds ?? [])), [doneColumnIds, state.columns])
+    const doneColumnIds = useMemo(
+        () =>
+            Object.values(state.columns)
+                .filter(
+                    (c) =>
+                        c.key === "done" ||
+                        c.title.trim().toLowerCase() === "done",
+                )
+                .map((c) => c.id),
+        [state.columns],
+    );
+    const doneCardIds = useMemo(
+        () =>
+            new Set(
+                doneColumnIds.flatMap(
+                    (cid) => state.columns[cid]?.cardIds ?? [],
+                ),
+            ),
+        [doneColumnIds, state.columns],
+    );
     // local blocked helper replaced by makeIsCardBlocked
 
-    useEffect(() => {
-        if (selectedId && !selectedCard) {
-            setSelectedId(null)
-        }
-    }, [selectedId, selectedCard])
-
-    const isBlocked = makeIsCardBlocked(state)
-    const {sensors, handleDragStart, handleDragEnd, activeId} = useBoardDnd({
+    const isBlocked = makeIsCardBlocked(state);
+    const { sensors, handleDragStart, handleDragEnd, activeId } = useBoardDnd({
         state,
         isCardBlocked: isBlocked,
-        onMoveCard: (cardId, toColumnId, toIndex) => handlers.onMoveCard(cardId, toColumnId, toIndex),
+        onMoveCard: (cardId, toColumnId, toIndex) =>
+            handlers.onMoveCard(cardId, toColumnId, toIndex),
         onBlocked: handlers.onMoveBlocked,
-    })
+    });
 
-    const editingCard = editingCardId ? state.cards[editingCardId] ?? null : null
-    const creatingColumn = creatingColumnId ? state.columns[creatingColumnId] ?? null : null
+    const editingCard = editingCardId
+        ? (state.cards[editingCardId] ?? null)
+        : null;
+    const creatingColumn = creatingColumnId
+        ? (state.columns[creatingColumnId] ?? null)
+        : null;
 
-    const isDesktop = useMediaQuery('(min-width: 1024px)')
+    const isDesktop = useMediaQuery("(min-width: 1024px)");
 
     return (
         <div className="flex h-full min-h-0 flex-col">
             <div className="mb-3 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">Kanban Board</h1>
                 <div className="flex items-center gap-2">
-                    <Button onClick={() => setCreatingColumnId(columns[0]?.id ?? null)} disabled={!columns.length}>
+                    <Button
+                        onClick={() =>
+                            setCreatingColumnId(columns[0]?.id ?? null)
+                        }
+                        disabled={!columns.length}
+                    >
                         Create Ticket
                     </Button>
                 </div>
             </div>
-            <Separator className="mb-4 h-px w-full"/>
+            <Separator className="mb-4 h-px w-full" />
 
             {totalCards === 0 && (
                 <div className="mb-6 flex items-center justify-center">
-                    <div
-                        className="flex w-full max-w-xl flex-col items-center gap-4 rounded-2xl border border-border/60 bg-muted/10 p-8 text-center">
+                    <div className="flex w-full max-w-xl flex-col items-center gap-4 rounded-2xl border border-border/60 bg-muted/10 p-8 text-center">
                         <div className="rounded-full bg-muted/20 p-4">
-                            <ClipboardList className="size-8 text-muted-foreground"/>
+                            <ClipboardList className="size-8 text-muted-foreground" />
                         </div>
                         <div className="space-y-1">
-                            <h2 className="text-xl font-semibold">Let’s create your first ticket</h2>
+                            <h2 className="text-xl font-semibold">
+                                Let’s create your first ticket
+                            </h2>
                             <p className="text-sm text-muted-foreground">
-                                Drag and drop tickets between columns to track progress. Start by creating one in
-                                Backlog.
+                                Drag and drop tickets between columns to track
+                                progress. Start by creating one in Backlog.
                             </p>
                         </div>
                         <Button
                             size="sm"
                             onClick={() => {
-                                const targetColumnId = columns[0]?.id
-                                if (targetColumnId) setCreatingColumnId(targetColumnId)
+                                const targetColumnId = columns[0]?.id;
+                                if (targetColumnId)
+                                    setCreatingColumnId(targetColumnId);
                             }}
                         >
                             Create Ticket
@@ -113,35 +162,67 @@ export function Board({projectId, boardId, state, handlers}: Props) {
                 <>
                     {!isDesktop ? (
                         // Mobile Sheet only when not desktop
-                        <Sheet open={!!selectedId} onOpenChange={(open) => {
-                            if (!open) setSelectedId(null)
-                        }}>
+                        <Sheet
+                            open={!!resolvedSelectedId}
+                            onOpenChange={(open) => {
+                                if (!open) setSelectedId(null);
+                            }}
+                        >
                             <SheetContent side="right">
-                                {selectedId && selectedCard && (
+                                {resolvedSelectedId && selectedCard && (
                                     <CardInspector
                                         projectId={projectId}
                                         boardId={boardId}
                                         card={selectedCard}
-                                        availableCards={Object.values(state.cards)
-                                            .filter((c) => c.id !== selectedId && !doneCardIds.has(c.id))
+                                        availableCards={Object.values(
+                                            state.cards,
+                                        )
+                                            .filter(
+                                                (c) =>
+                                                    c.id !==
+                                                        resolvedSelectedId &&
+                                                    !doneCardIds.has(c.id),
+                                            )
                                             .map((c) => ({
                                                 id: c.id,
                                                 title: c.title,
-                                                ticketKey: c.ticketKey ?? undefined
+                                                ticketKey:
+                                                    c.ticketKey ?? undefined,
                                             }))}
-                                        cardsIndex={new Map(Object.values(state.cards).map((c) => [c.id, {
-                                            id: c.id,
-                                            title: c.title,
-                                            ticketKey: c.ticketKey ?? undefined
-                                        }]))}
-                                        blocked={isBlocked(selectedId)}
-                                        onUpdate={(values) => handlers.onUpdateCard(selectedId, values)}
+                                        cardsIndex={
+                                            new Map(
+                                                Object.values(state.cards).map(
+                                                    (c) => [
+                                                        c.id,
+                                                        {
+                                                            id: c.id,
+                                                            title: c.title,
+                                                            ticketKey:
+                                                                c.ticketKey ??
+                                                                undefined,
+                                                        },
+                                                    ],
+                                                ),
+                                            )
+                                        }
+                                        blocked={isBlocked(resolvedSelectedId)}
+                                        onUpdate={(values) =>
+                                            handlers.onUpdateCard(
+                                                resolvedSelectedId,
+                                                values,
+                                            )
+                                        }
                                         onDelete={async () => {
                                             try {
-                                                await handlers.onDeleteCard(selectedId)
-                                                setSelectedId(null)
+                                                await handlers.onDeleteCard(
+                                                    resolvedSelectedId,
+                                                );
+                                                setSelectedId(null);
                                             } catch (error) {
-                                                console.error('Failed to delete card', error)
+                                                console.error(
+                                                    "Failed to delete card",
+                                                    error,
+                                                );
                                             }
                                         }}
                                         onClose={() => setSelectedId(null)}
@@ -151,55 +232,122 @@ export function Board({projectId, boardId, state, handlers}: Props) {
                         </Sheet>
                     ) : (
                         // Desktop resizable layout
-                        <ResizablePanelGroup direction="horizontal" className="h-full min-h-0">
-                            <ResizablePanel defaultSize={selectedId ? 70 : 100} minSize={50}>
-                                <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                                    <div
-                                        className="grid h-full min-h-0 grid-cols-1 gap-4 auto-rows-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-4">
+                        <ResizablePanelGroup
+                            direction="horizontal"
+                            className="h-full min-h-0"
+                        >
+                            <ResizablePanel
+                                defaultSize={resolvedSelectedId ? 70 : 100}
+                                minSize={50}
+                            >
+                                <DndContext
+                                    sensors={sensors}
+                                    onDragStart={handleDragStart}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <div className="grid h-full min-h-0 grid-cols-1 gap-4 auto-rows-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-4">
                                         {columns.map((col) => (
-                                            <Column key={col.id} column={col} state={state}
-                                                    onSelectCard={(cardId) => setSelectedId(cardId)}/>
+                                            <Column
+                                                key={col.id}
+                                                column={col}
+                                                state={state}
+                                                onSelectCard={(cardId) =>
+                                                    setSelectedId(cardId)
+                                                }
+                                            />
                                         ))}
                                     </div>
                                     <DragOverlay dropAnimation={null}>
-                                        {activeId ? <KanbanCard card={state.cards[activeId]}/> : null}
+                                        {activeId ? (
+                                            <KanbanCard
+                                                card={state.cards[activeId]}
+                                            />
+                                        ) : null}
                                     </DragOverlay>
                                 </DndContext>
                             </ResizablePanel>
-                            {selectedId && selectedCard && (
+                            {resolvedSelectedId && selectedCard && (
                                 <>
-                                    <ResizableHandle withHandle/>
-                                    <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="min-h-0">
-                                        <div
-                                            className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4">
+                                    <ResizableHandle withHandle />
+                                    <ResizablePanel
+                                        defaultSize={30}
+                                        minSize={20}
+                                        maxSize={50}
+                                        className="min-h-0"
+                                    >
+                                        <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4">
                                             <CardInspector
                                                 projectId={projectId}
                                                 boardId={boardId}
                                                 card={selectedCard}
-                                                availableCards={Object.values(state.cards)
-                                                    .filter((c) => c.id !== selectedId && !doneCardIds.has(c.id))
+                                                availableCards={Object.values(
+                                                    state.cards,
+                                                )
+                                                    .filter(
+                                                        (c) =>
+                                                            c.id !==
+                                                                resolvedSelectedId &&
+                                                            !doneCardIds.has(
+                                                                c.id,
+                                                            ),
+                                                    )
                                                     .map((c) => ({
                                                         id: c.id,
                                                         title: c.title,
-                                                        ticketKey: c.ticketKey ?? undefined
+                                                        ticketKey:
+                                                            c.ticketKey ??
+                                                            undefined,
                                                     }))}
-                                                cardsIndex={new Map(Object.values(state.cards).map((c) => [c.id, {
-                                                    id: c.id,
-                                                    title: c.title,
-                                                    ticketKey: c.ticketKey ?? undefined
-                                                }]))}
-                                                blocked={isBlocked(selectedId)}
-                                                locked={columns.some((c) => c.title === 'Done' && state.columns[c.id]?.cardIds.includes(selectedId))}
-                                                onUpdate={(values) => handlers.onUpdateCard(selectedId, values)}
+                                                cardsIndex={
+                                                    new Map(
+                                                        Object.values(
+                                                            state.cards,
+                                                        ).map((c) => [
+                                                            c.id,
+                                                            {
+                                                                id: c.id,
+                                                                title: c.title,
+                                                                ticketKey:
+                                                                    c.ticketKey ??
+                                                                    undefined,
+                                                            },
+                                                        ]),
+                                                    )
+                                                }
+                                                blocked={isBlocked(
+                                                    resolvedSelectedId,
+                                                )}
+                                                locked={columns.some(
+                                                    (c) =>
+                                                        c.title === "Done" &&
+                                                        state.columns[
+                                                            c.id
+                                                        ]?.cardIds.includes(
+                                                            resolvedSelectedId,
+                                                        ),
+                                                )}
+                                                onUpdate={(values) =>
+                                                    handlers.onUpdateCard(
+                                                        resolvedSelectedId,
+                                                        values,
+                                                    )
+                                                }
                                                 onDelete={async () => {
                                                     try {
-                                                        await handlers.onDeleteCard(selectedId)
-                                                        setSelectedId(null)
+                                                        await handlers.onDeleteCard(
+                                                            resolvedSelectedId,
+                                                        );
+                                                        setSelectedId(null);
                                                     } catch (error) {
-                                                        console.error('Failed to delete card', error)
+                                                        console.error(
+                                                            "Failed to delete card",
+                                                            error,
+                                                        );
                                                     }
                                                 }}
-                                                onClose={() => setSelectedId(null)}
+                                                onClose={() =>
+                                                    setSelectedId(null)
+                                                }
                                             />
                                         </div>
                                     </ResizablePanel>
@@ -212,17 +360,24 @@ export function Board({projectId, boardId, state, handlers}: Props) {
 
             <CreateCardDialog
                 open={!!creatingColumn}
-                columns={columns.map((column) => ({id: column.id, title: column.title}))}
+                columns={columns.map((column) => ({
+                    id: column.id,
+                    title: column.title,
+                }))}
                 defaultColumnId={creatingColumn?.id ?? columns[0]?.id}
                 projectId={projectId}
                 availableCards={Object.values(state.cards)
                     .filter((c) => !doneCardIds.has(c.id))
-                    .map((c) => ({id: c.id, title: c.title, ticketKey: c.ticketKey ?? undefined}))}
+                    .map((c) => ({
+                        id: c.id,
+                        title: c.title,
+                        ticketKey: c.ticketKey ?? undefined,
+                    }))}
                 onOpenChange={(open) => {
-                    if (!open) setCreatingColumnId(null)
+                    if (!open) setCreatingColumnId(null);
                 }}
                 onSubmit={async (columnId, values) => {
-                    await handlers.onCreateCard(columnId, values)
+                    await handlers.onCreateCard(columnId, values);
                 }}
             />
 
@@ -230,22 +385,21 @@ export function Board({projectId, boardId, state, handlers}: Props) {
                 <EditCardDialog
                     open={!!editingCard}
                     onOpenChange={(open) => {
-                        if (!open) setEditingCardId(null)
+                        if (!open) setEditingCardId(null);
                     }}
                     cardTitle={editingCard.title}
-                    cardDescription={editingCard.description ?? ''}
+                    cardDescription={editingCard.description ?? ""}
                     cardTicketKey={editingCard.ticketKey ?? null}
-                    projectId={projectId}
                     boardId={boardId}
                     cardId={editingCard.id}
                     onSubmit={async (values) => {
-                        await handlers.onUpdateCard(editingCard.id, values)
+                        await handlers.onUpdateCard(editingCard.id, values);
                     }}
                     onDelete={async () => {
-                        await handlers.onDeleteCard(editingCard.id)
+                        await handlers.onDeleteCard(editingCard.id);
                     }}
                 />
             )}
         </div>
-    )
+    );
 }
