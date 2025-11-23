@@ -88,6 +88,7 @@ npx kanban-ai -- --port 4000
 ```
 
 - Downloads the platform-specific binary + assets from the matching GitHub Release tag (cached at `~/.kanbanAI/<version>/<platform>`).
+- Override the release tag with `--binary-version <version>` (or `KANBANAI_VERSION`) when you need to pin a specific build; if that differs from the bundled CLI version, the launcher bypasses any locally packaged zip and downloads the requested release.
 - On first run the launcher also ensures the Codex CLI is available: it checks `CODEX_PATH_OVERRIDE`/`CODEX_PATH`, then `PATH`, otherwise downloads the latest `@openai/codex-sdk` tarball from npm, extracts the platform `codex` binary, and caches it at `~/.kanbanAI/codex/<version>/<vendor>`.
 - Serves the UI and API on the same origin (`/api/v1`), SPA fallback included.
 - Respects `PORT` / `HOST` / `DATABASE_URL` and auto-sets `KANBANAI_STATIC_DIR` + `KANBANAI_MIGRATIONS_DIR` to the extracted assets.

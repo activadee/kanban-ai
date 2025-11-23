@@ -28,6 +28,38 @@ function debug(...args) {
   }
 }
 
+function parseLauncherArgs(argv) {
+  const passThrough = []
+  let binaryVersion
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]
+
+    if (arg === '--binary-version') {
+      const next = argv[i + 1]
+      if (!next || next.startsWith('-')) {
+        throw new Error('--binary-version requires a value (e.g. --binary-version 0.4.1)')
+      }
+      binaryVersion = next
+      i += 1
+      continue
+    }
+
+    if (arg.startsWith('--binary-version=')) {
+      const value = arg.slice('--binary-version='.length)
+      if (!value) {
+        throw new Error('--binary-version requires a value (e.g. --binary-version=0.4.1)')
+      }
+      binaryVersion = value
+      continue
+    }
+
+    passThrough.push(arg)
+  }
+
+  return { binaryVersion, passThrough }
+}
+
 function run(cmd, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { stdio: 'inherit', ...options })
@@ -132,14 +164,13 @@ async function download(url, dest) {
   return dest
 }
 
-async function ensureZip(platformId, zipName) {
+async function ensureZip(platformId, zipName, version, { skipLocalPackaged = false } = {}) {
   const localZip = path.join(__dirname, '..', 'dist', zipName)
-  if (pathExists(localZip)) {
+  if (!skipLocalPackaged && pathExists(localZip)) {
     debug('using packaged zip', localZip)
     return localZip
   }
 
-  const version = process.env.KANBANAI_VERSION || pkg.version
   const tag = version.startsWith('v') ? version : `v${version}`
   const baseUrl = process.env.KANBANAI_BINARY_BASE_URL || `https://github.com/activadee/kanban-ai/releases/download/${tag}`
   const url = `${baseUrl}/${zipName}`
@@ -160,26 +191,28 @@ async function extract(zipPath, targetDir) {
   zip.extractAllTo(targetDir, true)
 }
 
-async function ensureBinary() {
+async function ensureBinary(versionOverride) {
   const platform = detectPlatform()
   const zipName = `kanban-ai-${platform.id}.zip`
-  const version = process.env.KANBANAI_VERSION || pkg.version
+  const version = versionOverride || process.env.KANBANAI_VERSION || pkg.version
+  process.env.KANBANAI_VERSION = version
+  const skipLocalPackaged = Boolean(versionOverride || (process.env.KANBANAI_VERSION && process.env.KANBANAI_VERSION !== pkg.version))
   const cacheRoot = process.env.KANBANAI_CACHE_DIR || path.join(os.homedir(), '.kanbanAI')
   const targetDir = path.join(cacheRoot, version, platform.id)
   const binaryPath = path.join(targetDir, platform.binary)
 
   if (pathExists(binaryPath)) {
-    return { binaryPath, targetDir }
+    return { binaryPath, targetDir, version }
   }
 
-  const zipPath = await ensureZip(platform.id, zipName)
+  const zipPath = await ensureZip(platform.id, zipName, version, { skipLocalPackaged })
   await extract(zipPath, targetDir)
 
   if (process.platform !== 'win32') {
     await fs.promises.chmod(binaryPath, 0o755)
   }
 
-  return { binaryPath, targetDir }
+  return { binaryPath, targetDir, version }
 }
 
 async function ensureCodexBinary() {
@@ -241,7 +274,7 @@ async function ensureCodexBinary() {
   return targetBinary
 }
 
-function spawnBinary(binaryPath, extractedDir, codexPath) {
+function spawnBinary(binaryPath, extractedDir, codexPath, args) {
   const staticDir = path.join(extractedDir, 'client-dist')
   const migrationsDir = path.join(extractedDir, 'drizzle')
 
@@ -252,7 +285,6 @@ function spawnBinary(binaryPath, extractedDir, codexPath) {
     CODEX_PATH_OVERRIDE: process.env.CODEX_PATH_OVERRIDE || process.env.CODEX_PATH || codexPath,
   }
 
-  const args = process.argv.slice(2)
   const child = spawn(binaryPath, args, {
     cwd: process.cwd(),
     stdio: 'inherit',
@@ -285,12 +317,17 @@ function spawnBinary(binaryPath, extractedDir, codexPath) {
 
 async function main() {
   try {
-    const { binaryPath, targetDir } = await ensureBinary()
+    const { binaryVersion, passThrough } = parseLauncherArgs(process.argv.slice(2))
+    const hasExplicitVersion = Boolean(binaryVersion || process.env.KANBANAI_VERSION)
+    const { binaryPath, targetDir, version } = await ensureBinary(binaryVersion)
     const codexPath = await ensureCodexBinary()
+    if (hasExplicitVersion) {
+      console.log(`[kanban-ai] using binary version ${version}`)
+    }
     console.log(`[kanban-ai] codex: using ${codexPath}`)
     debug('launching binary', binaryPath)
     debug('using codex', codexPath)
-    spawnBinary(binaryPath, targetDir, codexPath)
+    spawnBinary(binaryPath, targetDir, codexPath, passThrough)
   } catch (error) {
     console.error('[kanban-ai] error', error)
     process.exit(1)
