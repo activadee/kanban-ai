@@ -18,7 +18,8 @@
     - `mergeBranchIntoBaseForProject` publishes `git.merge.completed` (used after a merge workflow).
 3. **Listeners (`core/git/listeners.ts`)**
     - Core handles `attempt.autocommit.requested` by invoking `performAutoCommit`, applying the last assistant message
-      as commit content and logging the outcome.
+      as commit content and logging the outcome. When project settings enable it, the handler also pushes the branch
+      after committing.
 
 ## Key Entry Points
 

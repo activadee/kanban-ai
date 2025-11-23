@@ -15,14 +15,16 @@ export function RepositoryDefaultsForm({
                                            baseBranch,
                                            preferredRemote,
                                            autoCommitOnFinish,
+                                           autoPushOnAutocommit,
                                            branches,
                                            update,
                                        }: {
     baseBranch: string
     preferredRemote: string
     autoCommitOnFinish: boolean
+    autoPushOnAutocommit: boolean
     branches: Branch[]
-    update: (patch: Partial<{ baseBranch: string; preferredRemote: string; autoCommitOnFinish: boolean }>) => void
+    update: (patch: Partial<{ baseBranch: string; preferredRemote: string; autoCommitOnFinish: boolean; autoPushOnAutocommit: boolean }>) => void
 }) {
     const NONE_VALUE = '__none__'
     return (
@@ -75,14 +77,27 @@ export function RepositoryDefaultsForm({
             <div
                 className="flex items-center gap-3 rounded-md border border-dashed border-border/60 bg-background/80 p-3">
                 <Checkbox id="auto-commit-on-finish" checked={autoCommitOnFinish}
-                          onCheckedChange={(checked) => update({autoCommitOnFinish: checked === true})}/>
+                          onCheckedChange={(checked) => update({
+                              autoCommitOnFinish: checked === true,
+                              autoPushOnAutocommit: checked === true ? autoPushOnAutocommit : false,
+                          })}/>
                 <div className="space-y-1">
                     <Label htmlFor="auto-commit-on-finish">Auto-commit on finish</Label>
                     <p className="text-xs text-muted-foreground">When the agent succeeds, commit all changes using the
-                        last assistant message as the commit message. Does not push.</p>
+                        last assistant message as the commit message. Does not push unless auto-push is enabled.</p>
+                </div>
+            </div>
+            <div
+                className="flex items-center gap-3 rounded-md border border-dashed border-border/60 bg-background/80 p-3">
+                <Checkbox id="auto-push-after-autocommit" checked={autoPushOnAutocommit}
+                          disabled={!autoCommitOnFinish}
+                          onCheckedChange={(checked) => update({autoPushOnAutocommit: checked === true})}/>
+                <div className="space-y-1">
+                    <Label htmlFor="auto-push-after-autocommit">Auto-push after auto-commit</Label>
+                    <p className="text-xs text-muted-foreground">If auto-commit is enabled, also push the branch to the
+                        preferred remote (or tracking remote) after committing.</p>
                 </div>
             </div>
         </section>
     )
 }
-

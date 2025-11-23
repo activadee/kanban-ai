@@ -19,6 +19,7 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         defaultAgent: row.defaultAgent ?? null,
         defaultProfileId: row.defaultProfileId ?? null,
         autoCommitOnFinish: Boolean(row.autoCommitOnFinish),
+        autoPushOnAutocommit: Boolean(row.autoPushOnAutocommit),
         ticketPrefix: row.ticketPrefix,
         nextTicketNumber: row.nextTicketNumber,
         createdAt: toIso(row.createdAt),
@@ -45,6 +46,7 @@ export async function ensureProjectSettings(projectId: string, executor?: DbExec
             defaultAgent: null,
             defaultProfileId: null,
             autoCommitOnFinish: false,
+            autoPushOnAutocommit: false,
             ticketPrefix,
             nextTicketNumber: 1,
             createdAt: now,
@@ -74,6 +76,7 @@ export async function updateProjectSettings(projectId: string, updates: UpdatePr
     if (updates.defaultAgent !== undefined) patch.defaultAgent = nn(updates.defaultAgent)
     if (updates.defaultProfileId !== undefined) patch.defaultProfileId = nn(updates.defaultProfileId)
     if (updates.autoCommitOnFinish !== undefined) patch.autoCommitOnFinish = Boolean(updates.autoCommitOnFinish)
+    if (updates.autoPushOnAutocommit !== undefined) patch.autoPushOnAutocommit = Boolean(updates.autoPushOnAutocommit)
     if (updates.ticketPrefix !== undefined) patch.ticketPrefix = sanitizeTicketPrefix(updates.ticketPrefix)
     patch.updatedAt = new Date()
     await updateProjectSettingsRow(projectId, patch as any, executor)

@@ -23,6 +23,7 @@ export const projectSettings = sqliteTable('project_settings', {
     defaultAgent: text('default_agent'),
     defaultProfileId: text('default_profile_id'),
     autoCommitOnFinish: integer('auto_commit_on_finish', {mode: 'boolean'}).notNull().default(false),
+    autoPushOnAutocommit: integer('auto_push_on_autocommit', {mode: 'boolean'}).notNull().default(false),
     ticketPrefix: text('ticket_prefix').notNull().default('PRJ'),
     nextTicketNumber: integer('next_ticket_number').notNull().default(1),
     createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -73,4 +74,3 @@ export type Board = typeof boards.$inferSelect
 export type ProjectSettingsRow = typeof projectSettings.$inferSelect
 export type Column = typeof columns.$inferSelect
 export type Card = typeof cards.$inferSelect
-
