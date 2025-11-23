@@ -76,8 +76,8 @@ function parseDistroName(raw: string): string | null {
     const value = raw.trim()
     if (!value) return null
     const patterns = [
-        /\\\\wsl(?:\.localhost)?\\([^\\/]+)(?:[\\/]|$)/i,
-        /\/\/wsl(?:\.localhost)?\/([^\\/]+)(?:[\\/]|$)/i,
+        /\\\\wsl(?:\.localhost)?\$?\\([^\\/]+)(?:[\\/]|$)/i,
+        /\/\/wsl(?:\.localhost)?\$?\/([^\\/]+)(?:[\\/]|$)/i,
     ]
     for (const pattern of patterns) {
         const match = value.match(pattern)
