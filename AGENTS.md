@@ -38,7 +38,7 @@ cli/      # npx launcher + packaged single binaries
 
 - `scripts/build-binaries.ts` runs `bun build --compile` with embedded `client/dist` + `server/drizzle` assets, emitting per-platform binaries at `cli/dist/kanban-ai-<platform>`.
 - `.github/workflows/release-cli.yml` builds all targets, uploads the raw binaries as GitHub Release assets, and publishes the `cli/` workspace to npm (`npx kanban-ai`).
-- The CLI launcher (`cli/bin/kanban-ai.js`) downloads/caches the platform binary directly (no zip or static-dir staging), auto-checks for the latest release on every run, and defaults to using it; overrides remain supported via `KANBANAI_*` env vars if needed.
+- The CLI launcher (`cli/bin/kanban-ai.js`) downloads/caches the platform binary directly (no zip or static-dir staging), auto-checks for the latest release on every run, and defaults to using it; overrides remain supported via `KANBANAI_*` env vars if needed. Defaults point `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR` to the embedded bundle (`__embedded__`).
 
 ## Recent Changes
 

@@ -15,8 +15,8 @@ When run via `npx`/`bunx`, the launcher always checks npm + GitHub for the newes
 - `--binary-version <version>`: download and run a specific release instead of matching the CLI package version.
 - `--port`, `PORT`: override listen port (default: 3000)
 - `--host`, `HOST`: override listen address (default: 0.0.0.0)
-- `KANBANAI_STATIC_DIR`: optional override for the embedded client assets
-- `KANBANAI_MIGRATIONS_DIR`: optional override for the embedded drizzle migrations
+- `KANBANAI_STATIC_DIR`: optional override for the embedded client assets (defaults to `__embedded__`)
+- `KANBANAI_MIGRATIONS_DIR`: optional override for the embedded drizzle migrations (defaults to `__embedded__`)
 - `KANBANAI_BINARY_BASE_URL`: override the GitHub Releases base URL for testing
 - `KANBANAI_CACHE_DIR`: override cache location (default: `~/.kanbanAI`)
 - `KANBANAI_DEBUG=1`: verbose logs from the launcher

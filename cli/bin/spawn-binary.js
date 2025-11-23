@@ -3,6 +3,8 @@ const { spawn } = require('child_process')
 function spawnBinary(binaryPath, codexPath, args) {
   const env = {
     ...process.env,
+    KANBANAI_STATIC_DIR: process.env.KANBANAI_STATIC_DIR || '__embedded__',
+    KANBANAI_MIGRATIONS_DIR: process.env.KANBANAI_MIGRATIONS_DIR || '__embedded__',
     CODEX_PATH_OVERRIDE: process.env.CODEX_PATH_OVERRIDE || process.env.CODEX_PATH || codexPath,
   }
 

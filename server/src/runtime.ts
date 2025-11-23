@@ -4,10 +4,10 @@ import { setAppReady } from './app'
 const env = () => Bun.env ?? (process.env as Record<string, string | undefined>)
 
 export async function resolveMigrationsFolder(explicit?: string): Promise<string> {
-  if (explicit) return path.resolve(explicit)
+  if (explicit) return explicit === '__embedded__' ? new URL('../drizzle', import.meta.url).pathname : path.resolve(explicit)
 
   const fromEnv = env().KANBANAI_MIGRATIONS_DIR
-  if (fromEnv) return path.resolve(fromEnv)
+  if (fromEnv) return fromEnv === '__embedded__' ? new URL('../drizzle', import.meta.url).pathname : path.resolve(fromEnv)
 
   const cwdCandidate = path.resolve(process.cwd(), 'drizzle')
   if (await Bun.file(path.join(cwdCandidate, 'meta/_journal.json')).exists()) return cwdCandidate
