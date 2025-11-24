@@ -13,6 +13,7 @@ dist/bin
 dist/staging
 cli/dist
 build
+server/static
 server/drizzle/*.db
 server/worktrees/**
 server/server/worktrees/**

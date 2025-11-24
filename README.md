@@ -78,23 +78,7 @@ On first launch you will be redirected to `/onboarding` to confirm preferences, 
 credentials, and the GitHub device-flow connection. Completing onboarding unlocks the main workspace; you can revisit it
 any time via `/onboarding`.
 
-Note: the API server for development remains API-only. Run the Vite dev server for UI during development (`bun run dev:client`) and host `client/dist` separately for production; the standalone binary used by `npx kanban-ai` serves the built UI for demo/self-host setups.
-
-## One-Command Demo (`npx kanban-ai`)
-
-Run KanbanAI as a single binary (API + UI) on one port without cloning the repo:
-
-```bash
-npx kanban-ai -- --port 4000
-```
-
-- Downloads the platform-specific single binary (with embedded UI + migrations) from the matching GitHub Release tag, cached at `~/.kanbanAI/<version>/<platform>`.
-- Override the release tag with `--binary-version <version>` (or `KANBANAI_VERSION`) when you need to pin a specific build; if that differs from the bundled CLI version, the launcher bypasses any locally packaged binary and downloads the requested release.
-- When launched via `npx`/`bunx`, the CLI always checks npm + GitHub for the latest binary. Interactive shells are prompted (default Yes); non-interactive shells auto-use the latest.
-- On first run the launcher also ensures the Codex CLI is available: it checks `CODEX_PATH_OVERRIDE`/`CODEX_PATH`, then `PATH`, otherwise downloads the latest `@openai/codex-sdk` tarball from npm, extracts the platform `codex` binary, and caches it at `~/.kanbanAI/codex/<version>/<vendor>`.
-- Serves the UI and API on the same origin (`/api/v1`), SPA fallback included.
-- Respects `PORT` / `HOST` / `DATABASE_URL`; static assets and migrations are embedded by default, but `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR` overrides still work.
-- Existing contributor workflows stay the same (`bun run dev`, `dev:server`, `dev:client`).
+Note: the API server for development remains API-only. Run the Vite dev server for UI during development (`bun run dev:client`). For single-origin self-hosting, use the dedicated production server entrypoint (see Deployment).
 
 ## Initial Onboarding
 
@@ -151,7 +135,24 @@ bun run build:server
 bun run lint
 bun run type-check
 bun run test
+
+# Single-origin self-host (API + UI)
+bun run prod
 ```
+
+### Server entrypoints
+
+The server workspace uses two explicit entrypoints under `server/src/entry`:
+
+- `server/src/entry/dev.ts`
+  - Used by `bun run dev:server` and `bun run start:server`.
+  - Starts an API-only Hono server (no static UI), intended for local development alongside the Vite dev server.
+
+- `server/src/entry/prod.ts`
+  - Used by `bun run prod` and by `bun run build:binary`.
+  - Starts a single-origin server that:
+    - Serves the API under `/api/v1` (shim at `/api`).
+    - Serves the built React app + assets via an embedded static bundle, with optional filesystem overrides via `KANBANAI_STATIC_DIR`, and SPA fallback for deep links.
 
 ## Logging
 
@@ -171,7 +172,7 @@ Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatical
 lives in your OS application data directory (e.g., `~/.local/share/kanbanai/kanban.db` on Linux, `%LOCALAPPDATA%/KanbanAI`
 on Windows). Override with `DATABASE_URL` (`file:/absolute/path` or `sqlite:/absolute/path`).
 
-Static assets & migrations (standalone binary): assets and drizzle migrations are embedded in the compiled binary. Overrides via `KANBANAI_STATIC_DIR`/`KANBANAI_MIGRATIONS_DIR` still work if you want to point at external folders (e.g., custom branding or out-of-band migrations); when unset, the binary falls back to its embedded bundle.
+Static assets & migrations (single-origin binary): the compiled binary embeds the Drizzle migrations and the contents of `server/static` by default, so the executable is self-contained. You can still override with `KANBANAI_MIGRATIONS_DIR` and/or `KANBANAI_STATIC_DIR` to point at external folders (e.g., custom branding or out-of-band migrations).
 
 Worktrees: created under `$HOME/.kanbanAI/worktrees`. Moving a ticket to **Done** now removes its attempt branch and
 worktree automatically; project deletion also purges associated worktrees.
@@ -222,6 +223,26 @@ MIT © 2025 Steve Simkins
 
 ## Deployment
 
-- Build client: `bun run build:client` (outputs to `client/dist`). Serve those static files with your preferred web host.
-- Run API: `bun run dev:server` for development, or `bun run start:server -- --host 0.0.0.0 --port 3000` under your process manager for production.
-- API endpoints and WebSockets remain at `/api/v1/*` (shimmed at `/api/*`). Metrics at `/api/v1/metrics`.
+- Development:
+  - `bun run dev` — runs Vite dev server (client) and Hono API server separately via Turbo.
+  - `bun run dev:client` — client only.
+  - `bun run dev:server` — API server only (no static file serving).
+
+- Single-origin self-hosting:
+  - `bun run prod`:
+    - Builds client (`client/dist`) and server.
+    - Copies `client/dist` into `server/static`.
+    - Generates the embedded static bundle used by the prod entry.
+    - Starts a single Hono/Bun server that serves:
+      - API under `/api/v1` (shim at `/api`).
+      - The built React app and assets (from the embedded bundle, with filesystem overrides when `KANBANAI_STATIC_DIR` is set) with SPA fallback.
+
+  - `bun run build:binary`:
+    - Builds the production bundle and emits self-contained executables:
+      - `dist/kanban-ai-linux-x64`
+      - `dist/kanban-ai-linux-arm64`
+      - `dist/kanban-ai-darwin-arm64`
+      - `dist/kanban-ai-win-x64.exe`
+    - Each binary serves the API + UI on a single origin, using embedded static assets and migrations by default.
+
+  - Configure `PORT`, `HOST`, `DATABASE_URL`, `KANBANAI_MIGRATIONS_DIR`, and `KANBANAI_STATIC_DIR` as needed.

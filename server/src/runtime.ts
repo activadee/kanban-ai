@@ -99,29 +99,48 @@ function buildBundledMigrations(): any[] | null {
 }
 
 export async function resolveMigrations(explicit?: string): Promise<ResolvedMigrations> {
+  const bundled = buildBundledMigrations()
+
   if (explicit) {
+    if (explicit === '__embedded__') {
+      if (bundled) {
+        return { kind: 'bundled', migrations: bundled }
+      }
+      return {
+        kind: 'folder',
+        path: await materializeEmbeddedMigrations(),
+      }
+    }
+
     return {
       kind: 'folder',
       path: explicit === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(explicit),
     }
   }
 
-  const fromEnv = env().KANBANAI_MIGRATIONS_DIR
-  if (fromEnv) {
+  const fromEnv = env().KANBANAI_MIGRATIONS_DIR ?? '__embedded__'
+  if (fromEnv === '__embedded__') {
+    if (bundled) {
+      return { kind: 'bundled', migrations: bundled }
+    }
     return {
       kind: 'folder',
-      path: fromEnv === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(fromEnv),
+      path: await materializeEmbeddedMigrations(),
     }
   }
 
-  // Always prefer bundled migrations to avoid filesystem dependencies in dev/prod.
-  const bundled = buildBundledMigrations()
-  if (bundled && bundled.length) {
-    return { kind: 'bundled', migrations: bundled }
+  if (fromEnv) {
+    return {
+      kind: 'folder',
+      path: path.resolve(fromEnv),
+    }
   }
 
   if (await resolveEmbeddedFile('meta/_journal.json')) {
-    return { kind: 'folder', path: await materializeEmbeddedMigrations() }
+    return {
+      kind: 'folder',
+      path: await materializeEmbeddedMigrations(),
+    }
   }
 
   throw new Error(

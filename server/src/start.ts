@@ -5,12 +5,14 @@ import { db, sqliteDatabase } from "./db/client";
 import { registerCoreDbProvider } from "./db/provider";
 import { settingsService } from "core";
 
+type BunServeOptions = Parameters<typeof Bun.serve>[0];
+
 export type StartOptions = {
-    host?: string;
-    port?: number;
-    fetch: (request: Request) => Promise<Response> | Response;
-    websocket?: any;
-    migrationsDir?: string;
+  host?: string;
+  port?: number;
+  fetch: NonNullable<BunServeOptions["fetch"]>;
+  websocket: NonNullable<BunServeOptions["websocket"]>;
+  migrationsDir?: string;
 };
 
 export type StartResult = {
@@ -24,15 +26,15 @@ const env = () =>
     Bun.env ?? (process.env as Record<string, string | undefined>);
 
 export async function createWebSocket(): Promise<{
-    upgradeWebSocket: UpgradeWebSocket<AppEnv>;
-    websocket: any;
+  upgradeWebSocket: UpgradeWebSocket<AppEnv>;
+  websocket: NonNullable<BunServeOptions["websocket"]>;
 }> {
-    const { createBunWebSocket } = await import("hono/bun");
-    const { upgradeWebSocket, websocket } = createBunWebSocket();
-    return {
-        upgradeWebSocket: upgradeWebSocket as UpgradeWebSocket<AppEnv>,
-        websocket,
-    };
+  const { createBunWebSocket } = await import("hono/bun");
+  const { upgradeWebSocket, websocket } = createBunWebSocket();
+  return {
+    upgradeWebSocket: upgradeWebSocket as UpgradeWebSocket<AppEnv>,
+    websocket: websocket as NonNullable<BunServeOptions["websocket"]>,
+  };
 }
 
 async function bootstrapRuntime(migrationsDir?: string) {

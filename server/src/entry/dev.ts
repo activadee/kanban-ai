@@ -1,5 +1,5 @@
-import { createApp } from './app'
-import { createWebSocket, startServer } from './start'
+import { createApp } from '../app'
+import { createWebSocket, startServer } from '../start'
 
 if (import.meta.main) {
   const run = async () => {
@@ -14,7 +14,7 @@ if (import.meta.main) {
     const hasFlag = (name: string) => args.includes(name)
 
     if (hasFlag('--help') || hasFlag('-h')) {
-      const usage = `\nkanbanai — KanbanAI server (dev)\n\nUsage:\n  bun run server/src/dev.ts [--host <host>] [--port <port>]\n`
+      const usage = `\nkanbanai — KanbanAI server (dev)\n\nUsage:\n  bun run server/src/entry/dev.ts [--host <host>] [--port <port>]\n`
       console.log(usage)
       return
     }
@@ -27,5 +27,9 @@ if (import.meta.main) {
     console.log(`[server] listening on ${url}`)
     console.log(`[server] database: ${dbFile}`)
   }
-  run().catch((error) => { console.error('[server] failed to start', error); process.exit(1) })
+  run().catch((error) => {
+    console.error('[server] failed to start', error)
+    process.exit(1)
+  })
 }
+
