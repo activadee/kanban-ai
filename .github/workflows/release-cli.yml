@@ -31,7 +31,7 @@ jobs:
     name: Build binaries
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
@@ -75,7 +75,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.publish_npm == true
     steps:
       - name: Checkout tag to publish
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.tag_name || 'main' }}
 
