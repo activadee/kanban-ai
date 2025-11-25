@@ -5,6 +5,7 @@ import {buildAgentProfileSchema} from './schema'
 import {agentProfilesGlobal} from 'core'
 import {z} from 'zod'
 import {problemJson} from '../http/problem'
+import {log} from '../log'
 
 export function createAgentsRouter() {
     const router = new Hono<AppEnv>()
@@ -23,7 +24,7 @@ export function createAgentsRouter() {
             const schema = buildAgentProfileSchema(agent)
             return c.json(schema)
         } catch (err) {
-            console.error('[agents:schema] failed', err)
+            log.error({err}, '[agents:schema] failed')
             return problemJson(c, {status: 500, detail: 'Failed to build profile schema'})
         }
     })
@@ -42,7 +43,7 @@ export function createAgentsRouter() {
             if (!row) return problemJson(c, {status: 500, detail: 'Failed to create profile'})
             return c.json(row, 201)
         } catch (err) {
-            console.error('[agents:profiles:create] failed', err)
+            log.error({err}, '[agents:profiles:create] failed')
             return problemJson(c, {status: 500, detail: 'Failed to create profile'})
         }
     })
@@ -59,7 +60,7 @@ export function createAgentsRouter() {
             if (!row) return problemJson(c, {status: 404, detail: 'Profile not found'})
             return c.json(row)
         } catch (err) {
-            console.error('[agents:profiles:update] failed', err)
+            log.error({err}, '[agents:profiles:update] failed')
             return problemJson(c, {status: 500, detail: 'Failed to update profile'})
         }
     })
@@ -71,7 +72,7 @@ export function createAgentsRouter() {
             await agentProfilesGlobal.deleteGlobalAgentProfile(id)
             return c.body(null, 204)
         } catch (err) {
-            console.error('[agents:profiles:delete] failed', err)
+            log.error({err}, '[agents:profiles:delete] failed')
             return problemJson(c, {status: 500, detail: 'Failed to delete profile'})
         }
     })

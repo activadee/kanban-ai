@@ -23,10 +23,10 @@ import {CodexAgent, OpencodeAgent, DroidAgent} from 'core'
 import {dashboardWebsocketHandlers} from './dashboard/ws'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
+import {log} from './log'
 // Readiness flag for /api/v1/readyz (shimmed on /api/readyz temporarily)
 let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
-import * as console from "node:console";
 
 const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
 
@@ -105,7 +105,10 @@ export const createApp = ({
     })
 
     if (isDebugLoggingEnabled()) {
-        app.use('*', logger((...args) => console.debug(...args)))
+        app.use('*', logger((str, ...rest) => {
+            const line = rest.length ? [str, ...rest].join(' ') : str
+            log.debug({source: 'hono'}, line)
+        }))
     }
 
     const isApiWebSocket = (path: string) => path.startsWith('/api/ws') || path.startsWith('/api/v1/ws')
@@ -177,7 +180,7 @@ export const createApp = ({
     app.notFound((c) => problemJson(c, {status: 404, detail: 'Not Found'}))
 
     app.onError((err, c) => {
-        console.error('[app:error]', err)
+        log.error({err}, '[app:error]')
         if (err instanceof ProblemError) {
             return problemJson(c, err.toProblem())
         }

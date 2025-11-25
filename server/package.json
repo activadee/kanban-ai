@@ -17,10 +17,11 @@
     "db:migrate": "drizzle-kit push"
   },
   "dependencies": {
-    "core": "workspace:*",
     "@hono/zod-validator": "^0.7.3",
+    "core": "workspace:*",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.7.11",
+    "pino": "^10.1.0",
     "shared": "workspace:*",
     "simple-git": "^3.28.0",
     "zod": "^4.1.11"

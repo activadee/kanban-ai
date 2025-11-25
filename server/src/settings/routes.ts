@@ -4,6 +4,7 @@ import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
 import {ensureAppSettings, updateAppSettings} from 'core'
 import {problemJson} from '../http/problem'
+import {log} from '../log'
 
 const updateSchema = z.object({
     theme: z.enum(['system', 'light', 'dark']).optional(),
@@ -39,7 +40,7 @@ export function createAppSettingsRouter() {
             })
             return c.json({settings}, 200)
         } catch (err) {
-            console.error('[settings:update] failed', err)
+            log.error({err}, '[settings:update] failed')
             return problemJson(c, {status: 502, detail: 'Failed to update settings'})
         }
     })

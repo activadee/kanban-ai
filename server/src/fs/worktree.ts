@@ -2,6 +2,7 @@ import {mkdir} from 'fs/promises'
 import {resolve} from 'path'
 import {spawn} from 'child_process'
 import type {AppEventBus} from '../events/bus'
+import {log} from '../log'
 
 let worktreeEvents: AppEventBus | null = null
 
@@ -66,6 +67,6 @@ export async function removeWorktree(repoPath: string, worktreePath: string, met
         await run('git', ['worktree', 'remove', '--force', worktreePath], repoPath)
         publishWorktreeRemoved(meta, worktreePath)
     } catch (err) {
-        console.warn('[worktree:remove] failed', err)
+        log.warn({err}, '[worktree:remove] failed')
     }
 }

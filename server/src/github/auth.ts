@@ -1,5 +1,6 @@
 import type {GitHubCheckResponse, GitHubDevicePollResponse, GitHubDeviceStartResponse} from 'shared'
 import {githubRepo} from 'core'
+import {log} from '../log'
 
 const {getGithubConnection, upsertGithubConnection, getGithubAppConfig} = githubRepo
 
@@ -104,7 +105,7 @@ async function fetchGithubAccount(token: string) {
             primaryEmail = primary?.email ?? null
         }
     } catch (err) {
-        console.error('GitHub email lookup failed', err)
+        log.error({err}, 'GitHub email lookup failed')
     }
 
     return {

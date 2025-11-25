@@ -15,6 +15,7 @@ import {getAgent} from "../agents/registry";
 import {importGithubIssues} from "../github/import";
 import {listProjectBranches} from "./settings/git";
 import {problemJson} from "../http/problem";
+import {log} from '../log'
 // ticket preview uses core implementation
 const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
 const {
@@ -134,7 +135,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             const state = await fetchBoardState(ctx.boardId);
             return c.json({state}, 200);
         } catch (error) {
-            console.error('[board:state] failed', error);
+            log.error({err: error, boardId: ctx.boardId}, '[board:state] failed');
             return problemJson(c, {status: 502, detail: 'Failed to fetch board state'});
         }
     });
@@ -162,7 +163,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 const state = await fetchBoardState(boardId);
                 return c.json({state}, 201);
             } catch (error) {
-                console.error('[board:cards:create] failed', error);
+                log.error({err: error, boardId, projectId: project.id}, '[board:cards:create] failed');
                 return problemJson(c, {status: 502, detail: 'Failed to create card'});
             }
         },
@@ -283,7 +284,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 return c.json({state}, 200);
             } catch (error) {
                 const msg = error instanceof Error ? error.message : 'Failed to update card';
-                console.error('[board:cards:update] failed', error);
+                log.error({err: error, boardId, cardId}, '[board:cards:update] failed');
                 const status = msg === 'dependency_board_mismatch' || msg === 'dependency_cycle' ? 400 : 502;
                 return problemJson(c, {status, detail: msg});
             }
@@ -312,7 +313,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             await broadcastBoard(boardId);
             return c.body(null, 204);
         } catch (error) {
-            console.error('[board:cards:delete] failed', error);
+            log.error({err: error, boardId, cardId}, '[board:cards:delete] failed');
             return problemJson(c, {status: 502, detail: 'Failed to delete card'});
         }
     });
@@ -326,7 +327,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
             if (!data) return problemJson(c, {status: 404, detail: "Attempt not found"});
             return c.json(data, 200);
         } catch (error) {
-            console.error("[attempts:attempt] failed", error);
+            log.error({err: error, boardId, cardId: c.req.param("cardId")}, "[attempts:attempt] failed");
             return problemJson(c, {
                 status: 502,
                 detail: error instanceof Error ? error.message : "Failed to fetch attempt",
@@ -375,7 +376,16 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 );
                 return c.json(attempt, 201);
             } catch (error) {
-                console.error("[attempts:start] failed", error);
+                log.error(
+                    {
+                        err: error,
+                        boardId,
+                        cardId: c.req.param("cardId"),
+                        agent: body.agent,
+                        profileId: body.profileId,
+                    },
+                    "[attempts:start] failed",
+                );
                 return problemJson(c, {
                     status: 502,
                     detail:
@@ -413,7 +423,7 @@ function createBoardRouter(resolveBoard: (c: any) => Promise<BoardContext | null
                 }, {bus: events});
                 return c.json(result, 200);
             } catch (error) {
-                console.error("[board:import:github] failed", error);
+                log.error({err: error, boardId, owner, repo, state}, "[board:import:github] failed");
                 const detail = error instanceof Error ? error.message : "GitHub import failed";
                 const status = detail.toLowerCase().includes('github') ? 502 : 500;
                 return problemJson(c, {status, detail});
@@ -471,7 +481,7 @@ export const createProjectsRouter = () => {
             if (!data) return problemJson(c, {status: 404, detail: "Attempt not found"});
             return c.json(data, 200);
         } catch (error) {
-            console.error("[attempts:attempt] failed", error);
+            log.error({err: error, boardId, cardId: c.req.param("cardId")}, "[attempts:attempt] failed");
             return problemJson(c, {
                 status: 502,
                 detail: error instanceof Error ? error.message : "Failed to fetch attempt",
@@ -514,7 +524,16 @@ export const createProjectsRouter = () => {
                 );
                 return c.json(attempt, 201);
             } catch (error) {
-                console.error("[attempts:start:project] failed", error);
+                log.error(
+                    {
+                        err: error,
+                        boardId,
+                        cardId: c.req.param("cardId"),
+                        agent: body.agent,
+                        profileId: body.profileId,
+                    },
+                    "[attempts:start:project] failed",
+                );
                 return problemJson(c, {
                     status: 502,
                     detail: error instanceof Error ? error.message : "Failed to start attempt",
@@ -640,7 +659,7 @@ export const createProjectsRouter = () => {
                 });
                 return c.json({settings}, 200);
             } catch (error) {
-                console.error("[projects:settings:update] failed", error);
+                log.error({err: error, projectId}, "[projects:settings:update] failed");
                 return problemJson(c, {status: 502, detail: "Failed to update project settings"});
             }
         }
@@ -655,7 +674,7 @@ export const createProjectsRouter = () => {
             const branches = await listProjectBranches(projectId);
             return c.json({branches}, 200);
         } catch (error) {
-            console.error("[projects:branches] failed", error);
+            log.error({err: error, projectId}, "[projects:branches] failed");
             return problemJson(c, {status: 502, detail: "Failed to list branches"});
         }
     });
@@ -709,7 +728,7 @@ export const createProjectsRouter = () => {
             const rows = await agentProfiles.listAgentProfiles(c.req.param("projectId"));
             return c.json({profiles: rows}, 200);
         } catch (error) {
-            console.error("[agents:profiles:list] failed", error);
+            log.error({err: error, projectId: c.req.param("projectId")}, "[agents:profiles:list] failed");
             return problemJson(c, {status: 502, detail: "Failed to list profiles"});
         }
     });
@@ -746,7 +765,10 @@ export const createProjectsRouter = () => {
                 });
                 return c.json(row, 201);
             } catch (error) {
-                console.error("[agents:profiles:create] failed", error);
+                log.error(
+                    {err: error, projectId: c.req.param("projectId"), agent: agentKey, name},
+                    "[agents:profiles:create] failed",
+                );
                 return problemJson(c, {status: 502, detail: "Failed to create profile"});
             }
         }
@@ -758,7 +780,7 @@ export const createProjectsRouter = () => {
             if (!row) return problemJson(c, {status: 404, detail: "Profile not found"});
             return c.json(row, 200);
         } catch (error) {
-            console.error("[agents:profiles:get] failed", error);
+            log.error({err: error, projectId: c.req.param("projectId"), profileId: c.req.param("pid")}, "[agents:profiles:get] failed");
             return problemJson(c, {status: 502, detail: "Failed to fetch profile"});
         }
     });
@@ -809,7 +831,10 @@ export const createProjectsRouter = () => {
                 });
                 return c.json(row, 200);
             } catch (error) {
-                console.error("[agents:profiles:update] failed", error);
+                log.error(
+                    {err: error, projectId: c.req.param("projectId"), profileId: c.req.param("pid")},
+                    "[agents:profiles:update] failed",
+                );
                 return problemJson(c, {status: 502, detail: "Failed to update profile"});
             }
         }
@@ -829,7 +854,10 @@ export const createProjectsRouter = () => {
             });
             return c.body(null, 204);
         } catch (error) {
-            console.error("[agents:profiles:delete] failed", error);
+            log.error(
+                {err: error, projectId: c.req.param("projectId"), profileId: c.req.param("pid")},
+                "[agents:profiles:delete] failed",
+            );
             return problemJson(c, {status: 502, detail: "Failed to delete profile"});
         }
     });

@@ -7,6 +7,7 @@ import {projectsRepo, projectDeps, attempts, git, type FileSource, githubRepo, s
 import {openEditorAtPath} from '../editor/service'
 import {createPR, findOpenPR} from '../github/pr'
 import {problemJson} from '../http/problem'
+import {log} from '../log'
 
 const {
     getFileContentAtPath,
@@ -124,7 +125,7 @@ export const createAttemptsRouter = () => {
                 editorKey: attemptedEditorKey ?? 'VS_CODE',
                 error: error instanceof Error ? error.message : String(error),
             })
-            console.error('[attempts:open-editor] failed', error)
+            log.error({err: error, attemptId: attempt.id, boardId: attempt.boardId}, '[attempts:open-editor] failed')
             return problemJson(c, {status: 500, detail: 'Failed to open editor'})
         }
     })
@@ -142,7 +143,7 @@ export const createAttemptsRouter = () => {
             const status = await getStatusAgainstBaseAtPath(attempt.worktreePath, baseAncestor)
             return c.json(status, 200)
         } catch (error) {
-            console.error('[attempts:git:status] failed', error)
+            log.error({err: error, attemptId: attempt.id, boardId: attempt.boardId}, '[attempts:git:status] failed')
             return problemJson(c, {status: 502, detail: 'Failed to get git status'})
         }
     })
@@ -165,7 +166,10 @@ export const createAttemptsRouter = () => {
             const content = await getFileContentAtPath(attempt.worktreePath, path, source, ref)
             return c.json({content}, 200)
         } catch (error) {
-            console.error('[attempts:git:file] failed', error)
+            log.error(
+                {err: error, attemptId: attempt.id, boardId: attempt.boardId, path, source},
+                '[attempts:git:file] failed',
+            )
             return problemJson(c, {status: 502, detail: 'Failed to fetch file content'})
         }
     })
@@ -289,7 +293,10 @@ export const createAttemptsRouter = () => {
                 await projectsRepo.updateCard(attempt.cardId, {prUrl: pr.url, updatedAt: new Date()})
                 await tasks.broadcastBoard(attempt.boardId)
             } catch (error) {
-                console.error('[attempts:pr] failed to persist PR url', error)
+                log.error(
+                    {err: error, attemptId: attempt.id, cardId: attempt.cardId, prUrl: pr.url},
+                    '[attempts:pr] failed to persist PR url',
+                )
             }
             return c.json({pr}, 200)
         } catch (error) {
@@ -352,7 +359,7 @@ export const createAttemptsRouter = () => {
             else if (message.startsWith('No automation script configured')) status = 422
             else if (message.includes('Worktree is missing')) status = 409
             if (status >= 500) {
-                console.error('[attempts:automation:dev] failed', error)
+                log.error({err: error, attemptId: c.req.param('id')}, '[attempts:automation:dev] failed')
             }
             return problemJson(c, {status, detail: message})
         }

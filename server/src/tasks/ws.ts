@@ -1,6 +1,7 @@
 import type {WsMsg, AttemptStatus} from 'shared'
 import type {WSContext} from 'hono/ws'
 import {tasks, projectsRepo, projectDeps, attemptsRepo} from 'core'
+import {log} from '../log'
 
 const {createBoardCard, deleteBoardCard, getBoardState, moveBoardCard, updateBoardCard, ensureBoardExists} = tasks
 import {addSocket, removeSocket} from '../ws/bus'
@@ -137,7 +138,7 @@ export function kanbanWebsocketHandlers(boardId: string) {
                         break
                 }
             } catch (error) {
-                console.error('[ws:message] failed', error)
+                log.error({err: error, boardId}, '[ws:message] failed')
             }
         },
     }

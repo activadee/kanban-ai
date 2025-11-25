@@ -1,5 +1,6 @@
 name: Release binaries
-
+permissions:
+  contents: write
 on:
   # Manual trigger with an explicit tag name
   workflow_dispatch:
@@ -58,6 +59,6 @@ jobs:
       run_tests: false
       download_artifacts: true
       artifacts_path: "dist"
-      artifact_glob: "kanban-ai-*"
+      artifact_glob: "dist/kanban-ai-*"
     secrets:
       CODEX_AUTH_JSON_B64: ${{ secrets.CODEX_AUTH_JSON_B64 }}

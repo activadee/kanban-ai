@@ -1,6 +1,7 @@
 import { createApp } from '../app'
 import { createWebSocket, startServer, type StartOptions } from '../start'
 import { createStaticHandler } from './utils/spa-handler'
+import { log } from '../log'
 
 const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
 
@@ -47,7 +48,7 @@ const run = async () => {
     bun run server/src/entry/prod.ts [--host <host>] [--port <port>] [--migrations-dir <path>]
     bun run prod                    # via root package.json script
   `
-    console.log(usage)
+    log.info(usage.trim())
     return
   }
 
@@ -67,14 +68,12 @@ const run = async () => {
     migrationsDir,
   })
 
-  console.log(`[prod] listening on ${url}`)
-  console.log(`[prod] database: ${dbFile}`)
-  console.log(`[prod] migrations: ${resolvedMigrationsDir}`)
+  log.info({ url, dbFile, migrationsDir: resolvedMigrationsDir }, '[prod] listening')
 }
 
 if (import.meta.main) {
   run().catch((error) => {
-    console.error('[prod] failed to start', error)
+    log.error({ err: error }, '[prod] failed to start')
     process.exit(1)
   })
 }
