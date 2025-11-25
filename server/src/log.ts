@@ -9,8 +9,6 @@ const matchesDebugNamespace = (value: string) =>
 function computeLevel() {
   const { LOG_LEVEL, KANBANAI_DEBUG, DEBUG } = env()
 
-  if (LOG_LEVEL) return LOG_LEVEL.toLowerCase()
-
   const kanbanFlag = KANBANAI_DEBUG?.toLowerCase()
   if (kanbanFlag && !isFalseyFlag(kanbanFlag)) return 'debug'
 
@@ -18,6 +16,8 @@ function computeLevel() {
   if (debugFlag && !isFalseyFlag(debugFlag) && (matchesDebugNamespace(debugFlag) || ['1', 'true', 'on', 'yes', 'debug', 'verbose', 'trace'].includes(debugFlag))) {
     return 'debug'
   }
+
+  if (LOG_LEVEL) return LOG_LEVEL.toLowerCase()
 
   return 'info'
 }
