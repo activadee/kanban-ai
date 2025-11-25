@@ -1,6 +1,7 @@
 import type {AppEventBus} from '../events/bus'
 import {bindTaskEventBus, moveCardToColumnByTitle, createDefaultBoardStructure} from './service'
 import type {AttemptStatus} from 'shared'
+import {log} from '../log'
 
 export function registerTaskListeners(bus: AppEventBus) {
     bindTaskEventBus(bus)
@@ -9,7 +10,7 @@ export function registerTaskListeners(bus: AppEventBus) {
         try {
             await createDefaultBoardStructure(projectId)
         } catch (error) {
-            console.error('[tasks] failed to seed default columns on project.created', error)
+            log.error({err: error, projectId}, '[tasks] failed to seed default columns on project.created')
         }
     })
 
@@ -17,7 +18,10 @@ export function registerTaskListeners(bus: AppEventBus) {
         try {
             await moveCardToColumnByTitle(payload.boardId, payload.cardId, 'In Progress')
         } catch (error) {
-            console.error('[tasks] failed to move card to In Progress on attempt start', error)
+            log.error(
+                {err: error, boardId: payload.boardId, cardId: payload.cardId},
+                '[tasks] failed to move card to In Progress on attempt start',
+            )
         }
     })
 
@@ -27,7 +31,10 @@ export function registerTaskListeners(bus: AppEventBus) {
             const targetColumn = status === 'succeeded' ? 'Review' : 'In Progress'
             await moveCardToColumnByTitle(payload.boardId, payload.cardId, targetColumn)
         } catch (error) {
-            console.error('[tasks] failed to move card to Review on attempt completion', error)
+            log.error(
+                {err: error, boardId: payload.boardId, cardId: payload.cardId, status: payload.status},
+                '[tasks] failed to move card to Review on attempt completion',
+            )
         }
     })
 }

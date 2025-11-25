@@ -1,6 +1,7 @@
 import type {WSContext} from 'hono/ws'
 import {addSocket, removeSocket} from '../ws/bus'
 import {getDashboardOverview} from 'core'
+import {log} from '../log'
 
 const CHANNEL_ID = 'dashboard'
 
@@ -16,7 +17,7 @@ export function dashboardWebsocketHandlers() {
                 const overview = await getDashboardOverview()
                 ws.send(serialize({type: 'dashboard_overview', payload: overview}))
             } catch (error) {
-                console.error('[ws:dashboard] failed to load overview', error)
+                log.error({err: error}, '[ws:dashboard] failed to load overview')
             }
         },
         onClose(_evt: CloseEvent, ws: WSContext) {

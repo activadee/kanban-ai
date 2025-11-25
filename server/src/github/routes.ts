@@ -6,6 +6,7 @@ import {startGithubDeviceFlow, pollGithubDeviceFlow, checkGithubConnection} from
 import {githubRepo} from 'core'
 import {listUserRepos} from './api'
 import {problemJson} from '../http/problem'
+import {log} from '../log'
 
 export const createGithubRouter = () => {
     const router = new Hono<AppEnv>()
@@ -19,7 +20,7 @@ export const createGithubRouter = () => {
             const payload = await startGithubDeviceFlow()
             return c.json(payload, 200)
         } catch (error) {
-            console.error('[github:device-start] failed', error)
+            log.error({err: error}, '[github:device-start] failed')
             return problemJson(c, {
                 status: 503,
                 title: 'GitHub device flow unavailable',
@@ -73,7 +74,7 @@ export const createGithubRouter = () => {
                 detail: result.message ?? 'GitHub device poll failed',
             })
         } catch (error) {
-            console.error('[github:device-poll] failed', error)
+            log.error({err: error}, '[github:device-poll] failed')
             return problemJson(c, {
                 status: 502,
                 title: 'GitHub device poll failed',
@@ -87,7 +88,7 @@ export const createGithubRouter = () => {
             const result = await checkGithubConnection()
             return c.json(result, 200)
         } catch (error) {
-            console.error('[github:check] failed', error)
+            log.error({err: error}, '[github:check] failed')
             return problemJson(c, {
                 status: 502,
                 title: 'GitHub check failed',
@@ -134,7 +135,7 @@ export const createGithubRouter = () => {
             const repos = await listUserRepos()
             return c.json({repos}, 200)
         } catch (error) {
-            console.error('[github:repos] failed', error)
+            log.error({err: error}, '[github:repos] failed')
             const message = error instanceof Error ? error.message : 'GitHub repo listing failed'
             const isAuth = message.toLowerCase().includes('not connected') || message.toLowerCase().includes('token')
             return problemJson(c, {
@@ -154,7 +155,7 @@ export const createGithubRouter = () => {
             })
             return c.body(null, 204)
         } catch (error) {
-            console.error('[github:logout] failed', error)
+            log.error({err: error}, '[github:logout] failed')
             return problemJson(c, {
                 status: 502,
                 title: 'GitHub logout failed',

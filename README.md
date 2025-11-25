@@ -156,7 +156,14 @@ The server workspace uses two explicit entrypoints under `server/src/entry`:
 
 ## Logging
 
-- Per-request server logs are silent by default; enable them with `LOG_LEVEL=debug`, `KANBANAI_DEBUG=1`, or `DEBUG=*`/`DEBUG=kanbanai*` when debugging API traffic.
+- Server logging uses Pino via `server/src/log.ts` with a base of `{service: "kanban-ai-server"}` and writes structured JSON to stdout/stderr (same in compiled binaries).
+- Control verbosity with `LOG_LEVEL` (`debug` | `info` | `warn` | `error`, default `info`).
+- Per-request Hono traces are opt-in; enable them with `KANBANAI_DEBUG=1`, `DEBUG=*`/`DEBUG=kanbanai*`, or by raising `LOG_LEVEL` to `debug`.
+- Examples:
+  ```
+  LOG_LEVEL=info bun run prod                       # structured logs, no per-request traces
+  LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod     # structured logs + Hono request lines
+  ```
 
 ## Configuration
 

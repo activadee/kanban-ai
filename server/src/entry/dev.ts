@@ -1,5 +1,6 @@
 import { createApp } from '../app'
 import { createWebSocket, startServer } from '../start'
+import { log } from '../log'
 
 if (import.meta.main) {
   const run = async () => {
@@ -15,7 +16,7 @@ if (import.meta.main) {
 
     if (hasFlag('--help') || hasFlag('-h')) {
       const usage = `\nkanbanai — KanbanAI server (dev)\n\nUsage:\n  bun run server/src/entry/dev.ts [--host <host>] [--port <port>]\n`
-      console.log(usage)
+      log.info(usage.trim())
       return
     }
 
@@ -24,12 +25,10 @@ if (import.meta.main) {
     const { upgradeWebSocket, websocket } = await createWebSocket()
     const app = createApp({ upgradeWebSocket })
     const { url, dbFile } = await startServer({ port, host, fetch: app.fetch, websocket })
-    console.log(`[server] listening on ${url}`)
-    console.log(`[server] database: ${dbFile}`)
+    log.info({ url, dbFile }, '[server] listening')
   }
   run().catch((error) => {
-    console.error('[server] failed to start', error)
+    log.error({ err: error }, '[server] failed to start')
     process.exit(1)
   })
 }
-

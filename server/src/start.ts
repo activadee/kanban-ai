@@ -4,6 +4,7 @@ import { resolveMigrations, markReady } from "./runtime";
 import { db, sqliteDatabase } from "./db/client";
 import { registerCoreDbProvider } from "./db/provider";
 import { settingsService } from "core";
+import { log } from "./log";
 
 type BunServeOptions = Parameters<typeof Bun.serve>[0];
 
@@ -50,7 +51,7 @@ async function bootstrapRuntime(migrationsDir?: string) {
     try {
         await settingsService.ensure();
     } catch (error) {
-        console.warn("[settings] init failed", error);
+        log.warn({ err: error }, "[settings] init failed");
     }
     return resolved.kind === "folder" ? resolved.path : "__bundled__";
 }
