@@ -441,18 +441,42 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 })
             }
         } catch (err) {
+            const endedAt = new Date()
             await insertAttemptLog({
                 id: `log-${crypto.randomUUID()}`,
                 attemptId,
-                ts: new Date(),
+                ts: endedAt,
                 level: 'error',
                 message: `[runner] failed: ${err instanceof Error ? err.message : String(err)}`,
             })
             try {
-                await updateAttempt(attemptId, {
-                    status: 'failed',
-                    updatedAt: new Date(),
-                })
+                if (currentStatus === 'running') {
+                    await updateAttempt(attemptId, {
+                        status: 'failed',
+                        endedAt,
+                        updatedAt: endedAt,
+                    })
+                    events.publish('attempt.status.changed', {
+                        attemptId,
+                        boardId,
+                        status: 'failed',
+                        previousStatus: 'running',
+                        endedAt: endedAt.toISOString(),
+                    })
+                    events.publish('attempt.completed', {
+                        attemptId,
+                        boardId,
+                        cardId,
+                        status: 'failed',
+                        worktreePath,
+                        profileId: profileId ?? undefined,
+                    })
+                } else {
+                    await updateAttempt(attemptId, {
+                        endedAt,
+                        updatedAt: endedAt,
+                    })
+                }
             } catch {}
         } finally {
             try {
