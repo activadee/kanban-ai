@@ -701,7 +701,11 @@ export const createProjectsRouter = () => {
         if (!project) return problemJson(c, {status: 404, detail: "Project not found"});
         const removed = await projects.remove(projectId);
         if (!removed) return problemJson(c, {status: 404, detail: "Project not found"});
-        events.publish("project.deleted", {projectId, projectName: project.name});
+        events.publish("project.deleted", {
+            projectId,
+            projectName: project.name,
+            repositoryPath: project.repositoryPath,
+        });
         return c.body(null, 204);
     });
 
