@@ -1,0 +1,242 @@
+import type {BoardContext} from "./board.routes";
+import {projectsRepo, projectDeps, tasks} from "core";
+import {problemJson} from "../http/problem";
+import {log} from "../log";
+
+const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
+const {
+    getBoardState: fetchBoardState,
+    createBoardCard,
+    updateBoardCard,
+    deleteBoardCard,
+    moveBoardCard,
+    broadcastBoard,
+} = tasks;
+
+export const createCardHandler = async (c: any, ctx: BoardContext) => {
+    const {boardId, project} = ctx;
+    const body = c.req.valid("json") as {
+        columnId: string;
+        title: string;
+        description?: string | null;
+        dependsOn?: string[];
+    };
+
+    const column = await getColumnById(body.columnId);
+    if (!column || column.boardId !== boardId) {
+        return problemJson(c, {status: 404, detail: "Column not found"});
+    }
+
+    try {
+        const cardId = await createBoardCard(
+            body.columnId,
+            body.title,
+            body.description ?? undefined,
+            {suppressBroadcast: true},
+        );
+        if (Array.isArray(body.dependsOn) && body.dependsOn.length > 0) {
+            await projectDeps.setDependencies(cardId, body.dependsOn);
+        }
+        await broadcastBoard(boardId);
+        const state = await fetchBoardState(boardId);
+        return c.json({state}, 201);
+    } catch (error) {
+        log.error(
+            {err: error, boardId, projectId: project.id},
+            "[board:cards:create] failed",
+        );
+        return problemJson(c, {status: 502, detail: "Failed to create card"});
+    }
+};
+
+export const updateCardHandler = async (c: any, ctx: BoardContext) => {
+    const {boardId, project} = ctx;
+    const cardId = c.req.param("cardId");
+
+    const card = await getCardById(cardId);
+    if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
+    let cardBoardId = card.boardId ?? null;
+    if (!cardBoardId) {
+        const column = await getColumnById(card.columnId);
+        cardBoardId = column?.boardId ?? null;
+    }
+    if (cardBoardId !== boardId) {
+        return problemJson(c, {
+            status: 400,
+            detail: "Card does not belong to this board",
+        });
+    }
+
+    const body = c.req.valid("json") as {
+        title?: string;
+        description?: string | null;
+        dependsOn?: string[];
+        columnId?: string;
+        index?: number;
+    };
+    const wantsMove = body.columnId !== undefined || body.index !== undefined;
+    const hasContentUpdate =
+        body.title !== undefined || body.description !== undefined;
+    const hasDeps = Array.isArray(body.dependsOn);
+    const suppressBroadcast = wantsMove || hasDeps;
+
+    if (wantsMove) {
+        const targetColumn = await getColumnById(body.columnId!);
+        if (!targetColumn || targetColumn.boardId !== boardId) {
+            return problemJson(c, {
+                status: 404,
+                detail: "Target column not found",
+            });
+        }
+
+        // Prevent moving blocked cards into In Progress
+        if ((targetColumn.title || "").trim().toLowerCase() === "in progress") {
+            const {blocked} = await projectDeps.isCardBlocked(cardId);
+            if (blocked) {
+                return problemJson(c, {
+                    status: 409,
+                    detail: "Task is blocked by dependencies",
+                });
+            }
+        }
+    }
+
+    try {
+        if (hasContentUpdate) {
+            await updateBoardCard(
+                cardId,
+                {
+                    title: body.title,
+                    description: body.description ?? undefined,
+                },
+                {suppressBroadcast},
+            );
+        }
+
+        if (hasDeps) {
+            await projectDeps.setDependencies(cardId, body.dependsOn as string[]);
+        }
+
+        if (wantsMove) {
+            const targetIndex = body.index as number;
+            await moveBoardCard(cardId, body.columnId!, targetIndex);
+
+            const toIso = (
+                value: Date | string | number | null | undefined,
+            ): string => {
+                if (!value) return new Date().toISOString();
+                if (value instanceof Date) return value.toISOString();
+                const date = new Date(value);
+                return Number.isNaN(date.getTime())
+                    ? new Date().toISOString()
+                    : date.toISOString();
+            };
+
+            const updatedCard = await getCardById(cardId);
+            if (!updatedCard) {
+                return problemJson(c, {status: 404, detail: "Card not found"});
+            }
+
+            let deps: string[] = [];
+            try {
+                deps = await projectDeps.listDependencies(cardId);
+            } catch {
+                deps = [];
+            }
+
+            const columnIds = Array.from(
+                new Set([card.columnId, body.columnId!]),
+            );
+            const columnRows = await Promise.all(
+                columnIds.map((id) => getColumnById(id)),
+            );
+            const columnCards = new Map<string, string[]>(
+                columnIds.map((id) => [id, []]),
+            );
+            const cardRows = await listCardsForColumns(columnIds);
+            for (const row of cardRows) {
+                const list = columnCards.get(row.columnId);
+                if (!list) continue;
+                list.push(row.id);
+            }
+
+            const columnsPayload: Record<
+                string,
+                {id: string; title: string; cardIds: string[]}
+            > = {};
+            for (const col of columnRows) {
+                if (!col) continue;
+                columnsPayload[col.id] = {
+                    id: col.id,
+                    title: col.title,
+                    cardIds: columnCards.get(col.id) ?? [],
+                };
+            }
+
+            const cardPayload = {
+                id: updatedCard.id,
+                ticketKey: updatedCard.ticketKey ?? undefined,
+                prUrl: updatedCard.prUrl ?? undefined,
+                title: updatedCard.title,
+                description: updatedCard.description ?? undefined,
+                dependsOn: deps.length ? deps : undefined,
+                createdAt: toIso(updatedCard.createdAt),
+                updatedAt: toIso(updatedCard.updatedAt),
+            };
+
+            return c.json({card: cardPayload, columns: columnsPayload}, 200);
+        }
+
+        if (hasDeps) {
+            await broadcastBoard(boardId);
+        }
+        const state = await fetchBoardState(boardId);
+        return c.json({state}, 200);
+    } catch (error) {
+        const msg =
+            error instanceof Error ? error.message : "Failed to update card";
+        log.error(
+            {err: error, boardId, cardId},
+            "[board:cards:update] failed",
+        );
+        const status =
+            msg === "dependency_board_mismatch" || msg === "dependency_cycle"
+                ? 400
+                : 502;
+        return problemJson(c, {status, detail: msg});
+    }
+};
+
+export const deleteCardHandler = async (c: any, ctx: BoardContext) => {
+    const {boardId} = ctx;
+    const cardId = c.req.param("cardId");
+
+    const card = await getCardById(cardId);
+    if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
+    let cardBoardId = card.boardId ?? null;
+    if (!cardBoardId) {
+        const column = await getColumnById(card.columnId);
+        cardBoardId = column?.boardId ?? null;
+    }
+    if (cardBoardId !== boardId) {
+        return problemJson(c, {
+            status: 400,
+            detail: "Card does not belong to this board",
+        });
+    }
+
+    try {
+        await deleteBoardCard(cardId);
+        await broadcastBoard(boardId);
+        return c.body(null, 204);
+    } catch (error) {
+        log.error(
+            {err: error, boardId, cardId},
+            "[board:cards:delete] failed",
+        );
+        return problemJson(c, {
+            status: 502,
+            detail: "Failed to delete card",
+        });
+    }
+};
