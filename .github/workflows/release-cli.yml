@@ -1,7 +1,6 @@
 name: Release CLI (npm)
 
 on:
-    # Manual trigger only
     workflow_dispatch:
         inputs:
             version:
@@ -14,7 +13,6 @@ on:
                 type: boolean
                 default: false
 
-# Required for npm trusted publishing with OIDC and pushing version bumps
 permissions:
     id-token: write
     contents: write
@@ -42,7 +40,7 @@ jobs:
             - name: Ensure npm is up to date (trusted publishing requires npm >= 11.5.1)
               run: npm install -g npm@latest
 
-            - name: Install dependencies
+            - name: Install dependencies (frozen)
               run: bun install --frozen-lockfile
 
             - name: Configure git user
@@ -51,14 +49,27 @@ jobs:
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
             - name: Set CLI package version
-              working-directory: ./cli
               run: |
-                  CURRENT=$(node -p "require('./package.json').version")
-                  if [ "$CURRENT" != "${{ inputs.version }}" ]; then
-                    npm version ${{ inputs.version }} --no-git-tag-version
-                  else
-                    echo "Version already ${CURRENT}, skipping npm version"
-                  fi
+                  node - <<'EOF'
+                  const fs = require('fs');
+                  const path = require('path');
+                  const pkgPath = path.join('cli', 'package.json');
+                  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                  const newVersion = process.env.CLI_VERSION;
+                  if (!newVersion) {
+                    console.error('CLI_VERSION env var is required');
+                    process.exit(1);
+                  }
+                  if (pkg.version === newVersion) {
+                    console.log(`Version already ${newVersion}, skipping write`);
+                    process.exit(0);
+                  }
+                  pkg.version = newVersion;
+                  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+                  console.log(`Updated cli/package.json to ${newVersion}`);
+                  EOF
+              env:
+                  CLI_VERSION: ${{ inputs.version }}
 
             - name: Regenerate bun.lock after version bump
               run: bun install
@@ -84,6 +95,5 @@ jobs:
               if: ${{ !inputs.dry_run }}
               working-directory: ./cli
               env:
-                  # Instruct npm to use GitHub OIDC (trusted publishing) instead of token-based auth.
                   NPM_CONFIG_PROVENANCE: "true"
               run: npm publish --access public
