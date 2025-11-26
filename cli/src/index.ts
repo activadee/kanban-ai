@@ -8,11 +8,10 @@ import { detectPlatformArch, resolveBinaryInfo } from "./platform";
 import { parseCliArgs } from "./args";
 import { getLatestRelease, getReleaseByVersion } from "./github";
 import { decideVersionToUse } from "./updates";
-import { getBinaryPath } from "./cache";
 import { ensureBinaryDownloaded } from "./download";
 import { printHelp } from "./help";
 
-async function main() {
+export async function runCli(): Promise<void> {
     const env = resolveEnvOptions();
     const argv = process.argv.slice(2);
 
@@ -101,7 +100,7 @@ async function main() {
     await execBinary(binaryPath, cliOptions.passThroughArgs);
 }
 
-function readCliPackageVersion(): string {
+export function readCliPackageVersion(): string {
     try {
         const pkgPath = path.join(__dirname, "..", "package.json");
         const raw = fs.readFileSync(pkgPath, "utf8");
@@ -112,7 +111,7 @@ function readCliPackageVersion(): string {
     }
 }
 
-function execBinary(binaryPath: string, args: string[]): Promise<never> {
+export function execBinary(binaryPath: string, args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
         const child = spawn(binaryPath, args, {
             stdio: "inherit",
@@ -127,16 +126,18 @@ function execBinary(binaryPath: string, args: string[]): Promise<never> {
         child.on("exit", (code, signal) => {
             if (signal) {
                 process.kill(process.pid, signal);
+                resolve();
                 return;
             }
             process.exit(code === null ? 1 : code);
+            resolve();
         });
     });
 }
 
 // Execute only when run directly (not when imported in tests).
 if (require.main === module) {
-    main().catch((err) => {
+    runCli().catch((err) => {
         // eslint-disable-next-line no-console
         console.error(err instanceof Error ? err.message : String(err));
         process.exit(1);
