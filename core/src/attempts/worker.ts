@@ -1,0 +1,488 @@
+import {existsSync} from 'fs'
+import type {
+    AttemptStatus,
+    ConversationItem,
+    ConversationAutomationItem,
+} from 'shared'
+import type {AppEventBus} from '../events/bus'
+import {createWorktree} from '../ports/worktree'
+import {getAgent} from '../agents/registry'
+import type {Agent} from '../agents/types'
+import {
+    getNextConversationSeq,
+    insertAttemptLog,
+    insertConversationItem,
+    updateAttempt,
+} from './repo'
+import {
+    createCleanupRunner,
+    runAutomationStageInWorktree,
+} from './automation'
+import {resolveAgentProfile} from './profiles'
+
+type RunningAttemptMeta = {
+    controller: AbortController
+    aborted: boolean
+    repoPath: string
+    worktreePath: string
+    boardId: string
+}
+
+const running = new Map<string, RunningAttemptMeta>()
+
+export function abortRunningAttempt(id: string): RunningAttemptMeta | null {
+    const meta = running.get(id)
+    if (!meta) return null
+    meta.aborted = true
+    meta.controller.abort()
+    return meta
+}
+
+export function getRunningAttemptMeta(id: string): RunningAttemptMeta | null {
+    const meta = running.get(id)
+    return meta ?? null
+}
+
+export type AttemptAutomationConfig = {
+    copyScript: string | null
+    setupScript: string | null
+    cleanupScript: string | null
+}
+
+type AttemptWorkerCommonParams = {
+    attemptId: string
+    boardId: string
+    cardId: string
+    agentKey: string
+    repoPath: string
+    worktreePath: string
+    baseBranch: string
+    branchName: string
+    profileId?: string
+    previousStatus: AttemptStatus
+    cardTitle: string
+    cardDescription: string | null
+    automation: AttemptAutomationConfig
+}
+
+export type StartAttemptWorkerParams = AttemptWorkerCommonParams
+
+export type FollowupAttemptWorkerParams = AttemptWorkerCommonParams & {
+    sessionId: string
+    followupPrompt: string
+}
+
+type InternalWorkerParams =
+    | (StartAttemptWorkerParams & {mode: 'run'})
+    | (FollowupAttemptWorkerParams & {mode: 'resume'})
+
+export function startAttemptWorker(
+    params: StartAttemptWorkerParams,
+    events: AppEventBus,
+) {
+    queueAttemptRun({...params, mode: 'run'}, events)
+}
+
+export function startFollowupAttemptWorker(
+    params: FollowupAttemptWorkerParams,
+    events: AppEventBus,
+) {
+    queueAttemptRun({...params, mode: 'resume'}, events)
+}
+
+async function resolveProfileForAgent<P>(
+    agent: Agent<P>,
+    projectId: string,
+    profileId: string | undefined,
+    log: (level: 'info' | 'warn' | 'error', message: string) => Promise<void>,
+): Promise<P> {
+    let profile: P = agent.defaultProfile
+    const resolved = await resolveAgentProfile(agent, projectId, profileId)
+    if (resolved.profile !== null && resolved.profile !== undefined) {
+        profile = resolved.profile
+        if (resolved.label) {
+            await log(
+                'info',
+                `[profiles] using ${resolved.label} (${profileId}) for ${agent.key}`,
+            )
+        }
+    } else if (resolved.warning) {
+        await log('warn', resolved.warning)
+    }
+    return profile
+}
+
+function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
+    const {
+        attemptId,
+        boardId,
+        cardId,
+        agentKey,
+        repoPath,
+        worktreePath,
+        baseBranch,
+        branchName,
+        profileId,
+        previousStatus,
+        cardTitle,
+        cardDescription,
+        automation,
+    } = params
+
+    queueMicrotask(async () => {
+        let cleanupRunner: (() => Promise<void>) | null = null
+        let currentStatus: AttemptStatus = 'running'
+        try {
+            await updateAttempt(attemptId, {
+                status: 'running',
+                startedAt: new Date(),
+                updatedAt: new Date(),
+            })
+            events.publish('attempt.status.changed', {
+                attemptId,
+                boardId,
+                status: 'running',
+                previousStatus,
+            })
+            events.publish('attempt.started', {
+                attemptId,
+                boardId,
+                cardId,
+                agent: agentKey,
+                branchName,
+                baseBranch,
+                worktreePath,
+                profileId,
+            })
+
+            let worktreeCreated = false
+            if (!existsSync(worktreePath)) {
+                await createWorktree(repoPath, baseBranch, branchName, worktreePath, {
+                    projectId: boardId,
+                    attemptId,
+                })
+                worktreeCreated = true
+            }
+
+            const agent = getAgent(agentKey) as Agent<any> | undefined
+            if (!agent) throw new Error(`Unknown agent: ${agentKey}`)
+
+            let msgSeq = await getNextConversationSeq(attemptId)
+            const emit = async (
+                evt:
+                    | {
+                          type: 'log'
+                          level?: 'info' | 'warn' | 'error'
+                          message: string
+                      }
+                    | {type: 'status'; status: string}
+                    | {type: 'session'; id: string}
+                    | {type: 'conversation'; item: ConversationItem},
+            ) => {
+                const metaNow = running.get(attemptId)
+                const isAborted = !!metaNow?.aborted
+                if (
+                    isAborted &&
+                    (evt.type === 'log' || evt.type === 'conversation')
+                )
+                    return
+                if (evt.type === 'log') {
+                    const ts = new Date()
+                    await insertAttemptLog({
+                        id: `log-${crypto.randomUUID()}`,
+                        attemptId,
+                        ts,
+                        level: evt.level ?? 'info',
+                        message: evt.message,
+                    })
+                    events.publish('attempt.log.appended', {
+                        attemptId,
+                        boardId,
+                        level: evt.level ?? 'info',
+                        message: evt.message,
+                        ts: ts.toISOString(),
+                    })
+                } else if (evt.type === 'status') {
+                    const nextStatus = evt.status as AttemptStatus
+                    const previous = currentStatus
+                    currentStatus = nextStatus
+                    await updateAttempt(attemptId, {
+                        status: nextStatus,
+                        updatedAt: new Date(),
+                    })
+                    events.publish('attempt.status.changed', {
+                        attemptId,
+                        boardId,
+                        status: nextStatus,
+                        previousStatus: previous,
+                    })
+                } else if (evt.type === 'conversation') {
+                    const ts = new Date()
+                    const recordId = `cmsg-${crypto.randomUUID()}`
+                    const payloadItem: ConversationItem = {
+                        ...evt.item,
+                        id: recordId,
+                        timestamp: evt.item.timestamp ?? ts.toISOString(),
+                    }
+                    await insertConversationItem({
+                        id: recordId,
+                        attemptId,
+                        seq: msgSeq++,
+                        ts,
+                        itemJson: JSON.stringify(payloadItem),
+                    })
+                    events.publish('attempt.conversation.appended', {
+                        attemptId,
+                        boardId,
+                        item: payloadItem,
+                    })
+                } else if (evt.type === 'session') {
+                    try {
+                        await updateAttempt(attemptId, {
+                            updatedAt: new Date(),
+                            sessionId: evt.id,
+                        })
+                    } catch {}
+                    try {
+                        const ts = new Date()
+                        const message = `[runner] recorded session id ${evt.id}`
+                        await insertAttemptLog({
+                            id: `log-${crypto.randomUUID()}`,
+                            attemptId,
+                            ts,
+                            level: 'info',
+                            message,
+                        })
+                        events.publish('attempt.log.appended', {
+                            attemptId,
+                            boardId,
+                            level: 'info',
+                            message,
+                            ts: ts.toISOString(),
+                        })
+                    } catch {}
+                    events.publish('attempt.session.recorded', {
+                        attemptId,
+                        boardId,
+                        sessionId: evt.id,
+                    })
+                }
+            }
+
+            const automationEmit = async (item: ConversationAutomationItem) => {
+                await emit({type: 'conversation', item})
+            }
+
+            cleanupRunner = createCleanupRunner(
+                automation.cleanupScript,
+                worktreePath,
+                automationEmit,
+            )
+
+            if (worktreeCreated && automation.copyScript) {
+                await runAutomationStageInWorktree(
+                    'copy_files',
+                    automation.copyScript,
+                    worktreePath,
+                    automationEmit,
+                    {failHard: true},
+                )
+            }
+            if (automation.setupScript) {
+                await runAutomationStageInWorktree(
+                    'setup',
+                    automation.setupScript,
+                    worktreePath,
+                    automationEmit,
+                    {failHard: true},
+                )
+            }
+
+            const ac = new AbortController()
+            running.set(attemptId, {
+                controller: ac,
+                aborted: false,
+                repoPath,
+                worktreePath,
+                boardId,
+            })
+            const log = async (
+                level: 'info' | 'warn' | 'error',
+                message: string,
+            ) => emit({type: 'log', level, message})
+
+            const profile = await resolveProfileForAgent(
+                agent,
+                boardId,
+                profileId,
+                log,
+            )
+
+            if (params.mode === 'run') {
+                const code =
+                    typeof agent.run === 'function'
+                        ? await agent.run(
+                              {
+                                  attemptId,
+                                  boardId,
+                                  cardId,
+                                  worktreePath,
+                                  repositoryPath: repoPath,
+                                  branchName,
+                                  baseBranch,
+                                  cardTitle,
+                                  cardDescription,
+                                  signal: ac.signal,
+                                  emit,
+                                  profileId: profileId ?? null,
+                              } as any,
+                              profile as any,
+                          )
+                        : 1
+                await log('info', `[runner] agent exited with code ${code}`)
+                const final: AttemptStatus = getRunningAttemptMeta(attemptId)
+                    ?.aborted
+                    ? 'stopped'
+                    : code === 0
+                      ? 'succeeded'
+                      : 'failed'
+                const endedAt = new Date()
+                await updateAttempt(attemptId, {
+                    status: final,
+                    endedAt,
+                    updatedAt: endedAt,
+                })
+                events.publish('attempt.status.changed', {
+                    attemptId,
+                    boardId,
+                    status: final,
+                    previousStatus: 'running',
+                    endedAt: endedAt.toISOString(),
+                })
+                events.publish('attempt.completed', {
+                    attemptId,
+                    boardId,
+                    cardId,
+                    status: final,
+                    worktreePath,
+                    profileId: profileId ?? undefined,
+                })
+            } else {
+                if (typeof agent.resume !== 'function') {
+                    throw new Error('Agent does not support follow-up')
+                }
+                try {
+                    const code = await agent.resume(
+                        {
+                            attemptId,
+                            boardId,
+                            cardId,
+                            worktreePath,
+                            repositoryPath: repoPath,
+                            branchName,
+                            baseBranch,
+                            cardTitle,
+                            cardDescription,
+                            signal: ac.signal,
+                            emit,
+                            sessionId: params.sessionId,
+                            followupPrompt: params.followupPrompt,
+                            profileId: profileId ?? null,
+                        } as any,
+                        profile as any,
+                    )
+                    await emit({
+                        type: 'log',
+                        level: 'info',
+                        message: `[runner] agent exited with code ${code}`,
+                    })
+                    await emit({
+                        type: 'status',
+                        status: code === 0 ? 'succeeded' : 'failed',
+                    })
+                } catch (err) {
+                    await emit({
+                        type: 'log',
+                        level: 'error',
+                        message: `[runner] failed: ${err instanceof Error ? err.message : String(err)}`,
+                    })
+                    await emit({type: 'status', status: 'failed'})
+                }
+
+                const endedAt = new Date()
+                const finalStatus: AttemptStatus =
+                    currentStatus === 'running' ? 'failed' : currentStatus
+                if (currentStatus === 'running') {
+                    await updateAttempt(attemptId, {
+                        status: finalStatus,
+                        endedAt,
+                        updatedAt: endedAt,
+                    })
+                    events.publish('attempt.status.changed', {
+                        attemptId,
+                        boardId,
+                        status: finalStatus,
+                        previousStatus: currentStatus,
+                        endedAt: endedAt.toISOString(),
+                    })
+                } else {
+                    await updateAttempt(attemptId, {
+                        endedAt,
+                        updatedAt: endedAt,
+                    })
+                }
+                events.publish('attempt.completed', {
+                    attemptId,
+                    boardId,
+                    cardId,
+                    status: finalStatus,
+                    worktreePath,
+                    profileId: profileId ?? undefined,
+                })
+            }
+        } catch (err) {
+            const endedAt = new Date()
+            await insertAttemptLog({
+                id: `log-${crypto.randomUUID()}`,
+                attemptId,
+                ts: endedAt,
+                level: 'error',
+                message: `[runner] failed: ${err instanceof Error ? err.message : String(err)}`,
+            })
+            try {
+                if (currentStatus === 'running') {
+                    await updateAttempt(attemptId, {
+                        status: 'failed',
+                        endedAt,
+                        updatedAt: endedAt,
+                    })
+                    events.publish('attempt.status.changed', {
+                        attemptId,
+                        boardId,
+                        status: 'failed',
+                        previousStatus: 'running',
+                        endedAt: endedAt.toISOString(),
+                    })
+                    events.publish('attempt.completed', {
+                        attemptId,
+                        boardId,
+                        cardId,
+                        status: 'failed',
+                        worktreePath,
+                        profileId: profileId ?? undefined,
+                    })
+                } else {
+                    await updateAttempt(attemptId, {
+                        endedAt,
+                        updatedAt: endedAt,
+                    })
+                }
+            } catch {}
+        } finally {
+            try {
+                if (cleanupRunner) await cleanupRunner()
+            } catch {}
+            running.delete(attemptId)
+        }
+    })
+}
