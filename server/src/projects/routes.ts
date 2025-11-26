@@ -16,6 +16,7 @@ import {importGithubIssues} from "../github/import.service";
 import {listProjectBranches} from "./settings/git";
 import {problemJson} from "../http/problem";
 import {log} from '../log'
+import {startAttemptSchema} from '../attempts/attempts.schemas'
 // ticket preview uses core implementation
 const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
 const {
@@ -93,13 +94,6 @@ const updateCardSchema = z
             ctx.addIssue({code: z.ZodIssueCode.custom, message: 'No updates provided'})
         }
     });
-
-const startAttemptSchema = z.object({
-    agent: z.enum(["ECHO", "SHELL", "CODEX", "OPENCODE", "DROID"]),
-    profileId: z.string().optional(),
-    baseBranch: z.string().min(1).optional(),
-    branchName: z.string().min(1).optional(),
-});
 
 type BoardContext = { boardId: string; project: ProjectSummary }
 
