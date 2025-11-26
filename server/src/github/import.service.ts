@@ -24,9 +24,12 @@ async function ensureBacklogColumn(boardId: string, executor?: Parameters<typeof
     return columns[0]!.id
 }
 
-export async function importGithubIssues(params: ImportIssuesParams, options?: {
-    bus?: AppEventBus
-}): Promise<ImportIssuesResult> {
+export async function importGithubIssues(
+    params: ImportIssuesParams,
+    options?: {
+        bus?: AppEventBus
+    },
+): Promise<ImportIssuesResult> {
     const state = params.state ?? 'open'
     const board = await getBoardById(params.boardId)
     if (!board) throw new Error('Board not found')
@@ -105,7 +108,12 @@ export async function importGithubIssues(params: ImportIssuesParams, options?: {
 
                 await updateCard(
                     mapping.cardId,
-                    {title: issue.title, description: issue.body ?? null, boardId: params.boardId, updatedAt: now},
+                    {
+                        title: issue.title,
+                        description: issue.body ?? null,
+                        boardId: params.boardId,
+                        updatedAt: now,
+                    },
                     tx,
                 )
 
@@ -125,3 +133,4 @@ export async function importGithubIssues(params: ImportIssuesParams, options?: {
     })
     return result
 }
+

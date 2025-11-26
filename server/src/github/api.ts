@@ -1,4 +1,5 @@
 import {githubRepo} from 'core'
+import {githubApiJson} from './github-client'
 
 const {getGithubConnection} = githubRepo
 
@@ -22,15 +23,6 @@ export type GithubIssue = {
     pull_request?: unknown
 }
 
-function ghHeaders(token: string) {
-    return {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'kanbanai-app',
-    }
-}
-
 async function requireToken(): Promise<string> {
     const conn = await getGithubConnection()
     if (!conn) throw new Error('GitHub not connected')
@@ -40,28 +32,41 @@ async function requireToken(): Promise<string> {
 
 export async function listUserRepos(): Promise<GithubRepo[]> {
     const token = await requireToken()
-    const res = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
-        headers: ghHeaders(token),
-    })
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`GitHub repos fetch failed (${res.status}): ${text}`)
+    try {
+        const payload = await githubApiJson<GithubRepo[]>({
+            path: '/user/repos',
+            token,
+            searchParams: {
+                per_page: '100',
+                sort: 'updated',
+            },
+        })
+        return payload
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub repos fetch failed'))
+        }
+        throw error
     }
-    const payload = (await res.json()) as GithubRepo[]
-    return payload
 }
 
 export async function fetchRepoIssues(owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open') {
     const token = await requireToken()
-    const url = new URL(`https://api.github.com/repos/${owner}/${repo}/issues`)
-    url.searchParams.set('state', state)
-    url.searchParams.set('per_page', '100')
-    const res = await fetch(url, {headers: ghHeaders(token)})
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`GitHub issues fetch failed (${res.status}): ${text}`)
+    try {
+        const payload = await githubApiJson<GithubIssue[]>({
+            path: `/repos/${owner}/${repo}/issues`,
+            token,
+            searchParams: {
+                state,
+                per_page: '100',
+            },
+        })
+        // Exclude PRs which have the pull_request field
+        return payload.filter((it) => !('pull_request' in it))
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub issues fetch failed'))
+        }
+        throw error
     }
-    const payload = (await res.json()) as GithubIssue[]
-    // Exclude PRs which have the pull_request field
-    return payload.filter((it) => !('pull_request' in it))
 }

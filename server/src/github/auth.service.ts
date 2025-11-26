@@ -1,12 +1,11 @@
 import type {GitHubCheckResponse, GitHubDevicePollResponse, GitHubDeviceStartResponse} from 'shared'
 import {githubRepo} from 'core'
-import {log} from '../log'
 import {runtimeEnv} from '../env'
 import type {RuntimeEnv} from '../env'
+import {exchangeDeviceCodeForToken, fetchGithubAccount, requestDeviceCode} from './github-client'
 
 const {getGithubConnection, upsertGithubConnection, getGithubAppConfig} = githubRepo
 
-const USER_AGENT = 'kanbanai-app'
 const DEFAULT_SCOPE = 'repo user:email'
 
 type DeviceFlowSession = {
@@ -35,30 +34,7 @@ async function loadGithubClient(env: RuntimeEnv = runtimeEnv()): Promise<GithubC
 
 export async function startGithubDeviceFlow(env: RuntimeEnv = runtimeEnv()): Promise<GitHubDeviceStartResponse> {
     const {clientId} = await loadGithubClient(env)
-    const body = new URLSearchParams({client_id: clientId, scope: DEFAULT_SCOPE})
-
-    const res = await fetch('https://github.com/login/device/code', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'application/json',
-        },
-        body,
-    })
-
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`GitHub device start failed (${res.status}): ${text}`)
-    }
-
-    const json = (await res.json()) as {
-        device_code: string
-        user_code: string
-        verification_uri: string
-        verification_uri_complete?: string
-        expires_in: number
-        interval: number
-    }
+    const json = await requestDeviceCode({clientId, scope: DEFAULT_SCOPE})
 
     const now = Date.now()
     currentSession = {
@@ -80,42 +56,6 @@ export async function startGithubDeviceFlow(env: RuntimeEnv = runtimeEnv()): Pro
     }
 }
 
-async function fetchGithubAccount(token: string) {
-    const baseHeaders = {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': USER_AGENT,
-    }
-
-    const userRes = await fetch('https://api.github.com/user', {
-        headers: baseHeaders,
-    })
-    if (!userRes.ok) {
-        const text = await userRes.text()
-        throw new Error(`GitHub user lookup failed (${userRes.status}): ${text}`)
-    }
-    const userJson = (await userRes.json()) as { login: string }
-
-    let primaryEmail: string | null = null
-    try {
-        const emailRes = await fetch('https://api.github.com/user/emails', {
-            headers: baseHeaders,
-        })
-        if (emailRes.ok) {
-            const emails = (await emailRes.json()) as Array<{ email: string; primary: boolean }>
-            const primary = emails.find((entry) => entry.primary)
-            primaryEmail = primary?.email ?? null
-        }
-    } catch (err) {
-        log.error({err}, 'GitHub email lookup failed')
-    }
-
-    return {
-        username: userJson.login,
-        primaryEmail,
-    }
-}
-
 export async function pollGithubDeviceFlow(env: RuntimeEnv = runtimeEnv()): Promise<GitHubDevicePollResponse> {
     if (!currentSession) {
         return {status: 'error', message: 'Device flow not started'}
@@ -133,36 +73,20 @@ export async function pollGithubDeviceFlow(env: RuntimeEnv = runtimeEnv()): Prom
 
     const {clientId, clientSecret} = await loadGithubClient(env)
 
-    const body = new URLSearchParams({
-        client_id: clientId,
-        device_code: currentSession.deviceCode,
-        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-    })
-
-    if (clientSecret) {
-        body.set('client_secret', clientSecret)
-    }
-
     // Enforce per-session interval locally to avoid hammering GitHub if the UI misbehaves
     currentSession.nextPollAt = now + currentSession.interval * 1000
 
-    const res = await fetch('https://github.com/login/oauth/access_token', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'application/json',
-        },
-        body,
-    })
-
-    if (!res.ok) {
-        const text = await res.text()
-        return {status: 'error', message: `GitHub token exchange failed (${res.status}): ${text}`}
+    let json
+    try {
+        json = await exchangeDeviceCodeForToken({
+            clientId,
+            clientSecret,
+            deviceCode: currentSession.deviceCode,
+        })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'GitHub token exchange failed'
+        return {status: 'error', message}
     }
-
-    const json = (await res.json()) as
-        | { access_token: string; token_type: string; scope?: string }
-        | { error: string; error_description?: string }
 
     if ('error' in json) {
         switch (json.error) {
@@ -218,3 +142,4 @@ export async function checkGithubConnection(): Promise<GitHubCheckResponse> {
         },
     }
 }
+

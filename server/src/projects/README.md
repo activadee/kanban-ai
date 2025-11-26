@@ -17,7 +17,7 @@
 3. **Agent Profiles (`core/agents/profiles`)**
     - CRUD endpoints emit `agent.profile.changed` to keep UI caches synced.
 4. **GitHub Imports**
-    - `/projects/:id/import/github/issues` calls `github/import.ts`, which emits `github.issues.imported` after
+    - `/projects/:id/import/github/issues` calls `github/import.service.ts`, which emits `github.issues.imported` after
       completion.
 
 ## Key Entry Points
