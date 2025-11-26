@@ -7,7 +7,7 @@
 
 ## Data & Event Flow
 
-1. **Worktree Management (`worktree.ts`)**
+1. **Worktree Management (`worktree-runner.ts`)**
     - `createWorktree` ensures the target directory exists, fetches refs, and adds a worktree. On success it emits
       `worktree.created` with project/attempt metadata.
     - `removeWorktree` removes the worktree and emits `worktree.removed` (best-effort).
@@ -19,7 +19,7 @@
 ## Key Entry Points
 
 - `paths.ts`: canonical worktree root + helpers for id/name-based paths.
-- `worktree.ts`: exec wrapper around `git worktree add/remove` with event emission.
+- `worktree-runner.ts`: exec wrapper around `git worktree add/remove` with event emission.
 - `listeners.ts`: cleanup logic responding to board/project events.
 
 ## Open Tasks
