@@ -24,13 +24,24 @@ const normalizeDbPath = (raw: string) => {
   const isUri = raw.startsWith('file:') || raw.startsWith('sqlite:')
   if (isUri) {
     if (hasQuery) return raw
+
+    const withoutScheme = raw.replace(/^file:/, '').replace(/^sqlite:/, '')
+    const hasAuthority = withoutScheme.startsWith('//')
+
+    // Relative or root-local forms like `file:./db.sqlite`, `file:db.sqlite`,
+    // or `sqlite:../db.sqlite` should be resolved against process.cwd().
+    if (!hasAuthority) {
+      const pathPart = withoutScheme
+      return path.isAbsolute(pathPart) ? pathPart : path.resolve(process.cwd(), pathPart)
+    }
+
+    // Canonical URIs like file:///abs/path or file://host/path
     try {
       const url = new URL(raw)
       const filePath = url.pathname
       return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
     } catch {
-      // Handle relative file:./foo.db URIs that URL() rejects
-      const stripped = raw.replace(/^file:/, '').replace(/^sqlite:/, '')
+      const stripped = withoutScheme.replace(/^\/+/, '')
       return path.isAbsolute(stripped) ? stripped : path.resolve(process.cwd(), stripped)
     }
   }

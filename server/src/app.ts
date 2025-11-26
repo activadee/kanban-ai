@@ -4,7 +4,7 @@ import {logger} from 'hono/logger'
 import {secureHeaders} from 'hono/secure-headers'
 import type {UpgradeWebSocket} from 'hono/ws'
 import type {AppEnv, AppServices, ServerConfig} from './env'
-import {getRuntimeConfig} from './env'
+import {getRuntimeConfig, setRuntimeConfig} from './env'
 import {projectsService, settingsService, bindAgentEventBus, registerAgent} from 'core'
 import {createProjectsRouter, createBoardsRouter} from './projects/routes'
 import {createGithubRouter} from './github/routes'
@@ -24,7 +24,7 @@ import {CodexAgent, OpencodeAgent, DroidAgent} from 'core'
 import {dashboardWebsocketHandlers} from './dashboard/ws'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
-import {log} from './log'
+import {log, applyLogConfig} from './log'
 // Readiness flag for /api/v1/readyz (shimmed on /api/readyz temporarily)
 let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
@@ -50,7 +50,14 @@ export const createApp = ({
                               events,
                               config
                           }: AppOptions = {}) => {
-    const appConfig = config ?? getRuntimeConfig()
+    let appConfig: ServerConfig
+    if (config) {
+        setRuntimeConfig(config)
+        applyLogConfig(config)
+        appConfig = config
+    } else {
+        appConfig = getRuntimeConfig()
+    }
     const bus = events ?? createEventBus()
     registerEventListeners(bus, services)
     // Core adapters (worktree, agents)
