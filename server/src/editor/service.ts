@@ -5,13 +5,15 @@ import {settingsService} from 'core'
 import {adapters, PATH_EXT} from './adapters'
 import {pickBinary} from './bin'
 import type {EditorAdapter, EditorKey, EditorInfo, ExecSpec} from './types'
+import {runtimeEnv} from '../env'
 
 const SHELL_CANDIDATES = ['bash', 'zsh', 'sh']
 
 function createDesktopEnv(): NodeJS.ProcessEnv {
+    const baseEnv = runtimeEnv()
     const env: NodeJS.ProcessEnv = {
-        ...process.env,
-        PATH: process.env.PATH ? `${process.env.PATH}:${PATH_EXT}` : PATH_EXT,
+        ...baseEnv,
+        PATH: baseEnv.PATH ? `${baseEnv.PATH}:${PATH_EXT}` : PATH_EXT,
     }
     const uid = typeof process.getuid === 'function' ? process.getuid() : undefined
     const runtimeDir = uid !== undefined ? `/run/user/${uid}` : undefined

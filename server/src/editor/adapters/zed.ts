@@ -3,6 +3,7 @@ import os from 'os'
 import nodePath from 'path'
 import {createAdapter} from './base'
 import {isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
+import {runtimeEnv} from '../../env'
 
 function collectZedCommandCandidates(): string[] {
     const platform = os.platform()
@@ -51,9 +52,10 @@ function collectZedCommandCandidates(): string[] {
             for (const candidate of winPaths) raw.add(candidate)
         }
     } else if (platform === 'win32') {
-        const localAppData = process.env.LOCALAPPDATA
-        const programFiles = process.env.ProgramFiles
-        const programFilesX86 = process.env['ProgramFiles(x86)']
+        const env = runtimeEnv()
+        const localAppData = env.LOCALAPPDATA
+        const programFiles = env.ProgramFiles
+        const programFilesX86 = env['ProgramFiles(x86)']
 
         if (localAppData) {
             raw.add(nodePath.join(localAppData, 'Programs', 'Zed', 'Zed.exe'))

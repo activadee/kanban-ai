@@ -1,6 +1,7 @@
 import { createApp } from '../app'
 import { createWebSocket, startServer } from '../start'
-import { log } from '../log'
+import { log, applyLogConfig } from '../log'
+import { loadConfig, setRuntimeConfig } from '../env'
 
 if (import.meta.main) {
   const run = async () => {
@@ -20,11 +21,21 @@ if (import.meta.main) {
       return
     }
 
-    const port = Number(getArg('--port', '-p') ?? Bun.env.PORT ?? 3000)
-    const host = getArg('--host') ?? Bun.env.HOST ?? '127.0.0.1'
+    const baseConfig = loadConfig()
+    const port = Number(getArg('--port', '-p') ?? baseConfig.port)
+    const host = getArg('--host') ?? baseConfig.host
+    const config = {
+      ...baseConfig,
+      host,
+      port: Number.isFinite(port) ? port : baseConfig.port,
+    }
+
+    setRuntimeConfig(config)
+    applyLogConfig(config)
+
     const { upgradeWebSocket, websocket } = await createWebSocket()
-    const app = createApp({ upgradeWebSocket })
-    const { url, dbFile } = await startServer({ port, host, fetch: app.fetch, websocket })
+    const app = createApp({ upgradeWebSocket, config })
+    const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
     log.info({ url, dbFile }, '[server] listening')
   }
   run().catch((error) => {

@@ -2,10 +2,12 @@ import {spawnSync} from 'child_process'
 import {readFileSync} from 'fs'
 import os from 'os'
 import nodePath from 'path'
+import {runtimeEnv} from '../env'
 
 export function isWSL(): boolean {
     if (process.platform !== 'linux') return false
-    if (process.env.WSL_DISTRO_NAME) return true
+    const env = runtimeEnv()
+    if (env.WSL_DISTRO_NAME) return true
     const release = os.release().toLowerCase()
     if (release.includes('microsoft')) return true
     try {
@@ -37,7 +39,7 @@ function parseWindowsEnvEcho(stdout: string): string | null {
 }
 
 export function readWindowsEnvVar(name: string): string | null {
-    const direct = process.env[name]
+    const direct = runtimeEnv()[name]
     if (direct) return direct
     if (!isWSL()) return null
     try {
@@ -96,7 +98,7 @@ function parseDistroName(raw: string): string | null {
 export function currentWSLDistroName(): string | null {
     if (!isWSL()) return null
 
-    const envName = process.env.WSL_DISTRO_NAME?.trim()
+    const envName = runtimeEnv().WSL_DISTRO_NAME?.trim()
     if (envName) return envName
 
     try {

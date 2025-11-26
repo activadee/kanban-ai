@@ -3,7 +3,8 @@ import {cors} from 'hono/cors'
 import {logger} from 'hono/logger'
 import {secureHeaders} from 'hono/secure-headers'
 import type {UpgradeWebSocket} from 'hono/ws'
-import type {AppEnv, AppServices} from './env'
+import type {AppEnv, AppServices, ServerConfig} from './env'
+import {getRuntimeConfig, setRuntimeConfig} from './env'
 import {projectsService, settingsService, bindAgentEventBus, registerAgent} from 'core'
 import {createProjectsRouter, createBoardsRouter} from './projects/routes'
 import {createGithubRouter} from './github/routes'
@@ -23,42 +24,10 @@ import {CodexAgent, OpencodeAgent, DroidAgent} from 'core'
 import {dashboardWebsocketHandlers} from './ws/dashboard-handlers'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
-import {log} from './log'
+import {log, applyLogConfig} from './log'
 // Readiness flag for /api/v1/readyz (shimmed on /api/readyz temporarily)
 let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
-
-const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
-
-const isFalseyFlag = (value: string) => ['0', 'false', 'off', 'quiet', 'silent'].includes(value)
-
-const matchesDebugNamespace = (value: string) =>
-    value.split(/[\s,]+/).some((token) => token === '*' || token.startsWith('kanbanai') || token.startsWith('kanban-ai'))
-
-const isDebugLoggingEnabled = () => {
-    const { LOG_LEVEL, KANBANAI_DEBUG, DEBUG } = env()
-
-    const normalizedLevel = LOG_LEVEL?.toLowerCase()
-    if (normalizedLevel) {
-        if (isFalseyFlag(normalizedLevel)) return false
-        if (['debug', 'verbose', 'trace'].includes(normalizedLevel) || normalizedLevel.startsWith('debug')) return true
-    }
-
-    const normalizedKanban = KANBANAI_DEBUG?.toLowerCase()
-    if (normalizedKanban) {
-        if (isFalseyFlag(normalizedKanban)) return false
-        return true
-    }
-
-    const normalizedDebug = DEBUG?.toLowerCase()
-    if (normalizedDebug) {
-        if (isFalseyFlag(normalizedDebug)) return false
-        if (['1', 'true', 'on', 'yes', 'debug', 'verbose', 'trace'].includes(normalizedDebug)) return true
-        if (matchesDebugNamespace(normalizedDebug)) return true
-    }
-
-    return false
-}
 
 function createMetricsRouter() {
     const router = new Hono<AppEnv>()
@@ -72,13 +41,23 @@ export type AppOptions = {
     services?: AppServices
     upgradeWebSocket?: UpgradeWebSocket<AppEnv>
     events?: AppEventBus
+    config?: ServerConfig
 }
 
 export const createApp = ({
                               services = {projects: projectsService, settings: settingsService},
                               upgradeWebSocket,
-                              events
+                              events,
+                              config
                           }: AppOptions = {}) => {
+    let appConfig: ServerConfig
+    if (config) {
+        setRuntimeConfig(config)
+        applyLogConfig(config)
+        appConfig = config
+    } else {
+        appConfig = getRuntimeConfig()
+    }
     const bus = events ?? createEventBus()
     registerEventListeners(bus, services)
     // Core adapters (worktree, agents)
@@ -104,7 +83,7 @@ export const createApp = ({
         await next()
     })
 
-    if (isDebugLoggingEnabled()) {
+    if (appConfig.debugLogging) {
         app.use('*', logger((str, ...rest) => {
             const line = rest.length ? [str, ...rest].join(' ') : str
             log.debug({source: 'hono'}, line)
@@ -130,6 +109,7 @@ export const createApp = ({
     app.use('*', async (c, next) => {
         c.set('services', services)
         c.set('events', bus)
+        c.set('config', appConfig)
         await next()
     })
 
