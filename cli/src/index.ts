@@ -151,6 +151,13 @@ export async function runCli(): Promise<void> {
         }
     }
 
+    if (cliOptions.showBinaryVersionOnly) {
+        // eslint-disable-next-line no-console
+        console.log(targetVersion);
+        process.exit(0);
+        return;
+    }
+
     if (!binaryPath) {
         if (!release) {
             throw new Error("Unable to determine KanbanAI binary to execute.");
@@ -162,12 +169,6 @@ export async function runCli(): Promise<void> {
             binaryInfo,
             release,
         });
-    }
-
-    if (cliOptions.showBinaryVersionOnly) {
-        // eslint-disable-next-line no-console
-        console.log(targetVersion);
-        process.exit(0);
     }
 
     await execBinary(binaryPath, cliOptions.passThroughArgs);

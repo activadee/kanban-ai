@@ -68,9 +68,13 @@ vi.mock("./updates", () => ({
     ),
 }));
 
+const ensureBinaryDownloadedMock = vi.fn<
+    (opts: { baseCacheDir: string; version: string }) => Promise<string>
+>(() => Promise.resolve("/tmp/kanbanai/1.0.0/linux/x64/kanban-ai-linux-x64"));
+
 vi.mock("./download", () => ({
-    ensureBinaryDownloaded: () =>
-        Promise.resolve("/tmp/kanbanai/1.0.0/linux/x64/kanban-ai-linux-x64"),
+    ensureBinaryDownloaded: (opts: { baseCacheDir: string; version: string }) =>
+        ensureBinaryDownloadedMock(opts),
 }));
 
 vi.mock("./help", () => ({
@@ -294,13 +298,16 @@ describe("runCli", () => {
         process.exit = exitSpy;
 
         try {
+            ensureBinaryDownloadedMock.mockClear();
             await runCli();
             expect(logSpy).toHaveBeenCalledWith("1.0.0");
             expect(exitSpy).toHaveBeenCalledWith(0);
+            expect(ensureBinaryDownloadedMock).not.toHaveBeenCalled();
         } finally {
             // @ts-expect-error restore original
             process.exit = originalExit;
             logSpy.mockRestore();
+            ensureBinaryDownloadedMock.mockClear();
         }
     });
 });

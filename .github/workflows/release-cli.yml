@@ -60,10 +60,6 @@ jobs:
                   git commit -m "chore(cli): release v${{ inputs.version }} [skip ci]" || echo "No changes to commit"
                   git push
 
-            - name: Set CLI package version
-              working-directory: ./cli
-              run: npm version ${{ inputs.version }} --no-git-tag-version
-
             - name: Build CLI package
               working-directory: ./cli
               run: bun run build
