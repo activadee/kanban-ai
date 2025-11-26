@@ -5,7 +5,7 @@ import {secureHeaders} from 'hono/secure-headers'
 import type {UpgradeWebSocket} from 'hono/ws'
 import type {AppEnv, AppServices, ServerConfig} from './env'
 import {getRuntimeConfig, setRuntimeConfig} from './env'
-import {projectsService, settingsService, bindAgentEventBus, registerAgent} from 'core'
+import {projectsService, settingsService, bindAgentEventBus} from 'core'
 import {createProjectsRouter} from './projects/project.routes'
 import {createBoardsRouter} from './projects/board.routes'
 import {createGithubRouter} from './github/routes'
@@ -21,7 +21,6 @@ import {createEventBus, type AppEventBus} from './events/bus'
 import {registerEventListeners} from './events/register'
 import {createDashboardRouter} from './dashboard/routes'
 import {registerWorktreeProvider} from './ports/worktree'
-import {CodexAgent, OpencodeAgent, DroidAgent} from 'core'
 import {dashboardWebsocketHandlers} from './ws/dashboard-handlers'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
@@ -67,10 +66,10 @@ export const createApp = ({
     } catch {
     }
     try {
-        bindAgentEventBus(bus);
-        registerAgent(CodexAgent as any);
-        registerAgent(OpencodeAgent as any);
-        registerAgent(DroidAgent as any)
+        // Bind the agent event bus; concrete agents are registered
+        // in server/src/agents/registry.ts. Experimental agents
+        // (Droid/OpenCode) are intentionally not registered.
+        bindAgentEventBus(bus)
     } catch {
     }
     // dynamic import block removed; using static imports above

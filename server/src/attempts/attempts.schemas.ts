@@ -32,9 +32,11 @@ export const attemptPrSchema = z.object({
 
 // Canonical schema for starting an attempt for a board/card
 export const startAttemptSchema = z.object({
-    agent: z.enum(['ECHO', 'SHELL', 'CODEX', 'OPENCODE', 'DROID']),
+    // Only stable, supported agents are allowed here.
+    // Experimental agents (Droid/OpenCode) are WIP, not usable,
+    // and intentionally excluded from this schema.
+    agent: z.enum(['ECHO', 'SHELL', 'CODEX']),
     profileId: z.string().optional(),
     baseBranch: z.string().min(1).optional(),
     branchName: z.string().min(1).optional(),
 })
-

@@ -210,6 +210,11 @@ starts or resumes, the server now resolves the referenced profile, validates it 
 info message when a named profile is used. Missing, mismatched, or invalid profile JSON automatically falls back to the
 agent’s default profile with a warning, so attempts continue without manual cleanup.
 
+### Agents
+
+The UI and public API currently expose only the Codex agent. Experimental agents for Droid and OpenCode exist in the
+codebase but are considered WIP, are not usable, and are intentionally not registered or displayed in the UI.
+
 Database: SQLite via `bun:sqlite` managed by Drizzle. Migrations run automatically on server start; the default database
 lives in your OS application data directory (e.g., `~/.local/share/kanbanai/kanban.db` on Linux, `%LOCALAPPDATA%/KanbanAI`
 on Windows). Override with `DATABASE_URL` (`file:/absolute/path` or `sqlite:/absolute/path`).
