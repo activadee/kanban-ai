@@ -23,6 +23,11 @@ export interface ProjectUpdatedEvent {
 export interface ProjectDeletedEvent {
     projectId: string
     projectName?: string | null
+    /**
+     * Absolute path to the Git repository backing this project.
+     * Used by filesystem listeners to prune stale worktrees on project deletion.
+     */
+    repositoryPath?: string | null
 }
 
 export interface ProjectSettingsUpdatedEvent {

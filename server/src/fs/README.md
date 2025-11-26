@@ -14,7 +14,7 @@
 2. **Filesystem APIs (`routes.ts`)**
     - `/fs/git-repos` scans for local Git repositories (no events needed).
 3. **Event Listeners (`listeners.ts`)**
-    - `project.deleted` → purge both id-based and name-based worktree folders.
+    - `project.deleted` → purge both id-based and name-based worktree folders and prune stale Git worktree entries for the project's repository.
 
 ## Key Entry Points
 
