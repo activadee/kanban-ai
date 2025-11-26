@@ -1,8 +1,10 @@
 import {Hono} from 'hono'
 import type {AppEnv} from '../env'
-import {detectEditors, openEditorAtPath, type EditorKey} from './service'
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
+import type {EditorKey} from './types'
+import {detectEditors} from './detect'
+import {openEditorAtPath} from './open'
 
 export function createEditorsRouter() {
     const router = new Hono<AppEnv>()
