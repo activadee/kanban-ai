@@ -4,16 +4,20 @@ on:
     # Manual trigger only
     workflow_dispatch:
         inputs:
+            version:
+                description: "CLI npm version to publish (e.g. 0.2.3)"
+                required: true
+                type: string
             dry_run:
                 description: "Run npm publish with --dry-run (no upload)"
                 required: false
                 type: boolean
                 default: false
 
-# Required for npm trusted publishing with OIDC
+# Required for npm trusted publishing with OIDC and pushing version bumps
 permissions:
     id-token: write
-    contents: read
+    contents: write
 
 jobs:
     publish:
@@ -41,21 +45,40 @@ jobs:
             - name: Install dependencies
               run: bun install --frozen-lockfile
 
+            - name: Configure git user
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            - name: Set CLI package version
+              working-directory: ./cli
+              run: npm version ${{ inputs.version }} --no-git-tag-version
+
+            - name: Commit version bump
+              run: |
+                  git add cli/package.json
+                  git commit -m "chore(cli): release v${{ inputs.version }} [skip ci]" || echo "No changes to commit"
+                  git push
+
+            - name: Set CLI package version
+              working-directory: ./cli
+              run: npm version ${{ inputs.version }} --no-git-tag-version
+
             - name: Build CLI package
               working-directory: ./cli
               run: bun run build
 
-      - name: npm publish (dry run)
-        if: ${{ inputs.dry_run }}
-        working-directory: ./cli
-        env:
-          NPM_CONFIG_PROVENANCE: 'true'
-        run: npm publish --access public --dry-run
+            - name: npm publish (dry run)
+              if: ${{ inputs.dry_run }}
+              working-directory: ./cli
+              env:
+                  NPM_CONFIG_PROVENANCE: "true"
+              run: npm publish --access public --dry-run
 
-      - name: npm publish
-        if: ${{ !inputs.dry_run }}
-        working-directory: ./cli
-        env:
-          # Instruct npm to use GitHub OIDC (trusted publishing) instead of token-based auth.
-          NPM_CONFIG_PROVENANCE: 'true'
-        run: npm publish --access public
+            - name: npm publish
+              if: ${{ !inputs.dry_run }}
+              working-directory: ./cli
+              env:
+                  # Instruct npm to use GitHub OIDC (trusted publishing) instead of token-based auth.
+                  NPM_CONFIG_PROVENANCE: "true"
+              run: npm publish --access public
