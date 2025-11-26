@@ -17,7 +17,7 @@ export const createGithubRouter = () => {
 
     router.post('/device/start', async (c) => {
         try {
-            const payload = await startGithubDeviceFlow()
+            const payload = await startGithubDeviceFlow(c.get('config').env)
             return c.json(payload, 200)
         } catch (error) {
             log.error({err: error}, '[github:device-start] failed')
@@ -31,7 +31,7 @@ export const createGithubRouter = () => {
 
     router.post('/device/poll', async (c) => {
         try {
-            const result = await pollGithubDeviceFlow()
+            const result = await pollGithubDeviceFlow(c.get('config').env)
             if (result.status === 'success') {
                 const events = c.get('events')
                 events.publish('github.connected', {
@@ -99,8 +99,9 @@ export const createGithubRouter = () => {
 
     router.get('/app', async (c) => {
         const config = await githubRepo.getGithubAppConfig()
-        const envClientId = Bun.env.GITHUB_CLIENT_ID?.trim()
-        const envSecret = Bun.env.GITHUB_CLIENT_SECRET?.trim()
+        const envValues = c.get('config').env
+        const envClientId = envValues.GITHUB_CLIENT_ID?.trim()
+        const envSecret = envValues.GITHUB_CLIENT_SECRET?.trim()
         const source: 'db' | 'env' | 'unset' = config ? 'db' : envClientId || envSecret ? 'env' : 'unset'
         return c.json(
             {

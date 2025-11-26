@@ -5,8 +5,8 @@ import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { setAppReady } from './app'
 import { migrationData } from '../drizzle/migration-data.generated'
+import type { ServerConfig } from './env'
 
-const env = () => Bun.env ?? (process.env as Record<string, string | undefined>)
 const devRoot = path.resolve(fileURLToPath(new URL('../drizzle', import.meta.url)))
 let materializedDir: string | null = null
 
@@ -98,42 +98,18 @@ function buildBundledMigrations(): any[] | null {
   return migrations
 }
 
-export async function resolveMigrations(explicit?: string): Promise<ResolvedMigrations> {
+export async function resolveMigrations(config: ServerConfig, explicit?: string): Promise<ResolvedMigrations> {
   const bundled = buildBundledMigrations()
 
-  if (explicit) {
-    if (explicit === '__embedded__') {
-      if (bundled) {
-        return { kind: 'bundled', migrations: bundled }
-      }
-      return {
-        kind: 'folder',
-        path: await materializeEmbeddedMigrations(),
-      }
-    }
+  const requested = explicit ?? config.migrationsDir ?? '__embedded__'
 
-    return {
-      kind: 'folder',
-      path: explicit === '__embedded__' ? await materializeEmbeddedMigrations() : path.resolve(explicit),
-    }
+  if (requested === '__embedded__') {
+    if (bundled) return { kind: 'bundled', migrations: bundled }
+    return { kind: 'folder', path: await materializeEmbeddedMigrations() }
   }
 
-  const fromEnv = env().KANBANAI_MIGRATIONS_DIR ?? '__embedded__'
-  if (fromEnv === '__embedded__') {
-    if (bundled) {
-      return { kind: 'bundled', migrations: bundled }
-    }
-    return {
-      kind: 'folder',
-      path: await materializeEmbeddedMigrations(),
-    }
-  }
-
-  if (fromEnv) {
-    return {
-      kind: 'folder',
-      path: path.resolve(fromEnv),
-    }
+  if (requested) {
+    return { kind: 'folder', path: path.resolve(requested) }
   }
 
   if (await resolveEmbeddedFile('meta/_journal.json')) {

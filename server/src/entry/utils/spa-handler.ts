@@ -1,13 +1,13 @@
 import path from 'node:path'
 import { staticBundle } from '../../static-bundle.generated'
+import { runtimeEnv } from '../../env'
 
-const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
+const resolveStaticBase = (explicit?: string): string => {
+  if (explicit && explicit.trim().length > 0) return explicit.trim()
 
-const resolveStaticBase = (): string => {
-  const fromEnv = env().KANBANAI_STATIC_DIR
-  if (fromEnv && fromEnv.trim().length > 0) {
-    return fromEnv.trim()
-  }
+  const fromEnv = runtimeEnv().KANBANAI_STATIC_DIR
+  if (fromEnv && fromEnv.trim().length > 0) return fromEnv.trim()
+
   // Logical root used when we also want to serve from disk (dev / overrides).
   return 'server/static'
 }
@@ -65,8 +65,8 @@ const tryServeStaticFromFs = async (request: Request, staticBase: string): Promi
 
 export type StaticHandler = (request: Request) => Promise<Response | null>
 
-export const createStaticHandler = (): StaticHandler => {
-  const staticBase = resolveStaticBase()
+export const createStaticHandler = (staticDir?: string): StaticHandler => {
+  const staticBase = resolveStaticBase(staticDir)
 
   return async (request) => {
     const url = new URL(request.url)
@@ -78,4 +78,3 @@ export const createStaticHandler = (): StaticHandler => {
     return tryServeStaticFromFs(request, staticBase)
   }
 }
-

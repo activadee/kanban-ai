@@ -104,7 +104,8 @@ export const createAttemptsRouter = () => {
                 pid: undefined,
             })
             // diagnostics to help user debug when editor doesn't open
-            const envPath = env.PATH ?? process.env.PATH ?? ''
+            const runtimeEnv = c.get('config').env
+            const envPath = env.PATH ?? runtimeEnv.PATH ?? ''
             const which = (name: string) => (Bun as any)?.which?.(name) ?? null
             const found = {
                 code: which('code'),

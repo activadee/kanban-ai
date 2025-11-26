@@ -3,6 +3,7 @@ import os from 'os'
 import nodePath from 'path'
 import {createAdapter} from './base'
 import {isWSL, readWindowsEnvVar, windowsPathToWSLPath, windowsToolboxPaths} from '../wsl'
+import {runtimeEnv} from '../../env'
 
 function safeSubdirs(dir: string | null | undefined): string[] {
     if (!dir) return []
@@ -24,7 +25,7 @@ function collectJetBrainsToolboxInstalls(appName: string): string[] {
     } else if (platform === 'linux') {
         bases.push(nodePath.join(home, '.local', 'share', 'JetBrains', 'Toolbox', 'apps', appName))
     } else if (platform === 'win32') {
-        const localAppData = process.env.LOCALAPPDATA
+        const localAppData = runtimeEnv().LOCALAPPDATA
         if (localAppData) {
             bases.push(nodePath.join(localAppData, 'JetBrains', 'Toolbox', 'apps', appName))
         }
@@ -66,8 +67,9 @@ function collectWebStormToolboxBinaries(): string[] {
 function collectWindowsWebStormProgramBinaries(): string[] {
     if (os.platform() !== 'win32') return []
     const roots = new Set<string>()
-    const programFiles = process.env.ProgramFiles
-    const programFilesX86 = process.env['ProgramFiles(x86)']
+    const env = runtimeEnv()
+    const programFiles = env.ProgramFiles
+    const programFilesX86 = env['ProgramFiles(x86)']
     if (programFiles) roots.add(nodePath.join(programFiles, 'JetBrains'))
     if (programFilesX86) roots.add(nodePath.join(programFilesX86, 'JetBrains'))
 
@@ -174,8 +176,9 @@ function collectWebStormCommandCandidates(): string[] {
     }
 
     if (platform === 'win32') {
-        const defaultProgramFiles = process.env.ProgramFiles || 'C\\Program Files'
-        const defaultProgramFilesX86 = process.env['ProgramFiles(x86)'] || 'C\\Program Files (x86)'
+        const env = runtimeEnv()
+        const defaultProgramFiles = env.ProgramFiles || 'C\\Program Files'
+        const defaultProgramFilesX86 = env['ProgramFiles(x86)'] || 'C\\Program Files (x86)'
         raw.add(nodePath.join(defaultProgramFiles, 'JetBrains', 'WebStorm', 'bin', 'webstorm64.exe'))
         raw.add(nodePath.join(defaultProgramFiles, 'JetBrains', 'WebStorm', 'bin', 'webstorm.exe'))
         raw.add(nodePath.join(defaultProgramFilesX86, 'JetBrains', 'WebStorm', 'bin', 'webstorm64.exe'))

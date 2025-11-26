@@ -1,6 +1,8 @@
 import type {GitHubCheckResponse, GitHubDevicePollResponse, GitHubDeviceStartResponse} from 'shared'
 import {githubRepo} from 'core'
 import {log} from '../log'
+import {runtimeEnv} from '../env'
+import type {RuntimeEnv} from '../env'
 
 const {getGithubConnection, upsertGithubConnection, getGithubAppConfig} = githubRepo
 
@@ -21,18 +23,18 @@ let currentSession: DeviceFlowSession | null = null
 
 type GithubClientConfig = { clientId: string; clientSecret: string | null }
 
-async function loadGithubClient(): Promise<GithubClientConfig> {
+async function loadGithubClient(env: RuntimeEnv = runtimeEnv()): Promise<GithubClientConfig> {
     const stored = await getGithubAppConfig()
-    const clientId = stored?.clientId?.trim() || Bun.env.GITHUB_CLIENT_ID?.trim()
-    const clientSecret = stored?.clientSecret?.trim() || Bun.env.GITHUB_CLIENT_SECRET?.trim() || null
+    const clientId = stored?.clientId?.trim() || env.GITHUB_CLIENT_ID?.trim()
+    const clientSecret = stored?.clientSecret?.trim() || env.GITHUB_CLIENT_SECRET?.trim() || null
     if (!clientId) {
         throw new Error('GitHub OAuth client is not configured. Add a client ID in settings or set GITHUB_CLIENT_ID.')
     }
     return {clientId, clientSecret}
 }
 
-export async function startGithubDeviceFlow(): Promise<GitHubDeviceStartResponse> {
-    const {clientId} = await loadGithubClient()
+export async function startGithubDeviceFlow(env: RuntimeEnv = runtimeEnv()): Promise<GitHubDeviceStartResponse> {
+    const {clientId} = await loadGithubClient(env)
     const body = new URLSearchParams({client_id: clientId, scope: DEFAULT_SCOPE})
 
     const res = await fetch('https://github.com/login/device/code', {
@@ -114,7 +116,7 @@ async function fetchGithubAccount(token: string) {
     }
 }
 
-export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> {
+export async function pollGithubDeviceFlow(env: RuntimeEnv = runtimeEnv()): Promise<GitHubDevicePollResponse> {
     if (!currentSession) {
         return {status: 'error', message: 'Device flow not started'}
     }
@@ -129,7 +131,7 @@ export async function pollGithubDeviceFlow(): Promise<GitHubDevicePollResponse> 
         return {status: 'slow_down', retryAfterSeconds}
     }
 
-    const {clientId, clientSecret} = await loadGithubClient()
+    const {clientId, clientSecret} = await loadGithubClient(env)
 
     const body = new URLSearchParams({
         client_id: clientId,

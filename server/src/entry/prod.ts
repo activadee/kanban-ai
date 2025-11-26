@@ -1,14 +1,13 @@
 import { createApp } from '../app'
 import { createWebSocket, startServer, type StartOptions } from '../start'
 import { createStaticHandler } from './utils/spa-handler'
-import { log } from '../log'
-
-const env = () => ((typeof Bun !== 'undefined' ? Bun.env : process.env) as Record<string, string | undefined>)
+import { log, applyLogConfig } from '../log'
+import { loadConfig, setRuntimeConfig } from '../env'
 
 type ProdFetch = StartOptions['fetch']
 
-const createComposedFetch = (apiApp: ReturnType<typeof createApp>): ProdFetch => {
-  const serveStatic = createStaticHandler()
+const createComposedFetch = (apiApp: ReturnType<typeof createApp>, staticDir?: string): ProdFetch => {
+  const serveStatic = createStaticHandler(staticDir)
 
   return async function fetch(request, server) {
     const url = new URL(request.url)
@@ -29,6 +28,7 @@ const createComposedFetch = (apiApp: ReturnType<typeof createApp>): ProdFetch =>
 
 const run = async () => {
   const args = Bun.argv.slice(2)
+  const baseConfig = loadConfig()
 
   const getArg = (name: string, alias?: string): string | undefined => {
     const i = args.indexOf(name)
@@ -52,17 +52,26 @@ const run = async () => {
     return
   }
 
-  const port = Number(getArg('--port', '-p') ?? env().PORT ?? 3000)
-  const host = getArg('--host') ?? env().HOST ?? '127.0.0.1'
-  const migrationsDir = getArg('--migrations-dir') ?? env().KANBANAI_MIGRATIONS_DIR
+  const port = Number(getArg('--port', '-p') ?? baseConfig.port)
+  const host = getArg('--host') ?? baseConfig.host
+  const migrationsDir = getArg('--migrations-dir') ?? baseConfig.migrationsDir
+
+  const config = {
+    ...baseConfig,
+    host,
+    port: Number.isFinite(port) ? port : baseConfig.port,
+    migrationsDir: migrationsDir ?? baseConfig.migrationsDir,
+  }
+
+  setRuntimeConfig(config)
+  applyLogConfig(config)
 
   const { upgradeWebSocket, websocket } = await createWebSocket()
-  const apiApp = createApp({ upgradeWebSocket })
-  const fetch = createComposedFetch(apiApp)
+  const apiApp = createApp({ upgradeWebSocket, config })
+  const fetch = createComposedFetch(apiApp, config.staticDir)
 
   const { url, dbFile, migrationsDir: resolvedMigrationsDir } = await startServer({
-    host,
-    port,
+    config,
     fetch,
     websocket,
     migrationsDir,
