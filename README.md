@@ -18,12 +18,43 @@ Built on the bhvr monorepo template.
 
 ```
 .
+├── cli/      # kanban-ai npm package (downloads/runs the published binary)
 ├── client/   # React + Vite app (UI)
 ├── server/   # Hono API + agents + Git/GitHub integrations
 ├── shared/   # Shared TypeScript types and agent interfaces
 ├── docs/     # Design notes and references
 └── prd.mdx   # Product requirements & changelog
 ```
+
+## CLI Wrapper (`kanban-ai` on npm)
+
+The `cli/` workspace publishes a thin Node-based wrapper that installs as `kanban-ai`. It pulls the prebuilt KanbanAI
+binary for your platform from GitHub Releases (using `GITHUB_TOKEN`/`GH_TOKEN` when present), caches it under
+`$KANBANAI_HOME/.kanbanAI/binary` (or `~/.kanbanAI/binary` by default), and launches it with any pass-through flags you
+provide.
+
+Typical usage:
+
+```bash
+npx kanban-ai -- --help                    # forward help to the embedded KanbanAI binary
+npx kanban-ai --binary-version 0.4.0       # force a specific release (wrapper exits after launching the binary)
+```
+
+Wrapper flags:
+
+- `--binary-version <semver>` — override which GitHub release is launched (otherwise, the CLI checks for updates).
+- `--no-update-check` — skip GitHub lookups and reuse the newest cached binary.
+- `--cli-version` / `--help` / `--version` — inspect the wrapper or resolved binary version without launching it.
+
+Environment variables:
+
+- `KANBANAI_BINARY_VERSION` — same as `--binary-version` but via env.
+- `KANBANAI_HOME` — overrides the default cache directory base (`$HOME` otherwise).
+- `KANBANAI_GITHUB_REPO` — target a different release source (defaults to `activadee/kanban-ai`).
+- `KANBANAI_NO_UPDATE_CHECK`, `KANBANAI_ASSUME_YES`, `KANBANAI_ASSUME_NO` — automate update prompts/non-interactive runs.
+
+When publishing, trigger the **Release CLI (npm)** workflow to build the workspace and push a trusted `npm publish` via
+GitHub Actions.
 
 ## Prerequisites
 
