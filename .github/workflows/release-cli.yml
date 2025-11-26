@@ -52,11 +52,20 @@ jobs:
 
             - name: Set CLI package version
               working-directory: ./cli
-              run: npm version ${{ inputs.version }} --no-git-tag-version
+              run: |
+                  CURRENT=$(node -p "require('./package.json').version")
+                  if [ "$CURRENT" != "${{ inputs.version }}" ]; then
+                    npm version ${{ inputs.version }} --no-git-tag-version
+                  else
+                    echo "Version already ${CURRENT}, skipping npm version"
+                  fi
+
+            - name: Regenerate bun.lock after version bump
+              run: bun install
 
             - name: Commit version bump
               run: |
-                  git add cli/package.json
+                  git add cli/package.json bun.lock
                   git commit -m "chore(cli): release v${{ inputs.version }} [skip ci]" || echo "No changes to commit"
                   git push
 
