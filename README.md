@@ -51,11 +51,12 @@ GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
 # Optional: SQLite path (defaults to OS data dir, e.g., ~/.local/share/kanbanai/kanban.db)
 DATABASE_URL=sqlite:/absolute/path/to/kanban.db
 
-# Codex SDK
+# Codex SDK (requires the Codex CLI to be installed and reachable on PATH)
 CODEX_API_KEY=your_codex_or_openai_api_key
 # Optional: override base URL or codex binary path
 # OPENAI_BASE_URL=https://api.openai.com/v1
-# CODEX_PATH_OVERRIDE=/custom/path/to/codex
+# CODEX_PATH=/custom/path/if/not_on_path
+# CODEX_PATH_OVERRIDE=/custom/path/to/codex # takes precedence over CODEX_PATH
 ```
 
 - Client (`client/.env`, optional unless you need a custom API origin):
@@ -79,6 +80,9 @@ credentials, and the GitHub device-flow connection. Completing onboarding unlock
 any time via `/onboarding`.
 
 Note: the API server for development remains API-only. Run the Vite dev server for UI during development (`bun run dev:client`). For single-origin self-hosting, use the dedicated production server entrypoint (see Deployment).
+
+Codex-based Attempts run the local Codex CLI. Ensure the binary is already on your PATH (the agent will fail fast if not)
+or point KanbanAI at a custom install by setting `CODEX_PATH` or `CODEX_PATH_OVERRIDE` in `server/.env`.
 
 ## Initial Onboarding
 
