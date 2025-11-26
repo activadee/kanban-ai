@@ -1,3 +1,7 @@
+import {execFile} from 'node:child_process'
+import {promises as fs, constants as fsConstants} from 'node:fs'
+import {promisify} from 'node:util'
+
 import {Codex, type ThreadEvent, type CommandExecutionItem, type AgentMessageItem, type ReasoningItem, type McpToolCallItem, type FileChangeItem, type WebSearchItem, type TodoListItem, type ErrorItem, type ThreadOptions} from '@openai/codex-sdk'
 import type {AgentContext} from '../../types'
 import {SdkAgent} from '../../sdk'
@@ -5,7 +9,10 @@ import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
 import {StreamGrouper} from '../../sdk/stream-grouper'
 
-class CodexImpl extends SdkAgent<CodexProfile> {
+type CodexInstallation = { executablePath: string }
+const execFileAsync = promisify(execFile)
+
+class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     key = 'CODEX'
     label = 'Codex Agent'
     defaultProfile = defaultProfile
@@ -14,6 +21,46 @@ class CodexImpl extends SdkAgent<CodexProfile> {
 
     private groupers = new Map<string, StreamGrouper>()
     private execOutputs = new Map<string, string>()
+
+    private async verifyExecutable(path: string): Promise<string> {
+        const candidate = path.trim()
+        if (!candidate.length) throw new Error('codex executable path is empty')
+        const mode = process.platform === 'win32' ? fsConstants.F_OK : fsConstants.X_OK
+        try {
+            await fs.access(candidate, mode)
+            return candidate
+        } catch (err) {
+            throw new Error(`codex executable not accessible at ${candidate}: ${String(err)}`)
+        }
+    }
+
+    private async locateExecutable(): Promise<string> {
+        const envPath = process.env.CODEX_PATH_OVERRIDE ?? process.env.CODEX_PATH
+        if (envPath) return this.verifyExecutable(envPath)
+
+        const locator = process.platform === 'win32' ? 'where' : 'which'
+        try {
+            const {stdout} = await execFileAsync(locator, ['codex'])
+            const candidate = stdout
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .at(0)
+
+            if (candidate) return this.verifyExecutable(candidate)
+        } catch (err) {
+            // swallow and fall through to unified error below
+            void err
+        }
+
+        throw new Error('codex executable not found. Install the Codex CLI and ensure it is on PATH or set CODEX_PATH/CODEX_PATH_OVERRIDE.')
+    }
+
+    protected async detectInstallation(_profile: CodexProfile, ctx: AgentContext): Promise<CodexInstallation> {
+        const executablePath = await this.locateExecutable()
+        ctx.emit({type: 'log', level: 'info', message: `[${this.key}] using codex executable: ${executablePath}`})
+        return {executablePath}
+    }
 
     private threadOptions(profile: CodexProfile, ctx: AgentContext): ThreadOptions {
         return {
@@ -29,21 +76,36 @@ class CodexImpl extends SdkAgent<CodexProfile> {
         }
     }
 
-    protected async createClient(profile: CodexProfile, _ctx: AgentContext) {
+    protected async createClient(profile: CodexProfile, _ctx: AgentContext, installation: CodexInstallation) {
         const baseUrl = process.env.OPENAI_BASE_URL ?? process.env.CODEX_BASE_URL
         const apiKey = process.env.CODEX_API_KEY ?? process.env.OPENAI_API_KEY
-        const codexPathOverride = process.env.CODEX_PATH_OVERRIDE ?? process.env.CODEX_PATH
+        const codexPathOverride = installation.executablePath
         return new Codex({baseUrl, apiKey, codexPathOverride})
     }
 
-    protected async startSession(client: unknown, prompt: string, profile: CodexProfile, ctx: AgentContext, signal: AbortSignal) {
+    protected async startSession(
+        client: unknown,
+        prompt: string,
+        profile: CodexProfile,
+        ctx: AgentContext,
+        signal: AbortSignal,
+        _installation: CodexInstallation,
+    ) {
         const codex = client as Codex
         const thread = codex.startThread(this.threadOptions(profile, ctx))
         const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
     }
 
-    protected async resumeSession(client: unknown, prompt: string, sessionId: string, profile: CodexProfile, ctx: AgentContext, signal: AbortSignal) {
+    protected async resumeSession(
+        client: unknown,
+        prompt: string,
+        sessionId: string,
+        profile: CodexProfile,
+        ctx: AgentContext,
+        signal: AbortSignal,
+        _installation: CodexInstallation,
+    ) {
         const codex = client as Codex
         const thread = codex.resumeThread(sessionId, this.threadOptions(profile, ctx))
         const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})

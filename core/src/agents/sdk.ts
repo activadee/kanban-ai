@@ -6,8 +6,12 @@ export type SdkSession = {
     sessionId?: string
 }
 
+export type AgentInstallInfo = {
+    executablePath?: string
+}
+
 // Base class for SDK-backed agents (no local child processes).
-export abstract class SdkAgent<P> implements Agent<P> {
+export abstract class SdkAgent<P, I = AgentInstallInfo> implements Agent<P> {
     abstract key: string
     abstract label: string
     abstract defaultProfile: P
@@ -15,13 +19,16 @@ export abstract class SdkAgent<P> implements Agent<P> {
     capabilities?: Agent['capabilities']
     availability?: Agent['availability']
 
-    protected abstract createClient(profile: P, ctx: AgentContext): Promise<unknown> | unknown
+    protected abstract detectInstallation(profile: P, ctx: AgentContext): Promise<I>
+
+    protected abstract createClient(profile: P, ctx: AgentContext, install: I): Promise<unknown> | unknown
     protected abstract startSession(
         client: unknown,
         prompt: string,
         profile: P,
         ctx: AgentContext,
         signal: AbortSignal,
+        install: I,
     ): Promise<SdkSession>
     protected abstract resumeSession(
         client: unknown,
@@ -30,6 +37,7 @@ export abstract class SdkAgent<P> implements Agent<P> {
         profile: P,
         ctx: AgentContext,
         signal: AbortSignal,
+        install: I,
     ): Promise<SdkSession>
     protected abstract handleEvent(event: unknown, ctx: AgentContext, profile: P): void
 
@@ -65,9 +73,10 @@ export abstract class SdkAgent<P> implements Agent<P> {
         ctx.emit({type: 'log', level: 'info', message: `[${this.key}] start`})
         const controller = this.wireAbort(ctx)
         try {
+            const installation = await this.detectInstallation(profile, ctx)
             const prompt = this.buildPrompt(profile, ctx)
-            const client = await this.createClient(profile, ctx)
-            const sess = await this.startSession(client, prompt, profile, ctx, controller.signal)
+            const client = await this.createClient(profile, ctx, installation)
+            const sess = await this.startSession(client, prompt, profile, ctx, controller.signal, installation)
             if (sess.sessionId) ctx.emit({type: 'session', id: sess.sessionId})
             await this.runStream(sess, ctx, profile)
             ctx.emit({type: 'status', status: 'completed'})
@@ -87,8 +96,17 @@ export abstract class SdkAgent<P> implements Agent<P> {
         const controller = this.wireAbort(ctx)
         try {
             const prompt = ctx.followupPrompt ?? ''
-            const client = await this.createClient(profile, ctx)
-            const sess = await this.resumeSession(client, prompt, ctx.sessionId, profile, ctx, controller.signal)
+            const installation = await this.detectInstallation(profile, ctx)
+            const client = await this.createClient(profile, ctx, installation)
+            const sess = await this.resumeSession(
+                client,
+                prompt,
+                ctx.sessionId,
+                profile,
+                ctx,
+                controller.signal,
+                installation,
+            )
             if (sess.sessionId) ctx.emit({type: 'session', id: sess.sessionId})
             await this.runStream(sess, ctx, profile)
             ctx.emit({type: 'status', status: 'completed'})
