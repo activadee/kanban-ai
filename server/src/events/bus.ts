@@ -1,5 +1,5 @@
 import {EventEmitter} from 'events'
-import type {AppEventHandler, AppEventMap, AppEventName, AppEventPayload} from './types'
+import type {AppEventHandler, AppEventMap, AppEventName, AppEventPayload} from './index'
 
 export type EventUnsubscribe = () => void
 
