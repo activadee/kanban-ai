@@ -12,7 +12,7 @@ import {getGitOriginUrl, parseGithubOwnerRepo} from "core";
 import {tasks, projectDeps, projectTickets, ticketKeys, attempts, projectsRepo} from "core";
 import {agentProfiles, agentProfilesGlobal} from "core";
 import {getAgent} from "../agents/registry";
-import {importGithubIssues} from "../github/import";
+import {importGithubIssues} from "../github/import.service";
 import {listProjectBranches} from "./settings/git";
 import {problemJson} from "../http/problem";
 import {log} from '../log'

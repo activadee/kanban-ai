@@ -1,6 +1,7 @@
 import type {PRInfo} from 'shared'
 import {getGitOriginUrl, parseGithubOwnerRepo} from 'core'
 import {projectsRepo} from 'core'
+import {githubApiJson} from './github-client'
 
 const {getRepositoryPath} = projectsRepo
 
@@ -42,39 +43,40 @@ export async function listPullRequests(
     {state = 'open', branch}: ListPullRequestsOptions = {},
 ): Promise<PRInfo[]> {
     const {owner, repo} = await getOwnerRepo(projectId)
-    const url = new URL(`https://api.github.com/repos/${owner}/${repo}/pulls`)
-    url.searchParams.set('state', state)
-    url.searchParams.set('per_page', '50')
-    const trimmedBranch = branch?.trim()
-    if (trimmedBranch) url.searchParams.set('head', `${owner}:${trimmedBranch}`)
-    const res = await fetch(url.toString(), {
-        headers: {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`GitHub PR lookup failed (${res.status}): ${text}`)
+    try {
+        const trimmedBranch = branch?.trim()
+        const data = await githubApiJson<Array<any>>({
+            path: `/repos/${owner}/${repo}/pulls`,
+            token,
+            searchParams: {
+                state,
+                per_page: '50',
+                head: trimmedBranch ? `${owner}:${trimmedBranch}` : undefined,
+            },
+        })
+        return data.map(mapGithubPr)
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub PR lookup failed'))
+        }
+        throw error
     }
-    const data = (await res.json()) as Array<any>
-    return data.map(mapGithubPr)
 }
 
 export async function getPullRequest(projectId: string, token: string, number: number): Promise<PRInfo> {
     const {owner, repo} = await getOwnerRepo(projectId)
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${number}`, {
-        headers: {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`GitHub PR fetch failed (${res.status}): ${text}`)
+    try {
+        const data = await githubApiJson<any>({
+            path: `/repos/${owner}/${repo}/pulls/${number}`,
+            token,
+        })
+        return mapGithubPr(data)
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub PR fetch failed'))
+        }
+        throw error
     }
-    const data = (await res.json()) as any
-    return mapGithubPr(data)
 }
 
 export async function findOpenPR(projectId: string, token: string, branch: string): Promise<PRInfo | null> {
@@ -88,19 +90,21 @@ export async function createPR(
     {base, head, title, body, draft}: { base: string; head: string; title: string; body?: string; draft?: boolean },
 ): Promise<PRInfo> {
     const {owner, repo} = await getOwnerRepo(projectId)
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
-        method: 'POST',
-        headers: {
-            Accept: 'application/vnd.github+json',
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({base, head, title, body, draft: Boolean(draft)}),
-    })
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`GitHub PR create failed (${res.status}): ${text}`)
+    try {
+        const data = await githubApiJson<any>({
+            path: `/repos/${owner}/${repo}/pulls`,
+            token,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({base, head, title, body, draft: Boolean(draft)}),
+        })
+        return mapGithubPr(data)
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub PR create failed'))
+        }
+        throw error
     }
-    const data = (await res.json()) as any
-    return mapGithubPr(data)
 }
