@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { EventEmitter } from "node:events";
 import { describe, expect, it, vi } from "vitest";
 import { execBinary, readCliPackageVersion, runCli } from "./index";
@@ -22,15 +23,17 @@ vi.mock("./platform", () => ({
     }),
 }));
 
+const defaultCliOptions = {
+    binaryVersion: undefined,
+    noUpdateCheck: false,
+    showCliVersion: false,
+    showHelp: false,
+    showBinaryVersionOnly: false,
+    passThroughArgs: ["--foo", "bar"],
+};
+
 vi.mock("./args", () => ({
-    parseCliArgs: () => ({
-        binaryVersion: undefined,
-        noUpdateCheck: false,
-        showCliVersion: false,
-        showHelp: false,
-        showBinaryVersionOnly: false,
-        passThroughArgs: ["--foo", "bar"],
-    }),
+    parseCliArgs: vi.fn(() => ({ ...defaultCliOptions })),
 }));
 
 vi.mock("./github", () => ({
@@ -60,8 +63,9 @@ vi.mock("./github", () => ({
 }));
 
 vi.mock("./updates", () => ({
-    decideVersionToUse: () =>
+    decideVersionToUse: vi.fn(() =>
         Promise.resolve({ versionToUse: "1.0.0", fromCache: false }),
+    ),
 }));
 
 vi.mock("./download", () => ({
@@ -143,6 +147,17 @@ describe("index helpers", () => {
         expect(killSpy).toHaveBeenCalledWith(process.pid, "SIGTERM");
         killSpy.mockRestore();
     });
+
+    it("returns a default version when package.json cannot be read", () => {
+        const spy = vi.spyOn(fs, "readFileSync").mockImplementation(() => {
+            throw new Error("boom");
+        });
+
+        const version = readCliPackageVersion();
+        expect(version).toBe("0.0.0");
+
+        spy.mockRestore();
+    });
 });
 
 describe("runCli", () => {
@@ -161,6 +176,93 @@ describe("runCli", () => {
         } finally {
             // @ts-expect-error restore original
             process.exit = originalExit;
+        }
+    });
+
+    it("uses cached version path when decideVersionToUse returns fromCache=true", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const updatesModule = await import("./updates");
+        const decideMock =
+            updatesModule.decideVersionToUse as unknown as ReturnType<
+                typeof vi.fn
+            >;
+        (decideMock as any).mockReturnValueOnce(
+            Promise.resolve({ versionToUse: "1.0.0", fromCache: true }),
+        );
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await runCli();
+            expect(exitSpy).toHaveBeenCalled();
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+        }
+    });
+
+    it("fetches a non-latest release when decideVersionToUse picks an older version", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const updatesModule = await import("./updates");
+        const decideMock =
+            updatesModule.decideVersionToUse as unknown as ReturnType<
+                typeof vi.fn
+            >;
+        (decideMock as any).mockReturnValueOnce(
+            Promise.resolve({ versionToUse: "0.9.0", fromCache: false }),
+        );
+
+        const githubModule = await import("./github");
+        const getReleaseByVersionSpy = vi.spyOn(
+            githubModule,
+            "getReleaseByVersion",
+        );
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await runCli();
+            expect(getReleaseByVersionSpy).toHaveBeenCalledWith(
+                "owner/repo",
+                "0.9.0",
+            );
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            getReleaseByVersionSpy.mockRestore();
+        }
+    });
+
+    it("prints binary version only when requested", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const argsModule = await import("./args");
+        const parseCliArgsMock =
+            argsModule.parseCliArgs as unknown as ReturnType<typeof vi.fn>;
+        (parseCliArgsMock as any).mockReturnValueOnce({
+            ...defaultCliOptions,
+            showBinaryVersionOnly: true,
+        });
+
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await runCli();
+            expect(logSpy).toHaveBeenCalledWith("1.0.0");
+            expect(exitSpy).toHaveBeenCalledWith(0);
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            logSpy.mockRestore();
         }
     });
 });

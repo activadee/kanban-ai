@@ -9,6 +9,7 @@ import { parseCliArgs } from "./args";
 import { getLatestRelease, getReleaseByVersion } from "./github";
 import { decideVersionToUse } from "./updates";
 import { ensureBinaryDownloaded } from "./download";
+import { getBinaryPath, getCachedVersionsForPlatform } from "./cache";
 import { printHelp } from "./help";
 
 export async function runCli(): Promise<void> {
@@ -47,15 +48,51 @@ export async function runCli(): Promise<void> {
 
     const explicitVersion = cliOptions.binaryVersion;
     let targetVersion: string;
-    let release;
+    let binaryPath: string | undefined;
+    let release: any;
 
     if (explicitVersion) {
-        release = await getReleaseByVersion(
-            effectiveEnv.githubRepo,
+        // Pinned version: prefer cached binary and only hit GitHub if missing.
+        const candidatePath = getBinaryPath(
+            effectiveEnv.baseCacheDir,
             explicitVersion,
+            platformArch,
+            binaryInfo,
         );
-        targetVersion = explicitVersion;
+        if (fs.existsSync(candidatePath)) {
+            targetVersion = explicitVersion;
+            binaryPath = candidatePath;
+        } else {
+            targetVersion = explicitVersion;
+            release = await getReleaseByVersion(
+                effectiveEnv.githubRepo,
+                explicitVersion,
+            );
+        }
+    } else if (effectiveEnv.noUpdateCheck || effectiveEnv.assumeNo) {
+        // No-update mode: use latest cached version if available, without contacting GitHub.
+        const cachedVersions = getCachedVersionsForPlatform(
+            effectiveEnv.baseCacheDir,
+            platformArch,
+            binaryInfo,
+        );
+        if (cachedVersions.length > 0) {
+            targetVersion = cachedVersions[0];
+            binaryPath = getBinaryPath(
+                effectiveEnv.baseCacheDir,
+                targetVersion,
+                platformArch,
+                binaryInfo,
+            );
+        } else {
+            // No cached versions yet: fall back to a one-time fetch of the latest release.
+            const { version: latestRemoteVersion, release: latestRelease } =
+                await getLatestRelease(effectiveEnv.githubRepo);
+            targetVersion = latestRemoteVersion;
+            release = latestRelease;
+        }
     } else {
+        // Default behavior: consult GitHub to pick the appropriate version, then use cache or download.
         const { version: latestRemoteVersion, release: latestRelease } =
             await getLatestRelease(effectiveEnv.githubRepo);
         const decision = await decideVersionToUse({
@@ -74,7 +111,14 @@ export async function runCli(): Promise<void> {
             );
         }
 
-        if (targetVersion === latestRemoteVersion) {
+        if (decision.fromCache) {
+            binaryPath = getBinaryPath(
+                effectiveEnv.baseCacheDir,
+                targetVersion,
+                platformArch,
+                binaryInfo,
+            );
+        } else if (targetVersion === latestRemoteVersion) {
             release = latestRelease;
         } else {
             release = await getReleaseByVersion(
@@ -84,12 +128,18 @@ export async function runCli(): Promise<void> {
         }
     }
 
-    const binaryPath = await ensureBinaryDownloaded({
-        baseCacheDir: effectiveEnv.baseCacheDir,
-        version: targetVersion,
-        binaryInfo,
-        release,
-    });
+    if (!binaryPath) {
+        if (!release) {
+            throw new Error("Unable to determine KanbanAI binary to execute.");
+        }
+
+        binaryPath = await ensureBinaryDownloaded({
+            baseCacheDir: effectiveEnv.baseCacheDir,
+            version: targetVersion,
+            binaryInfo,
+            release,
+        });
+    }
 
     if (cliOptions.showBinaryVersionOnly) {
         // eslint-disable-next-line no-console
@@ -135,6 +185,7 @@ export function execBinary(binaryPath: string, args: string[]): Promise<void> {
     });
 }
 
+/* c8 ignore start */
 // Execute only when run directly (not when imported in tests).
 if (require.main === module) {
     runCli().catch((err) => {
@@ -143,3 +194,4 @@ if (require.main === module) {
         process.exit(1);
     });
 }
+/* c8 ignore stop */
