@@ -23,7 +23,11 @@
 
 ## Key Entry Points
 
-- `core/git/service.ts`: primary git operations, each returning domain-friendly DTOs.
+- `core/git/service.ts`: primary git operations, re-exported from:
+  - `core/git/events.ts` (event bus binding and git event emitters)
+  - `core/git/identity.ts` (author name/email resolution and config)
+  - `core/git/repo-service.ts` (project-repo operations by `projectId`)
+  - `core/git/worktree-service.ts` (worktree-path operations for attempts)
 - `core/git/listeners.ts`: event handlers for attempt-driven git automation.
 - `branch.ts`: helper for branch template rendering.
 
