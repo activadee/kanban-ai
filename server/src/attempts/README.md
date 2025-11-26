@@ -28,7 +28,11 @@
 ## Key Entry Points
 
 - `service.ts`: attempt lifecycle logic and event emission.
-- `routes.ts`: HTTP routes for attempts, git actions, follow-ups, and editor launch.
+- `routes.ts`: HTTP router wiring for attempts, git actions, follow-ups, and editor launch.
+- `attempts.handlers.ts`: attempt lifecycle/log handlers (details, stop, logs, follow-ups, automation).
+- `attempts.editor.handlers.ts`: editor launch handler for `/attempts/:id/open-editor`.
+- `attempts.git.handlers.ts`: git helpers scoped to attempt worktrees (status, file, commit, push, merge).
+- `attempts.pr.handlers.ts`: pull request helper handlers for attempt branches.
 - `autocommit.ts`: shared handler invoked by git listener for `attempt.autocommit.requested`.
 
 ## Open Tasks
