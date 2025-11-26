@@ -239,6 +239,44 @@ describe("runCli", () => {
         }
     });
 
+    it("falls back to cached version when update check fails", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const githubModule = await import("./github");
+        const getLatestReleaseSpy = vi
+            .spyOn(githubModule, "getLatestRelease")
+            .mockRejectedValueOnce(new Error("offline"));
+
+        const cacheModule = await import("./cache");
+        const getCachedVersionsSpy = vi
+            .spyOn(cacheModule, "getCachedVersionsForPlatform")
+            .mockReturnValueOnce(["1.0.0"]);
+
+        const getBinaryPathSpy = vi
+            .spyOn(cacheModule, "getBinaryPath")
+            .mockReturnValueOnce(
+                "/tmp/kanbanai/1.0.0/linux/x64/kanban-ai-linux-x64",
+            );
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await runCli();
+            expect(getLatestReleaseSpy).toHaveBeenCalled();
+            expect(getCachedVersionsSpy).toHaveBeenCalled();
+            expect(getBinaryPathSpy).toHaveBeenCalled();
+            expect(exitSpy).toHaveBeenCalled();
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            getLatestReleaseSpy.mockRestore();
+            getCachedVersionsSpy.mockRestore();
+            getBinaryPathSpy.mockRestore();
+        }
+    });
+
     it("prints binary version only when requested", async () => {
         const exitSpy = vi.fn();
         const originalExit = process.exit as unknown;

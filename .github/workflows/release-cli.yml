@@ -45,12 +45,17 @@ jobs:
               working-directory: ./cli
               run: bun run build
 
-            - name: npm publish (dry run)
-              if: ${{ inputs.dry_run }}
-              working-directory: ./cli
-              run: npm publish --access public --dry-run
+      - name: npm publish (dry run)
+        if: ${{ inputs.dry_run }}
+        working-directory: ./cli
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: npm publish --access public --dry-run
 
-            - name: npm publish
-              if: ${{ !inputs.dry_run }}
-              working-directory: ./cli
-              run: npm publish --access public
+      - name: npm publish
+        if: ${{ !inputs.dry_run }}
+        working-directory: ./cli
+        env:
+          # Instruct npm to use GitHub OIDC (trusted publishing) instead of token-based auth.
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: npm publish --access public

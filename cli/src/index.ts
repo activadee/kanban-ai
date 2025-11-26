@@ -93,38 +93,61 @@ export async function runCli(): Promise<void> {
         }
     } else {
         // Default behavior: consult GitHub to pick the appropriate version, then use cache or download.
-        const { version: latestRemoteVersion, release: latestRelease } =
-            await getLatestRelease(effectiveEnv.githubRepo);
-        const decision = await decideVersionToUse({
-            env: effectiveEnv,
-            platformArch,
-            binaryInfo,
-            latestRemoteVersion,
-            explicitVersion: undefined,
-        });
-        targetVersion = decision.versionToUse;
+        try {
+            const { version: latestRemoteVersion, release: latestRelease } =
+                await getLatestRelease(effectiveEnv.githubRepo);
+            const decision = await decideVersionToUse({
+                env: effectiveEnv,
+                platformArch,
+                binaryInfo,
+                latestRemoteVersion,
+                explicitVersion: undefined,
+            });
+            targetVersion = decision.versionToUse;
 
-        if (decision.fromCache && targetVersion !== latestRemoteVersion) {
-            // eslint-disable-next-line no-console
-            console.error(
-                `Using cached KanbanAI ${targetVersion}. A newer version ${latestRemoteVersion} is available on GitHub.`,
-            );
-        }
+            if (decision.fromCache && targetVersion !== latestRemoteVersion) {
+                // eslint-disable-next-line no-console
+                console.error(
+                    `Using cached KanbanAI ${targetVersion}. A newer version ${latestRemoteVersion} is available on GitHub.`,
+                );
+            }
 
-        if (decision.fromCache) {
-            binaryPath = getBinaryPath(
+            if (decision.fromCache) {
+                binaryPath = getBinaryPath(
+                    effectiveEnv.baseCacheDir,
+                    targetVersion,
+                    platformArch,
+                    binaryInfo,
+                );
+            } else if (targetVersion === latestRemoteVersion) {
+                release = latestRelease;
+            } else {
+                release = await getReleaseByVersion(
+                    effectiveEnv.githubRepo,
+                    targetVersion,
+                );
+            }
+        } catch (err) {
+            const cachedVersions = getCachedVersionsForPlatform(
                 effectiveEnv.baseCacheDir,
-                targetVersion,
                 platformArch,
                 binaryInfo,
             );
-        } else if (targetVersion === latestRemoteVersion) {
-            release = latestRelease;
-        } else {
-            release = await getReleaseByVersion(
-                effectiveEnv.githubRepo,
-                targetVersion,
-            );
+            if (cachedVersions.length > 0) {
+                targetVersion = cachedVersions[0];
+                binaryPath = getBinaryPath(
+                    effectiveEnv.baseCacheDir,
+                    targetVersion,
+                    platformArch,
+                    binaryInfo,
+                );
+                // eslint-disable-next-line no-console
+                console.error(
+                    `Could not check for updates on GitHub (${(err as Error).message}). Using cached KanbanAI ${targetVersion}.`,
+                );
+            } else {
+                throw err;
+            }
         }
     }
 
