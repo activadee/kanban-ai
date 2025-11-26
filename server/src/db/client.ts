@@ -29,7 +29,9 @@ const normalizeDbPath = (raw: string) => {
       const filePath = url.pathname
       return path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath)
     } catch {
-      return raw
+      // Handle relative file:./foo.db URIs that URL() rejects
+      const stripped = raw.replace(/^file:/, '').replace(/^sqlite:/, '')
+      return path.isAbsolute(stripped) ? stripped : path.resolve(process.cwd(), stripped)
     }
   }
 
@@ -39,8 +41,9 @@ const normalizeDbPath = (raw: string) => {
 const resolveDbPath = (config: ServerConfig) => {
   const fromEnv = config.databaseUrl
   if (fromEnv) {
-    if (fromEnv.startsWith('file:') || fromEnv.startsWith('sqlite:')) return fromEnv
-    return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), normalizeDbPath(fromEnv))
+    const normalized = normalizeDbPath(fromEnv)
+    if (normalized.startsWith('file:') || normalized.startsWith('sqlite:')) return normalized
+    return path.isAbsolute(normalized) ? normalized : path.resolve(process.cwd(), normalized)
   }
 
   return path.join(resolveDataDir(config.env), 'kanban.db')
