@@ -8,9 +8,10 @@
 
 ## Data & Event Flow
 
-1. **Connection Lifecycle (`tasks/ws.ts`)**
+1. **Connection Lifecycle (`ws/kanban-handlers.ts`, `ws/dashboard-handlers.ts`)**
     - Validates project access, sends `hello` and initial `state` payload, then delegates create/move/update/delete
       commands to the tasks service.
+    - Dashboard handlers fan out the latest overview on connect; channel id is fixed to `dashboard`.
 2. **Event Broadcasting (`ws/listeners.ts`)**
     - Subscribes to `board.state.changed`, `attempt.*`, `git.*`, `github.pr.created`, `agent.profile.changed`, and
       `agent.registered`.
@@ -21,7 +22,8 @@
 
 ## Key Entry Points
 
-- `tasks/ws.ts`: handshake + command routing.
+- `ws/kanban-handlers.ts`: handshake + command routing for board sockets.
+- `ws/dashboard-handlers.ts`: dashboard overview socket (read-only).
 - `ws/listeners.ts`: event-to-socket translation.
 - `ws/bus.ts`: socket registry and broadcast helper.
 
