@@ -43,9 +43,9 @@ export async function getStatus(projectId: string): Promise<GitStatus> {
         const hasUpstream = st.tracking && st.tracking.length > 0
         if (hasUpstream) {
             const out = await g.raw(['rev-list', '--left-right', '--count', 'HEAD...@{upstream}'])
-            const [behindStr, aheadStr] = out.trim().split(/\s+/)
-            behind = Number(behindStr || 0)
+            const [aheadStr, behindStr] = out.trim().split(/\s+/)
             ahead = Number(aheadStr || 0)
+            behind = Number(behindStr || 0)
         }
     } catch {
     }
@@ -222,4 +222,3 @@ export async function getFileContent(
         return null
     }
 }
-

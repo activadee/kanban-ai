@@ -133,7 +133,7 @@ describe("git/service repository status and content", () => {
                 { path: "bar", index: " ", working_dir: "M", from: undefined },
             ],
         } as any);
-        git.raw.mockResolvedValue("1\t2");
+        git.raw.mockResolvedValue("2\t1");
         gitInstances.set("/repos/app", git);
 
         const status = await getStatus("proj-3");
