@@ -1,134 +1,149 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock('../src/attempts/repo', () => ({
+vi.mock("../src/attempts/repo", () => ({
     getAttemptForCard: vi.fn(),
     updateAttempt: vi.fn(),
-}))
+}));
 
-vi.mock('../src/projects/repo', () => ({
+vi.mock("../src/projects/repo", () => ({
     getRepositoryPath: vi.fn(),
-}))
+}));
 
-vi.mock('../src/ports/worktree', () => ({
+vi.mock("../src/ports/worktree", () => ({
     removeWorktree: vi.fn(),
-}))
+}));
 
-const branchLocal = vi.fn()
-const deleteLocalBranch = vi.fn()
-const checkout = vi.fn()
+const branchLocal = vi.fn();
+const deleteLocalBranch = vi.fn();
+const checkout = vi.fn();
 
-vi.mock('simple-git', () => ({
-    default: (..._args: unknown[]) => ({branchLocal, deleteLocalBranch, checkout}),
-}))
+vi.mock("simple-git", () => ({
+    default: (..._args: unknown[]) => ({
+        branchLocal,
+        deleteLocalBranch,
+        checkout,
+    }),
+}));
 
-import {cleanupCardWorkspace} from '../src/tasks/cleanup'
-import {getAttemptForCard, updateAttempt} from '../src/attempts/repo'
-import {getRepositoryPath} from '../src/projects/repo'
-import {removeWorktree} from '../src/ports/worktree'
+import { cleanupCardWorkspace } from "../src/tasks/cleanup";
+import { getAttemptForCard, updateAttempt } from "../src/attempts/repo";
+import { getRepositoryPath } from "../src/projects/repo";
+import { removeWorktree } from "../src/ports/worktree";
 
-describe('tasks/cleanup', () => {
+describe("tasks/cleanup", () => {
     beforeEach(() => {
-        vi.clearAllMocks()
-        branchLocal.mockReset()
-        deleteLocalBranch.mockReset()
-        checkout.mockReset()
-    })
+        vi.clearAllMocks();
+        branchLocal.mockReset();
+        deleteLocalBranch.mockReset();
+        checkout.mockReset();
+        branchLocal.mockResolvedValue({ all: [], current: "main" });
+    });
 
-    it('removes worktree and branch when a Done card has an attempt', async () => {
-        ;(getAttemptForCard as any).mockResolvedValue({
-            id: 'att-1',
-            boardId: 'board-1',
-            cardId: 'card-1',
-            agent: 'X',
-            status: 'succeeded',
-            baseBranch: 'main',
-            branchName: 'feature/done',
-            worktreePath: '/tmp/wt',
+    it("removes worktree and branch when a Done card has an attempt", async () => {
+        (getAttemptForCard as any).mockResolvedValue({
+            id: "att-1",
+            boardId: "board-1",
+            cardId: "card-1",
+            agent: "X",
+            status: "succeeded",
+            baseBranch: "main",
+            branchName: "feature/done",
+            worktreePath: "/tmp/wt",
             createdAt: new Date(),
             updatedAt: new Date(),
-        })
-        ;(getRepositoryPath as any).mockResolvedValue('/repo/path')
-        branchLocal.mockResolvedValue({all: ['main', 'feature/done'], current: 'main'})
+        });
+        (getRepositoryPath as any).mockResolvedValue("/repo/path");
+        branchLocal.mockResolvedValue({
+            all: ["main", "feature/done"],
+            current: "main",
+        });
 
-        const result = await cleanupCardWorkspace('board-1', 'card-1')
+        const result = await cleanupCardWorkspace("board-1", "card-1");
 
-        expect(result).toEqual({worktreeRemoved: true, branchRemoved: true})
-        expect(removeWorktree).toHaveBeenCalledWith('/repo/path', '/tmp/wt', {
-            projectId: 'board-1',
-            attemptId: 'att-1',
-        })
-        expect(deleteLocalBranch).toHaveBeenCalledWith('feature/done', true)
-        expect(updateAttempt).toHaveBeenCalledWith('att-1', expect.objectContaining({worktreePath: null}))
-    })
+        expect(result).toEqual({ worktreeRemoved: true, branchRemoved: true });
+        expect(removeWorktree).toHaveBeenCalledWith("/repo/path", "/tmp/wt", {
+            projectId: "board-1",
+            attemptId: "att-1",
+        });
+        expect(deleteLocalBranch).toHaveBeenCalledWith("feature/done", true);
+        expect(updateAttempt).toHaveBeenCalledWith(
+            "att-1",
+            expect.objectContaining({ worktreePath: null }),
+        );
+    });
 
-    it('skips branch deletion when attempt branch matches base branch', async () => {
-        ;(getAttemptForCard as any).mockResolvedValue({
-            id: 'att-2',
-            boardId: 'board-1',
-            cardId: 'card-1',
-            agent: 'X',
-            status: 'succeeded',
-            baseBranch: 'main',
-            branchName: 'main',
-            worktreePath: '/tmp/wt2',
+    it("skips branch deletion when attempt branch matches base branch", async () => {
+        (getAttemptForCard as any).mockResolvedValue({
+            id: "att-2",
+            boardId: "board-1",
+            cardId: "card-1",
+            agent: "X",
+            status: "succeeded",
+            baseBranch: "main",
+            branchName: "main",
+            worktreePath: "/tmp/wt2",
             createdAt: new Date(),
             updatedAt: new Date(),
-        })
-        ;(getRepositoryPath as any).mockResolvedValue('/repo/path')
+        });
+        (getRepositoryPath as any).mockResolvedValue("/repo/path");
 
-        const result = await cleanupCardWorkspace('board-1', 'card-1')
+        const result = await cleanupCardWorkspace("board-1", "card-1");
 
-        expect(result).toEqual({worktreeRemoved: true, branchRemoved: false})
-        expect(removeWorktree).toHaveBeenCalledWith('/repo/path', '/tmp/wt2', {
-            projectId: 'board-1',
-            attemptId: 'att-2',
-        })
-        expect(branchLocal).not.toHaveBeenCalled()
-        expect(deleteLocalBranch).not.toHaveBeenCalled()
-    })
+        expect(result).toEqual({ worktreeRemoved: true, branchRemoved: false });
+        expect(removeWorktree).toHaveBeenCalledWith("/repo/path", "/tmp/wt2", {
+            projectId: "board-1",
+            attemptId: "att-2",
+        });
+        expect(branchLocal).not.toHaveBeenCalled();
+        expect(deleteLocalBranch).not.toHaveBeenCalled();
+    });
 
-    it('skips cleanup when attempt is still running', async () => {
-        ;(getAttemptForCard as any).mockResolvedValue({
-            id: 'att-3',
-            boardId: 'board-1',
-            cardId: 'card-1',
-            agent: 'X',
-            status: 'running',
-            baseBranch: 'main',
-            branchName: 'feature/run',
-            worktreePath: '/tmp/wt3',
+    it("skips cleanup when attempt is still running", async () => {
+        (getAttemptForCard as any).mockResolvedValue({
+            id: "att-3",
+            boardId: "board-1",
+            cardId: "card-1",
+            agent: "X",
+            status: "running",
+            baseBranch: "main",
+            branchName: "feature/run",
+            worktreePath: "/tmp/wt3",
             createdAt: new Date(),
             updatedAt: new Date(),
-        })
-        ;(getRepositoryPath as any).mockResolvedValue('/repo/path')
+        });
+        (getRepositoryPath as any).mockResolvedValue("/repo/path");
 
-        const result = await cleanupCardWorkspace('board-1', 'card-1')
+        const result = await cleanupCardWorkspace("board-1", "card-1");
 
-        expect(result).toEqual({worktreeRemoved: false, branchRemoved: false, skipped: 'in_progress'})
-        expect(removeWorktree).not.toHaveBeenCalled()
-        expect(deleteLocalBranch).not.toHaveBeenCalled()
-        expect(updateAttempt).not.toHaveBeenCalled()
-    })
+        expect(result).toEqual({
+            worktreeRemoved: false,
+            branchRemoved: false,
+            skipped: "in_progress",
+        });
+        expect(removeWorktree).not.toHaveBeenCalled();
+        expect(deleteLocalBranch).not.toHaveBeenCalled();
+        expect(updateAttempt).not.toHaveBeenCalled();
+    });
 
-    it('keeps worktreePath when removal fails', async () => {
-        ;(getAttemptForCard as any).mockResolvedValue({
-            id: 'att-4',
-            boardId: 'board-1',
-            cardId: 'card-1',
-            agent: 'X',
-            status: 'succeeded',
-            baseBranch: 'main',
-            branchName: 'feature/fail',
-            worktreePath: '/tmp/wt4',
+    it("keeps worktreePath when removal fails", async () => {
+        (getAttemptForCard as any).mockResolvedValue({
+            id: "att-4",
+            boardId: "board-1",
+            cardId: "card-1",
+            agent: "X",
+            status: "succeeded",
+            baseBranch: "main",
+            branchName: "feature/fail",
+            worktreePath: "/tmp/wt4",
             createdAt: new Date(),
             updatedAt: new Date(),
-        })
-        ;(getRepositoryPath as any).mockResolvedValue('/repo/path')
-        ;(removeWorktree as any).mockRejectedValue(new Error('boom'))
+        });
+        (getRepositoryPath as any).mockResolvedValue("/repo/path");
+        (removeWorktree as any).mockRejectedValue(new Error("boom"));
 
-        const result = await cleanupCardWorkspace('board-1', 'card-1')
+        const result = await cleanupCardWorkspace("board-1", "card-1");
 
-        expect(result.worktreeRemoved).toBe(false)
-        expect(updateAttempt).not.toHaveBeenCalled()
-    })
-})
+        expect(result.worktreeRemoved).toBe(false);
+        expect(updateAttempt).not.toHaveBeenCalled();
+    });
+});
