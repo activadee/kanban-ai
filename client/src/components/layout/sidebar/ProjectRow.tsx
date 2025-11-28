@@ -21,10 +21,10 @@ export function ProjectRow({
                 type="button"
                 onClick={() => navigate(`/projects/${project.id}`)}
                 aria-current={active}
-                className="flex flex-1 items-center gap-2 px-1"
+                className="flex flex-1 items-center gap-2 px-1 text-sm"
             >
                 <Folder className="size-4"/>
-                <span className="flex-1 truncate text-left">{project.name}</span>
+                <span className="flex-1 truncate text-left font-medium">{project.name}</span>
             </button>
             <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
                 <Button
@@ -55,4 +55,3 @@ export function ProjectRow({
         </div>
     )
 }
-

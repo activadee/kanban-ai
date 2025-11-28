@@ -36,9 +36,9 @@ export function ProjectsList({
                     <div className="space-y-1">
                         {loading ? (
                             <div
-                                className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">Loading…</div>
+                                className="rounded-md bg-muted/40 px-3 py-2 text-sm text-muted-foreground">Loading…</div>
                         ) : projects.length === 0 ? (
-                            <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">No
+                            <div className="rounded-md bg-muted/40 px-3 py-2 text-sm text-muted-foreground">No
                                 projects</div>
                         ) : (
                             projects.map((project) => (
@@ -57,4 +57,3 @@ export function ProjectsList({
         </div>
     )
 }
-
