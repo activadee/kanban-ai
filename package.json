@@ -42,6 +42,7 @@
         "@vitest/coverage-v8": "^4.0.12",
         "baseline-browser-mapping": "^2.8.31",
         "bun-types": "latest",
+        "jsdom": "^27.2.0",
         "turbo": "^2.5.5",
         "vitest": "^4.0.12"
     },

@@ -12,6 +12,21 @@ import type {
 import {SERVER_URL} from '@/lib/env'
 import {parseApiResponse} from '@/api/http'
 
+export type EnhanceTicketRequestParams = {
+    projectId: string
+    title: string
+    description?: string
+    agent?: string
+    profileId?: string
+}
+
+export type EnhanceTicketResponse = {
+    ticket: {
+        title: string
+        description: string
+    }
+}
+
 export async function listProjects(): Promise<ProjectSummary[]> {
     const res = await fetch(`${SERVER_URL}/projects`)
     return parseApiResponse<ProjectSummary[]>(res)
@@ -85,4 +100,21 @@ export async function importGithubIssues(boardId: string, payload: ImportIssuesR
         body: JSON.stringify(payload),
     })
     return parseApiResponse<ImportIssuesResponse>(res)
+}
+
+export async function enhanceTicketRequest(params: EnhanceTicketRequestParams): Promise<EnhanceTicketResponse> {
+    const {projectId, title, description, agent, profileId} = params
+
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/tickets/enhance`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            title,
+            description,
+            agent,
+            profileId,
+        }),
+    })
+
+    return parseApiResponse<EnhanceTicketResponse>(res)
 }

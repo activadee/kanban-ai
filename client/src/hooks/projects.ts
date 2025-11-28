@@ -22,6 +22,9 @@ import {
     listProjects,
     updateProjectName,
     updateProjectSettings,
+    enhanceTicketRequest,
+    type EnhanceTicketRequestParams,
+    type EnhanceTicketResponse,
 } from '@/api/projects'
 import {projectsKeys, projectSettingsKeys} from '@/lib/queryClient'
 
@@ -123,6 +126,13 @@ export function useImportGithubIssues(options?: UseMutationOptions<ImportIssuesR
 }>) {
     return useMutation({
         mutationFn: ({boardId, payload}) => importGithubIssues(boardId, payload),
+        ...options,
+    })
+}
+
+export function useEnhanceTicket(options?: UseMutationOptions<EnhanceTicketResponse, Error, EnhanceTicketRequestParams>) {
+    return useMutation<EnhanceTicketResponse, Error, EnhanceTicketRequestParams>({
+        mutationFn: (params: EnhanceTicketRequestParams) => enhanceTicketRequest(params),
         ...options,
     })
 }
