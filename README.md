@@ -80,4 +80,4 @@ Then open the local URL printed by Mint.
 
 ## License
 
-MIT © 2025 Steve Simkins
+MIT
