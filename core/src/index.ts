@@ -37,6 +37,7 @@ export {setWorktreeProvider} from './ports/worktree'
 export * as agentRegistry from './agents/registry'
 export {bindAgentEventBus, registerAgent, getAgent, listAgents} from './agents/registry'
 export * as agentTypes from './agents/types'
+export {agentEnhanceTicket} from './agents/enhance'
 export type {
     Agent,
     AgentInfo,
