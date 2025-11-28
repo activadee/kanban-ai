@@ -30,3 +30,6 @@
 - Add UI feedback (toast/badge) reacting to `agent.profile.changed`/`agent.registered` events.
 - Support dynamic agent loading/unloading at runtime (emit events accordingly).
 - Provide tests covering registry event emission and profile CRUD flows.
+---
+title: Server: Agents module
+---

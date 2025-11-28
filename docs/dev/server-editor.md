@@ -35,3 +35,6 @@
 - Capture PID/metadata on successful launches (when available) and include in events.
 - Add listener to surface failure events in the UI with user-friendly messaging.
 - Provide tests around command resolution and environment detection.
+---
+title: Server: Editor module
+---

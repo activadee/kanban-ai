@@ -29,3 +29,6 @@
 - Add listeners for `github.connected/disconnected/issues.imported` to refresh repo metadata caches.
 - Implement background sync to reconcile issue state changes.
 - Add tests for device flow edge cases and import event emission.
+---
+title: Server: GitHub module
+---

@@ -26,3 +26,6 @@
 
 - Unit-test project-deletion worktree cleanup path.
 - Surface errors back to the UI when cleanup fails (currently logged only).
+---
+title: Server: Filesystem module
+---

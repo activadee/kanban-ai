@@ -62,6 +62,24 @@
             {
                 "group": "Operations",
                 "pages": ["ops/cli-and-binaries"]
+            },
+            {
+                "group": "Developer Reference",
+                "pages": [
+                    "dev/client",
+                    "dev/server",
+                    "dev/server-projects",
+                    "dev/server-tasks",
+                    "dev/server-attempts",
+                    "dev/server-git",
+                    "dev/server-fs",
+                    "dev/server-ws",
+                    "dev/server-editor",
+                    "dev/server-agents",
+                    "dev/server-settings",
+                    "dev/server-github",
+                    "logger"
+                ]
             }
         ]
     }

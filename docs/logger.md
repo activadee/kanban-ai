@@ -283,4 +283,7 @@ These are optional follow-ups if you want more control later:
 - Wire Hono’s request logger into it for optional per-request logging.
 - Route all app errors, startup logs, and key service-level events through `log.*` instead of `console.*`.
 - Adopt incrementally: start with core app and entrypoints, then move into services and routes as you touch them.
+---
+title: Logging plan
+---
 

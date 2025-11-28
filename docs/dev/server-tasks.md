@@ -33,3 +33,6 @@
 - Replace the follow-up fetch (`get_state`) with incremental diff streaming to reduce payload size.
 - Add integration/unit tests for card movement + listener workflows.
 - Support customizable workflows (column templates or per-project column titles).
+---
+title: Server: Tasks module
+---

@@ -18,3 +18,6 @@ open http://localhost:3000
 - `start.ts` runs migrations, registers the core DB provider, then starts the Bun server.
 - `app.ts` wires routes/services using the injected config/events/services, without reading env directly.
 - `entry/dev.ts` and `entry/prod.ts` compose the pieces (env → db → core → app → entrypoint).
+---
+title: Server overview
+---

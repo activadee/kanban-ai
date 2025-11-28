@@ -32,3 +32,6 @@
 - Replace mutation-initiated `get_state` fetches with event-driven board diffs once available.
 - Add heartbeats / reconnect/backoff strategy for more resilient connections.
 - Provide tests ensuring each event type broadcasts the expected websocket payload.
+---
+title: Server: WebSocket module
+---

@@ -27,3 +27,6 @@
 - Extend events/listeners to notify interested modules (e.g., editor defaults, git defaults) when settings change.
 - Add validation and persistence for future editor command templates per agent.
 - Write tests covering cache refresh and failure scenarios.
+---
+title: Server: Settings module
+---

@@ -36,3 +36,6 @@
 - Add listener for `attempt.completed` to optionally refresh status/diffs after merges.
 - Cache repeated fetch operations (e.g., resolve base refs) within a request scope.
 - Provide unit tests for event emission (status, commit, push) and auto-commit handler.
+---
+title: Server: Git module
+---

@@ -40,3 +40,6 @@
 - Add unit/integration tests covering attempt events (success, failure, stop).
 - Extend stop handling to cancel background processes and surface status in UI.
 - Consider resumable state caching for long-running agents.
+---
+title: Server: Attempts module
+---

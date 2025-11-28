@@ -34,3 +34,6 @@
 - Move event emission out of routes and into service layer for reusability/testing.
 - Add listeners reacting to `project.settings.updated` (e.g., branch template refresh).
 - Provide tests for project lifecycle events and settings updates.
+---
+title: Server: Projects module
+---
