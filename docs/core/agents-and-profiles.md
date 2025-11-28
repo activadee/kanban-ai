@@ -83,6 +83,7 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
     - Builds a `TicketEnhanceInput` and resolves the agent profile using the shared profile resolution helpers.
     - Invokes `agent.enhance(input, profile)` and returns the resulting `TicketEnhanceResult`.
   - The server layer should call this function instead of wiring agents, profiles, and settings manually.
+  - `POST /projects/:projectId/tickets/enhance` (Projects router) is the HTTP surface area: it validates `{title, description?, agent?, profileId?}` payloads, forwards them into `agentEnhanceTicket`, and returns `{ticket}` or RFC 7807 errors so the client can enrich cards without bespoke agent wiring.
 
 ## Profiles: configuration for agents
 

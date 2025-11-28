@@ -71,8 +71,8 @@ Project-related APIs are rooted under `/api/v1`:
 - `GET /projects/:projectId` – fetch a project and its board metadata.
 - `GET /projects/:projectId/settings` – load per-project settings (ensuring defaults).
 - `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, automation flags, defaults).
+- `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card’s title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
 - `GET /projects/:projectId/github/origin` – inspect GitHub origin information for the project repository.
 
 Types for project payloads and filesystem responses (such as `GitRepositoryEntry`) are exported from the `shared` package
 and reused across server and client.
-
