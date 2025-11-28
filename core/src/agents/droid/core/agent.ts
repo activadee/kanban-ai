@@ -1,9 +1,82 @@
 import {z} from 'zod'
+import {spawn} from 'child_process'
 import {CommandAgent, type CommandSpec} from '../../command'
-import type {Agent, AgentContext} from '../../types'
+import type {Agent, AgentContext, TicketEnhanceInput, TicketEnhanceResult} from '../../types'
+import {buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
 import {DroidProfileSchema, defaultProfile, type DroidProfile} from '../profiles/schema'
 import {buildDroidCommand, buildDroidFollowupCommand} from '../profiles/build'
 import {DroidStreamProcessor} from './parse'
+
+async function runDroidTextCommand(
+    line: string,
+    cwd: string,
+    env: Record<string, string> | undefined,
+    signal: AbortSignal,
+): Promise<string> {
+    return await new Promise<string>((resolve, reject) => {
+        const child = spawn('bash', ['-lc', line], {
+            cwd,
+            env: {...process.env, ...(env || {})},
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: process.platform !== 'win32',
+        })
+
+        let stdout = ''
+        let stderr = ''
+        let aborted = false
+
+        const onAbort = () => {
+            try {
+                aborted = true
+                if (process.platform !== 'win32' && child.pid) {
+                    try {
+                        process.kill(-child.pid, 'SIGTERM')
+                    } catch {
+                        child.kill('SIGTERM')
+                    }
+                } else {
+                    child.kill('SIGTERM')
+                }
+            } catch {
+            }
+        }
+
+        if (signal.aborted) onAbort()
+        else signal.addEventListener('abort', onAbort, {once: true})
+
+        child.stdout?.on('data', (chunk) => {
+            stdout += String(chunk)
+        })
+        child.stderr?.on('data', (chunk) => {
+            stderr += String(chunk)
+        })
+
+        child.on('error', (err) => {
+            try {
+                signal.removeEventListener('abort', onAbort as unknown as EventListener)
+            } catch {
+            }
+            reject(err)
+        })
+
+        child.on('close', (code) => {
+            try {
+                signal.removeEventListener('abort', onAbort as unknown as EventListener)
+            } catch {
+            }
+            if (aborted || signal.aborted) {
+                reject(new Error('Droid enhance aborted'))
+                return
+            }
+            if (code !== 0) {
+                const msg = (stderr || stdout || `Droid exited with code ${code}`).toString()
+                reject(new Error(msg))
+                return
+            }
+            resolve(stdout.toString())
+        })
+    })
+}
 
 class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> implements Agent<z.infer<typeof DroidProfileSchema>> {
     key = 'DROID' as const
@@ -114,6 +187,20 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
             type: 'conversation',
             item: {type: 'message', timestamp: new Date().toISOString(), role: 'user', text, format: 'markdown'}
         })
+    }
+
+    async enhance(input: TicketEnhanceInput, profile: DroidProfile): Promise<TicketEnhanceResult> {
+        const prompt = buildTicketEnhancePrompt(input, profile.appendPrompt ?? undefined)
+        const quotedPrompt = `"${prompt.replace(/"/g, '\\"')}"`
+        const {base, params, env} = buildDroidCommand(profile, quotedPrompt, 'text')
+        const line = [base, ...params].join(' ')
+        const cwd = input.repositoryPath || process.cwd()
+        const raw = await runDroidTextCommand(line, cwd, env, input.signal)
+        const markdown = raw.trim()
+        if (!markdown) {
+            return {title: input.title, description: input.description}
+        }
+        return splitTicketMarkdown(markdown, input.title, input.description)
     }
 }
 
