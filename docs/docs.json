@@ -56,7 +56,8 @@
                     "core/advanced-dependencies",
                     "core/advanced-agent-profiles",
                     "core/advanced-auto-start",
-                    "core/advanced-auto-commit-push"
+                    "core/advanced-auto-commit-push",
+                    "core/advanced-ticket-enhancement"
                 ]
             },
             {
