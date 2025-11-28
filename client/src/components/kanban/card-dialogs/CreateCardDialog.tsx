@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
+import {Bot, Loader2} from 'lucide-react'
 import {Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle} from '@/components/ui/dialog'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {Label} from '@/components/ui/label'
@@ -8,7 +9,11 @@ import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {projectsKeys} from '@/lib/queryClient'
 import {useNextTicketKey} from '@/hooks'
+import {useEnhanceTicket} from '@/hooks/projects'
+import {toast} from '@/components/ui/toast'
+import {describeApiError} from '@/api/http'
 import {DependenciesPicker} from '@/components/kanban/DependenciesPicker'
+import {EnhancePreview} from './EnhancePreview'
 import type {CardFormValues, BaseDialogProps} from './types'
 
 type CreateProps = BaseDialogProps & {
@@ -31,6 +36,9 @@ export function CreateCardDialog({
     const [values, setValues] = useState<CardFormValues>({title: '', description: '', dependsOn: []})
     const [columnId, setColumnId] = useState<string>(defaultColumnId ?? columns[0]?.id ?? '')
     const [submitting, setSubmitting] = useState(false)
+    const [enhancing, setEnhancing] = useState(false)
+    const [enhanced, setEnhanced] = useState<CardFormValues | null>(null)
+    const [enhanceOriginal, setEnhanceOriginal] = useState<CardFormValues | null>(null)
     const queryClient = useQueryClient()
 
     const previewQuery = useNextTicketKey(projectId, {
@@ -38,12 +46,63 @@ export function CreateCardDialog({
         staleTime: 5_000,
     })
 
+    const enhanceMutation = useEnhanceTicket()
+
     useEffect(() => {
         if (!open) {
             setValues({title: '', description: '', dependsOn: []})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
+            setEnhancing(false)
+            setEnhanced(null)
+            setEnhanceOriginal(null)
         }
     }, [open, columns, defaultColumnId])
+
+    const handleEnhance = () => {
+        const trimmedTitle = values.title.trim()
+        if (!trimmedTitle || enhancing) return
+
+        const originalValues: CardFormValues = {
+            ...values,
+            title: trimmedTitle,
+            description: values.description,
+            dependsOn: values.dependsOn ?? [],
+        }
+
+        setEnhancing(true)
+        setEnhanceOriginal(originalValues)
+
+        enhanceMutation.mutate(
+            {
+                projectId,
+                title: trimmedTitle,
+                description: values.description,
+            },
+            {
+                onSuccess: (data) => {
+                    const nextValues: CardFormValues = {
+                        ...originalValues,
+                        title: data.ticket.title,
+                        description: data.ticket.description,
+                    }
+                    setEnhanced(nextValues)
+                    setEnhancing(false)
+                },
+                onError: (err) => {
+                    console.error('Enhance ticket failed', err)
+                    const {title, description} = describeApiError(err, 'Failed to enhance ticket')
+                    toast({
+                        title,
+                        description,
+                        variant: 'destructive',
+                    })
+                    setEnhancing(false)
+                    setEnhanced(null)
+                    setEnhanceOriginal(null)
+                },
+            },
+        )
+    }
 
     const handleSubmit = async () => {
         if (!values.title.trim() || !columnId) return
@@ -96,9 +155,46 @@ export function CreateCardDialog({
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="card-desc">Description</Label>
-                        <Textarea id="card-desc" rows={4} value={values.description}
-                                  onChange={(e) => setValues((p) => ({...p, description: e.target.value}))}/>
+                        <div className="relative">
+                            <Textarea
+                                id="card-desc"
+                                rows={4}
+                                value={values.description}
+                                onChange={(e) => setValues((p) => ({...p, description: e.target.value}))}
+                                className="pr-10"
+                            />
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="outline"
+                                className="absolute bottom-2 right-2 h-7 w-7 rounded-full"
+                                disabled={!values.title.trim() || enhancing}
+                                onClick={handleEnhance}
+                                aria-label="Enhance ticket"
+                            >
+                                {enhancing ? (
+                                    <Loader2 className="size-4 animate-spin"/>
+                                ) : (
+                                    <Bot className="size-4"/>
+                                )}
+                            </Button>
+                        </div>
                     </div>
+                    {enhanced && enhanceOriginal ? (
+                        <EnhancePreview
+                            original={enhanceOriginal}
+                            enhanced={enhanced}
+                            onAccept={() => {
+                                setValues(enhanced)
+                                setEnhanced(null)
+                                setEnhanceOriginal(null)
+                            }}
+                            onReject={() => {
+                                setEnhanced(null)
+                                setEnhanceOriginal(null)
+                            }}
+                        />
+                    ) : null}
                     <div className="space-y-2">
                         <Label>Dependencies</Label>
                         <div className="flex flex-wrap items-center gap-2">
