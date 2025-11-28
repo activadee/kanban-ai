@@ -53,7 +53,7 @@ You can also create cards directly in a column using column-specific controls (e
     - Status/blocked indicators when relevant.
     - Copy ticket key and close buttons.
   - **Details**:
-    - Editable title and description.
+    - Editable title and description. The description textarea also exposes the same enhancement button used in the Create Ticket dialog: once the title has text you can trigger the agent, review the side-by-side AI suggestion preview, then accept or reject the rewritten copy without leaving the inspector.
     - Dependencies picker (select other cards).
   - **Git section**:
     - Buttons for:
