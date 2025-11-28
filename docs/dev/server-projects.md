@@ -29,6 +29,13 @@
 - `project.schemas.ts`: shared Zod schemas for project and board payloads.
 - `core/projects/settings/service.ts`: per-project settings primitives.
 
+## Ticket Enhancement Endpoint
+
+- `POST /projects/:projectId/tickets/enhance`
+    - Request (JSON): `{ "title": string, "description"?: string, "agent"?: string, "profileId"?: string }`
+    - Response `200`: `{ "ticket": { "title": string, "description": string } }`
+    - Errors: returns RFC 7807-style problem JSON with `4xx/5xx` status codes for project/agent failures.
+
 ## Open Tasks
 
 - Move event emission out of routes and into service layer for reusability/testing.
