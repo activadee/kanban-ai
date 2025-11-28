@@ -257,7 +257,14 @@ export function useCardInspectorState({
         [installedEditors, defaultEditorKey],
     )
 
-    const openButtonDisabledReason = !defaultEditor ? 'Set a default editor in App Settings.' : null
+    const openButtonDisabledReason = useMemo(() => {
+        if (!defaultEditor) return 'Set a default editor in App Settings.'
+        if (!attempt) return null
+        if (!attempt.worktreePath) {
+            return 'This attempt\'s worktree has been cleaned up. Start a new attempt to open an editor.'
+        }
+        return null
+    }, [defaultEditor, attempt])
 
     const prDefaults = useMemo(() => {
         const settings = appSettingsQuery.data

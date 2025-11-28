@@ -82,6 +82,8 @@ The Git section, rendered inside the Details area, provides buttons and dialogs 
 - **Open in editor**:
   - Launches your preferred editor at the Attempt worktree path.
   - Uses the Editor module and respects app settings.
+  - If the Attempt’s worktree has already been cleaned up (card moved to **Done**), the button is disabled with guidance
+    to start a fresh Attempt before reopening an editor.
 - **Changes** (diff dialog):
   - Shows a structured diff of the Attempt’s changes.
 - **Commit**:
@@ -95,4 +97,3 @@ The Git section, rendered inside the Details area, provides buttons and dialogs 
   - Runs a merge into the project’s base branch (where configured).
 
 These actions map directly to the Attempt Git and PR APIs documented in `core/git-integration.md` and `core/github-integration.md`.
-

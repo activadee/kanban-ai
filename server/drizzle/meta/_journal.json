@@ -78,6 +78,13 @@
       "when": 1764201600000,
       "tag": "0010_auto_start_agent_on_move",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1764288000000,
+      "tag": "0011_allow_null_attempt_worktree_path",
+      "breakpoints": true
     }
   ]
 }
