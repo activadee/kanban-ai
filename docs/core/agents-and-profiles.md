@@ -68,6 +68,19 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
   - `TicketEnhanceInput` / `TicketEnhanceResult` are exported from `core/agentTypes` (via `core/src/index.ts`) so custom
     agents can share the same types without reaching into private modules.
 
+### Core ticket enhancement orchestrator
+
+- The core layer exposes `agentEnhanceTicket(opts)` from `core/agentEnhanceTicket` (via `core/src/index.ts`) as the single
+  entrypoint for ticket enhancement.
+  - Inputs: `projectId`, optional `boardId`, `title`, `description`, optional `agentKey`, optional `profileId`, and an
+    optional `AbortSignal`.
+  - Behavior:
+    - Loads the project and its settings (including `baseBranch`, `defaultAgent`, `defaultProfileId`).
+    - Resolves the effective `boardId`, `agentKey`, and `profileId`.
+    - Builds a `TicketEnhanceInput` and resolves the agent profile using the shared profile resolution helpers.
+    - Invokes `agent.enhance(input, profile)` and returns the resulting `TicketEnhanceResult`.
+  - The server layer should call this function instead of wiring agents, profiles, and settings manually.
+
 ## Profiles: configuration for agents
 
 - **Agent profiles** capture reusable configuration for a specific agent, such as:
