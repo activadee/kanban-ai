@@ -12,6 +12,7 @@ const updateSchema = z.object({
     telemetryEnabled: z.boolean().optional(),
     notificationsAgentCompletionSound: z.boolean().optional(),
     notificationsDesktop: z.boolean().optional(),
+    autoStartAgentOnInProgress: z.boolean().optional(),
     editorType: z.enum(['VS_CODE', 'WEBSTORM', 'ZED']).optional(),
     gitUserName: z.string().nullable().optional(),
     gitUserEmail: z.string().email().nullable().optional().or(z.string().trim().length(0)).optional(),

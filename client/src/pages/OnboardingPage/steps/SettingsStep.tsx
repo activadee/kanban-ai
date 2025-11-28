@@ -14,10 +14,10 @@ export function SettingsStep({settingsForm, onChange, onDesktopToggle}: {
                 telemetryEnabled: settingsForm.telemetryEnabled,
                 notificationsAgentCompletionSound: settingsForm.notificationsAgentCompletionSound,
                 notificationsDesktop: settingsForm.notificationsDesktop,
+                autoStartAgentOnInProgress: settingsForm.autoStartAgentOnInProgress,
             }}
             onChange={onChange}
             onDesktopToggle={onDesktopToggle}
         />
     )
 }
-

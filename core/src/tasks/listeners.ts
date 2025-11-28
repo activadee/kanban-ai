@@ -2,6 +2,9 @@ import type {AppEventBus} from '../events/bus'
 import {bindTaskEventBus, moveCardToColumnByTitle, createDefaultBoardStructure} from './service'
 import {cleanupCardWorkspace} from './cleanup'
 import {getColumnById} from '../projects/repo'
+import {ensureProjectSettings} from '../projects/settings/service'
+import {ensureAppSettings, getAppSettingsSnapshot} from '../settings/service'
+import {getLatestAttemptForCard, startAttempt} from '../attempts/service'
 import type {AttemptStatus} from 'shared'
 
 export function registerTaskListeners(bus: AppEventBus) {
@@ -33,14 +36,45 @@ export function registerTaskListeners(bus: AppEventBus) {
         }
     })
 
-    bus.subscribe('card.moved', async ({boardId, cardId, toColumnId}) => {
+    bus.subscribe('card.moved', async ({boardId, cardId, fromColumnId, toColumnId}) => {
         try {
-            const column = await getColumnById(toColumnId)
-            const title = (column?.title || '').trim().toLowerCase()
-            if (title !== 'done') return
-            await cleanupCardWorkspace(boardId, cardId)
+            const toColumn = await getColumnById(toColumnId)
+            const toTitle = (toColumn?.title || '').trim().toLowerCase()
+
+            // Workspace cleanup when moving cards into Done
+            if (toTitle === 'done') {
+                await cleanupCardWorkspace(boardId, cardId)
+            }
+
+            // Auto‑start agent when moving from Backlog → In Progress
+            await ensureAppSettings()
+            const settings = getAppSettingsSnapshot()
+            if (!settings.autoStartAgentOnInProgress) return
+
+            const fromColumn = await getColumnById(fromColumnId)
+            const fromTitle = (fromColumn?.title || '').trim().toLowerCase()
+
+            if (fromTitle !== 'backlog' || toTitle !== 'in progress') return
+
+            const projectSettings = await ensureProjectSettings(boardId)
+            const agentKey = projectSettings.defaultAgent
+            if (!agentKey) return
+
+            const existing = await getLatestAttemptForCard(boardId, cardId)
+            const existingStatus = existing?.attempt?.status as AttemptStatus | undefined
+            if (existingStatus && ['running', 'queued', 'stopping'].includes(existingStatus)) return
+
+            await startAttempt(
+                {
+                    boardId,
+                    cardId,
+                    agent: agentKey,
+                    profileId: projectSettings.defaultProfileId ?? undefined,
+                },
+                {events: bus},
+            )
         } catch (error) {
-            console.error('[tasks] failed to cleanup workspace on move to Done', error)
+            console.error('[tasks] failed to handle card.moved', error)
         }
     })
 }

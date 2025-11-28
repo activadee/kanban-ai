@@ -18,6 +18,7 @@ type FormState = {
     telemetryEnabled: boolean
     notificationsAgentCompletionSound: boolean
     notificationsDesktop: boolean
+    autoStartAgentOnInProgress: boolean
     editorType: EditorType | ''
     gitUserName: string
     gitUserEmail: string
@@ -54,6 +55,7 @@ export function AppSettingsPage() {
             telemetryEnabled: data.telemetryEnabled,
             notificationsAgentCompletionSound: data.notificationsAgentCompletionSound,
             notificationsDesktop: data.notificationsDesktop,
+            autoStartAgentOnInProgress: data.autoStartAgentOnInProgress,
             editorType: data.editorType,
             gitUserName: data.gitUserName ?? '',
             gitUserEmail: data.gitUserEmail ?? '',
@@ -98,6 +100,7 @@ export function AppSettingsPage() {
                 telemetryEnabled: result.telemetryEnabled,
                 notificationsAgentCompletionSound: result.notificationsAgentCompletionSound,
                 notificationsDesktop: result.notificationsDesktop,
+                autoStartAgentOnInProgress: result.autoStartAgentOnInProgress,
                 editorType: result.editorType,
                 gitUserName: result.gitUserName ?? '',
                 gitUserEmail: result.gitUserEmail ?? '',
@@ -142,6 +145,7 @@ export function AppSettingsPage() {
             telemetryEnabled: form.telemetryEnabled,
             notificationsAgentCompletionSound: form.notificationsAgentCompletionSound,
             notificationsDesktop: form.notificationsDesktop,
+            autoStartAgentOnInProgress: form.autoStartAgentOnInProgress,
             editorType: form.editorType || undefined,
             gitUserName: form.gitUserName.trim() || null,
             gitUserEmail: form.gitUserEmail.trim() || null,

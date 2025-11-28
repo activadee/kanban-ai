@@ -10,7 +10,7 @@ Route: `/onboarding`
 
 Steps:
 1) Welcome  
-2) General preferences (theme, language, telemetry, notifications)  
+2) General preferences (theme, language, telemetry, notifications, auto-start agent on In Progress)  
 3) Editor + Git defaults (default editor, git name/email, branch template)  
 4) GitHub templates + OAuth app credentials (PR title/body templates, autolink tickets, GitHub client ID + secret)  
 5) Connect GitHub (device flow; shows device code, opens GitHub verification link)  
@@ -60,3 +60,4 @@ GitHub device flow:
 ## Notes
 - Secrets are stored locally; no remote storage.
 - GitHub connection can also be initiated later from sidebar GitHub box or Settings.***
+- Auto-start agent on In Progress defaults to off; onboarding surfaces the toggle so teams can opt into automatic attempt creation when moving cards from Backlog to In Progress.

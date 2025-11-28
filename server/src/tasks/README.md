@@ -17,6 +17,7 @@
     - `project.created` → `createDefaultBoardStructure` to seed Backlog/In Progress/Review/Done columns.
     - `attempt.started` → card moves to *In Progress*.
     - `attempt.completed` → success moves to *Review*; failure/stop returns to *In Progress*.
+    - `card.moved` Backlog → In Progress (when the global **Auto-start agent on In Progress** setting is enabled) → start an Attempt using the project&apos;s default agent/profile.
 3. **WebSocket Handler (`ws.ts`)**
     - Only validates access and forwards create/move/update/delete to the service.
     - Real-time updates are broadcast by `ws/listeners.ts` when they observe `board.state.changed` or other events.

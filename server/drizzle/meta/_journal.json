@@ -71,6 +71,13 @@
       "when": 1764115200000,
       "tag": "0009_pr_url_on_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1764201600000,
+      "tag": "0010_auto_start_agent_on_move",
+      "breakpoints": true
     }
   ]
 }
