@@ -1,0 +1,536 @@
+epic:
+    key: KAN-ENHANCE-TICKET
+    title: "Enhance Ticket mode via inline agents"
+    labels:
+        - enhancement
+        - ai
+        - epic
+    description: >
+        Implement an inline 'Enhance Ticket' flow that allows users to send a ticket draft
+        (title + description) to an agent, which returns a detailed, enriched ticket.
+        Each Agent implements its own enhance() method. The UI shows an Enhance button
+        on the ticket dialog, a preview of the suggestion, and Accept/Reject actions.
+    body: |-
+        # Epic: Enhance Ticket mode via inline agents
+
+        ## Goal
+
+        Implement an inline **"Enhance Ticket"** flow that allows users to send a ticket
+        draft (title + description) to an agent, which returns a detailed, enriched ticket.
+        Each Agent implements its own `enhance()` method, tailored to that agent.
+
+        The enhancement runs as a **lightweight, inline operation** (no Attempts, no worker),
+        and the UI provides a smooth UX with a robot button, preview, and Accept/Reject.
+
+        ## High-level scope
+
+        - Extend core agent types to support ticket enhancement.
+        - Add a core orchestrator that wraps agent-specific `enhance()` calls.
+        - Implement `enhance()` for key agents (DROID, CODEX, ECHO).
+        - Expose a server endpoint for ticket enhancement.
+        - Add client API + React Query hook.
+        - Integrate an Enhance button + preview into the Create and Edit card dialogs.
+        - Add tests and documentation.
+
+issues:
+    - key: KAN-ENHANCE-CORE-TYPES
+      title: "Extend core agent types to support ticket enhancement"
+      labels:
+          - enhancement
+          - backend
+          - core
+      description: >
+          Extend the core agent type system to model ticket enhancement as a first-class
+          operation. Introduce TicketEnhanceInput / TicketEnhanceResult and an optional
+          enhance() method on Agent so each agent can provide its own implementation.
+      tasks:
+          - "Create TicketEnhanceInput type in core/src/agents/types.ts with project + repo context, title, description, profileId, and AbortSignal."
+          - "Create TicketEnhanceResult type in core/src/agents/types.ts with { title: string; description: string }."
+          - "Extend Agent interface to add optional enhance(input: TicketEnhanceInput, profile: P): Promise<TicketEnhanceResult>."
+          - "Ensure enhance() is optional so existing agents compile without immediate changes."
+          - "Add a splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription) helper in a reusable core utility file."
+          - "Make splitTicketMarkdown extract H1 as title (first line starting with '# ') and treat the remainder as description."
+          - "Write unit tests for splitTicketMarkdown (no H1, multiple H1s, empty body, trimming)."
+          - "Run TypeScript build and fix any compilation issues caused by Agent interface changes."
+      acceptance_criteria:
+          - "Agent interface compiles everywhere with enhance() added as optional."
+          - "TicketEnhanceInput and TicketEnhanceResult types are exported and available to agents."
+          - "splitTicketMarkdown correctly handles common markdown patterns and is covered by unit tests."
+          - "No runtime behavior changes for existing code paths that do not use enhance()."
+      body: |-
+          # KAN-ENHANCE-CORE-TYPES: Extend core agent types to support ticket enhancement
+
+          ## Background
+
+          We want a first-class, type-safe way for agents to enhance ticket drafts without
+          going through the Attempt/worker pipeline. This requires new input/output types
+          and an extension of the Agent interface.
+
+          ## Tasks
+
+          - [ ] Create `TicketEnhanceInput` type in `core/src/agents/types.ts` including:
+                - projectId: string
+                - boardId: string
+                - repositoryPath: string
+                - baseBranch: string
+                - title: string
+                - description: string
+                - profileId?: string | null
+                - signal: AbortSignal
+          - [ ] Create `TicketEnhanceResult` type in `core/src/agents/types.ts`:
+                - `{ title: string; description: string }`.
+          - [ ] Extend `Agent<P>` interface to include:
+                - `enhance?(input: TicketEnhanceInput, profile: P): Promise<TicketEnhanceResult>`.
+          - [ ] Ensure `enhance` is optional so existing agents remain valid without changes.
+          - [ ] Add a `splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription)` helper
+                in a reusable core utility (e.g. `core/src/agents/utils.ts`):
+                - First line starting with `# ` → title.
+                - Remaining lines (trimmed) → description.
+                - Fall back to given title/description if parsing fails.
+          - [ ] Add unit tests for `splitTicketMarkdown` covering:
+                - H1 on first line.
+                - No H1 present.
+                - Extra whitespace before/after.
+                - H1 with trailing spaces.
+          - [ ] Run `pnpm test` / `pnpm build` (or equivalent) and resolve any TypeScript issues.
+
+          ## Acceptance Criteria
+
+          - [ ] Agent interface compiles everywhere after adding `enhance()`.
+          - [ ] `TicketEnhanceInput` and `TicketEnhanceResult` are exported and used by agents.
+          - [ ] `splitTicketMarkdown` behaves as expected and is covered by tests.
+          - [ ] No existing agent needs to implement `enhance()` to keep the build green.
+
+    - key: KAN-ENHANCE-CORE-ORCHESTRATOR
+      title: "Add core orchestrator function agentEnhanceTicket"
+      labels:
+          - enhancement
+          - backend
+          - core
+      description: >
+          Add a single entrypoint in the core layer that the server can call to perform
+          ticket enhancement with the selected agent. The orchestrator resolves project,
+          settings, agent, and profile, builds TicketEnhanceInput and invokes agent.enhance().
+      tasks:
+          - "Create core/src/agents/enhance.ts with a new exported function agentEnhanceTicket(opts)."
+          - "Load project by projectId and fail fast if project is not found."
+          - "Load project settings (baseBranch, defaultAgent, defaultProfileId)."
+          - "Determine agentKey from opts.agentKey or settings.defaultAgent or a final fallback (e.g. 'DROID')."
+          - "Determine effective profileId from opts.profileId or settings.defaultProfileId."
+          - "Compute boardId from opts.boardId or fallback to project.boardId / project.id."
+          - "Build a TicketEnhanceInput using projectId, boardId, repositoryPath, baseBranch, title, description, profileId, and AbortSignal."
+          - "Resolve agent via existing registry getAgent(agentKey) and throw a clear error if the agent is unknown."
+          - "Verify that agent.enhance is implemented and throw a clear error if not."
+          - "Resolve the agent profile via existing profile resolution utilities."
+          - "Call agent.enhance(input, profile) and return the TicketEnhanceResult."
+          - "Add unit tests that cover: happy path, project not found, unknown agent, agent without enhance()."
+      acceptance_criteria:
+          - "agentEnhanceTicket is exported and callable from the server layer."
+          - "Happy path returns a TicketEnhanceResult when provided with valid input."
+          - "Error cases (missing project, unknown agent, missing enhance()) are correctly thrown and tested."
+          - "agentEnhanceTicket does not interact with Attempts, workers, or DB persistence."
+      body: |-
+          # KAN-ENHANCE-CORE-ORCHESTRATOR: Add core orchestrator function agentEnhanceTicket
+
+          ## Background
+
+          The server should not know how to manually wire agents, profiles, and project
+          configuration. Instead, it should call a single core function that orchestrates
+          ticket enhancement for a given project.
+
+          ## Tasks
+
+          - [ ] Create `core/src/agents/enhance.ts`.
+          - [ ] Implement `agentEnhanceTicket(opts)` with:
+                - [ ] Load project by `opts.projectId`; throw an error if not found.
+                - [ ] Load project settings (baseBranch, defaultAgent, defaultProfileId).
+                - [ ] Resolve `boardId` from `opts.boardId` or fallback to `project.boardId || project.id`.
+                - [ ] Resolve `agentKey` from `opts.agentKey || settings.defaultAgent || 'DROID'`.
+                - [ ] Resolve `profileId` from `opts.profileId || settings.defaultProfileId || null`.
+                - [ ] Build `TicketEnhanceInput` with projectId, boardId, repositoryPath, baseBranch,
+                      title, description, profileId, and an AbortSignal (controller.local).
+                - [ ] Retrieve agent instance via `getAgent(agentKey)`; throw if missing.
+                - [ ] Throw explicit error if `agent.enhance` is undefined.
+                - [ ] Resolve agent profile using existing helper (e.g. `resolveAgentProfileForProject`).
+                - [ ] Call `agent.enhance(input, profile)` and return its result.
+          - [ ] Add unit tests for:
+                - [ ] Successful enhancement (mock agent.enhance and check args + return value).
+                - [ ] Project not found.
+                - [ ] Unknown agentKey.
+                - [ ] Agent without `enhance()` defined.
+
+          ## Acceptance Criteria
+
+          - [ ] `agentEnhanceTicket` is the single entrypoint used by the server for ticket enhancement.
+          - [ ] Happy path returns a `TicketEnhanceResult`.
+          - [ ] All error paths are covered by tests.
+          - [ ] No use of Attempts/worker/DB in `agentEnhanceTicket`.
+
+    - key: KAN-ENHANCE-AGENT-IMPL
+      title: "Implement enhance() for DROID, CODEX and ECHO agents"
+      labels:
+          - enhancement
+          - backend
+          - agents
+      description: >
+          Implement the enhance() method for the main agents so that they can transform
+          a ticket draft into a detailed ticket. Each agent uses its own backend/prompt
+          but must respect the shared output contract.
+      tasks:
+          - "Implement enhance() for DROID in core/src/agents/droid/core/agent.ts."
+          - "Implement enhance() for CODEX in core/src/agents/codex/core/agent.ts."
+          - "Implement enhance() for ECHO in core/src/agents/echo/index.ts as a simple, deterministic implementation for tests."
+          - "Define a shared DROID prompt template for ticket enhancement with clear instructions and formatting."
+          - "Wire DROID enhance() to call the existing LLM/command client in a text-only mode (no tools)."
+          - "Define a CODEX prompt template similar to DROID and reuse the existing client/session helpers."
+          - "Ensure both DROID and CODEX use splitTicketMarkdown to generate TicketEnhanceResult."
+          - "Add tests verifying that enhance() uses the correct prompt shape and parses output correctly (mock client)."
+      acceptance_criteria:
+          - "DROID, CODEX, and ECHO agents compile and implement Agent.enhance()."
+          - "Enhance result for DROID/CODEX is markdown with a H1 title and body content."
+          - "At least the ECHO agent has a deterministic enhance() behavior fully covered by tests."
+          - "Manual smoke test can call agentEnhanceTicket with DROID and CODEX and get reasonable tickets."
+      body: |-
+          # KAN-ENHANCE-AGENT-IMPL: Implement enhance() for DROID, CODEX and ECHO agents
+
+          ## Background
+
+          The new inline ticket enhancement pipeline relies on each agent implementing an
+          `enhance()` method. DROID and CODEX should use their respective LLM backends,
+          while ECHO serves as a very simple test/dummy implementation.
+
+          ## Tasks
+
+          ### DROID
+
+          - [ ] In `core/src/agents/droid/core/agent.ts`, add an `enhance(input, profile)` method.
+          - [ ] Define a prompt template:
+                - [ ] Role: "Du bist ein Ticket-Generator für ein Softwareprojekt."
+                - [ ] Input: Title + Description from `TicketEnhanceInput`.
+                - [ ] Output requirements:
+                      - Markdown.
+                      - Erste Zeile: `# <Neuer Titel oder unveränderter Titel>`.
+                      - Detaillierte Beschreibung mit Schritten und Akzeptanzkriterien.
+                      - Mindestens ein ```mermaid``` Diagramm (graph oder sequenceDiagram).
+                      - Möglichst ein zusätzliches Sequenzdiagramm, falls sinnvoll.
+                      - Keine Meta-Erklärung, nur der Ticketinhalt.
+          - [ ] Reuse existing DROID client build/exec logic in a text-only mode:
+                - [ ] Keine Tools/Git-Operationen, nur Prompt → Completion.
+                - [ ] Sammle finalen Assistant-Text (kein Streaming notwendig für MVP).
+          - [ ] Wende `splitTicketMarkdown` auf den Output an, um `TicketEnhanceResult` zu erzeugen.
+
+          ### CODEX
+
+          - [ ] In `core/src/agents/codex/core/agent.ts`, implement `enhance(input, profile)`.
+          - [ ] Reuse Codex client + session creation:
+                - [ ] Baue eine Text-Session mit einem Prompt, der die gleichen Regeln wie bei DROID hat.
+                - [ ] Sammle finalen Assistant-Text aus der Session.
+          - [ ] Wende `splitTicketMarkdown` auf den Output an, um `TicketEnhanceResult` zu erzeugen.
+
+          ### ECHO (Test-Agent)
+
+          - [ ] In `core/src/agents/echo/index.ts`, implement eine sehr einfache `enhance()`:
+                - [ ] Titel bleibt unverändert.
+                - [ ] Description wird zu: `"[ENHANCED] " + input.description` (oder ähnlich).
+          - [ ] Schreibe einen kleinen Unit-Test für ECHO enhance(), der die Ausgabe exakt prüft.
+
+          ### Tests
+
+          - [ ] Für DROID und CODEX: Mock den jeweiligen Client und prüfe:
+                - [ ] Dass `enhance()` den erwarteten Prompt/Text an den Client schickt.
+                - [ ] Dass der zurückgegebene Text mit `splitTicketMarkdown` korrekt in Title/Description überführt wird.
+          - [ ] Stelle sicher, dass alle Agents weiterhin über `run()` funktionieren (keine Regression).
+
+          ## Acceptance Criteria
+
+          - [ ] DROID, CODEX und ECHO implementieren `Agent.enhance()`.
+          - [ ] Output folgt dem vereinbarten Markdown-Kontrakt (H1 Titel + Body).
+          - [ ] ECHO-Implementation ist deterministisch und hat einen Unit-Test.
+          - [ ] Manuelles Smoke-Testing von `agentEnhanceTicket` mit DROID und CODEX funktioniert.
+
+    - key: KAN-ENHANCE-API
+      title: "Add server endpoint POST /projects/:projectId/tickets/enhance"
+      labels:
+          - enhancement
+          - backend
+          - api
+      description: >
+          Expose a REST endpoint on the server for enhancing ticket drafts. The endpoint
+          accepts title, description, and optional agent/profileId, then calls
+          agentEnhanceTicket and returns the enhanced ticket.
+      tasks:
+          - "Add enhanceTicketSchema to server/src/projects/project.schemas.ts."
+          - "Create server/src/projects/project.enhance.handlers.ts with enhanceTicketHandler."
+          - "Implement enhanceTicketHandler: read params, validate body, call agentEnhanceTicket, return { ticket } on success."
+          - "Wire the route into server/src/projects/project.routes.ts as POST /:projectId/tickets/enhance."
+          - "Add integration tests for success and error cases (invalid project, unknown agent, agent without enhance())."
+      acceptance_criteria:
+          - "POST /projects/:projectId/tickets/enhance is exposed and documented."
+          - "Valid requests return HTTP 200 with a ticket payload."
+          - "Error cases produce problem JSON responses with meaningful status and message."
+      body: |-
+          # KAN-ENHANCE-API: Add server endpoint POST /projects/:projectId/tickets/enhance
+
+          ## Background
+
+          The UI needs a simple HTTP endpoint to send a ticket draft (title + description)
+          and receive an enhanced ticket from the agent pipeline.
+
+          ## Tasks
+
+          - [ ] Add `enhanceTicketSchema` to `server/src/projects/project.schemas.ts` using zod:
+                - [ ] `title: z.string().min(1)`
+                - [ ] `description: z.string().default('')`
+                - [ ] `agent: z.string().optional()`
+                - [ ] `profileId: z.string().optional()`
+          - [ ] Create `server/src/projects/project.enhance.handlers.ts` and export `enhanceTicketHandler`.
+          - [ ] Implement `enhanceTicketHandler`:
+                - [ ] Read `projectId` from `c.req.param('projectId')`.
+                - [ ] Validate JSON body via `enhanceTicketSchema`.
+                - [ ] Call `agentEnhanceTicket` with:
+                      - projectId
+                      - title, description
+                      - agentKey (from body.agent)
+                      - profileId (from body.profileId)
+                - [ ] On success: `return c.json({ ticket: result }, 200)`.
+                - [ ] On error: log details and `return problemJson` with status 502 and generic message.
+          - [ ] Wire the route in `server/src/projects/project.routes.ts`:
+                - [ ] `router.post("/:projectId/tickets/enhance", zValidator("json", enhanceTicketSchema), enhanceTicketHandler)`
+          - [ ] Add integration tests:
+                - [ ] Happy path: valid project + title + description → 200 + ticket.
+                - [ ] Project not found → 4xx/5xx with problem JSON.
+                - [ ] Agent not found or agent without `enhance()` → 502 with problem JSON.
+
+          ## Acceptance Criteria
+
+          - [ ] Endpoint `POST /projects/:projectId/tickets/enhance` is available and documented.
+          - [ ] Happy path returns a JSON body `{ "ticket": { "title": ..., "description": ... } }`.
+          - [ ] Error conditions return problem JSON responses.
+          - [ ] Tests cover both success and key failure paths.
+
+    - key: KAN-ENHANCE-CLIENT-API
+      title: "Add client API and hook for ticket enhancement"
+      labels:
+          - enhancement
+          - frontend
+          - api
+      description: >
+          Provide a typed client function and React Query hook to call the server's
+          ticket enhance endpoint from the UI.
+      tasks:
+          - "Add enhanceTicketRequest to client/src/api/projects.ts."
+          - "Implement enhanceTicketRequest to call POST /projects/:projectId/tickets/enhance and return the ticket payload."
+          - "Add useEnhanceTicket hook in client/src/hooks/projects.ts (or a dedicated hooks file)."
+          - "Write a small hook test using mocked fetch to verify request/response handling."
+      acceptance_criteria:
+          - "enhanceTicketRequest can be imported and used from UI code."
+          - "useEnhanceTicket exposes a working mutation with status and callbacks."
+          - "Client builds successfully, and tests are green."
+      body: |-
+          # KAN-ENHANCE-CLIENT-API: Add client API and hook for ticket enhancement
+
+          ## Background
+
+          The card dialogs should not deal with raw fetch calls. We want a reusable
+          client function and a React Query mutation hook for ticket enhancement.
+
+          ## Tasks
+
+          - [ ] In `client/src/api/projects.ts`, add `enhanceTicketRequest(params)`:
+                - [ ] Params: `{ projectId, title, description, agent?, profileId? }`.
+                - [ ] POST to `${SERVER_URL}/projects/${projectId}/tickets/enhance`.
+                - [ ] Include JSON body with `title`, `description`, `agent`, `profileId`.
+                - [ ] Use existing `parseApiResponse` helper.
+                - [ ] Return `{ ticket: { title, description } }`.
+          - [ ] In `client/src/hooks/projects.ts` (or new hooks file), add `useEnhanceTicket`:
+                - [ ] Wrap `enhanceTicketRequest` in `useMutation`.
+                - [ ] Expose mutation state (`isLoading`, `error`, `mutate`, `mutateAsync`).
+                - [ ] Allow passing custom mutation options (`onSuccess`, `onError`).
+          - [ ] Add a test for `useEnhanceTicket`:
+                - [ ] Mock fetch (or API layer).
+                - [ ] Trigger mutation and verify the correct URL, body, and resolved data.
+
+          ## Acceptance Criteria
+
+          - [ ] `enhanceTicketRequest` correctly calls the server endpoint and parses the response.
+          - [ ] `useEnhanceTicket` is used by UI components without direct fetch logic.
+          - [ ] Tests pass and cover at least one happy-path usage.
+
+    - key: KAN-ENHANCE-UI-CREATE
+      title: "Integrate Enhance button and preview in CreateCardDialog"
+      labels:
+          - enhancement
+          - frontend
+          - ui
+      description: >
+          Add an Enhance button to the ticket create dialog attached to the description
+          textarea. It calls the enhance endpoint via useEnhanceTicket, shows a loading
+          state, and displays a preview with Accept/Reject.
+      tasks:
+          - "Add local state to CreateCardDialog: enhancing: boolean, enhanced: CardFormValues | null."
+          - "Use useEnhanceTicket to send current title + description to the backend."
+          - "Add a small robot button inside the description field (bottom-right), with loading state."
+          - "Implement an EnhancePreview component that shows original vs enhanced ticket with Accept/Reject."
+          - "Wire Accept to overwrite form values; wire Reject to discard the suggestion."
+          - "Ensure multiple iterations are possible (Enhance again after Accept/Reject)."
+      acceptance_criteria:
+          - "CreateCardDialog shows an Enhance robot button when a title is present."
+          - "Clicking Enhance triggers the enhance request and shows spinner/disabled state."
+          - "Enhanced results are shown in a preview; Accept/Reject work as expected."
+          - "No backend save happens until the user actually creates the card."
+      body: |-
+          # KAN-ENHANCE-UI-CREATE: Integrate Enhance button and preview in CreateCardDialog
+
+          ## Background
+
+          The Enhance Ticket feature should be available while creating a new card. The
+          user can type a rough title/description and then enhance it before saving.
+
+          ## Tasks
+
+          - [ ] Locate `CreateCardDialog` in `client/src/components/kanban/card-dialogs/CreateCardDialog.tsx`.
+          - [ ] Add component state:
+                - [ ] `const [enhancing, setEnhancing] = useState(false)`
+                - [ ] `const [enhanced, setEnhanced] = useState<CardFormValues | null>(null)`
+          - [ ] Use `useEnhanceTicket` hook:
+                - [ ] On Enhance button click:
+                      - [ ] Guard: only if `values.title.trim().length > 0`.
+                      - [ ] Call mutation with `{ projectId, title: values.title, description: values.description }`.
+                      - [ ] Set `enhancing` true while request is in flight.
+                      - [ ] On success: set `enhanced` with new `{ title, description }` plus existing `dependsOn` etc.
+                      - [ ] On error: show toast and clear `enhancing`.
+          - [ ] Wrap the description `<Textarea>` in a `relative` container and add a robot button:
+                - [ ] Positioned `absolute bottom-2 right-2`.
+                - [ ] Uses a small circular style.
+                - [ ] Shows robot icon when idle; spinner while `enhancing` is true.
+                - [ ] Disabled if title is empty or while enhancing.
+          - [ ] Implement `EnhancePreview` component:
+                - [ ] Props: `original`, `enhanced`, `onAccept`, `onReject`.
+                - [ ] Layout: side-by-side Original/Suggestion on desktop, stacked on mobile.
+                - [ ] Display title + description for both.
+                - [ ] Buttons:
+                      - [ ] Accept → call `onAccept`.
+                      - [ ] Reject → call `onReject`.
+          - [ ] Wire behavior:
+                - [ ] On Accept:
+                      - [ ] `setValues(enhanced)`
+                      - [ ] Clear `enhanced`.
+                - [ ] On Reject:
+                      - [ ] Clear `enhanced` without modifying form values.
+          - [ ] Ensure user can click Enhance again after Accept/Reject (reset state properly).
+
+          ## Acceptance Criteria
+
+          - [ ] Enhance button is visible in the create dialog when a title is present.
+          - [ ] Enhance button shows a loading state while the request is running.
+          - [ ] Preview shows original vs enhanced content with clear Accept/Reject actions.
+          - [ ] Accept overwrites form values; Reject leaves them unchanged.
+          - [ ] The card is only persisted when the user confirms the creation as usual.
+
+    - key: KAN-ENHANCE-UI-EDIT
+      title: "Integrate Enhance button in EditCardDialog"
+      labels:
+          - enhancement
+          - frontend
+          - ui
+      description: >
+          Provide the same Enhance functionality in the edit dialog so existing tickets
+          can also be enriched. Uses the same inline API and does not create Attempts.
+      tasks:
+          - "Integrate the same Enhance button and EnhancePreview pattern into EditCardDialog."
+          - "Use current card title and description from the edit form as enhancement input."
+          - "Ensure Enhance is independent from the Attempt/preview system that already exists."
+          - "Test that editing and enhancement work together without conflicting UI states."
+      acceptance_criteria:
+          - "EditCardDialog offers the same Enhance experience as CreateCardDialog."
+          - "Enhance uses inline endpoint (no Attempts created)."
+          - "Attempt-related UI continues to function unchanged."
+      body: |-
+          # KAN-ENHANCE-UI-EDIT: Integrate Enhance button in EditCardDialog
+
+          ## Background
+
+          Users should be able to enhance existing tickets in addition to new ones. The
+          edit dialog should reuse the same inline enhancement UX as the create dialog.
+
+          ## Tasks
+
+          - [ ] Locate `EditCardDialog` in `client/src/components/kanban/card-dialogs/EditCardDialog.tsx`.
+          - [ ] Add the same Enhance state and handler logic as in `CreateCardDialog`:
+                - [ ] `enhancing` boolean.
+                - [ ] `enhanced` card state.
+                - [ ] `handleEnhance` calling `useEnhanceTicket`.
+          - [ ] Use current edit form values (`values.title`, `values.description`) as input to the enhancement call.
+          - [ ] Reuse the same `EnhancePreview` component (import from shared location if extracted).
+          - [ ] Ensure compatibility with existing Attempt UI:
+                - [ ] Enhance does not start an Attempt.
+                - [ ] Attempt preview/logs remain functional and independent.
+          - [ ] Test the UX manually:
+                - [ ] Edit a card, change description, click Enhance, Accept, then save.
+
+          ## Acceptance Criteria
+
+          - [ ] Edit dialog provides an Enhance button and preview identical to the create dialog.
+          - [ ] Enhancing a ticket does not create attempts or interfere with Attempt functionality.
+          - [ ] Users can enhance, accept/reject, and then save the edited card as usual.
+
+    - key: KAN-ENHANCE-TEST-DOC
+      title: "Testing and documentation for Enhance Ticket feature"
+      labels:
+          - enhancement
+          - documentation
+          - testing
+      description: >
+          Ensure the Enhance Ticket feature is well-tested end-to-end and documented
+          for future maintainers and users.
+      tasks:
+          - "Add or update unit tests for core types, agentEnhanceTicket, and agent enhance() implementations."
+          - "Add integration tests for the server endpoint."
+          - "Add client hook/component tests for the Enhance button flow."
+          - "Update developer docs to describe TicketEnhanceInput/Result and enhance()."
+          - "Optionally add a short user-facing description of the Enhance Ticket feature."
+      acceptance_criteria:
+          - "All relevant paths are covered by automated tests."
+          - "Documentation explains how to use and extend the enhance() mechanism."
+          - "CI passes with the new tests."
+      body: |-
+          # KAN-ENHANCE-TEST-DOC: Testing and documentation for Enhance Ticket feature
+
+          ## Background
+
+          The Enhance Ticket feature touches core, backend, and frontend code. We need
+          tests and documentation to keep it maintainable and understandable.
+
+          ## Tasks
+
+          ### Testing
+
+          - [ ] Core:
+                - [ ] Tests for `TicketEnhanceInput` / `TicketEnhanceResult` usage (where applicable).
+                - [ ] Tests for `splitTicketMarkdown`.
+                - [ ] Tests for `agentEnhanceTicket` (happy path + errors).
+          - [ ] Agents:
+                - [ ] Tests for `DROID.enhance` and `CODEX.enhance` with mocked backends.
+                - [ ] Deterministic test for `ECHO.enhance`.
+          - [ ] Server:
+                - [ ] Integration tests for `POST /projects/:projectId/tickets/enhance`.
+          - [ ] Client:
+                - [ ] Tests for `useEnhanceTicket` hook.
+                - [ ] Tests for Enhance button/preview behavior in `CreateCardDialog` (and optionally `EditCardDialog`).
+
+          ### Documentation
+
+          - [ ] Update developer docs / README:
+                - [ ] Explain `TicketEnhanceInput` and `TicketEnhanceResult`.
+                - [ ] Describe the `Agent.enhance()` contract.
+                - [ ] Document `agentEnhanceTicket` and how the server calls it.
+                - [ ] Describe the API contract for `/projects/:projectId/tickets/enhance`.
+          - [ ] Optionally add a short user-facing note:
+                - [ ] What the Enhance button does.
+                - [ ] How Accept/Reject works.
+
+          ## Acceptance Criteria
+
+          - [ ] Tests cover core, agent, API, and UI logic for the Enhance Ticket flow.
+          - [ ] Developer documentation exists for implementing `enhance()` on new agents.
+          - [ ] CI (lint, tests, build) passes after adding tests and docs.

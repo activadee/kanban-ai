@@ -13,7 +13,44 @@ Last updated: 2025-11-28
   - `bindAgentEventBus` publishes the full registry when the event bus becomes available.
 - In the current implementation:
   - The UI focuses on a Codex-based agent backed by the Codex SDK and local Codex CLI.
-  - Experimental agents (e.g. Droid, OpenCode) may exist in the codebase but are not exposed in the UI.
+  - Experimental agents (e.g. Droid, OpenCode) exist in the codebase but are not exposed in the UI.
+
+## Coding agents
+
+KanbanAI’s agent registry is designed to host multiple **coding agents**. Today, the primary supported agent is Codex,
+with additional agents under active development.
+
+- **Codex**
+  - Status: **Supported** (primary coding agent).
+  - Implementation:
+    - Backed by the Codex SDK and local Codex CLI.
+    - Exposed in the UI (e.g. `/agents/CODEX`) and used for all production Attempts by default.
+  - Capabilities:
+    - Reads and writes files inside attempt worktrees.
+    - Runs dev scripts and tools via the Attempts/runner pipeline.
+    - Streams structured messages (steps, logs, diffs, suggestions) that power the Messages, Processes, and Logs views.
+  - Configuration:
+    - Tuned via agent profiles (model, temperature, tools/sandbox config) stored per project or globally.
+
+- **Droid** (WIP)
+  - Status: **Work in progress – not exposed in the UI, not supported for production use.**
+  - Implementation:
+    - Experimental agent module wired into the registry only in development builds.
+    - Shares the same Attempt lifecycle and worktree model as Codex.
+  - Intended goals:
+    - Explore alternative planning/execution strategies and sandboxes.
+    - Validate multi-agent orchestration patterns before promoting to a supported agent.
+
+- **OpenCode** (WIP)
+  - Status: **Work in progress – not exposed in the UI, not supported for production use.**
+  - Implementation:
+    - Experimental agent behind a feature flag / dev-only registration.
+  - Intended goals:
+    - Experiment with different model backends for code generation and refactoring.
+    - Provide a fallback / alternative to Codex for future releases.
+
+Until the WIP agents are promoted, **only Codex is considered stable**. New features and UI flows should continue to
+target Codex as the default coding agent, with Droid/OpenCode reserved for internal testing and experimentation.
 
 ### Ticket enhancement interface
 

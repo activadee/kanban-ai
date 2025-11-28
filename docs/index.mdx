@@ -64,6 +64,15 @@ This page gives you a tour of the main product features and how they fit togethe
 - **Dependency‑aware moves** – Moving a blocked card shows helpful toasts explaining which dependencies must be completed first.
 - **Realtime board sync** – WebSocket listeners broadcast board, Attempt, git, and agent events to all connected clients.
 - **Structured logging** – Server logs are structured JSON via Pino with configurable log levels and optional request tracing in debug mode.
+
+## Advanced features
+
+See [Advanced features](core/advanced-features) for a deeper look at:
+
+- Task dependencies and blocked-move rules.
+- Agent profiles (global + per-project) and how Attempts resolve them.
+- Auto-start behavior when moving cards into In Progress.
+- Auto-commit and auto-push automation driven by project settings.
 ---
 ## Typical workflow
 1. **Create a project**

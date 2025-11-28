@@ -13,7 +13,7 @@
             },
             {
                 "group": "Product Guides",
-                "pages": ["guides/onboarding"]
+                "pages": ["guides/local-dev", "guides/onboarding"]
             },
             {
                 "group": "Core Features",
@@ -27,6 +27,16 @@
                     "core/dashboard",
                     "core/onboarding-and-settings",
                     "core/quality-of-life"
+                ]
+            },
+            {
+                "group": "Advanced Features",
+                "pages": [
+                    "core/advanced-features",
+                    "core/advanced-dependencies",
+                    "core/advanced-agent-profiles",
+                    "core/advanced-auto-start",
+                    "core/advanced-auto-commit-push"
                 ]
             },
             {
