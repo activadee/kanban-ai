@@ -15,6 +15,22 @@ Last updated: 2025-11-28
   - The UI focuses on a Codex-based agent backed by the Codex SDK and local Codex CLI.
   - Experimental agents (e.g. Droid, OpenCode) may exist in the codebase but are not exposed in the UI.
 
+### Ticket enhancement interface
+
+- Agents can optionally implement `enhance(input, profile)` alongside `run` / `resume`.
+  - `input` is a `TicketEnhanceInput` containing project + board IDs, the canonical repository path, base branch, current
+    card title/description, and the active `AbortSignal`.
+  - The method returns a `TicketEnhanceResult` with the rewritten `title` and `description`.
+  - Implementations must respect the provided signal so the UI can cancel enhancement requests.
+- Typical use cases:
+  - Enriching an imported GitHub issue before it becomes a KanbanAI card.
+  - Rewriting terse card titles/descriptions with additional acceptance criteria before an Attempt starts.
+- Helper utilities:
+  - `core/agents/utils#splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription)` extracts a leading H1 (`# `)
+    from LLM output, making it easier for agents to return Markdown while still conforming to the required result shape.
+  - `TicketEnhanceInput` / `TicketEnhanceResult` are exported from `core/agentTypes` (via `core/src/index.ts`) so custom
+    agents can share the same types without reaching into private modules.
+
 ## Profiles: configuration for agents
 
 - **Agent profiles** capture reusable configuration for a specific agent, such as:
@@ -56,4 +72,3 @@ Last updated: 2025-11-28
   - Agents implement `run` and `resume` and stream structured messages back via callbacks.
   - The Attempts module translates these into `attempt.*` events and persists logs + conversation items, powering the
     Messages, Processes, and Logs tabs in the UI.
-
