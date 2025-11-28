@@ -61,7 +61,7 @@
             },
             {
                 "group": "Operations",
-                "pages": ["ops/cli-and-binaries"]
+                "pages": ["ops/cli-and-binaries", "ops/deployment"]
             },
             {
                 "group": "Developer Reference",
