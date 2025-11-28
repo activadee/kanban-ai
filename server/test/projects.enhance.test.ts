@@ -112,16 +112,15 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             }),
         });
 
-        expect(res.status).toBeGreaterThanOrEqual(400);
-        expect(res.status).toBeLessThan(600);
+        expect(res.status).toBe(404);
         const data = (await res.json()) as any;
         expect(data).toMatchObject({
-            status: res.status,
-            title: expect.any(String),
+            status: 404,
+            detail: "Project not found",
         });
     });
 
-    it("returns 502 when agent is unknown", async () => {
+    it("returns 400 when agent is unknown", async () => {
         const app = createApp();
         const {agentEnhanceTicket} = await import("core");
         (agentEnhanceTicket as any).mockRejectedValue(
@@ -138,15 +137,15 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             }),
         });
 
-        expect(res.status).toBe(502);
+        expect(res.status).toBe(400);
         const data = (await res.json()) as any;
         expect(data).toMatchObject({
-            status: 502,
-            title: expect.any(String),
+            status: 400,
+            detail: "Unknown agent: UNKNOWN",
         });
     });
 
-    it("returns 502 when agent does not implement enhance()", async () => {
+    it("returns 400 when agent does not implement enhance()", async () => {
         const app = createApp();
         const {agentEnhanceTicket} = await import("core");
         (agentEnhanceTicket as any).mockRejectedValue(
@@ -163,11 +162,11 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             }),
         });
 
-        expect(res.status).toBe(502);
+        expect(res.status).toBe(400);
         const data = (await res.json()) as any;
         expect(data).toMatchObject({
-            status: 502,
-            title: expect.any(String),
+            status: 400,
+            detail: "Agent CODEX does not support ticket enhancement",
         });
     });
 });

@@ -24,19 +24,33 @@ export const enhanceTicketHandler = async (c: any) => {
 
         return c.json({ticket: result}, 200);
     } catch (error) {
-        log.error(
-            {
-                err: error,
-                projectId,
-                agent: body.agent,
-                profileId: body.profileId,
-            },
-            "[projects:tickets:enhance] failed",
-        );
+        const message =
+            error instanceof Error ? error.message : "Failed to enhance ticket";
+
+        let status = 502;
+        if (message === "Project not found") {
+            status = 404;
+        } else if (message.startsWith("Unknown agent:")) {
+            status = 400;
+        } else if (message.includes("does not support ticket enhancement")) {
+            status = 400;
+        }
+
+        if (status >= 500) {
+            log.error(
+                {
+                    err: error,
+                    projectId,
+                    agent: body.agent,
+                    profileId: body.profileId,
+                },
+                "[projects:tickets:enhance] failed",
+            );
+        }
+
         return problemJson(c, {
-            status: 502,
-            detail: "Failed to enhance ticket",
+            status,
+            detail: status >= 500 ? "Failed to enhance ticket" : message,
         });
     }
 };
-
