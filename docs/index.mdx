@@ -2,133 +2,30 @@
 title: KanbanAI
 ---
 
-# KanbanAI Overview
+# KanbanAI Documentation
 
-KanbanAI is a developer‑centric kanban assistant that turns tasks into Pull Requests with help from your favorite coding agent. It combines:
-
-- A Bun + Hono API server with SQLite (Drizzle ORM)
-- A React + Vite client for the kanban UI
-- An agentic core that runs Attempts inside isolated git worktrees on your machine
-
-This page gives you a tour of the main product features and how they fit together.
-
-## What KanbanAI does
-
-- Keeps a kanban board (Backlog → In Progress → Review → Done) in sync with your local git repositories.
-- Lets you start AI‑powered Attempts on individual tasks, running against dedicated git worktrees.
-- Helps you go from idea to PR: track work, generate changes, review diffs, commit, push, and open a GitHub Pull Request without leaving the app.
-
----
-
-## Core features
-
-### Projects & repositories
-
-- **Projects as workspaces** – Each project represents a local git repository and gets its own board, settings, and Attempts.
-- **Create from existing or blank repo** – Start from a discovered git repository on disk or create a blank project that initializes a new git repo for you.
-- **Repository discovery** – The project dialog can scan your filesystem for git repositories so you can quickly link an existing codebase.
-- **Per‑project settings** – Configure base branch, preferred remote, default agent/profile, and automation flags (e.g. auto‑commit on successful Attempt).
-
-### Kanban boards & tasks
-
-- **Standard workflow columns** – Boards are seeded with Backlog, In Progress, Review, and Done, with sensible defaults managed by the server.
-- **Drag‑and‑drop cards** – Reorder tasks within a column or move them between columns using a modern kanban UI.
-- **Task details** – For each card you can edit title, description, and an optional ticket key (e.g. `ABC‑123`) that shows up prominently in the UI.
-- **Task dependencies** – Cards can depend on other cards on the same board. Blocked cards can’t move to In Progress, and the UI explains why when a move fails.
-- **Automatic column transitions** – When an Attempt starts, completes successfully, or fails, the board listeners move cards between columns to reflect the current state of work.
-- **Real‑time updates** – Boards are backed by WebSockets; changes from other clients, GitHub imports, and Attempt events stream live without manual refresh.
-
-### AI Attempts (agentic runs)
-
-- **Per‑card Attempts** – From any card, start an AI‑powered Attempt that runs in a dedicated git worktree tied to that task.
-- **Isolated worktrees** – Each Attempt gets its own branch and worktree under `~/.kanbanAI/worktrees`, so experiments stay separate from your main repo.
-- **Conversation view** – The Messages tab shows streaming agent output and lets you send follow‑up prompts while the Attempt is active.
-- **Processes & dev automation** – The Processes tab summarizes dev automation (e.g. project dev scripts) and lets you re‑run them or stop long‑running work.
-- **Logs tab** – Structured Attempt logs (including dev script output) are available in a dedicated Logs tab for debugging and auditing.
-- **Follow‑ups and stopping** – You can send follow‑up prompts against the same Attempt session or stop an Attempt that’s running too long.
-
-### Agents & profiles
-
-- **Agent registry** – The server exposes a registry of agents (currently focused on the Codex SDK‑based agent) that can run Attempts.
-- **Configurable profiles** – Define agent profiles with different models, temperature, tools, or sandbox settings and reuse them across projects.
-- **Global vs project profiles** – Profiles can be stored globally or per project; the UI surfaces both and allows choosing a profile when starting or following up on an Attempt.
-- **Live profile updates** – When profiles are added or modified, websocket broadcasts keep the UI in sync without manual refresh.
-
-### Git integration
-
-- **Diff viewer** – For an active Attempt, open a Changes dialog that shows the current diff produced by the agent in its worktree.
-- **Commit from the UI** – Compose commit messages and commit all Attempt changes directly from the app; git events are emitted so status stays fresh.
-- **Branch & merge helpers** – Attempts track their branch and base branch; you can run a merge‑base flow from the UI before opening a PR.
-- **Open in editor** – Launch your preferred editor at the Attempt’s worktree path, with editor detection and environment setup handled on the server.
-
-### GitHub integration
-
-- **Device‑flow login** – Authenticate with GitHub via device flow, handled by the server’s auth module.
-- **Import issues as cards** – Use the “Import GitHub issues” action on a board to pull issues into Backlog as cards, with titles and ticket keys derived from GitHub.
-- **Create Pull Requests** – From a card with an active Attempt, open a PR dialog that targets the Attempt branch, pre‑fills title and body, and ties the PR back to the card.
-- **Connection status** – The Dashboard shows whether you’re connected to GitHub and which account is active.
-
-### Dashboard
-
-- **High‑level metrics** – See total projects, active Attempts, Attempts in the last 24 hours, and open cards.
-- **Active Attempts panel** – View in‑flight Attempts across all projects with status and quick links to their boards.
-- **Recent activity** – Scan recent Attempt outcomes (success, failure, stopped) with relative timestamps.
-- **Project snapshot** – Per‑project card counts and active Attempts help you spot overloaded boards.
-- **System status** – Quick status for GitHub connectivity and registered agents.
-
-### Onboarding & settings
-
-- **First‑run onboarding** – When no onboarding record exists, users are guided through theme/language, telemetry, notifications, editor and git defaults, GitHub templates, and GitHub OAuth configuration.
-- **GitHub setup** – Onboarding supports configuring the GitHub OAuth app (client ID/secret) and completing the device flow before entering the workspace.
-- **App settings** – After onboarding, global settings can be revisited under `/settings` to adjust preferences, editor defaults, git defaults, and automation behavior.
-- **Project settings** – Each project has settings for base branch, remote, default agent/profile, and automation flags (e.g. auto‑commit + optional auto‑push on successful Attempt completion).
-
-### Quality‑of‑life features
-
-- **Auto‑start agent on In Progress** – Optionally start an Attempt automatically when moving a card from Backlog to In Progress.
-- **Auto‑commit and auto‑push** – When enabled, successful Attempts can trigger an automatic commit (and optional push) using the latest agent message as commit content.
-- **Dependency‑aware moves** – Moving a blocked card shows helpful toasts explaining which dependencies must be completed first.
-- **Realtime board sync** – WebSocket listeners broadcast board, Attempt, git, and agent events to all connected clients.
-- **Structured logging** – Server logs are structured JSON via Pino with configurable log levels and optional request tracing in debug mode.
-
----
-
-## Typical workflow
-
-1. **Create a project**
-   - From the Projects page, create a project from an existing git repository or a new blank project.
-2. **Populate the board**
-   - Add cards for tasks or import GitHub issues into Backlog.
-3. **Start work**
-   - Move a card to In Progress (optionally auto‑starting an Attempt) or open the card inspector and start an Attempt manually with your chosen agent/profile.
-4. **Iterate with the agent**
-   - Review the Messages, Processes, and Logs tabs, send follow‑up prompts, and inspect changes in your editor and the Changes dialog.
-5. **Commit & open a PR**
-   - Use the Commit dialog to save changes, then open a PR from the card. The PR links back to the Attempt/card and can be auto‑merged depending on your workflow.
-6. **Finish the task**
-   - Once merged and verified, move the card to Done. Finished Attempts and their worktrees are cleaned up automatically when appropriate.
-
----
-
-## Getting started (local dev)
-
-- **Install dependencies** – Run `bun install` from the repository root.
-- **Development** – Run `bun run dev` to start the split dev servers (API + UI).
-- **Production (single origin)** – Run `bun run prod` to build the client and server and serve everything from one Hono server.
-- **Binary builds** – Run `bun run build:binary` to produce self‑contained executables for common platforms.
-
-See `onboarding.md` for details on the first‑run onboarding flow and GitHub connection.
-
----
-
-## Working on the docs
+KanbanAI is a kanban-style project assistant that combines an API server (Hono + Drizzle), a React + Vite client, and an agentic core for planning and executing work on local repositories.
 
 This documentation site is powered by Mintlify using the latest `docs.json` configuration format and lives entirely in the `docs/` folder of the monorepo.
 
-To run the docs locally:
+## Getting started
 
-1. Install the Mintlify CLI (latest): `npm install -g mint`
-2. From the repository root (or `docs/`), run: `mint dev`
+- **Development** - run `bun run dev` from the repository root to start the split dev servers (API + UI).
+- **Production (single origin)** - run `bun run prod` to build the client and server and serve everything from one Hono server.
+- **Binary builds** - run `bun run build:binary` to produce self-contained executables for common platforms.
+
+See:
+
+- `onboarding.md` for the first-run onboarding flow and GitHub connection.
+- `codex-sdk-refactor.md` for notes on the Codex SDK refactor plan.
+
+## Running this docs site locally
+
+1. Install the Mintlify CLI (latest):
+   - `npm install -g mint`
+2. From the repository root (or `docs/`), run:
+   - `mint dev`
 3. Open the local URL printed by the CLI to browse the docs.
 
-New documentation pages can be added under `docs/` as `.md` or `.mdx` files and registered in `docs/docs.json` under the appropriate navigation group.
+All new documentation pages can be added under `docs/` as `.md` or `.mdx` files and registered in `docs/docs.json` under the appropriate navigation group.
+
