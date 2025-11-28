@@ -40,4 +40,4 @@ core/     # Core logic + tests/coverage gates
 ## Deployment Notes
 
 - For development, always use split dev servers: `bun run dev` (Turbo orchestrated Vite + API).
-- For single-origin self-hosting, use the dedicated `prod` entrypoint (see repository docs and `plan.md` for details).
+- For single-origin self-hosting, use the dedicated `prod` entrypoint (see the Mintlify docs in `docs/index.mdx` for details on running `bun run prod` + the bundled static assets).

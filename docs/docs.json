@@ -1,0 +1,20 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "KanbanAI",
+  "colors": {
+    "primary": "#6366F1"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": ["index"]
+      },
+      {
+        "group": "Product Guides",
+        "pages": ["onboarding"]
+      }
+    ]
+  }
+}
