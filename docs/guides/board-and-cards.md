@@ -31,6 +31,12 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
     - **Dependencies** – optional list of other cards this card depends on.
 - Submit to create the card in the chosen column.
 
+While editing the description, a small bot button in the textarea lets you send the current title/description to the
+project’s configured enhancement agent. The button activates once a non-empty title is present, shows a spinner while
+the enhancement request runs, and then displays an **AI suggestion preview** comparing the original and rewritten
+content side by side. Choose **Accept** to apply the suggested title/description to the form or **Reject** to discard it
+and keep editing manually.
+
 You can also create cards directly in a column using column-specific controls (e.g. “Add card”) where present.
 
 ## Selecting cards & the inspector
@@ -99,4 +105,3 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
 - After import:
   - The board state is invalidated and re-fetched.
   - New cards appear live thanks to WebSocket updates.
-
