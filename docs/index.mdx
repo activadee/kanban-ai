@@ -1,0 +1,31 @@
+---
+title: KanbanAI
+---
+
+# KanbanAI Documentation
+
+KanbanAI is a kanban-style project assistant that combines an API server (Hono + Drizzle), a React + Vite client, and an agentic core for planning and executing work on local repositories.
+
+This documentation site is powered by Mintlify using the latest `docs.json` configuration format and lives entirely in the `docs/` folder of the monorepo.
+
+## Getting started
+
+- **Development** - run `bun run dev` from the repository root to start the split dev servers (API + UI).
+- **Production (single origin)** - run `bun run prod` to build the client and server and serve everything from one Hono server.
+- **Binary builds** - run `bun run build:binary` to produce self-contained executables for common platforms.
+
+See:
+
+- `onboarding.md` for the first-run onboarding flow and GitHub connection.
+- `codex-sdk-refactor.md` for notes on the Codex SDK refactor plan.
+
+## Running this docs site locally
+
+1. Install the Mintlify CLI (latest):
+   - `npm install -g mint`
+2. From the repository root (or `docs/`), run:
+   - `mint dev`
+3. Open the local URL printed by the CLI to browse the docs.
+
+All new documentation pages can be added under `docs/` as `.md` or `.mdx` files and registered in `docs/docs.json` under the appropriate navigation group.
+
