@@ -34,6 +34,15 @@ The Card Inspector is opened by clicking a card on the board. It contains:
     - The Attempt is queued and started.
     - Board listeners may move the card into In Progress automatically.
 
+### Auto-start when moving to In Progress
+
+- When the global **Auto-start agent on In Progress** setting is enabled and a card is moved from **Backlog → In
+  Progress**:
+  - The server automatically starts an Attempt using the project’s default agent/profile.
+  - If the Card Inspector is already open for that card, it will automatically attach to the new Attempt:
+    - The Attempt header updates to show the new Attempt ID and status.
+    - Messages and logs begin streaming in real time, without requiring a page reload.
+
 If the card is blocked by dependencies and auto-start is disabled, the UI may prevent starting an Attempt depending on configuration.
 
 ## Messages tab

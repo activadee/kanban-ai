@@ -166,6 +166,9 @@ export function useKanbanWS(boardId: string | null) {
                         ws.send(JSON.stringify(pong))
                         break
                     }
+                    case 'attempt_started':
+                        eventBus.emit('attempt_started', msg.payload)
+                        break
                     case 'state':
                         setState(msg.payload)
                         break
