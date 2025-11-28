@@ -13,7 +13,16 @@
             },
             {
                 "group": "Product Guides",
-                "pages": ["guides/local-dev", "guides/onboarding"]
+                "pages": [
+                    "guides/local-dev",
+                    "guides/onboarding",
+                    "guides/board-and-cards",
+                    "guides/attempts-and-inspector-ui",
+                    "guides/dashboard-ui",
+                    "guides/extending-kanbanai",
+                    "guides/contributing",
+                    "guides/troubleshooting"
+                ]
             },
             {
                 "group": "Core Features",
@@ -28,6 +37,18 @@
                     "core/onboarding-and-settings",
                     "core/quality-of-life"
                 ]
+            },
+            {
+                "group": "API & Realtime",
+                "pages": [
+                    "core/api-overview",
+                    "core/realtime-and-websockets",
+                    "core/data-and-storage"
+                ]
+            },
+            {
+                "group": "Security & Privacy",
+                "pages": ["core/security-and-privacy"]
             },
             {
                 "group": "Advanced Features",
