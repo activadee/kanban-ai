@@ -30,6 +30,22 @@ export type AgentContext = {
     ) => void
 }
 
+export type TicketEnhanceInput = {
+    projectId: string
+    boardId: string
+    repositoryPath: string
+    baseBranch: string
+    title: string
+    description: string
+    profileId?: string | null
+    signal: AbortSignal
+}
+
+export type TicketEnhanceResult = {
+    title: string
+    description: string
+}
+
 export type AgentProfileUnknown = unknown
 
 export type AgentInfo<P = AgentProfileUnknown> = {
@@ -45,5 +61,6 @@ export interface Agent<P = AgentProfileUnknown> extends AgentInfo<P> {
     run(ctx: AgentContext, profile: P): Promise<number>
 
     resume?: (ctx: AgentContext, profile: P) => Promise<number>
-}
 
+    enhance?: (input: TicketEnhanceInput, profile: P) => Promise<TicketEnhanceResult>
+}
