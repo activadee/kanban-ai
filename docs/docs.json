@@ -1,20 +1,38 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "KanbanAI",
-  "colors": {
-    "primary": "#6366F1"
-  },
-  "navigation": {
-    "groups": [
-      {
-        "group": "Overview",
-        "pages": ["index"]
-      },
-      {
-        "group": "Product Guides",
-        "pages": ["onboarding"]
-      }
-    ]
-  }
+    "$schema": "https://mintlify.com/docs.json",
+    "theme": "mint",
+    "name": "KanbanAI",
+    "colors": {
+        "primary": "#6366F1"
+    },
+    "navigation": {
+        "groups": [
+            {
+                "group": "Overview",
+                "pages": ["index"]
+            },
+            {
+                "group": "Product Guides",
+                "pages": ["guides/onboarding"]
+            },
+            {
+                "group": "Core Features",
+                "pages": [
+                    "core/projects-and-repositories",
+                    "core/kanban-boards-and-tasks",
+                    "core/ai-attempts",
+                    "core/agents-and-profiles",
+                    "core/git-integration",
+                    "core/github-integration",
+                    "core/dashboard",
+                    "core/onboarding-and-settings",
+                    "core/quality-of-life"
+                ]
+            },
+            {
+                "group": "Operations",
+                "pages": ["ops/cli-and-binaries"]
+            }
+        ]
+    }
 }
