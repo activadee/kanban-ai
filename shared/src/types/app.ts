@@ -11,6 +11,7 @@ export interface AppSettings {
     telemetryEnabled: boolean
     notificationsAgentCompletionSound: boolean
     notificationsDesktop: boolean
+    autoStartAgentOnInProgress: boolean
     // Editor
     editorType: EditorType
     editorCommand: string | null
@@ -34,6 +35,7 @@ export type UpdateAppSettingsRequest = Partial<
         | 'telemetryEnabled'
         | 'notificationsAgentCompletionSound'
         | 'notificationsDesktop'
+        | 'autoStartAgentOnInProgress'
         | 'editorType'
         | 'editorCommand'
         | 'gitUserName'

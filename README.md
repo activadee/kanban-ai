@@ -144,10 +144,11 @@ Scopes requested: `repo`, `read:user`, `user:email`.
 
 1) Create a Project pointing to a local git repo (or initialize one).
 2) Connect GitHub and (optionally) import issues to populate the board.
-3) Drag a ticket to In Progress to start an Attempt. The server creates a worktree at
+3) (Optional) Enable **Auto-start agent on In Progress** in App Settings if you want attempts to start automatically when moving tickets from Backlog to In Progress.
+4) Move a ticket to In Progress or start an Attempt from the ticket inspector. When an Attempt starts, the server creates a worktree at
    `$HOME/.kanbanAI/worktrees/<project>/<task>` and launches your selected agent.
-4) Review changes: view diffs, commit (all changes are staged automatically), push, and Create PR (the PR flow will auto-push the branch if it isn't on the remote yet).
-5) When merged, move to Done. We'll remove the attempt branch and worktree automatically so the repo stays tidy.
+5) Review changes: view diffs, commit (all changes are staged automatically), push, and Create PR (the PR flow will auto-push the branch if it isn't on the remote yet).
+6) When merged, move to Done. We'll remove the attempt branch and worktree automatically so the repo stays tidy.
 
 ## Scripts
 
@@ -204,6 +205,8 @@ The server workspace uses two explicit entrypoints under `server/src/entry`:
 
 Project Settings (per project): base branch, preferred remote, setup/dev/cleanup scripts, default agent/profile,
 auto-commit-on-finish (automatically triggers an autocommit when a successful attempt finishes) with optional auto-push.
+
+App Settings (global): theme/language, telemetry, notification preferences, editor defaults, Git defaults, and whether to auto-start the agent when moving tickets from Backlog to In Progress.
 
 Agent profiles can be stored per project or as workspace-global entries (IDs beginning with `apg-`). When an attempt
 starts or resumes, the server now resolves the referenced profile, validates it against the agent’s schema, and logs an

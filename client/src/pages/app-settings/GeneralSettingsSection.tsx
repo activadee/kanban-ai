@@ -8,6 +8,7 @@ export type GeneralForm = {
     telemetryEnabled: boolean
     notificationsAgentCompletionSound: boolean
     notificationsDesktop: boolean
+    autoStartAgentOnInProgress: boolean
 }
 
 export function GeneralSettingsSection({form, onChange, onDesktopToggle}: {
@@ -65,8 +66,20 @@ export function GeneralSettingsSection({form, onChange, onDesktopToggle}: {
                                                                                     checked={form.notificationsDesktop}
                                                                                     onCheckedChange={(v) => onDesktopToggle(v === true)}/><span
                     className="ml-2 text-sm text-muted-foreground">Allow desktop notifications</span></div>
+
+                <div className="sm:col-span-1"><Label htmlFor="autoStartAgent">Auto-start agent on In Progress</Label>
+                </div>
+                <div className="sm:col-span-2 max-w-md flex items-center">
+                    <Checkbox
+                        id="autoStartAgent"
+                        checked={form.autoStartAgentOnInProgress}
+                        onCheckedChange={(v) => onChange({autoStartAgentOnInProgress: v === true})}
+                    />
+                    <span className="ml-2 text-sm text-muted-foreground">
+                        When enabled, moving a ticket from Backlog to In Progress starts the project&apos;s default agent automatically.
+                    </span>
+                </div>
             </div>
         </section>
     )
 }
-

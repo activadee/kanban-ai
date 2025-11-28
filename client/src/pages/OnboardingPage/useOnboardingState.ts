@@ -31,6 +31,7 @@ export type SettingsForm = {
     telemetryEnabled: boolean
     notificationsAgentCompletionSound: boolean
     notificationsDesktop: boolean
+    autoStartAgentOnInProgress: boolean
     editorType: EditorType | ''
     gitUserName: string
     gitUserEmail: string
@@ -71,6 +72,7 @@ function toSettingsForm(data: NonNullable<Awaited<ReturnType<typeof useAppSettin
         telemetryEnabled: data.telemetryEnabled,
         notificationsAgentCompletionSound: data.notificationsAgentCompletionSound,
         notificationsDesktop: data.notificationsDesktop,
+        autoStartAgentOnInProgress: data.autoStartAgentOnInProgress,
         editorType: data.editorType,
         gitUserName: data.gitUserName ?? '',
         gitUserEmail: data.gitUserEmail ?? '',
@@ -401,6 +403,7 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
             telemetryEnabled: settingsForm.telemetryEnabled,
             notificationsAgentCompletionSound: settingsForm.notificationsAgentCompletionSound,
             notificationsDesktop: settingsForm.notificationsDesktop,
+            autoStartAgentOnInProgress: settingsForm.autoStartAgentOnInProgress,
             editorType: settingsForm.editorType || undefined,
             gitUserName: settingsForm.gitUserName.trim() || null,
             gitUserEmail: settingsForm.gitUserEmail.trim() || null,
@@ -535,4 +538,3 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
 
     return {state, actions}
 }
-

@@ -19,6 +19,7 @@ function defaults(): SharedAppSettings {
         telemetryEnabled: false,
         notificationsAgentCompletionSound: false,
         notificationsDesktop: false,
+        autoStartAgentOnInProgress: false,
         editorType: "VS_CODE",
         editorCommand: null,
         gitUserName: null,
@@ -87,6 +88,11 @@ function mapRow(row: any): SharedAppSettings {
         notificationsDesktop: Boolean(
             row.notificationsDesktop ?? row.notif_desktop ?? false,
         ),
+        autoStartAgentOnInProgress: Boolean(
+            row.autoStartAgentOnInProgress ??
+                row.auto_start_agent_on_in_progress ??
+                false,
+        ),
         editorType,
         editorCommand,
         gitUserName: row.gitUserName ?? row.git_user_name ?? null,
@@ -138,6 +144,7 @@ export async function updateAppSettings(
         notificationsAgentCompletionSound:
             payload.notificationsAgentCompletionSound,
         notificationsDesktop: payload.notificationsDesktop,
+        autoStartAgentOnInProgress: payload.autoStartAgentOnInProgress,
         editorType: payload.editorType,
         editorCommand: nn(payload.editorCommand),
         gitUserName: nn(payload.gitUserName),

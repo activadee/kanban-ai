@@ -8,6 +8,7 @@ export const appSettings = sqliteTable('app_settings', {
     telemetryEnabled: integer('telemetry_enabled', {mode: 'boolean'}).notNull().default(false),
     notifToastSounds: integer('notif_toast_sounds', {mode: 'boolean'}).notNull().default(false),
     notifDesktop: integer('notif_desktop', {mode: 'boolean'}).notNull().default(false),
+    autoStartAgentOnInProgress: integer('auto_start_agent_on_in_progress', {mode: 'boolean'}).notNull().default(false),
     editorType: text('editor_type').notNull().default('VS_CODE'),
     editorCommand: text('editor_command'),
     gitUserName: text('git_user_name'),
