@@ -65,7 +65,7 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
 - Helper utilities:
   - `core/agents/utils#splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription)` extracts a leading H1 (`# `)
     from LLM output, making it easier for agents to return Markdown while still conforming to the required result shape.
-  - `core/agents/utils#buildTicketEnhancePrompt(input, appendPrompt)` builds a standardized German-language prompt for
+  - `core/agents/utils#buildTicketEnhancePrompt(input, appendPrompt)` builds a standardized English-language prompt for
     ticket enhancement, used by agents like DROID and CODEX so they can share the same Markdown contract (H1 title,
     detailed body, and at least one `mermaid` diagram).
   - `TicketEnhanceInput` / `TicketEnhanceResult` are exported from `core/agentTypes` (via `core/src/index.ts`) so custom
