@@ -40,6 +40,13 @@ export const updateProjectSettingsSchema = z
         message: "No updates provided",
     });
 
+export const enhanceTicketSchema = z.object({
+    title: z.string().min(1),
+    description: z.string().default(""),
+    agent: z.string().optional(),
+    profileId: z.string().optional(),
+});
+
 export const createCardSchema = z.object({
     columnId: z.string().min(1, "Column ID is required"),
     title: z.string().min(1, "Title is required"),
@@ -88,4 +95,3 @@ export const boardGithubImportSchema = z.object({
     repo: z.string().min(1),
     state: z.enum(["open", "closed", "all"]).optional(),
 });
-

@@ -5,6 +5,7 @@ import {
     createProjectSchema,
     updateProjectSchema,
     updateProjectSettingsSchema,
+    enhanceTicketSchema,
 } from "./project.schemas";
 import {
     listProjectsHandler,
@@ -24,6 +25,7 @@ import {registerProjectAgentRoutes} from "./project.agents.routes";
 import {createBoardRouter, resolveBoardForProject} from "./board.routes";
 import {problemJson} from "../http/problem";
 import {startAttemptSchema} from "../attempts/attempts.schemas";
+import {enhanceTicketHandler} from "./project.enhance.handlers";
 
 export const createProjectsRouter = () => {
     const router = new Hono<AppEnv>();
@@ -82,6 +84,12 @@ export const createProjectsRouter = () => {
         (c) => previewNextTicketKeyHandler(c),
     );
 
+    router.post(
+        "/:projectId/tickets/enhance",
+        zValidator("json", enhanceTicketSchema),
+        (c) => enhanceTicketHandler(c),
+    );
+
     router.patch(
         "/:projectId/settings",
         zValidator("json", updateProjectSettingsSchema),
@@ -110,4 +118,3 @@ export const createProjectsRouter = () => {
 
     return router;
 };
-
