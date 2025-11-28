@@ -32,7 +32,6 @@
             {
                 "group": "Advanced Features",
                 "pages": [
-                    "core/advanced-features",
                     "core/advanced-dependencies",
                     "core/advanced-agent-profiles",
                     "core/advanced-auto-start",

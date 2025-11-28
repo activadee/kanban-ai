@@ -1,6 +1,8 @@
-# Advanced: agent profiles
+---
+title: Agent profiles
+---
 
-Last updated: 2025-11-28
+# Agent profiles
 
 ## Overview
 
@@ -57,4 +59,3 @@ projects and Attempts.
 See also:
 
 - `core/agents-and-profiles.md` for the broader agents module.
-

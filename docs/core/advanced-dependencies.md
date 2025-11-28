@@ -1,6 +1,8 @@
-# Advanced: task dependencies
+---
+title: Task dependencies
+---
 
-Last updated: 2025-11-28
+# Task dependencies
 
 ## Overview
 
@@ -59,4 +61,3 @@ The board handlers use this when moving cards:
 See also:
 
 - `core/kanban-boards-and-tasks.md` for how dependencies integrate with board state.
-

@@ -1,6 +1,8 @@
-# Advanced: auto-start agent on In Progress
+---
+title: Auto-start agent on In Progress
+---
 
-Last updated: 2025-11-28
+# Auto-start agent on In Progress
 
 ## Overview
 
@@ -53,4 +55,3 @@ See also:
 
 - `core/quality-of-life.md` for related automation and realtime updates.
 - `core/ai-attempts.md` for Attempt lifecycle details.
-

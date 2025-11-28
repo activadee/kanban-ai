@@ -1,6 +1,8 @@
-# Advanced: auto-commit & auto-push
+---
+title: Auto-commit & auto-push
+---
 
-Last updated: 2025-11-28
+# Auto-commit & auto-push
 
 ## Overview
 
@@ -52,4 +54,3 @@ See also:
 
 - `core/git-integration.md` for commit/push endpoints and git events.
 - `core/ai-attempts.md` for Attempt lifecycle and worktree behavior.
-
