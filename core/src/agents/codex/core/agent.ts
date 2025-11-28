@@ -3,11 +3,12 @@ import {promises as fs, constants as fsConstants} from 'node:fs'
 import {promisify} from 'node:util'
 
 import {Codex, type ThreadEvent, type CommandExecutionItem, type AgentMessageItem, type ReasoningItem, type McpToolCallItem, type FileChangeItem, type WebSearchItem, type TodoListItem, type ErrorItem, type ThreadOptions} from '@openai/codex-sdk'
-import type {AgentContext} from '../../types'
+import type {AgentContext, TicketEnhanceInput, TicketEnhanceResult} from '../../types'
 import {SdkAgent} from '../../sdk'
 import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
 import {StreamGrouper} from '../../sdk/stream-grouper'
+import {buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
 
 type CodexInstallation = { executablePath: string }
 const execFileAsync = promisify(execFile)
@@ -350,6 +351,38 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             this.groupers.get(ctx.attemptId)?.flush(ctx)
             this.groupers.delete(ctx.attemptId)
         }
+    }
+
+    async enhance(input: TicketEnhanceInput, profile: CodexProfile): Promise<TicketEnhanceResult> {
+        const enhanceCtx: AgentContext = {
+            attemptId: 'enhance-' + input.projectId,
+            boardId: input.boardId,
+            cardId: 'ticket',
+            worktreePath: input.repositoryPath,
+            repositoryPath: input.repositoryPath,
+            branchName: input.baseBranch,
+            baseBranch: input.baseBranch,
+            cardTitle: input.title,
+            cardDescription: input.description,
+            profileId: input.profileId ?? null,
+            sessionId: undefined,
+            followupPrompt: undefined,
+            signal: input.signal,
+            emit: () => {},
+        }
+
+        const installation = await this.detectInstallation(profile, enhanceCtx)
+        const client = await this.createClient(profile, enhanceCtx, installation)
+        const codex = client as Codex
+        const thread = codex.startThread(this.threadOptions(profile, enhanceCtx))
+
+        const prompt = buildTicketEnhancePrompt(input, profile.appendPrompt ?? undefined)
+        const turn = await thread.run(prompt, {signal: input.signal})
+        const markdown = (turn.finalResponse || '').trim()
+        if (!markdown) {
+            return {title: input.title, description: input.description}
+        }
+        return splitTicketMarkdown(markdown, input.title, input.description)
     }
 }
 

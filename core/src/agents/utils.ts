@@ -1,4 +1,4 @@
-import type {TicketEnhanceResult} from './types'
+import type {TicketEnhanceInput, TicketEnhanceResult} from './types'
 
 export function splitTicketMarkdown(
     markdown: string,
@@ -32,4 +32,29 @@ export function splitTicketMarkdown(
         title: headingText,
         description,
     }
+}
+
+export function buildTicketEnhancePrompt(input: TicketEnhanceInput, appendPrompt?: string | null): string {
+    const description = input.description?.trim() || '(keine Beschreibung)'
+
+    const base = [
+        'Du bist ein Ticket-Generator für ein Softwareprojekt.',
+        '',
+        'Eingabe:',
+        `Titel: ${input.title}`,
+        'Beschreibung:',
+        description,
+        '',
+        'Aufgabe:',
+        'Formuliere ein verbessertes Ticket, das die folgenden Anforderungen erfüllt:',
+        '- Markdown.',
+        '- Erste Zeile: # <Neuer Titel oder unveränderter Titel>.',
+        '- Detaillierte Beschreibung mit Schritten und Akzeptanzkriterien.',
+        '- Mindestens ein ```mermaid``` Diagramm (graph oder sequenceDiagram).',
+        '- Möglichst ein zusätzliches Sequenzdiagramm, falls sinnvoll.',
+        '- Keine Meta-Erklärung, nur der Ticketinhalt.',
+    ].join('\n')
+
+    const extra = (appendPrompt ?? '').trim()
+    return extra ? `${base}\n\n${extra}` : base
 }
