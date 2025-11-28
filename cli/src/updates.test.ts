@@ -166,4 +166,50 @@ describe("decideVersionToUse", () => {
 
         expect(decision).toEqual({ versionToUse: "1.0.0", fromCache: true });
     });
+
+    it("invokes onNewVersionAvailable callback when a newer version is detected", async () => {
+        const cacheModule = await import("./cache");
+        const getCachedVersionsForPlatform =
+            cacheModule.getCachedVersionsForPlatform as unknown as ReturnType<
+                typeof vi.fn
+            >;
+        (getCachedVersionsForPlatform as any).mockReturnValueOnce(["1.0.0"]);
+
+        const onNewVersionAvailable = vi.fn();
+
+        await decideVersionToUse({
+            env: baseEnv,
+            platformArch,
+            binaryInfo,
+            latestRemoteVersion: "2.0.0",
+            onNewVersionAvailable,
+        });
+
+        expect(onNewVersionAvailable).toHaveBeenCalledWith({
+            latestRemoteVersion: "2.0.0",
+            latestCachedVersion: "1.0.0",
+        });
+    });
+
+    it("does not invoke onNewVersionAvailable when cached version is up to date", async () => {
+        const cacheModule = await import("./cache");
+        const getCachedVersionsForPlatform =
+            cacheModule.getCachedVersionsForPlatform as unknown as ReturnType<
+                typeof vi.fn
+            >;
+        (getCachedVersionsForPlatform as any).mockReturnValueOnce(["2.0.0"]);
+
+        const onNewVersionAvailable = vi.fn();
+
+        const decision = await decideVersionToUse({
+            env: baseEnv,
+            platformArch,
+            binaryInfo,
+            latestRemoteVersion: "2.0.0",
+            onNewVersionAvailable,
+        });
+
+        expect(decision).toEqual({ versionToUse: "2.0.0", fromCache: true });
+        expect(onNewVersionAvailable).not.toHaveBeenCalled();
+    });
 });

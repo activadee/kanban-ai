@@ -42,6 +42,7 @@ vi.mock("./github", () => ({
             version: "1.0.0",
             release: {
                 tag_name: "v1.0.0",
+                body: "Test changelog body",
                 assets: [
                     {
                         name: "kanban-ai-linux-x64",
@@ -53,6 +54,7 @@ vi.mock("./github", () => ({
     getReleaseByVersion: () =>
         Promise.resolve({
             tag_name: "v1.0.0",
+            body: "Test changelog body",
             assets: [
                 {
                     name: "kanban-ai-linux-x64",
@@ -63,9 +65,16 @@ vi.mock("./github", () => ({
 }));
 
 vi.mock("./updates", () => ({
-    decideVersionToUse: vi.fn(() =>
-        Promise.resolve({ versionToUse: "1.0.0", fromCache: false }),
-    ),
+    decideVersionToUse: vi.fn(async (opts: any) => {
+        if (opts && typeof opts.onNewVersionAvailable === "function") {
+            await opts.onNewVersionAvailable({
+                latestRemoteVersion: opts.latestRemoteVersion ?? "1.0.0",
+                latestCachedVersion: "0.9.0",
+            });
+        }
+
+        return { versionToUse: "1.0.0", fromCache: false };
+    }),
 }));
 
 const ensureBinaryDownloadedMock = vi.fn<
@@ -180,6 +189,30 @@ describe("runCli", () => {
         } finally {
             // @ts-expect-error restore original
             process.exit = originalExit;
+        }
+    });
+
+    it("prints changelog when a newer version is detected", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await runCli();
+
+            expect(
+                logSpy.mock.calls.some((call) =>
+                    String(call[0]).includes("Changelog (from GitHub release notes):"),
+                ),
+            ).toBe(true);
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            logSpy.mockRestore();
         }
     });
 

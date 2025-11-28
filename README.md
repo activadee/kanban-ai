@@ -53,6 +53,10 @@ Environment variables:
 - `KANBANAI_GITHUB_REPO` — target a different release source (defaults to `activadee/kanban-ai`).
 - `KANBANAI_NO_UPDATE_CHECK`, `KANBANAI_ASSUME_YES`, `KANBANAI_ASSUME_NO` — automate update prompts/non-interactive runs.
 
+When the wrapper detects that a newer KanbanAI binary is available than the cached version, it will also print the
+GitHub release notes (changelog) for that release before downloading/running it. This lets you see what changed in the
+new version directly in your terminal.
+
 When publishing, trigger the **Release CLI (npm)** workflow to build the workspace and push a trusted `npm publish` via
 GitHub Actions.
 

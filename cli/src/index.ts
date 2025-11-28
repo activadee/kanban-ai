@@ -6,7 +6,7 @@ import fs from "node:fs";
 import { resolveEnvOptions } from "./env";
 import { detectPlatformArch, resolveBinaryInfo } from "./platform";
 import { parseCliArgs } from "./args";
-import { getLatestRelease, getReleaseByVersion } from "./github";
+import { getLatestRelease, getReleaseByVersion, GithubRelease } from "./github";
 import { decideVersionToUse } from "./updates";
 import { ensureBinaryDownloaded } from "./download";
 import { getBinaryPath, getCachedVersionsForPlatform } from "./cache";
@@ -102,6 +102,13 @@ export async function runCli(): Promise<void> {
                 binaryInfo,
                 latestRemoteVersion,
                 explicitVersion: undefined,
+                onNewVersionAvailable: ({ latestRemoteVersion: newVersion, latestCachedVersion }) => {
+                    printReleaseChangelog({
+                        release: latestRelease,
+                        latestVersion: newVersion,
+                        currentVersion: latestCachedVersion,
+                    });
+                },
             });
             targetVersion = decision.versionToUse;
 
@@ -207,6 +214,45 @@ export function execBinary(binaryPath: string, args: string[]): Promise<void> {
             resolve();
         });
     });
+}
+
+function printReleaseChangelog(options: {
+    release: GithubRelease;
+    latestVersion: string;
+    currentVersion?: string;
+}): void {
+    const { release, latestVersion, currentVersion } = options;
+    const body = (release.body ?? "").trim();
+
+    // eslint-disable-next-line no-console
+    console.log("");
+
+    if (currentVersion) {
+        // eslint-disable-next-line no-console
+        console.log(
+            `A new KanbanAI version is available (${latestVersion}, you have ${currentVersion}).`,
+        );
+    } else {
+        // eslint-disable-next-line no-console
+        console.log(`A new KanbanAI version is available (${latestVersion}).`);
+    }
+
+    if (body) {
+        // eslint-disable-next-line no-console
+        console.log("");
+        // eslint-disable-next-line no-console
+        console.log("Changelog (from GitHub release notes):");
+        // eslint-disable-next-line no-console
+        console.log(body);
+    } else {
+        // eslint-disable-next-line no-console
+        console.log("");
+        // eslint-disable-next-line no-console
+        console.log("No changelog was provided for this release.");
+    }
+
+    // eslint-disable-next-line no-console
+    console.log("");
 }
 
 /* c8 ignore start */

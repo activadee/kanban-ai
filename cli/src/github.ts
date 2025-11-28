@@ -7,6 +7,7 @@ export interface GithubAsset {
 
 export interface GithubRelease {
     tag_name: string
+    body?: string | null
     assets: GithubAsset[]
 }
 

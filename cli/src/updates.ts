@@ -15,8 +15,12 @@ export async function decideVersionToUse(options: {
     binaryInfo: BinaryInfo
     latestRemoteVersion: string
     explicitVersion?: string
+    onNewVersionAvailable?: (info: {
+        latestRemoteVersion: string
+        latestCachedVersion: string
+    }) => void | Promise<void>
 }): Promise<UpdateDecision> {
-    const {env, platformArch, binaryInfo, latestRemoteVersion, explicitVersion} = options
+    const {env, platformArch, binaryInfo, latestRemoteVersion, explicitVersion, onNewVersionAvailable} = options
 
     // Explicit version always wins: no update prompting, just use that version.
     if (explicitVersion) {
@@ -36,6 +40,13 @@ export async function decideVersionToUse(options: {
     if (cmp <= 0) {
         // Cached version is up-to-date or newer (in case of pre-releases).
         return {versionToUse: latestCached, fromCache: true}
+    }
+
+    if (onNewVersionAvailable) {
+        await onNewVersionAvailable({
+            latestRemoteVersion,
+            latestCachedVersion: latestCached,
+        })
     }
 
     // Remote is newer than cache.
