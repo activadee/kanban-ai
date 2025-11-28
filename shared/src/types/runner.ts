@@ -20,7 +20,7 @@ export type Attempt = {
     status: AttemptStatus
     baseBranch: string
     branchName: string
-    worktreePath: string
+    worktreePath: string | null
     sessionId?: string | null
     startedAt?: string | null
     endedAt?: string | null

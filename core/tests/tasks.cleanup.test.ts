@@ -146,4 +146,30 @@ describe("tasks/cleanup", () => {
         expect(result.worktreeRemoved).toBe(false);
         expect(updateAttempt).not.toHaveBeenCalled();
     });
+
+    it("does not remove worktree when worktreePath is null", async () => {
+        (getAttemptForCard as any).mockResolvedValue({
+            id: "att-5",
+            boardId: "board-1",
+            cardId: "card-1",
+            agent: "X",
+            status: "succeeded",
+            baseBranch: "main",
+            branchName: "feature/no-wt",
+            worktreePath: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+        (getRepositoryPath as any).mockResolvedValue("/repo/path");
+        branchLocal.mockResolvedValue({
+            all: ["main", "feature/no-wt"],
+            current: "main",
+        });
+
+        const result = await cleanupCardWorkspace("board-1", "card-1");
+
+        expect(result).toEqual({ worktreeRemoved: false, branchRemoved: true });
+        expect(removeWorktree).not.toHaveBeenCalled();
+        expect(updateAttempt).not.toHaveBeenCalled();
+    });
 });

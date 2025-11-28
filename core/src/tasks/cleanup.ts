@@ -67,6 +67,11 @@ export async function cleanupCardWorkspace(boardId: string, cardId: string): Pro
     if (worktreeRemoved) {
         try {
             await updateAttempt(attempt.id, {worktreePath: null, updatedAt: new Date()})
+            console.info('[tasks:cleanup] cleared worktreePath for attempt', {
+                attemptId: attempt.id,
+                boardId,
+                cardId,
+            })
         } catch (error) {
             console.error('[tasks:cleanup] failed to update attempt after cleanup', error)
         }

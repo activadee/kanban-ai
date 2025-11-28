@@ -40,6 +40,9 @@ Git listeners orchestrate the automation:
     - Creates a commit in the Attempt worktree using content derived from the Attempt (e.g. last assistant message).
     - Optionally pushes the branch to `preferredRemote` when `autoPushOnAutocommit` is enabled.
     - Emits relevant `git.*` events (commit, status, push) so the UI can refresh.
+  - Auto-commit runs while the Attempt still has an active worktree; if the card is later moved to **Done** and
+    workspace cleanup runs, the `attempts.worktree_path` column for that Attempt is set to `NULL` and subsequent
+    attempt-scoped Git operations will return a `409` “No worktree for attempt” problem response.
 
 ## Usage considerations
 

@@ -45,6 +45,8 @@ Last updated: 2025-11-28
 - Cleanup:
   - When a card is moved to **Done** and its Attempt is finished, a listener calls `cleanupCardWorkspace`, which removes
     the worktree and deletes its branch.
+  - After successful cleanup, the Attempt row remains in the database but its `worktreePath` field is set to `NULL` so
+    completed Attempts no longer claim a live worktree on disk.
   - When a project is deleted, Filesystem listeners purge all worktrees for that repository.
 
 ## Conversations, processes, and logs
@@ -74,4 +76,3 @@ Last updated: 2025-11-28
   - `POST /projects/:projectId/pull-requests` can be called with `branch`, `attemptId`, and `cardId` so PRs are tied
     back to the originating Attempt and card.
   - Older attempt-specific PR routes have been removed; everything flows through project-scoped PR endpoints.
-
