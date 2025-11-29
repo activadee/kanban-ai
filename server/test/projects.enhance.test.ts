@@ -46,6 +46,14 @@ vi.mock("core", () => {
             deleteAgentProfile: vi.fn(),
         },
         agentEnhanceTicket: vi.fn(),
+        projectSubtasks: {
+            listSubtasksWithProgress: vi.fn(),
+            createSubtask: vi.fn(),
+            updateSubtask: vi.fn(),
+            deleteSubtask: vi.fn(),
+            reorderSubtasks: vi.fn(),
+            getSubtaskById: vi.fn(),
+        },
         getGitOriginUrl: vi.fn(),
         parseGithubOwnerRepo: vi.fn(),
     };
