@@ -348,9 +348,12 @@ describe('agents/enhance agentEnhanceTicket', () => {
         })
     })
 
-    it('throws when no inline agent is configured and no override is provided', async () => {
+    it('falls back to default agent when no inline agent is configured and no override is provided', async () => {
         const {projectsService} = await import('../src/projects/service')
         const {ensureProjectSettings} = await import('../src/projects/settings/service')
+        const {getAgent} = await import('../src/agents/registry')
+        const {resolveAgentProfile} = await import('../src/agents/profile-resolution')
+        const {runInlineTask} = await import('../src/agents/inline')
         const {agentEnhanceTicket} = await import('../src/agents/enhance')
 
         projectsService.get.mockResolvedValue({
@@ -385,14 +388,29 @@ describe('agents/enhance agentEnhanceTicket', () => {
             updatedAt: new Date().toISOString(),
         })
 
-        await expect(
-            agentEnhanceTicket({
-                projectId: 'proj-1',
-                title: 'Title',
-                description: 'Description',
-            }),
-        ).rejects.toThrow(
-            'No inline agent configured for this project. Configure one in Project Settings.',
-        )
+        const agent = {
+            key: 'DROID',
+            label: 'Droid',
+            defaultProfile: {foo: 'bar'},
+            profileSchema: {safeParse: vi.fn()} as any,
+            run: vi.fn(),
+            inline: vi.fn(),
+        }
+
+        const enhanceResult = {title: 'Enhanced Fallback', description: 'Enhanced description via default agent'}
+
+        getAgent.mockReturnValue(agent)
+        resolveAgentProfile.mockResolvedValue({profile: {foo: 'bar'}, label: 'Default Profile'})
+        ;(runInlineTask as any).mockResolvedValue(enhanceResult as any)
+
+        const result = await agentEnhanceTicket({
+            projectId: 'proj-1',
+            title: 'Title',
+            description: 'Description',
+        })
+
+        expect(result).toEqual(enhanceResult)
+        expect(getAgent).toHaveBeenCalledWith('DROID')
+        expect(resolveAgentProfile).not.toHaveBeenCalled()
     })
 })

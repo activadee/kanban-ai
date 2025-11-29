@@ -91,18 +91,22 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
         typeof opts.profileId === 'string' ? opts.profileId.trim() : ''
     let profileId = explicitProfileRaw.length ? explicitProfileRaw : null
 
-    if (!agentKey) {
-        agentKey = inlineAgentKey
-    }
+    const fallbackAgentKey = settings.defaultAgent || 'DROID'
 
     if (!agentKey) {
-        throw new Error(
-            'No inline agent configured for this project. Configure one in Project Settings.',
-        )
+        agentKey = inlineAgentKey || fallbackAgentKey
     }
 
     if (!profileId && inlineProfileId && inlineAgentKey && agentKey === inlineAgentKey) {
         profileId = inlineProfileId
+    } else if (!profileId && settings.defaultProfileId) {
+        const defaultProfileRaw =
+            typeof settings.defaultProfileId === 'string'
+                ? settings.defaultProfileId.trim()
+                : settings.defaultProfileId
+        if (defaultProfileRaw && (!inlineProfileId || inlineAgentKey !== agentKey)) {
+            profileId = defaultProfileRaw
+        }
     }
 
     const agent = getAgent(agentKey)

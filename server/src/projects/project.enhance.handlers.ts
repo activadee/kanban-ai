@@ -34,12 +34,6 @@ export const enhanceTicketHandler = async (c: any) => {
             status = 400;
         } else if (message.includes("does not support ticket enhancement")) {
             status = 400;
-        } else if (
-            message.startsWith(
-                "No inline agent configured for this project.",
-            )
-        ) {
-            status = 400;
         }
 
         if (status >= 500) {

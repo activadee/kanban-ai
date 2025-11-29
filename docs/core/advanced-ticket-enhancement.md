@@ -67,9 +67,8 @@ inline task with `kind = "ticketEnhance"`:
   - Resolves an effective `boardId` from the provided value, the project board, or the project ID.
   - Chooses an agent:
     - Uses the explicit `agentKey` when provided (for advanced integrations).
-    - Otherwise uses the project’s configured `inlineAgent`.
-    - If neither is available, `agentEnhanceTicket` throws an error:
-      - `"No inline agent configured for this project. Configure one in Project Settings."`
+    - Otherwise prefers the project’s configured `inlineAgent`.
+    - When no `inlineAgent` is configured, falls back to the project’s `defaultAgent`, or `"DROID"` when none is set.
   - Validates that the agent exists and supports inline ticket enhancement, throwing errors for:
     - `Project not found`.
     - `Unknown agent: <KEY>`.
@@ -81,7 +80,8 @@ inline task with `kind = "ticketEnhance"`:
   - Resolves an agent profile:
     - Uses the explicit `profileId` when provided.
     - Otherwise, when using the project’s `inlineAgent`, prefers the project’s configured `inlineProfileId`.
-    - Falls back to the agent’s default profile when the configured profile is missing or invalid.
+    - Otherwise, when falling back to the default agent, prefers the project’s `defaultProfileId` (if configured).
+    - In all cases, falls back to the agent’s default profile when the configured profile is missing or invalid.
   - For inline requests, prefers an agent’s inline profile prompt (when configured) over the primary profile prompt:
     - If the resolved profile contains `inlineProfile`, it is used to tailor the ticket-enhancement prompt.
     - Otherwise, the primary profile’s prompt (e.g. `appendPrompt`) is used as before.
