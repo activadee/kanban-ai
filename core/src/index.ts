@@ -20,6 +20,7 @@ export * as projectsRepo from './projects/repo'
 export * as projectDeps from './projects/dependencies'
 export * as projectTickets from './projects/tickets/service'
 export * as ticketKeys from './projects/tickets/ticket-keys'
+export * as projectSubtasks from './projects/subtasks'
 
 export * as tasks from './tasks/service'
 export {registerTaskListeners} from './tasks/listeners'
