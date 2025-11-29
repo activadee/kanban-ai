@@ -2,8 +2,8 @@ import {z} from 'zod'
 import type {CodexProfile as SharedCodexProfile} from 'shared'
 
 export const CodexProfileSchema = z.object({
-    appendPrompt: z.string().max(4000).nullable().optional(),
-    inlineProfile: z.string().max(4000).nullable().optional(),
+    appendPrompt: z.string().nullable().optional(),
+    inlineProfile: z.string().nullable().optional(),
     sandbox: z
         .enum(['read-only', 'workspace-write', 'danger-full-access', 'auto'])
         .optional(),
