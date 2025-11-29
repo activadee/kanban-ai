@@ -3,6 +3,7 @@ import type {CodexProfile as SharedCodexProfile} from 'shared'
 
 export const CodexProfileSchema = z.object({
     appendPrompt: z.string().nullable().optional(),
+    inlineProfile: z.string().nullable().optional(),
     sandbox: z
         .enum(['read-only', 'workspace-write', 'danger-full-access', 'auto'])
         .optional(),

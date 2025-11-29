@@ -3,6 +3,31 @@ import {problemJson} from "../http/problem";
 import {log} from "../log";
 import {getAgent} from "../agents/registry";
 
+const MAX_PROMPT_CHARS = 4000;
+
+function validateProfilePromptLengths(config: unknown) {
+    const cfg = config as Record<string, unknown> | null | undefined;
+    if (!cfg || typeof cfg !== "object") return null;
+
+    const errors: Record<string, string[]> = {};
+
+    const append = cfg.appendPrompt;
+    if (typeof append === "string" && append.length > MAX_PROMPT_CHARS) {
+        errors.appendPrompt = [
+            `appendPrompt must be at most ${MAX_PROMPT_CHARS} characters`,
+        ];
+    }
+
+    const inline = cfg.inlineProfile;
+    if (typeof inline === "string" && inline.length > MAX_PROMPT_CHARS) {
+        errors.inlineProfile = [
+            `inlineProfile must be at most ${MAX_PROMPT_CHARS} characters`,
+        ];
+    }
+
+    return Object.keys(errors).length ? errors : null;
+}
+
 export const listProjectAgentProfilesHandler = async (c: any) => {
     try {
         const rows = await agentProfiles.listAgentProfiles(c.req.param("projectId"));
@@ -32,6 +57,15 @@ export const createProjectAgentProfileHandler = async (c: any) => {
                 title: "Invalid profile",
                 detail: parsed.error.message,
                 errors: parsed.error.flatten(),
+            });
+        }
+        const lengthErrors = validateProfilePromptLengths(parsed.data);
+        if (lengthErrors) {
+            return problemJson(c, {
+                status: 400,
+                title: "Invalid profile",
+                detail: "Profile prompts are too long",
+                errors: {fieldErrors: lengthErrors, formErrors: []},
             });
         }
         const row = await agentProfiles.createAgentProfile(
@@ -121,6 +155,15 @@ export const updateProjectAgentProfileHandler = async (c: any) => {
                     title: "Invalid profile",
                     detail: parsed.error.message,
                     errors: parsed.error.flatten(),
+                });
+            }
+            const lengthErrors = validateProfilePromptLengths(parsed.data);
+            if (lengthErrors) {
+                return problemJson(c, {
+                    status: 400,
+                    title: "Invalid profile",
+                    detail: "Profile prompts are too long",
+                    errors: {fieldErrors: lengthErrors, formErrors: []},
                 });
             }
             cfg = parsed.data;

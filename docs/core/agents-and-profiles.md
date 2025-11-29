@@ -96,6 +96,12 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
   - Resolves `boardId`, `agentKey`, and `profileId` from project settings and inputs.
   - Constructs a `TicketEnhanceInput` (including a cancellation signal) and `InlineTaskContext`.
   - Resolves the agent profile using the shared profile resolution helpers.
+  - Supports specialized inline profiles:
+    - Agent profile configs may define an `inlineProfile` string used only for inline responses (e.g. ticket enhancement).
+    - When `inlineProfile` is non-empty, inline prompts prefer it; otherwise they fall back to the primary profile prompt
+      (such as `appendPrompt`), preserving existing behavior by default.
+  - Annotates the inline context with `profileSource: "inline" | "primary"` so downstream telemetry can see whether the
+    inline or primary profile drove a given request.
   - Invokes `runInlineTask({kind: 'ticketEnhance', ...})` and returns the resulting `TicketEnhanceResult`.
   - The server layer should call this function instead of wiring agents, profiles, and settings manually.
   - `POST /projects/:projectId/tickets/enhance` (Projects router) is the HTTP surface area: it validates `{title, description?, agent?, profileId?}` payloads, forwards them into `agentEnhanceTicket`, and returns `{ticket}` or RFC 7807 errors so the client can enrich cards without bespoke agent wiring.

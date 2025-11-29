@@ -19,6 +19,16 @@ projects and Attempts.
   - `deleteAgentProfile(projectId, id)`
 - The `config` field is stored as JSON (`configJson`), whose shape is validated by the agent-specific schema at runtime.
 
+## Profile configuration notes
+
+- Each agent exposes its own schema (e.g. Codex, Droid, OpenCode) to validate the `config` JSON, so new fields or
+  constraints must be registered there before the UI or CLI can persist them.
+- Common settings include prompt customizations such as `appendPrompt` plus the new `inlineProfile` string used only for
+  inline responses (ticket enhancement, future inline kinds). Inline tasks prefer a non-empty `inlineProfile` and
+  otherwise fall back to the primary prompt so existing workflows keep working.
+- Prompt fields are capped at 4,000 characters when creating or updating profiles (both project-scoped and global).
+  Attempts to save longer prompts return an RFC 7807 error describing the offending field so callers can trim the text.
+
 ## Scope and IDs
 
 - Profiles can be:

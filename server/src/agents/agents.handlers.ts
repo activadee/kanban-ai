@@ -4,6 +4,27 @@ import {buildAgentProfileSchema} from './schema'
 import {problemJson} from '../http/problem'
 import {log} from '../log'
 
+const MAX_PROMPT_CHARS = 4000
+
+function validateProfilePromptLengths(config: unknown) {
+    const cfg = config as Record<string, unknown> | null | undefined
+    if (!cfg || typeof cfg !== 'object') return null
+
+    const errors: Record<string, string[]> = {}
+
+    const append = cfg.appendPrompt
+    if (typeof append === 'string' && append.length > MAX_PROMPT_CHARS) {
+        errors.appendPrompt = [`appendPrompt must be at most ${MAX_PROMPT_CHARS} characters`]
+    }
+
+    const inline = cfg.inlineProfile
+    if (typeof inline === 'string' && inline.length > MAX_PROMPT_CHARS) {
+        errors.inlineProfile = [`inlineProfile must be at most ${MAX_PROMPT_CHARS} characters`]
+    }
+
+    return Object.keys(errors).length ? errors : null
+}
+
 export async function listAgentsHandler(c: any) {
     const agents = listAgents().map((a) => ({
         key: a.key,
@@ -38,7 +59,32 @@ export async function createGlobalAgentProfileHandler(c: any) {
             name: string
             config: unknown
         }
-        const row = await agentProfilesGlobal.createGlobalAgentProfile(agent, name, config)
+        const agentDef = getAgent(agent)
+        if (!agentDef) {
+            return problemJson(c, {status: 400, detail: 'Unknown agent'})
+        }
+
+        const parsed = agentDef.profileSchema.safeParse(config)
+        if (!parsed.success) {
+            return problemJson(c, {
+                status: 400,
+                title: 'Invalid profile',
+                detail: parsed.error.message,
+                errors: parsed.error.flatten(),
+            })
+        }
+
+        const lengthErrors = validateProfilePromptLengths(parsed.data)
+        if (lengthErrors) {
+            return problemJson(c, {
+                status: 400,
+                title: 'Invalid profile',
+                detail: 'Profile prompts are too long',
+                errors: {fieldErrors: lengthErrors, formErrors: []},
+            })
+        }
+
+        const row = await agentProfilesGlobal.createGlobalAgentProfile(agent, name, parsed.data)
         if (!row) return problemJson(c, {status: 500, detail: 'Failed to create profile'})
         return c.json(row, 201)
     } catch (err) {
@@ -54,7 +100,37 @@ export async function updateGlobalAgentProfileHandler(c: any) {
             name?: string
             config?: unknown
         }
-        const row = await agentProfilesGlobal.updateGlobalAgentProfile(id, {name, config})
+        const existing = await agentProfilesGlobal.getGlobalAgentProfile(id)
+        if (!existing) return problemJson(c, {status: 404, detail: 'Profile not found'})
+
+        let cfg = config
+        if (cfg !== undefined) {
+            const agentDef = getAgent(existing.agent)
+            if (!agentDef) {
+                return problemJson(c, {status: 400, detail: 'Unknown agent'})
+            }
+            const parsed = agentDef.profileSchema.safeParse(cfg)
+            if (!parsed.success) {
+                return problemJson(c, {
+                    status: 400,
+                    title: 'Invalid profile',
+                    detail: parsed.error.message,
+                    errors: parsed.error.flatten(),
+                })
+            }
+            const lengthErrors = validateProfilePromptLengths(parsed.data)
+            if (lengthErrors) {
+                return problemJson(c, {
+                    status: 400,
+                    title: 'Invalid profile',
+                    detail: 'Profile prompts are too long',
+                    errors: {fieldErrors: lengthErrors, formErrors: []},
+                })
+            }
+            cfg = parsed.data
+        }
+
+        const row = await agentProfilesGlobal.updateGlobalAgentProfile(id, {name, config: cfg})
         if (!row) return problemJson(c, {status: 404, detail: 'Profile not found'})
         return c.json(row)
     } catch (err) {
@@ -75,4 +151,3 @@ export async function deleteGlobalAgentProfileHandler(c: any) {
         return problemJson(c, {status: 500, detail: 'Failed to delete profile'})
     }
 }
-

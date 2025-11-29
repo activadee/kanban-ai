@@ -71,6 +71,11 @@ export type InlineTaskContext = {
      * Effective profileId, if any, used to resolve the agent profile.
      */
     profileId?: string | null
+    /**
+     * Source of the prompt/profile used for the inline task.
+     * "inline" = specialized inline profile, "primary" = main agent profile.
+     */
+    profileSource?: 'inline' | 'primary'
 }
 
 // Placeholder shapes for future inline kinds. These will be refined when

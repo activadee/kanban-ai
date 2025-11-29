@@ -40,6 +40,7 @@ describe('DroidAgent.enhance', () => {
 
         const profile = {
             appendPrompt: null,
+            inlineProfile: null,
             autonomy: 'read-only',
             model: 'test-model',
             reasoningEffort: 'low',
@@ -48,7 +49,7 @@ describe('DroidAgent.enhance', () => {
             debug: false,
         }
 
-        const expectedPrompt = buildTicketEnhancePrompt(input, profile.appendPrompt ?? undefined)
+        const expectedPrompt = buildTicketEnhancePrompt(input, profile.inlineProfile ?? profile.appendPrompt ?? undefined)
         const expectedQuoted = `"${expectedPrompt.replace(/"/g, '\\"')}"`
 
         buildDroidCommand.mockImplementation((_cfg, prompt, format) => {
@@ -94,4 +95,3 @@ describe('DroidAgent.enhance', () => {
         })
     })
 })
-
