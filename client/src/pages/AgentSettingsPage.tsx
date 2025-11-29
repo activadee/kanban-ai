@@ -138,14 +138,33 @@ export function AgentSettingsPage() {
                             {schemaQuery.data.fields.map((field) => {
                                 const val = formValues[field.key]
                                 switch (field.type) {
-                                    case 'string':
+                                    case 'string': {
+                                        if (field.key === 'inlineProfile') {
+                                            return (
+                                                <div key={field.key} className="space-y-1">
+                                                    <Label>Inline Agent Profile</Label>
+                                                    <Textarea
+                                                        rows={4}
+                                                        value={typeof val === 'string' ? val : ''}
+                                                        onChange={(e) => updateField(field.key, e.target.value)}
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Optional prompt used only for inline responses. If empty, the main
+                                                        profile is used.
+                                                    </p>
+                                                </div>
+                                            )
+                                        }
                                         return (
                                             <div key={field.key} className="space-y-1">
                                                 <Label>{field.label}</Label>
-                                                <Input value={typeof val === 'string' ? val : ''}
-                                                       onChange={(e) => updateField(field.key, e.target.value)}/>
+                                                <Input
+                                                    value={typeof val === 'string' ? val : ''}
+                                                    onChange={(e) => updateField(field.key, e.target.value)}
+                                                />
                                             </div>
                                         )
+                                    }
                                     case 'boolean':
                                         return (
                                             <label key={field.key} className="flex items-center gap-2 text-sm">

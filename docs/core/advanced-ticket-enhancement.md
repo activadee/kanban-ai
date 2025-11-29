@@ -62,7 +62,7 @@ inline task with `kind = "ticketEnhance"`:
   - `projectId`, optional `boardId`.
   - `title`, `description`.
   - Optional `agentKey`, optional `profileId`, optional `AbortSignal`.
- - Behavior:
+- Behavior:
   - Loads the project and its settings (including `baseBranch`, `defaultAgent`, `defaultProfileId`).
   - Resolves an effective `boardId` from the provided value, the project board, or the project ID.
   - Chooses an agent:
@@ -77,6 +77,10 @@ inline task with `kind = "ticketEnhance"`:
       profile ID, and a cancellation signal.
     - An `InlineTaskContext` with project, repo, branch, and agent/profile metadata.
   - Resolves an agent profile (if `profileId` is provided or a default is configured).
+  - For inline requests, prefers an agent’s inline profile prompt (when configured) over the primary profile prompt:
+    - If the resolved profile contains `inlineProfile`, it is used to tailor the ticket-enhancement prompt.
+    - Otherwise, the primary profile’s prompt (e.g. `appendPrompt`) is used as before.
+  - Annotates the inline context with `profileSource: "inline" | "primary"` so telemetry can distinguish which prompt was used.
   - Invokes `runInlineTask({agentKey, kind: "ticketEnhance", input, profile, context, signal})`.
   - Returns the `TicketEnhanceResult` (rewritten title + description) to the caller.
 

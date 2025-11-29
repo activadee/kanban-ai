@@ -53,7 +53,10 @@ describe('CodexAgent.enhance', () => {
             signal: controller.signal,
         }
 
-        const prompt = buildTicketEnhancePrompt(input, defaultProfile.appendPrompt ?? undefined)
+        const prompt = buildTicketEnhancePrompt(
+            input,
+            (defaultProfile as any).inlineProfile ?? defaultProfile.appendPrompt ?? undefined,
+        )
         const markdown = '# Enhanced Title\nEnhanced body'
 
         runMock.mockResolvedValue({

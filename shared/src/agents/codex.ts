@@ -3,6 +3,11 @@ import type {AgentSandbox} from './public'
 // Shape of a Codex agent profile's config
 export type CodexProfile = {
     appendPrompt?: string | null
+    /**
+     * Optional prompt used only for inline responses (e.g. ticket enhancement).
+     * Falls back to appendPrompt when empty or unset.
+     */
+    inlineProfile?: string | null
     sandbox?: AgentSandbox
     model?: string
     modelReasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'

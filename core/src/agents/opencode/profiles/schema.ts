@@ -5,7 +5,8 @@ import {
 } from "shared";
 
 export const OpencodeProfileSchema = z.object({
-    appendPrompt: z.string().nullable().optional(),
+    appendPrompt: z.string().max(4000).nullable().optional(),
+    inlineProfile: z.string().max(4000).nullable().optional(),
     agent: z.string().optional(),
     model: z.string().optional(),
     baseCommandOverride: z.string().nullable().optional(),

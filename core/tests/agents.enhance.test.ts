@@ -129,6 +129,7 @@ describe('agents/enhance agentEnhanceTicket', () => {
             branchName: 'main',
             agentKey: 'DROID',
             profileId: 'ap-1',
+            profileSource: 'primary',
         })
     })
 

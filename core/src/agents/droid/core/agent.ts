@@ -212,7 +212,10 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
     }
 
     async enhance(input: TicketEnhanceInput, profile: DroidProfile): Promise<TicketEnhanceResult> {
-        const prompt = buildTicketEnhancePrompt(input, profile.appendPrompt ?? undefined)
+        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
+        const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
+        const effectiveAppend = inline.length > 0 ? inline : baseAppend
+        const prompt = buildTicketEnhancePrompt(input, effectiveAppend ?? undefined)
         const quotedPrompt = `"${prompt.replace(/"/g, '\\"')}"`
         const {base, params, env} = buildDroidCommand(profile, quotedPrompt, 'text')
         const line = [base, ...params].join(' ')

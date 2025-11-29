@@ -2,7 +2,8 @@ import {z} from 'zod'
 import {defaultDroidProfile, type DroidProfile as Shared} from 'shared'
 
 export const DroidProfileSchema = z.object({
-    appendPrompt: z.string().nullable().optional(),
+    appendPrompt: z.string().max(4000).nullable().optional(),
+    inlineProfile: z.string().max(4000).nullable().optional(),
     autonomy: z.enum(['read-only', 'low', 'medium', 'high']).optional(),
     model: z.string().optional(),
     reasoningEffort: z.enum(['off', 'low', 'medium', 'high']).optional(),

@@ -409,7 +409,10 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         const codex = client as Codex
         const thread = codex.startThread(this.threadOptions(profile, enhanceCtx))
 
-        const prompt = buildTicketEnhancePrompt(input, profile.appendPrompt ?? undefined)
+        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
+        const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
+        const effectiveAppend = inline.length > 0 ? inline : baseAppend
+        const prompt = buildTicketEnhancePrompt(input, effectiveAppend ?? undefined)
         const turn = await thread.run(prompt, {signal: input.signal})
         const markdown = (turn.finalResponse || '').trim()
         if (!markdown) {

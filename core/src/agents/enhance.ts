@@ -47,6 +47,14 @@ async function resolveProfileForAgent<P>(
     return profile
 }
 
+function resolveInlineProfileSource(profile: unknown): 'inline' | 'primary' {
+    if (!profile || typeof profile !== 'object') return 'primary'
+    const record = profile as Record<string, unknown>
+    const inline = typeof record.inlineProfile === 'string' ? record.inlineProfile.trim() : ''
+    if (inline.length > 0) return 'inline'
+    return 'primary'
+}
+
 function createSignal(source?: AbortSignal): AbortSignal {
     if (!source) return new AbortController().signal
     const controller = new AbortController()
@@ -91,6 +99,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
     }
 
     const profile = await resolveProfileForAgent(agent, opts.projectId, profileId)
+    const profileSource = resolveInlineProfileSource(profile)
     const context: InlineTaskContext = {
         projectId: opts.projectId,
         boardId,
@@ -100,6 +109,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
         headCommit: null,
         agentKey,
         profileId,
+        profileSource,
     }
 
     return runInlineTask({
