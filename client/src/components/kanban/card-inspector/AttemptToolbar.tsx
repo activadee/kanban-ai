@@ -6,7 +6,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import {Code2, GithubIcon} from "lucide-react";
 import {cn} from "@/lib/utils";
 import type {Attempt, AttemptTodoSummary} from "shared";
@@ -95,9 +102,9 @@ function TodoPanel({summary}: { summary: AttemptTodoSummary }) {
             <DialogContent className="sm:max-w-sm p-4">
                 <DialogHeader>
                     <DialogTitle className="text-sm font-medium">Todos</DialogTitle>
-                    <p className="text-xs text-muted-foreground">
+                    <DialogDescription className="text-xs">
                         {completed} of {total} Todos completed
-                    </p>
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
                     {items.map((todo) => (

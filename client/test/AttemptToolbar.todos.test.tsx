@@ -75,5 +75,4 @@ describe("AttemptToolbar – Todos panel", () => {
         expect(screen.getByText("First")).not.toBeNull();
         expect(screen.getByText("Second")).not.toBeNull();
     });
-}
-
+});
