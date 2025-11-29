@@ -62,6 +62,11 @@ You can also create cards directly in a column using column-specific controls (e
       - Commit.
       - Open PR.
       - Merge with base branch.
+  - **Subtasks section**:
+    - Lists ticket-scoped subtasks sorted by their persisted position.
+    - Each row shows a checkbox for toggling `done` vs `todo`, an inline editable title, and a status selector (`todo`, `in_progress`, `blocked`, `done`).
+    - Up/down controls reorder subtasks while keeping the new order saved, and the panel shows “X of Y done” progress to make completion visible at a glance.
+    - Use the inline form at the bottom to add new subtasks and the trash button to remove them.
 
 See the “Attempts & inspector (UI)” guide for the Attempts and activity sections inside the inspector.
 
