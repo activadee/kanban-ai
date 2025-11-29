@@ -1,5 +1,11 @@
 import {z} from "zod";
-import type {CreateProjectRequest, UpdateProjectRequest} from "shared";
+import type {
+    CreateProjectRequest,
+    UpdateProjectRequest,
+    CreateSubtaskRequest,
+    UpdateSubtaskRequest,
+    ReorderSubtasksRequest,
+} from "shared";
 
 export const createProjectSchema = z.object({
     name: z.string().min(1, "Project name is required"),
@@ -49,6 +55,8 @@ export const enhanceTicketSchema = z.object({
     profileId: z.string().optional(),
 });
 
+const subtaskStatusSchema = z.enum(["todo", "in_progress", "blocked", "done"]);
+
 export const createCardSchema = z.object({
     columnId: z.string().min(1, "Column ID is required"),
     title: z.string().min(1, "Title is required"),
@@ -85,6 +93,30 @@ export const updateCardSchema = z
             });
         }
     });
+
+export const createSubtaskSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().optional().nullable(),
+    status: subtaskStatusSchema.optional(),
+    assigneeId: z.string().optional().nullable(),
+    dueDate: z.string().optional().nullable(),
+}) satisfies z.ZodType<CreateSubtaskRequest>;
+
+export const updateSubtaskSchema = z
+    .object({
+        title: z.string().min(1).optional(),
+        description: z.string().optional().nullable(),
+        status: subtaskStatusSchema.optional(),
+        assigneeId: z.string().optional().nullable(),
+        dueDate: z.string().optional().nullable(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "No updates provided",
+    }) satisfies z.ZodType<UpdateSubtaskRequest>;
+
+export const reorderSubtasksSchema: z.ZodType<ReorderSubtasksRequest> = z.object({
+    orderedIds: z.array(z.string()).min(1),
+});
 
 export const agentProfilePatchSchema = z.object({
     name: z.string().min(1).optional(),

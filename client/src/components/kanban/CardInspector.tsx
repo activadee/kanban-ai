@@ -9,6 +9,7 @@ import {GitSection} from './card-inspector/sections/GitSection'
 import {AttemptsSection} from './card-inspector/sections/AttemptsSection'
 import {ActivitySection} from './card-inspector/sections/ActivitySection'
 import {useCardInspectorState, type InspectorTab} from './card-inspector/useCardInspectorState'
+import {SubtasksSection} from './card-inspector/sections/SubtasksSection'
 
 export function CardInspector({
                                   projectId,
@@ -64,7 +65,7 @@ export function CardInspector({
                 onCopyTicketKey={header.handleCopyTicketKey}
                 onClose={onClose}
             />
-                <DetailsSection
+            <DetailsSection
                 values={details.values}
                 locked={locked}
                 availableCards={availableCards}
@@ -92,6 +93,9 @@ export function CardInspector({
                         onMergeOpenChange={git.setMergeOpen}
                         prDefaults={git.prDefaults}
                     />
+                }
+                subtasksSection={
+                    <SubtasksSection projectId={projectId} ticketId={card.id} locked={locked} />
                 }
             />
             {!attempt.attempt && (

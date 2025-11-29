@@ -31,6 +31,24 @@ Last updated: 2025-11-28
   - `dependsOn` relationships to other cards on the same board
 - The “card inspector” in the UI lets you edit these fields, with the ticket key surfaced prominently for quick scanning.
 
+### Subtasks
+
+- Each card can define a flat list of **Subtasks** that break the work down further:
+  - Stored in a dedicated `subtasks` table keyed by `ticket_id` (the card ID).
+  - Each subtask has `title`, optional `description`, `status` (`todo | in_progress | blocked | done`), `position`, optional `assigneeId`, and optional `dueDate`.
+- The server exposes ticket-scoped Subtask endpoints:
+  - `GET /projects/:projectId/tickets/:cardId/subtasks` – list subtasks in order with an aggregate `{total, done}` progress object.
+  - `POST /projects/:projectId/tickets/:cardId/subtasks` – create a new subtask under the ticket.
+  - `PATCH /projects/:projectId/subtasks/:subtaskId` – edit title, description, status, assignee, or due date.
+  - `DELETE /projects/:projectId/subtasks/:subtaskId` – delete a subtask.
+  - `PATCH /projects/:projectId/tickets/:cardId/subtasks/reorder` – reorder subtasks by ID for that ticket.
+- The card inspector’s Details panel surfaces a **Subtasks** section where users can:
+  - Add subtasks inline.
+  - Edit titles and statuses.
+  - Delete subtasks.
+  - Reorder subtasks (using up/down controls) and see the new order persisted.
+- Ticket-level progress (e.g. “2 of 5 done”) is derived from Subtask statuses and displayed alongside the list; this value updates immediately when subtasks change.
+
 ### Ordering and moves
 
 - Cards are ordered within a column using an integer index.
@@ -77,4 +95,3 @@ Last updated: 2025-11-28
   - `agent.profile.changed`, `agent.registered`
 - Clients use these WebSocket messages to keep boards, task details, and Attempt status in sync in real time, without
   manual refresh.
-

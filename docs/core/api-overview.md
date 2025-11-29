@@ -28,6 +28,12 @@ All examples below omit the `/api/v1` prefix for brevity.
   - `GET  /projects/:projectId/settings` – load per-project settings.
   - `PATCH /projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, automation flags).
   - `POST /projects/:projectId/tickets/enhance` – send `{title, description?, agent?, profileId?}` to the configured agent and receive `{ticket}` with rewritten text (RFC 7807 errors on failure).
+  - Subtasks (per ticket):
+    - `GET    /projects/:projectId/tickets/:cardId/subtasks` – list subtasks for a ticket, ordered by `position`, with `{ticketId, subtasks, progress}`.
+    - `POST   /projects/:projectId/tickets/:cardId/subtasks` – create a subtask under a ticket.
+    - `PATCH  /projects/:projectId/subtasks/:subtaskId` – update a subtask (title, description, status, assignee, due date).
+    - `DELETE /projects/:projectId/subtasks/:subtaskId` – delete a subtask.
+    - `PATCH  /projects/:projectId/tickets/:cardId/subtasks/reorder` – reorder subtasks by passing `{orderedIds: string[]}`.
 - Boards:
   - `GET    /boards/:boardId` – board state (columns + cards).
   - `POST   /boards/:boardId/cards` – create a card.

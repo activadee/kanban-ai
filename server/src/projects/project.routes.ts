@@ -6,6 +6,9 @@ import {
     updateProjectSchema,
     updateProjectSettingsSchema,
     enhanceTicketSchema,
+    createSubtaskSchema,
+    updateSubtaskSchema,
+    reorderSubtasksSchema,
 } from "./project.schemas";
 import {
     listProjectsHandler,
@@ -26,6 +29,13 @@ import {createBoardRouter, resolveBoardForProject} from "./board.routes";
 import {problemJson} from "../http/problem";
 import {startAttemptSchema} from "../attempts/attempts.schemas";
 import {enhanceTicketHandler} from "./project.enhance.handlers";
+import {
+    listSubtasksForTicketHandler,
+    createSubtaskForTicketHandler,
+    updateSubtaskForProjectHandler,
+    deleteSubtaskForProjectHandler,
+    reorderSubtasksForTicketHandler,
+} from "./project.subtasks.handlers";
 
 export const createProjectsRouter = () => {
     const router = new Hono<AppEnv>();
@@ -66,6 +76,54 @@ export const createProjectsRouter = () => {
             const ctx = await loadProjectBoard(c);
             if (ctx instanceof Response) return ctx;
             return startProjectCardAttemptHandler(c, ctx);
+        },
+    );
+
+    router.get(
+        "/:projectId/tickets/:cardId/subtasks",
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return listSubtasksForTicketHandler(c, ctx);
+        },
+    );
+
+    router.post(
+        "/:projectId/tickets/:cardId/subtasks",
+        zValidator("json", createSubtaskSchema),
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return createSubtaskForTicketHandler(c, ctx);
+        },
+    );
+
+    router.patch(
+        "/:projectId/subtasks/:subtaskId",
+        zValidator("json", updateSubtaskSchema),
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return updateSubtaskForProjectHandler(c, ctx);
+        },
+    );
+
+    router.delete(
+        "/:projectId/subtasks/:subtaskId",
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return deleteSubtaskForProjectHandler(c, ctx);
+        },
+    );
+
+    router.patch(
+        "/:projectId/tickets/:cardId/subtasks/reorder",
+        zValidator("json", reorderSubtasksSchema),
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return reorderSubtasksForTicketHandler(c, ctx);
         },
     );
 

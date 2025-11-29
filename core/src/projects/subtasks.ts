@@ -2,7 +2,13 @@ import {asc, eq} from 'drizzle-orm'
 import type {DbExecutor} from '../db/with-tx'
 import {resolveDb, withTx} from '../db/with-tx'
 import {subtasks, type SubtaskRow} from '../db/schema'
-import type {Subtask as SubtaskDto, SubtaskStatus, SubtaskProgress} from 'shared'
+import type {
+    Subtask as SubtaskDto,
+    SubtaskStatus,
+    SubtaskProgress,
+    CreateSubtaskRequest,
+    UpdateSubtaskRequest,
+} from 'shared'
 import {getCardById} from './repo'
 
 function toIso(value: Date | string | number | null | undefined): string {
@@ -61,9 +67,16 @@ async function getNextPosition(ticketId: string, executor?: DbExecutor): Promise
     return Math.max(...positions) + 1
 }
 
+function parseDueDate(input: string | null | undefined): Date | null {
+    if (!input) return null
+    const date = new Date(input)
+    if (Number.isNaN(date.getTime())) return null
+    return date
+}
+
 export async function createSubtask(
     ticketId: string,
-    input: { title: string; description?: string | null; status?: SubtaskStatus; assigneeId?: string | null; dueDate?: string | null },
+    input: CreateSubtaskRequest,
 ): Promise<SubtaskDto> {
     let createdId: string | null = null
     await withTx(async (tx) => {
@@ -86,7 +99,7 @@ export async function createSubtask(
                 status: (input.status ?? 'todo') as string,
                 position,
                 assigneeId: input.assigneeId ?? null,
-                dueDate: input.dueDate ? new Date(input.dueDate) : null,
+                dueDate: parseDueDate(input.dueDate),
                 createdAt: now,
                 updatedAt: now,
             })
@@ -106,7 +119,7 @@ export async function createSubtask(
 
 export async function updateSubtask(
     subtaskId: string,
-    patch: { title?: string; description?: string | null; status?: SubtaskStatus; assigneeId?: string | null; dueDate?: string | null },
+    patch: UpdateSubtaskRequest,
 ): Promise<SubtaskDto | null> {
     const db = resolveDb()
     const existing = await getSubtaskById(subtaskId)
@@ -119,7 +132,7 @@ export async function updateSubtask(
     if (patch.description !== undefined) update.description = patch.description ?? null
     if (patch.status !== undefined) update.status = patch.status
     if (patch.assigneeId !== undefined) update.assigneeId = patch.assigneeId ?? null
-    if (patch.dueDate !== undefined) update.dueDate = patch.dueDate ? new Date(patch.dueDate) : null
+    if (patch.dueDate !== undefined) update.dueDate = parseDueDate(patch.dueDate)
 
     await db.update(subtasks).set(update).where(eq(subtasks.id, subtaskId)).run()
 
@@ -171,4 +184,3 @@ export async function reorderSubtasks(ticketId: string, orderedIds: string[]): P
         }
     })
 }
-

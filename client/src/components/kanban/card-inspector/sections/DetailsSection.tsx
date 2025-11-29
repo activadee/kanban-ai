@@ -13,6 +13,7 @@ export type DetailsSectionProps = {
     saving: boolean
     deleting: boolean
     gitSection?: ReactNode
+    subtasksSection?: ReactNode
 }
 
 export function DetailsSection({
@@ -26,6 +27,7 @@ export function DetailsSection({
                                    saving,
                                    deleting,
                                    gitSection,
+                                   subtasksSection,
                                }: DetailsSectionProps) {
     return (
         <>
@@ -36,6 +38,7 @@ export function DetailsSection({
                 availableCards={availableCards}
                 cardsIndex={cardsIndex}
             />
+            {subtasksSection}
             <div className="flex items-center gap-2">
                 <Button
                     size="sm"
@@ -59,4 +62,3 @@ export function DetailsSection({
         </>
     )
 }
-
