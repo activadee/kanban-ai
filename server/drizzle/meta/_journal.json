@@ -92,6 +92,13 @@
       "when": 1764374400000,
       "tag": "0012_attempt_todos",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1764460800000,
+      "tag": "0013_inline_agent_settings",
+      "breakpoints": true
     }
   ]
 }
