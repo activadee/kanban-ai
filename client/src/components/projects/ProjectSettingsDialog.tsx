@@ -23,7 +23,7 @@ export function ProjectSettingsDialog({projectId, open, onOpenChange}: {
                 onOpenChange(next)
             }}
         >
-            <DialogContent className="max-w-4xl overflow-hidden p-0">
+            <DialogContent className="max-w-4xl p-0" scrollable={false}>
                 <DialogHeader className="px-6 pt-4">
                     <DialogTitle>Project Settings</DialogTitle>
                 </DialogHeader>

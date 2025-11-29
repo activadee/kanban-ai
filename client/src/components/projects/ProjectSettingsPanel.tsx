@@ -171,7 +171,7 @@ export function ProjectSettingsPanel({
                 </div>
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
                 <ScrollArea className={scrollArea ? 'h-full' : undefined}>
                     <div className="space-y-6 px-6 py-4">
                         {loading ? (

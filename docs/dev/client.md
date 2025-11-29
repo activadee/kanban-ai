@@ -57,6 +57,13 @@ export default tseslint.config({
   },
 })
 ```
+
+## Project Settings layout
+
+- The `ProjectSettingsPanel` component renders its header (title, project name, primary actions) and footer outside a dedicated scrollable content area.
+- The main settings body uses a `ScrollArea` that fills the available vertical space (`flex-1 min-h-0` + `overflow-y-auto`) so all sections remain reachable on smaller viewports.
+- In the dialog variant (`ProjectSettingsDialog`), the surrounding `DialogContent` is non-scrollable (`scrollable={false}`) so vertical scrolling is owned by the Project Settings content area instead of the entire modal.
+- The same panel is reused in the right-hand drawer (`ProjectSettingsDrawer`), where the drawer shell provides height and the panel’s internal scroll region handles overflow, avoiding nested vertical scrollbars.
 ---
 title: Client overview
 ---
