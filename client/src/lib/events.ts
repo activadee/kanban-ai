@@ -1,4 +1,4 @@
-import type {ConversationItem} from 'shared'
+import type {ConversationItem, AttemptTodoSummary} from 'shared'
 
 type Handler<T> = (payload: T) => void
 
@@ -8,6 +8,7 @@ type Events = {
     attempt_log: { attemptId: string; level: 'info' | 'warn' | 'error'; message: string; ts: string }
     conversation_item: { attemptId: string; item: ConversationItem }
     attempt_session: { attemptId: string; sessionId: string }
+    attempt_todos: { attemptId: string; todos: AttemptTodoSummary }
     git_status: null
     git_commit: { attemptId: string; shortSha: string; subject: string; ts: string }
     git_push: { attemptId: string; remote: string; branch: string; ts: string }

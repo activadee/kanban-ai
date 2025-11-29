@@ -1,4 +1,4 @@
-import type {Attempt, Card as TCard} from 'shared'
+import type {Attempt, AttemptTodoSummary, Card as TCard} from 'shared'
 import {AttemptChangesDialog} from '@/components/git/AttemptChangesDialog'
 import {CommitDialog} from '@/components/git/CommitDialog'
 import {CreatePrDialog} from '@/components/git/CreatePrDialog'
@@ -10,6 +10,7 @@ export type GitSectionProps = {
     card: TCard
     attempt: Attempt | null
     openButtonDisabledReason: string | null
+    todoSummary: AttemptTodoSummary | null
     onOpenEditor: () => void
     changesOpen: boolean
     onChangesOpenChange: (open: boolean) => void
@@ -27,6 +28,7 @@ export function GitSection({
                                card,
                                attempt,
                                openButtonDisabledReason,
+                               todoSummary,
                                onOpenEditor,
                                changesOpen,
                                onChangesOpenChange,
@@ -44,6 +46,7 @@ export function GitSection({
                 attempt={attempt}
                 openButtonDisabledReason={openButtonDisabledReason}
                 onOpenEditor={onOpenEditor}
+                todoSummary={todoSummary}
                 onOpenChanges={() => onChangesOpenChange(true)}
                 onOpenCommit={() => onCommitOpenChange(true)}
                 onOpenPr={() => onPrOpenChange(true)}
@@ -79,4 +82,3 @@ export function GitSection({
         </>
     )
 }
-

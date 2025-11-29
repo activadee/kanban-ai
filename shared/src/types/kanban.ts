@@ -1,5 +1,6 @@
 import type {ConversationItem} from './conversation'
 import type {DashboardOverview} from './dashboard'
+import type {AttemptTodoSummary} from './attempt-todos'
 
 export type ID = string
 
@@ -56,6 +57,7 @@ export type WsMsg =
 }
     | { type: 'conversation_item'; payload: { attemptId: string; item: ConversationItem } }
     | { type: 'attempt_session'; payload: { attemptId: string; sessionId: string } }
+    | { type: 'attempt_todos'; payload: { attemptId: string; todos: AttemptTodoSummary } }
     | { type: 'git:status' }
     | { type: 'git_commit'; payload: { attemptId: string; shortSha: string; subject: string; ts: string } }
     | { type: 'git_push'; payload: { attemptId: string; remote: string; branch: string; ts: string } }

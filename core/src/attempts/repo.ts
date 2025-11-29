@@ -3,9 +3,11 @@ import {
     attempts,
     attemptLogs,
     conversationItems,
+    attemptTodos,
     type Attempt,
     type AttemptLog,
-    type ConversationItemRow
+    type ConversationItemRow,
+    type AttemptTodoRow,
 } from '../db/schema'
 import type {DbExecutor} from '../db/with-tx'
 import {resolveDb} from '../db/with-tx'
@@ -14,6 +16,7 @@ export type AttemptInsert = typeof attempts.$inferInsert
 export type AttemptUpdate = Partial<typeof attempts.$inferInsert>
 export type AttemptLogInsert = typeof attemptLogs.$inferInsert
 export type ConversationItemInsert = typeof conversationItems.$inferInsert
+export type AttemptTodoInsert = typeof attemptTodos.$inferInsert
 
 export async function getAttemptById(id: string, executor?: DbExecutor): Promise<Attempt | null> {
     const database = resolveDb(executor)
@@ -98,4 +101,30 @@ export async function getAttemptBoardId(attemptId: string, executor?: DbExecutor
 export async function listAttemptsForBoard(boardId: string, executor?: DbExecutor): Promise<Attempt[]> {
     const database = resolveDb(executor)
     return (database as any).select().from(attempts).where(eq(attempts.boardId, boardId)).orderBy(asc(attempts.createdAt))
+}
+
+export async function upsertAttemptTodos(attemptId: string, todosJson: string, executor?: DbExecutor): Promise<void> {
+    const database = resolveDb(executor)
+    const now = new Date()
+    await (database as any)
+        .insert(attemptTodos)
+        .values({attemptId, todosJson, updatedAt: now})
+        .onConflictDoUpdate({
+            target: attemptTodos.attemptId,
+            set: {
+                todosJson,
+                updatedAt: now,
+            },
+        })
+        .run()
+}
+
+export async function getAttemptTodos(attemptId: string, executor?: DbExecutor): Promise<AttemptTodoRow | null> {
+    const database = resolveDb(executor)
+    const [row] = await (database as any)
+        .select()
+        .from(attemptTodos)
+        .where(eq(attemptTodos.attemptId, attemptId))
+        .limit(1)
+    return row ?? null
 }

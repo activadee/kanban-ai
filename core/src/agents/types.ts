@@ -1,5 +1,5 @@
 import type {z} from 'zod'
-import type {ConversationItem} from 'shared'
+import type {ConversationItem, AttemptTodoSummary} from 'shared'
 
 export type AgentCapabilities = {
     resume?: boolean
@@ -27,6 +27,7 @@ export type AgentContext = {
             | { type: 'status'; status: string }
             | { type: 'session'; id: string }
             | { type: 'conversation'; item: ConversationItem }
+            | { type: 'todo'; todos: AttemptTodoSummary }
     ) => void
 }
 

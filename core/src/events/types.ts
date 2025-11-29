@@ -1,4 +1,11 @@
-import type {BoardState, ConversationItem, AttemptStatus, FileChange, PRInfo} from 'shared'
+import type {
+    BoardState,
+    ConversationItem,
+    AttemptStatus,
+    FileChange,
+    PRInfo,
+    AttemptTodoSummary,
+} from 'shared'
 
 export interface ProjectCreatedEvent {
     projectId: string
@@ -120,6 +127,12 @@ export interface AttemptSessionRecordedEvent {
     attemptId: string
     boardId: string
     sessionId: string
+}
+
+export interface AttemptTodosUpdatedEvent {
+    attemptId: string
+    boardId: string
+    todos: AttemptTodoSummary
 }
 
 export interface AttemptCompletedEvent {
@@ -264,6 +277,7 @@ export type AppEventMap = {
     'attempt.log.appended': AttemptLogAppendedEvent
     'attempt.conversation.appended': AttemptConversationAppendedEvent
     'attempt.session.recorded': AttemptSessionRecordedEvent
+    'attempt.todos.updated': AttemptTodosUpdatedEvent
     'attempt.completed': AttemptCompletedEvent
     'attempt.autocommit.requested': AttemptAutocommitRequestedEvent
     'attempt.stopped': AttemptStoppedEvent

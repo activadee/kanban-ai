@@ -1,5 +1,11 @@
 import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
-import type {Attempt, AttemptLog, ConversationAutomationItem, ConversationItem} from 'shared'
+import type {
+    Attempt,
+    AttemptLog,
+    ConversationAutomationItem,
+    ConversationItem,
+    AttemptTodoSummary,
+} from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
     followupAttemptRequest,
@@ -12,7 +18,12 @@ import {
     runDevAutomationRequest,
 } from '@/api/attempts'
 
-type CardAttemptResult = { attempt: Attempt; logs: AttemptLog[]; conversation: ConversationItem[] }
+type CardAttemptResult = {
+    attempt: Attempt;
+    logs: AttemptLog[];
+    conversation: ConversationItem[];
+    todos?: AttemptTodoSummary | null;
+}
 
 type CardAttemptOptions = Partial<UseQueryOptions<CardAttemptResult>>
 

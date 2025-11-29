@@ -25,6 +25,10 @@ export function registerWebSocketListeners(bus: AppEventBus) {
         broadcast(boardId, JSON.stringify({type: 'conversation_item', payload: {attemptId, item}}))
     })
 
+    bus.subscribe('attempt.todos.updated', ({boardId, attemptId, todos}) => {
+        broadcast(boardId, JSON.stringify({type: 'attempt_todos', payload: {attemptId, todos}}))
+    })
+
     bus.subscribe('attempt.session.recorded', ({boardId, attemptId, sessionId}) => {
         broadcast(boardId, JSON.stringify({type: 'attempt_session', payload: {attemptId, sessionId}}))
     })

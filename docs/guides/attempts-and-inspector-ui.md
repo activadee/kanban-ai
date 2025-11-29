@@ -106,3 +106,12 @@ The Git section, rendered inside the Details area, provides buttons and dialogs 
   - Runs a merge into the project’s base branch (where configured).
 
 These actions map directly to the Attempt Git and PR APIs documented in `core/git-integration.md` and `core/github-integration.md`.
+
+### Todos panel
+
+- Next to the **Open in editor** button you now see a `<completed>/<total> Todos` button whenever the agent publishes todos for
+  the current Attempt. It is powered by `attempt.todos.updated` events streamed through WebSockets so it always reflects the
+  latest summary and never reuses todo text for commits.
+- Clicking the button opens a read-only dialog that lists each todo with a tiny status indicator (`done` items are grayed
+  out and struck through). The items are sorted so unfinished work appears first, helping you understand what the agent
+  thinks still needs to happen without scrolling through the Messages tab.
