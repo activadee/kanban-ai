@@ -26,7 +26,7 @@ All examples below omit the `/api/v1` prefix for brevity.
   - `GET  /projects/:projectId` – fetch a single project/board.
   - `GET  /projects/:projectId/github/origin` – inspect GitHub origin.
   - `GET  /projects/:projectId/settings` – load per-project settings.
-  - `PATCH /projects/:projectId/settings` – update per-project settings (branch, remote, defaults, automation flags).
+  - `PATCH /projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, automation flags).
   - `POST /projects/:projectId/tickets/enhance` – send `{title, description?, agent?, profileId?}` to the configured agent and receive `{ticket}` with rewritten text (RFC 7807 errors on failure).
 - Boards:
   - `GET    /boards/:boardId` – board state (columns + cards).

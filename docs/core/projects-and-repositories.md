@@ -53,6 +53,9 @@ that repository:
 - **Default agent & profile**
   - Choose which agent (e.g. Codex) is used when starting Attempts.
   - Optionally select a default agent profile to apply for new Attempts.
+- **Inline agent & profile**
+  - Choose which agent is used for inline actions such as ticket enhancement.
+  - Optionally select a dedicated inline agent profile (per agent) used only for inline requests.
 - **Automation flags**
   - `autoCommitOnFinish` – when enabled, successful Attempts trigger `attempt.autocommit.requested`, which runs an
     auto-commit against the Attempt worktree.
@@ -70,7 +73,7 @@ Project-related APIs are rooted under `/api/v1`:
 - `POST /projects` – create a project (existing or blank repository).
 - `GET /projects/:projectId` – fetch a project and its board metadata.
 - `GET /projects/:projectId/settings` – load per-project settings (ensuring defaults).
-- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, automation flags, defaults).
+- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, automation flags).
 - `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card’s title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
 - `GET /projects/:projectId/github/origin` – inspect GitHub origin information for the project repository.
 

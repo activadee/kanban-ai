@@ -27,6 +27,8 @@ export const updateProjectSettingsSchema = z
         copyFiles: z.string().optional().nullable(),
         defaultAgent: z.string().optional().nullable(),
         defaultProfileId: z.string().optional().nullable(),
+        inlineAgent: z.string().optional().nullable(),
+        inlineProfileId: z.string().optional().nullable(),
         autoCommitOnFinish: z.boolean().optional(),
         autoPushOnAutocommit: z.boolean().optional(),
         ticketPrefix: z

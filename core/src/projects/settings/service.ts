@@ -18,6 +18,8 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         copyFiles: row.copyFiles ?? null,
         defaultAgent: row.defaultAgent ?? null,
         defaultProfileId: row.defaultProfileId ?? null,
+        inlineAgent: row.inlineAgent ?? null,
+        inlineProfileId: row.inlineProfileId ?? null,
         autoCommitOnFinish: Boolean(row.autoCommitOnFinish),
         autoPushOnAutocommit: Boolean(row.autoPushOnAutocommit),
         ticketPrefix: row.ticketPrefix,
@@ -45,6 +47,8 @@ export async function ensureProjectSettings(projectId: string, executor?: DbExec
             copyFiles: null,
             defaultAgent: null,
             defaultProfileId: null,
+            inlineAgent: null,
+            inlineProfileId: null,
             autoCommitOnFinish: false,
             autoPushOnAutocommit: false,
             ticketPrefix,
@@ -75,6 +79,8 @@ export async function updateProjectSettings(projectId: string, updates: UpdatePr
     if (updates.copyFiles !== undefined) patch.copyFiles = nn(updates.copyFiles)
     if (updates.defaultAgent !== undefined) patch.defaultAgent = nn(updates.defaultAgent)
     if (updates.defaultProfileId !== undefined) patch.defaultProfileId = nn(updates.defaultProfileId)
+    if (updates.inlineAgent !== undefined) patch.inlineAgent = nn(updates.inlineAgent)
+    if (updates.inlineProfileId !== undefined) patch.inlineProfileId = nn(updates.inlineProfileId)
     if (updates.autoCommitOnFinish !== undefined) patch.autoCommitOnFinish = Boolean(updates.autoCommitOnFinish)
     if (updates.autoPushOnAutocommit !== undefined) patch.autoPushOnAutocommit = Boolean(updates.autoPushOnAutocommit)
     if (updates.ticketPrefix !== undefined) patch.ticketPrefix = sanitizeTicketPrefix(updates.ticketPrefix)

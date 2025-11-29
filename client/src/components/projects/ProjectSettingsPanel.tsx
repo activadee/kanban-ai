@@ -22,6 +22,7 @@ import {BranchSettingsSection} from '@/components/projects/ProjectSettingsPanel/
 import {TicketSettingsSection} from '@/components/projects/ProjectSettingsPanel/sections/TicketSettingsSection'
 import {ScriptsSection} from '@/components/projects/ProjectSettingsPanel/sections/ScriptsSection'
 import {AgentDefaultsSection} from '@/components/projects/ProjectSettingsPanel/sections/AgentDefaultsSection'
+import {InlineAgentSection} from '@/components/projects/ProjectSettingsPanel/sections/InlineAgentSection'
 
 type ProjectSettingsPanelProps = {
     projectId: string;
@@ -216,6 +217,14 @@ export function ProjectSettingsPanel({
                                     profiles={profiles}
                                     onChange={(patch) => updateForm(patch)}
                                 />
+
+                                <InlineAgentSection
+                                    inlineAgent={form.inlineAgent}
+                                    inlineProfileId={form.inlineProfileId}
+                                    agents={agents}
+                                    profiles={profiles}
+                                    onChange={(patch) => updateForm(patch)}
+                                />
                             </div>
                         )}
                     </div>
@@ -234,4 +243,3 @@ export function ProjectSettingsPanel({
 
     return scrollArea ? body : <div className="flex h-full flex-col">{body}</div>
 }
-

@@ -43,7 +43,8 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
 - Per-project settings cover:
   - Base branch and preferred remote.
   - Ticket key prefix and repository naming.
-  - Default agent and agent profile.
+  - Default agent and agent profile for Attempts.
+  - Inline agent and inline agent profile for inline actions (e.g. ticket enhancement).
   - Automation flags:
     - Auto-commit on successful Attempt completion.
     - Auto-push after auto-commit.
@@ -51,4 +52,3 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
   - **AI Attempts** – how Attempts behave and which agent/profile they use.
   - **Git integration** – when auto-commit/auto-push triggers.
   - **Quality-of-life** – auto-start Attempts when moving cards into In Progress.
-

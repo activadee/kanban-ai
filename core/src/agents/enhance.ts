@@ -75,8 +75,39 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
 
     const settings = await ensureProjectSettings(opts.projectId)
     const boardId = resolveBoardId(opts, project)
-    const agentKey = opts.agentKey || settings.defaultAgent || 'DROID'
-    const profileId = opts.profileId || settings.defaultProfileId || null
+    const inlineAgentRaw =
+        typeof settings.inlineAgent === 'string' ? settings.inlineAgent.trim() : ''
+    const inlineAgentKey = inlineAgentRaw.length ? inlineAgentRaw : null
+
+    const inlineProfileRaw =
+        typeof settings.inlineProfileId === 'string' ? settings.inlineProfileId.trim() : ''
+    const inlineProfileId = inlineProfileRaw.length ? inlineProfileRaw : null
+
+    const explicitAgentRaw =
+        typeof opts.agentKey === 'string' ? opts.agentKey.trim() : ''
+    let agentKey = explicitAgentRaw.length ? explicitAgentRaw : null
+
+    const explicitProfileRaw =
+        typeof opts.profileId === 'string' ? opts.profileId.trim() : ''
+    let profileId = explicitProfileRaw.length ? explicitProfileRaw : null
+
+    const fallbackAgentKey = settings.defaultAgent || 'DROID'
+
+    if (!agentKey) {
+        agentKey = inlineAgentKey || fallbackAgentKey
+    }
+
+    if (!profileId && inlineProfileId && inlineAgentKey && agentKey === inlineAgentKey) {
+        profileId = inlineProfileId
+    } else if (!profileId && settings.defaultProfileId) {
+        const defaultProfileRaw =
+            typeof settings.defaultProfileId === 'string'
+                ? settings.defaultProfileId.trim()
+                : settings.defaultProfileId
+        if (defaultProfileRaw && (!inlineProfileId || inlineAgentKey !== agentKey)) {
+            profileId = defaultProfileRaw
+        }
+    }
 
     const agent = getAgent(agentKey)
     if (!agent) {

@@ -169,4 +169,7 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             detail: "Agent CODEX does not support ticket enhancement",
         });
     });
+
+    // Inline agent fallback now uses the project's default agent (or DROID)
+    // when no inline agent is configured, so there is no dedicated 400 case.
 });
