@@ -35,6 +35,7 @@ function nextToggleStatus(current: SubtaskStatus): SubtaskStatus {
 export function SubtasksSection({projectId, ticketId, locked}: Props) {
     const queryClient = useQueryClient()
     const [newTitle, setNewTitle] = useState('')
+    const [titleEdits, setTitleEdits] = useState<Record<string, string>>({})
 
     const subtasksQuery = useSubtasks(projectId, ticketId)
     const createMutation = useCreateSubtask({
@@ -82,6 +83,17 @@ export function SubtasksSection({projectId, ticketId, locked}: Props) {
 
     const canEdit = !locked
 
+    // Keep local editable titles in sync with the latest server state
+    useEffect(() => {
+        setTitleEdits((prev) => {
+            const next: Record<string, string> = {}
+            for (const subtask of subtasks) {
+                next[subtask.id] = prev[subtask.id] ?? subtask.title
+            }
+            return next
+        })
+    }, [subtasks])
+
     const handleCreate = async () => {
         const title = newTitle.trim()
         if (!title || !canEdit || createMutation.isPending) return
@@ -101,8 +113,8 @@ export function SubtasksSection({projectId, ticketId, locked}: Props) {
         })
     }
 
-    const handleTitleBlur = async (subtask: Subtask, value: string) => {
-        const trimmed = value.trim()
+    const handleTitleBlur = async (subtask: Subtask, rawValue: string) => {
+        const trimmed = rawValue.trim()
         if (!canEdit || !trimmed || trimmed === subtask.title) return
         await updateMutation.mutateAsync({
             projectId,
@@ -182,9 +194,15 @@ export function SubtasksSection({projectId, ticketId, locked}: Props) {
                                 />
                                 <div className="flex flex-1 flex-col gap-1">
                                     <Input
-                                        defaultValue={subtask.title}
+                                        value={titleEdits[subtask.id] ?? subtask.title}
                                         disabled={!canEdit}
                                         className="h-7 text-xs"
+                                        onChange={(e) =>
+                                            setTitleEdits((prev) => ({
+                                                ...prev,
+                                                [subtask.id]: e.target.value,
+                                            }))
+                                        }
                                         onBlur={(e) => handleTitleBlur(subtask, e.target.value)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
@@ -193,7 +211,7 @@ export function SubtasksSection({projectId, ticketId, locked}: Props) {
                                         }}
                                     />
                                     <Select
-                                        defaultValue={status}
+                                        value={status}
                                         disabled={!canEdit}
                                         onValueChange={(value) =>
                                             handleStatusChange(subtask, value as SubtaskStatus)
@@ -271,4 +289,3 @@ export function SubtasksSection({projectId, ticketId, locked}: Props) {
         </div>
     )
 }
-
