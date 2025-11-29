@@ -169,4 +169,31 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             detail: "Agent CODEX does not support ticket enhancement",
         });
     });
+
+    it("returns 400 when no inline agent is configured for the project", async () => {
+        const app = createApp();
+        const {agentEnhanceTicket} = await import("core");
+        (agentEnhanceTicket as any).mockRejectedValue(
+            new Error(
+                "No inline agent configured for this project. Configure one in Project Settings.",
+            ),
+        );
+
+        const res = await app.request("/projects/proj-1/tickets/enhance", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                title: "Original Title",
+                description: "Original Description",
+            }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = (await res.json()) as any;
+        expect(data).toMatchObject({
+            status: 400,
+            detail:
+                "No inline agent configured for this project. Configure one in Project Settings.",
+        });
+    });
 });

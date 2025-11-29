@@ -10,6 +10,8 @@ export type ProjectSettingsFormState = {
     copyFiles: string;
     defaultAgent: string;
     defaultProfileId: string;
+    inlineAgent: string;
+    inlineProfileId: string;
     autoCommitOnFinish: boolean;
     autoPushOnAutocommit: boolean;
     ticketPrefix: string;
@@ -26,6 +28,8 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             copyFiles: '',
             defaultAgent: '',
             defaultProfileId: '',
+            inlineAgent: '',
+            inlineProfileId: '',
             autoCommitOnFinish: false,
             autoPushOnAutocommit: false,
             ticketPrefix: '',
@@ -41,6 +45,8 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         copyFiles: settings.copyFiles ?? '',
         defaultAgent: settings.defaultAgent ?? '',
         defaultProfileId: settings.defaultProfileId ?? '',
+        inlineAgent: settings.inlineAgent ?? '',
+        inlineProfileId: settings.inlineProfileId ?? '',
         autoCommitOnFinish: settings.autoCommitOnFinish ?? false,
         autoPushOnAutocommit: settings.autoPushOnAutocommit ?? false,
         ticketPrefix: settings.ticketPrefix ?? '',
@@ -74,6 +80,12 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if ((form.defaultProfileId || '') !== (initial.defaultProfileId ?? '')) {
         payload.defaultProfileId = form.defaultProfileId || null
+    }
+    if ((form.inlineAgent || '') !== (initial.inlineAgent ?? '')) {
+        payload.inlineAgent = form.inlineAgent || null
+    }
+    if ((form.inlineProfileId || '') !== (initial.inlineProfileId ?? '')) {
+        payload.inlineProfileId = form.inlineProfileId || null
     }
     if (form.autoCommitOnFinish !== (initial.autoCommitOnFinish ?? false)) {
         payload.autoCommitOnFinish = form.autoCommitOnFinish

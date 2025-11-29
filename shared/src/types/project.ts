@@ -37,6 +37,8 @@ export interface ProjectSettings {
     copyFiles: string | null
     defaultAgent: string | null
     defaultProfileId: string | null
+    inlineAgent: string | null
+    inlineProfileId: string | null
     autoCommitOnFinish: boolean
     autoPushOnAutocommit: boolean
     ticketPrefix: string
@@ -54,6 +56,8 @@ export interface UpdateProjectSettingsRequest {
     copyFiles?: string | null
     defaultAgent?: string | null
     defaultProfileId?: string | null
+    inlineAgent?: string | null
+    inlineProfileId?: string | null
     autoCommitOnFinish?: boolean
     autoPushOnAutocommit?: boolean
     ticketPrefix?: string

@@ -1,5 +1,5 @@
 import type {ProjectSettings} from "shared";
-import {projectTickets, ticketKeys, agentProfilesGlobal} from "core";
+import {projectTickets, ticketKeys, agentProfilesGlobal, agentProfiles} from "core";
 import {problemJson} from "../http/problem";
 import {log} from "../log";
 import {getAgent} from "../agents/registry";
@@ -47,11 +47,13 @@ export const updateProjectSettingsHandler = async (c: any) => {
         copyFiles?: string | null;
         defaultAgent?: string | null;
         defaultProfileId?: string | null;
+        inlineAgent?: string | null;
+        inlineProfileId?: string | null;
         autoCommitOnFinish?: boolean;
         autoPushOnAutocommit?: boolean;
         ticketPrefix?: string;
     };
-    let {defaultAgent, defaultProfileId} = body;
+    let {defaultAgent, defaultProfileId, inlineAgent, inlineProfileId} = body;
 
     let agentKey = defaultAgent ?? undefined;
     if (typeof agentKey === "string") {
@@ -89,6 +91,49 @@ export const updateProjectSettingsHandler = async (c: any) => {
         }
     }
 
+    let inlineAgentKey = inlineAgent ?? undefined;
+    if (typeof inlineAgentKey === "string") {
+        inlineAgentKey = inlineAgentKey.trim() || undefined;
+    }
+
+    if (inlineAgentKey) {
+        const agent = getAgent(inlineAgentKey);
+        if (!agent) {
+            return problemJson(c, {
+                status: 400,
+                detail: "Unknown inline agent",
+            });
+        }
+    }
+
+    if (inlineProfileId !== undefined) {
+        const profileId =
+            typeof inlineProfileId === "string"
+                ? inlineProfileId.trim()
+                : inlineProfileId;
+        if (profileId) {
+            const isGlobal = profileId.startsWith("apg-");
+            const profile = isGlobal
+                ? await agentProfilesGlobal.getGlobalAgentProfile(profileId)
+                : await agentProfiles.getAgentProfile(projectId, profileId);
+            if (!profile) {
+                return problemJson(c, {
+                    status: 400,
+                    detail: "Inline profile not found",
+                });
+            }
+            if (inlineAgentKey && profile.agent !== inlineAgentKey) {
+                return problemJson(c, {
+                    status: 400,
+                    detail: "Inline profile does not match selected inline agent",
+                });
+            }
+            if (!inlineAgentKey) {
+                inlineAgentKey = profile.agent;
+            }
+        }
+    }
+
     const updates: Partial<ProjectSettings> = {};
 
     if (typeof body.baseBranch === "string") {
@@ -111,6 +156,14 @@ export const updateProjectSettingsHandler = async (c: any) => {
     defaultProfileId = normalizeNullable(body.defaultProfileId);
     if (defaultProfileId !== undefined) {
         updates.defaultProfileId = defaultProfileId;
+    }
+    if (body.inlineAgent !== undefined) {
+        updates.inlineAgent =
+            inlineAgentKey ?? (body.inlineAgent === null ? null : undefined);
+    }
+    inlineProfileId = normalizeNullable(body.inlineProfileId);
+    if (inlineProfileId !== undefined) {
+        updates.inlineProfileId = inlineProfileId;
     }
     if (body.autoCommitOnFinish !== undefined) {
         updates.autoCommitOnFinish = body.autoCommitOnFinish;

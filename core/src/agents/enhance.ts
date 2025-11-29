@@ -75,8 +75,35 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
 
     const settings = await ensureProjectSettings(opts.projectId)
     const boardId = resolveBoardId(opts, project)
-    const agentKey = opts.agentKey || settings.defaultAgent || 'DROID'
-    const profileId = opts.profileId || settings.defaultProfileId || null
+    const inlineAgentRaw =
+        typeof settings.inlineAgent === 'string' ? settings.inlineAgent.trim() : ''
+    const inlineAgentKey = inlineAgentRaw.length ? inlineAgentRaw : null
+
+    const inlineProfileRaw =
+        typeof settings.inlineProfileId === 'string' ? settings.inlineProfileId.trim() : ''
+    const inlineProfileId = inlineProfileRaw.length ? inlineProfileRaw : null
+
+    const explicitAgentRaw =
+        typeof opts.agentKey === 'string' ? opts.agentKey.trim() : ''
+    let agentKey = explicitAgentRaw.length ? explicitAgentRaw : null
+
+    const explicitProfileRaw =
+        typeof opts.profileId === 'string' ? opts.profileId.trim() : ''
+    let profileId = explicitProfileRaw.length ? explicitProfileRaw : null
+
+    if (!agentKey) {
+        agentKey = inlineAgentKey
+    }
+
+    if (!agentKey) {
+        throw new Error(
+            'No inline agent configured for this project. Configure one in Project Settings.',
+        )
+    }
+
+    if (!profileId && inlineProfileId && inlineAgentKey && agentKey === inlineAgentKey) {
+        profileId = inlineProfileId
+    }
 
     const agent = getAgent(agentKey)
     if (!agent) {

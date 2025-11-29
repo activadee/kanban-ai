@@ -53,6 +53,9 @@ that repository:
 - **Default agent & profile**
   - Choose which agent (e.g. Codex) is used when starting Attempts.
   - Optionally select a default agent profile to apply for new Attempts.
+- **Inline agent & profile**
+  - Choose which agent is used for inline actions such as ticket enhancement.
+  - Optionally select a dedicated inline agent profile (per agent) used only for inline requests.
 - **Automation flags**
   - `autoCommitOnFinish` – when enabled, successful Attempts trigger `attempt.autocommit.requested`, which runs an
     auto-commit against the Attempt worktree.

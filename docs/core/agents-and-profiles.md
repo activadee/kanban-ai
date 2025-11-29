@@ -93,7 +93,9 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
 - `agentEnhanceTicket` behavior:
   - Inputs: `projectId`, optional `boardId`, `title`, `description`, optional `agentKey`, optional `profileId`, and an
     optional `AbortSignal`.
-  - Resolves `boardId`, `agentKey`, and `profileId` from project settings and inputs.
+  - Resolves `boardId`, `agentKey`, and `profileId` from project settings and inputs:
+    - Uses the project’s configured inline agent/profile by default.
+    - Allows advanced callers to override `agentKey` / `profileId` explicitly.
   - Constructs a `TicketEnhanceInput` (including a cancellation signal) and `InlineTaskContext`.
   - Resolves the agent profile using the shared profile resolution helpers.
   - Supports specialized inline profiles:
