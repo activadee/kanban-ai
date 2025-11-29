@@ -37,6 +37,7 @@ export {setWorktreeProvider} from './ports/worktree'
 export * as agentRegistry from './agents/registry'
 export {bindAgentEventBus, registerAgent, getAgent, listAgents} from './agents/registry'
 export * as agentTypes from './agents/types'
+export {runInlineTask} from './agents/inline'
 export {agentEnhanceTicket} from './agents/enhance'
 export type {
     Agent,
@@ -45,6 +46,12 @@ export type {
     AgentCapabilities,
     TicketEnhanceInput,
     TicketEnhanceResult,
+    InlineTaskKind,
+    InlineTaskContext,
+    InlineTaskInputByKind,
+    InlineTaskResultByKind,
+    InlineTaskError,
+    InlineTaskErrorCode,
 } from './agents/types'
 export * as agentProfilesRepo from './agents/repo'
 export * as agentProfiles from './agents/profiles'

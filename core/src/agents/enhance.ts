@@ -2,7 +2,13 @@ import type {ProjectSummary} from 'shared'
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getAgent} from './registry'
-import type {Agent, TicketEnhanceInput, TicketEnhanceResult} from './types'
+import {runInlineTask} from './inline'
+import type {
+    Agent,
+    InlineTaskContext,
+    TicketEnhanceInput,
+    TicketEnhanceResult,
+} from './types'
 import {resolveAgentProfile} from './profile-resolution'
 
 export type AgentEnhanceTicketOptions = {
@@ -68,7 +74,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
     if (!agent) {
         throw new Error(`Unknown agent: ${agentKey}`)
     }
-    if (!agent.enhance) {
+    if (!agent.inline) {
         throw new Error(`Agent ${agentKey} does not support ticket enhancement`)
     }
 
@@ -85,7 +91,23 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
     }
 
     const profile = await resolveProfileForAgent(agent, opts.projectId, profileId)
+    const context: InlineTaskContext = {
+        projectId: opts.projectId,
+        boardId,
+        repositoryPath: project.repositoryPath,
+        baseBranch: settings.baseBranch,
+        branchName: settings.baseBranch,
+        headCommit: null,
+        agentKey,
+        profileId,
+    }
 
-    return agent.enhance(input, profile as any)
+    return runInlineTask({
+        agentKey,
+        kind: 'ticketEnhance',
+        input,
+        profile: profile as any,
+        context,
+        signal,
+    })
 }
-

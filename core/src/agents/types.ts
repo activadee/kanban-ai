@@ -46,6 +46,90 @@ export type TicketEnhanceResult = {
     description: string
 }
 
+// Generic inline task model
+
+export type InlineTaskKind = 'ticketEnhance' | 'prSummary' | 'prReview'
+
+export type InlineTaskContext = {
+    projectId: string
+    boardId: string
+    repositoryPath: string
+    baseBranch: string
+    /**
+     * Optional branch name the inline task is scoped to (e.g. PR head).
+     */
+    branchName?: string | null
+    /**
+     * Optional HEAD commit SHA for the inline task (if applicable).
+     */
+    headCommit?: string | null
+    /**
+     * Agent key used for the task (e.g. CODEX, DROID).
+     */
+    agentKey: string
+    /**
+     * Effective profileId, if any, used to resolve the agent profile.
+     */
+    profileId?: string | null
+}
+
+// Placeholder shapes for future inline kinds. These will be refined when
+// PR summary / review features are implemented.
+
+export type PrSummaryInlineInput = {
+    repositoryPath: string
+    baseBranch: string
+    headBranch: string
+}
+
+export type PrSummaryInlineResult = {
+    summary: string
+}
+
+export type PrReviewInlineInput = {
+    repositoryPath: string
+    baseBranch: string
+    headBranch: string
+}
+
+export type PrReviewInlineResult = {
+    review: string
+}
+
+export type InlineTaskInputByKind = {
+    ticketEnhance: TicketEnhanceInput
+    prSummary: PrSummaryInlineInput
+    prReview: PrReviewInlineInput
+}
+
+export type InlineTaskResultByKind = {
+    ticketEnhance: TicketEnhanceResult
+    prSummary: PrSummaryInlineResult
+    prReview: PrReviewInlineResult
+}
+
+export type InlineTaskErrorCode = 'UNKNOWN_AGENT' | 'AGENT_NO_INLINE' | 'INLINE_TASK_FAILED' | 'ABORTED'
+
+export class InlineTaskError extends Error {
+    readonly kind: InlineTaskKind
+    readonly agent: string
+    readonly code: InlineTaskErrorCode
+    readonly cause?: unknown
+
+    constructor(params: {kind: InlineTaskKind; agent: string; code: InlineTaskErrorCode; message: string; cause?: unknown}) {
+        super(params.message)
+        this.name = 'InlineTaskError'
+        this.kind = params.kind
+        this.agent = params.agent
+        this.code = params.code
+        this.cause = params.cause
+    }
+}
+
+export function isInlineTaskError(err: unknown): err is InlineTaskError {
+    return err instanceof InlineTaskError
+}
+
 export type AgentProfileUnknown = unknown
 
 export type AgentInfo<P = AgentProfileUnknown> = {
@@ -63,4 +147,11 @@ export interface Agent<P = AgentProfileUnknown> extends AgentInfo<P> {
     resume?: (ctx: AgentContext, profile: P) => Promise<number>
 
     enhance?: (input: TicketEnhanceInput, profile: P) => Promise<TicketEnhanceResult>
+
+    inline?: <K extends InlineTaskKind>(
+        kind: K,
+        input: InlineTaskInputByKind[K],
+        profile: P,
+        opts?: {context: InlineTaskContext; signal?: AbortSignal},
+    ) => Promise<InlineTaskResultByKind[K]>
 }

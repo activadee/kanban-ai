@@ -14,6 +14,10 @@ vi.mock('../src/agents/registry', () => ({
     getAgent: vi.fn(),
 }))
 
+vi.mock('../src/agents/inline', () => ({
+    runInlineTask: vi.fn(),
+}))
+
 vi.mock('../src/agents/profile-resolution', () => ({
     resolveAgentProfile: vi.fn(),
 }))
@@ -29,6 +33,7 @@ describe('agents/enhance agentEnhanceTicket', () => {
         const {ensureProjectSettings} = await import('../src/projects/settings/service')
         const {getAgent} = await import('../src/agents/registry')
         const {resolveAgentProfile} = await import('../src/agents/profile-resolution')
+        const {runInlineTask} = await import('../src/agents/inline')
         const {agentEnhanceTicket} = await import('../src/agents/enhance')
 
         const project = {
@@ -67,18 +72,20 @@ describe('agents/enhance agentEnhanceTicket', () => {
 
         const enhanceResult = {title: 'Enhanced Title', description: 'Enhanced Description'}
 
-        const enhance = vi.fn().mockResolvedValue(enhanceResult)
+        const inline = vi.fn().mockResolvedValue(enhanceResult)
         const agent = {
             key: 'DROID',
             label: 'Droid',
             defaultProfile: {foo: 'bar'},
             profileSchema: {safeParse: vi.fn()} as any,
             run: vi.fn(),
-            enhance,
+            inline,
         }
 
         getAgent.mockReturnValue(agent)
         resolveAgentProfile.mockResolvedValue({profile: {foo: 'bar'}, label: 'Profile Label'})
+
+        ;(runInlineTask as any).mockResolvedValue(enhanceResult as any)
 
         const result = await agentEnhanceTicket({
             projectId: 'proj-1',
@@ -94,10 +101,16 @@ describe('agents/enhance agentEnhanceTicket', () => {
         expect(ensureProjectSettings).toHaveBeenCalledWith('proj-1')
         expect(getAgent).toHaveBeenCalledWith('DROID')
         expect(resolveAgentProfile).toHaveBeenCalledWith(agent, 'proj-1', 'ap-1')
-        expect(enhance).toHaveBeenCalledTimes(1)
+        expect(inline).not.toHaveBeenCalled()
 
-        const [inputArg, profileArg] = enhance.mock.calls[0] as [any, any]
-        expect(inputArg).toMatchObject({
+        expect(runInlineTask).toHaveBeenCalledTimes(1)
+        const [callArg] = (runInlineTask as any).mock.calls[0] as [any]
+        expect(callArg).toMatchObject({
+            agentKey: 'DROID',
+            kind: 'ticketEnhance',
+        })
+        expect(callArg.profile).toEqual({foo: 'bar'})
+        expect(callArg.input).toMatchObject({
             projectId: 'proj-1',
             boardId: 'board-1',
             repositoryPath: '/repos/proj-1',
@@ -106,9 +119,17 @@ describe('agents/enhance agentEnhanceTicket', () => {
             description: 'Original Description',
             profileId: 'ap-1',
         })
-        expect(inputArg.signal).toBeDefined()
-        expect(typeof inputArg.signal.aborted).toBe('boolean')
-        expect(profileArg).toEqual({foo: 'bar'})
+        expect(callArg.input.signal).toBeDefined()
+        expect(typeof callArg.input.signal.aborted).toBe('boolean')
+        expect(callArg.context).toMatchObject({
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            repositoryPath: '/repos/proj-1',
+            baseBranch: 'main',
+            branchName: 'main',
+            agentKey: 'DROID',
+            profileId: 'ap-1',
+        })
     })
 
     it('throws when project is not found', async () => {
@@ -239,4 +260,3 @@ describe('agents/enhance agentEnhanceTicket', () => {
         expect(resolveAgentProfile).not.toHaveBeenCalled()
     })
 })
-

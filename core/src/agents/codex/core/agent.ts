@@ -2,8 +2,28 @@ import {execFile} from 'node:child_process'
 import {promises as fs, constants as fsConstants} from 'node:fs'
 import {promisify} from 'node:util'
 
-import {Codex, type ThreadEvent, type CommandExecutionItem, type AgentMessageItem, type ReasoningItem, type McpToolCallItem, type FileChangeItem, type WebSearchItem, type TodoListItem, type ErrorItem, type ThreadOptions} from '@openai/codex-sdk'
-import type {AgentContext, TicketEnhanceInput, TicketEnhanceResult} from '../../types'
+import {
+    Codex,
+    type ThreadEvent,
+    type CommandExecutionItem,
+    type AgentMessageItem,
+    type ReasoningItem,
+    type McpToolCallItem,
+    type FileChangeItem,
+    type WebSearchItem,
+    type TodoListItem,
+    type ErrorItem,
+    type ThreadOptions,
+} from '@openai/codex-sdk'
+import type {
+    AgentContext,
+    InlineTaskContext,
+    InlineTaskInputByKind,
+    InlineTaskKind,
+    InlineTaskResultByKind,
+    TicketEnhanceInput,
+    TicketEnhanceResult,
+} from '../../types'
 import {SdkAgent} from '../../sdk'
 import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
@@ -351,6 +371,19 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             this.groupers.get(ctx.attemptId)?.flush(ctx)
             this.groupers.delete(ctx.attemptId)
         }
+    }
+
+    async inline<K extends InlineTaskKind>(
+        kind: K,
+        input: InlineTaskInputByKind[K],
+        profile: CodexProfile,
+        _opts?: {context: InlineTaskContext; signal?: AbortSignal},
+    ): Promise<InlineTaskResultByKind[K]> {
+        if (kind === 'ticketEnhance') {
+            const result = await this.enhance(input as TicketEnhanceInput, profile)
+            return result as InlineTaskResultByKind[K]
+        }
+        throw new Error(`Codex inline kind ${kind} is not implemented`)
     }
 
     async enhance(input: TicketEnhanceInput, profile: CodexProfile): Promise<TicketEnhanceResult> {

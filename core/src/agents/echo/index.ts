@@ -1,6 +1,15 @@
 import {z} from 'zod'
 
-import type {Agent, AgentContext, TicketEnhanceInput, TicketEnhanceResult} from '../types'
+import type {
+    Agent,
+    AgentContext,
+    InlineTaskContext,
+    InlineTaskInputByKind,
+    InlineTaskKind,
+    InlineTaskResultByKind,
+    TicketEnhanceInput,
+    TicketEnhanceResult,
+} from '../types'
 
 type EchoProfile = Record<string, never>
 
@@ -20,6 +29,23 @@ class EchoImpl implements Agent<EchoProfile> {
         return 0
     }
 
+    async inline<K extends InlineTaskKind>(
+        kind: K,
+        input: InlineTaskInputByKind[K],
+        _profile: EchoProfile,
+        _opts?: {context: InlineTaskContext; signal?: AbortSignal},
+    ): Promise<InlineTaskResultByKind[K]> {
+        if (kind === 'ticketEnhance') {
+            const typed = input as TicketEnhanceInput
+            const result: TicketEnhanceResult = {
+                title: typed.title,
+                description: `[ENHANCED] ${typed.description}`,
+            }
+            return result as InlineTaskResultByKind[K]
+        }
+        throw new Error(`Echo inline kind ${kind} is not implemented`)
+    }
+
     async enhance(input: TicketEnhanceInput, _profile: EchoProfile): Promise<TicketEnhanceResult> {
         return {
             title: input.title,
@@ -29,4 +55,3 @@ class EchoImpl implements Agent<EchoProfile> {
 }
 
 export const EchoAgent = new EchoImpl()
-

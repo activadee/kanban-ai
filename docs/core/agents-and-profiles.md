@@ -1,6 +1,6 @@
 # Agents & profiles
 
-Last updated: 2025-11-28
+Last updated: 2025-11-29
 
 ## Agent registry
 
@@ -52,36 +52,51 @@ with additional agents under active development.
 Until the WIP agents are promoted, **only Codex is considered stable**. New features and UI flows should continue to
 target Codex as the default coding agent, with Droid/OpenCode reserved for internal testing and experimentation.
 
-### Ticket enhancement interface
+### Inline tasks & ticket enhancement
 
-- Agents can optionally implement `enhance(input, profile)` alongside `run` / `resume`.
-  - `input` is a `TicketEnhanceInput` containing project + board IDs, the canonical repository path, base branch, current
-    card title/description, and the active `AbortSignal`.
-  - The method returns a `TicketEnhanceResult` with the rewritten `title` and `description`.
-  - Implementations must respect the provided signal so the UI can cancel enhancement requests.
-- Typical use cases:
-  - Enriching an imported GitHub issue before it becomes a KanbanAI card.
-  - Rewriting terse card titles/descriptions with additional acceptance criteria before an Attempt starts.
-- Helper utilities:
-  - `core/agents/utils#splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription)` extracts a leading H1 (`# `)
-    from LLM output, making it easier for agents to return Markdown while still conforming to the required result shape.
-  - `core/agents/utils#buildTicketEnhancePrompt(input, appendPrompt)` builds a standardized English-language prompt for
-    ticket enhancement, used by agents like DROID and CODEX so they can share the same Markdown contract (H1 title,
-    detailed body, and at least one `mermaid` diagram).
-  - `TicketEnhanceInput` / `TicketEnhanceResult` are exported from `core/agentTypes` (via `core/src/index.ts`) so custom
-    agents can share the same types without reaching into private modules.
+- Agents can optionally implement a unified inline interface:
+  - `inline(kind, input, profile, opts?)` alongside `run` / `resume`.
+  - `kind` is an `InlineTaskKind` such as:
+    - `'ticketEnhance'` – current ticket enhancement flow.
+    - `'prSummary'` / `'prReview'` – reserved for future PR inline features.
+  - `input`/`result` shapes are mapped via `InlineTaskInputByKind` / `InlineTaskResultByKind`.
+    - For `ticketEnhance`, these map directly to `TicketEnhanceInput` / `TicketEnhanceResult`.
+  - `opts.context` is an `InlineTaskContext` providing:
+    - `projectId`, `boardId`, `repositoryPath`, `baseBranch`.
+    - Optional branch/commit metadata and the effective `agentKey` / `profileId`.
+  - `opts.signal` is an optional `AbortSignal` used to cancel the inline task.
+- Ticket enhancement is implemented as a specific inline task:
+  - Typical use cases:
+    - Enriching an imported GitHub issue before it becomes a KanbanAI card.
+    - Rewriting terse card titles/descriptions with additional acceptance criteria before an Attempt starts.
+  - Helper utilities:
+    - `core/agents/utils#splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription)` extracts a leading H1 (`# `)
+      from LLM output, making it easier for agents to return Markdown while still conforming to the required result shape.
+    - `core/agents/utils#buildTicketEnhancePrompt(input, appendPrompt)` builds a standardized English-language prompt for
+      ticket enhancement, used by agents like DROID and CODEX so they can share the same Markdown contract (H1 title,
+      detailed body, and at least one `mermaid` diagram).
+    - `TicketEnhanceInput` / `TicketEnhanceResult`, `InlineTaskKind`, `InlineTaskContext`, and the inline task maps are
+      exported from `core/agentTypes` (via `core/src/index.ts`) so custom agents can share the same types without
+      reaching into private modules.
 
-### Core ticket enhancement orchestrator
+### Core inline orchestrator and ticket enhancement
 
-- The core layer exposes `agentEnhanceTicket(opts)` from `core/agentEnhanceTicket` (via `core/src/index.ts`) as the single
-  entrypoint for ticket enhancement.
+- The core layer exposes:
+  - `runInlineTask({agentKey, kind, input, profile, context, signal?})` from `core/agentInline` (via `core/src/index.ts`)
+    as the reusable inline orchestrator.
+  - `agentEnhanceTicket(opts)` from `core/agentEnhanceTicket` (via `core/src/index.ts`) as the single entrypoint for ticket enhancement.
+- `runInlineTask` behavior:
+  - Resolves the agent via the registry and validates that it implements `inline`.
+  - Delegates to `agent.inline(kind, input, profile, {context, signal})`.
+  - Normalizes errors into `InlineTaskError` with `kind`, `agent`, `code`, and `message`:
+    - `UNKNOWN_AGENT`, `AGENT_NO_INLINE`, `INLINE_TASK_FAILED`, `ABORTED`.
+- `agentEnhanceTicket` behavior:
   - Inputs: `projectId`, optional `boardId`, `title`, `description`, optional `agentKey`, optional `profileId`, and an
     optional `AbortSignal`.
-  - Behavior:
-    - Loads the project and its settings (including `baseBranch`, `defaultAgent`, `defaultProfileId`).
-    - Resolves the effective `boardId`, `agentKey`, and `profileId`.
-    - Builds a `TicketEnhanceInput` and resolves the agent profile using the shared profile resolution helpers.
-    - Invokes `agent.enhance(input, profile)` and returns the resulting `TicketEnhanceResult`.
+  - Resolves `boardId`, `agentKey`, and `profileId` from project settings and inputs.
+  - Constructs a `TicketEnhanceInput` (including a cancellation signal) and `InlineTaskContext`.
+  - Resolves the agent profile using the shared profile resolution helpers.
+  - Invokes `runInlineTask({kind: 'ticketEnhance', ...})` and returns the resulting `TicketEnhanceResult`.
   - The server layer should call this function instead of wiring agents, profiles, and settings manually.
   - `POST /projects/:projectId/tickets/enhance` (Projects router) is the HTTP surface area: it validates `{title, description?, agent?, profileId?}` payloads, forwards them into `agentEnhanceTicket`, and returns `{ticket}` or RFC 7807 errors so the client can enrich cards without bespoke agent wiring.
 

@@ -1,7 +1,16 @@
 import {z} from 'zod'
 import {spawn} from 'child_process'
 import {CommandAgent, type CommandSpec} from '../../command'
-import type {Agent, AgentContext, TicketEnhanceInput, TicketEnhanceResult} from '../../types'
+import type {
+    Agent,
+    AgentContext,
+    InlineTaskContext,
+    InlineTaskInputByKind,
+    InlineTaskKind,
+    InlineTaskResultByKind,
+    TicketEnhanceInput,
+    TicketEnhanceResult,
+} from '../../types'
 import {buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
 import {DroidProfileSchema, defaultProfile, type DroidProfile} from '../profiles/schema'
 import {buildDroidCommand, buildDroidFollowupCommand} from '../profiles/build'
@@ -187,6 +196,19 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
             type: 'conversation',
             item: {type: 'message', timestamp: new Date().toISOString(), role: 'user', text, format: 'markdown'}
         })
+    }
+
+    async inline<K extends InlineTaskKind>(
+        kind: K,
+        input: InlineTaskInputByKind[K],
+        profile: DroidProfile,
+        _opts?: {context: InlineTaskContext; signal?: AbortSignal},
+    ): Promise<InlineTaskResultByKind[K]> {
+        if (kind === 'ticketEnhance') {
+            const result = await this.enhance(input as TicketEnhanceInput, profile)
+            return result as InlineTaskResultByKind[K]
+        }
+        throw new Error(`Droid inline kind ${kind} is not implemented`)
     }
 
     async enhance(input: TicketEnhanceInput, profile: DroidProfile): Promise<TicketEnhanceResult> {
