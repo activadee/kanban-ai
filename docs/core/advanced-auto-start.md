@@ -47,6 +47,8 @@ The behavior is implemented in the Tasks listeners:
 - When enabled, moving a card from Backlog → In Progress:
   - Immediately queues an Attempt and moves the card into active work.
   - Keeps the board in sync with actual agent activity.
+  - If the card inspector is open, it automatically refreshes and subscribes to the new Attempt’s event stream so
+    messages, status changes, and logs appear in real time without reloading.
 - Teams that prefer manual control can:
   - Leave auto-start disabled.
   - Start Attempts explicitly from the card inspector instead.

@@ -15,6 +15,9 @@ Last updated: 2025-11-28
     - There is no currently running/queued Attempt for the card,
   - Then `startAttempt` is invoked with the project’s default agent and optional default profile.
 - This provides a “hands-free” way to spin up an Attempt whenever a card enters active work.
+- The Card Inspector and related views listen for the resulting Attempt start events:
+  - When an Attempt is auto-started, open inspectors for that card automatically subscribe to its status/messages/log
+    stream so users see output in real time without refreshing.
 
 ## Auto-commit and auto-push
 
@@ -66,4 +69,3 @@ Last updated: 2025-11-28
 LOG_LEVEL=info bun run prod                       # structured logs, no per-request traces
 LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod     # structured logs + Hono request lines
 ```
-

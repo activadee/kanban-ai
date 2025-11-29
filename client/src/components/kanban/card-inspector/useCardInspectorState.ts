@@ -25,6 +25,7 @@ import {
 import {useAttemptEventStream} from '@/hooks/useAttemptEventStream'
 import {toast} from '@/components/ui/toast'
 import {describeApiError} from '@/api/http'
+import {eventBus} from '@/lib/events'
 
 export type InspectorTab = 'messages' | 'processes' | 'logs'
 
@@ -374,6 +375,16 @@ export function useCardInspectorState({
         manualAgentRef.current = true
         setAgent(value)
     }
+
+    useEffect(() => {
+        const off = eventBus.on('attempt_started', (payload) => {
+            if (payload.cardId !== card.id) return
+            queryClient.invalidateQueries({
+                queryKey: cardAttemptKeys.detail(projectId, card.id),
+            })
+        })
+        return off
+    }, [card.id, projectId, queryClient])
 
     useAttemptEventStream({
         attemptId: attempt?.id,
