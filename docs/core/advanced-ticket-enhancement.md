@@ -46,7 +46,7 @@ The UI and integrations use a dedicated enhancement endpoint:
     - `{ "ticket": { "title": "...", "description": "..." } }`
 - Error handling:
   - Unknown or missing project → `404` problem response.
-  - Unknown agent key or agent without `enhance()` support → `400` problem response.
+  - Unknown agent key or agent without ticket-enhancement support → `400` problem response.
   - Internal errors in the enhancement pipeline → `502` problem response with a generic `"Failed to enhance ticket"`
     message.
 - The endpoint is pure transformation:
@@ -55,27 +55,29 @@ The UI and integrations use a dedicated enhancement endpoint:
 
 ## Agent pipeline
 
-Under the hood, ticket enhancement is orchestrated by `agentEnhanceTicket` in the core layer:
+Under the hood, ticket enhancement is orchestrated by `agentEnhanceTicket` in the core layer, implemented as a generic
+inline task with `kind = "ticketEnhance"`:
 
 - Input options:
   - `projectId`, optional `boardId`.
   - `title`, `description`.
   - Optional `agentKey`, optional `profileId`, optional `AbortSignal`.
-- Behavior:
+ - Behavior:
   - Loads the project and its settings (including `baseBranch`, `defaultAgent`, `defaultProfileId`).
   - Resolves an effective `boardId` from the provided value, the project board, or the project ID.
   - Chooses an agent:
     - Uses the explicit `agentKey` when provided.
     - Otherwise falls back to the project’s `defaultAgent`, or `"DROID"` when none is set.
-  - Validates that the agent exists and implements `enhance()`, throwing errors for:
+  - Validates that the agent exists and supports inline ticket enhancement, throwing errors for:
     - `Project not found`.
     - `Unknown agent: <KEY>`.
     - `Agent <KEY> does not support ticket enhancement`.
-  - Constructs a `TicketEnhanceInput` containing:
-    - Project/board identifiers, repository path, base branch, title, description, profile ID, and a cancellation
-      signal.
-  - Resolves an agent profile (if `profileId` is provided or a default is configured) and calls
-    `agent.enhance(input, profile)`.
+  - Constructs:
+    - A `TicketEnhanceInput` containing project/board identifiers, repository path, base branch, title, description,
+      profile ID, and a cancellation signal.
+    - An `InlineTaskContext` with project, repo, branch, and agent/profile metadata.
+  - Resolves an agent profile (if `profileId` is provided or a default is configured).
+  - Invokes `runInlineTask({agentKey, kind: "ticketEnhance", input, profile, context, signal})`.
   - Returns the `TicketEnhanceResult` (rewritten title + description) to the caller.
 
 ## When to use ticket enhancement
@@ -86,4 +88,3 @@ Under the hood, ticket enhancement is orchestrated by `agentEnhanceTicket` in th
   gets saved.
 
 For implementation details on agents, profiles, and the enhancement contract, see `core/agents-and-profiles.md`.
-
