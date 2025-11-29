@@ -24,6 +24,7 @@ import type {
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
+import type {AttemptTodoSummary} from 'shared'
 import {SdkAgent} from '../../sdk'
 import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
@@ -243,17 +244,32 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     private handleTodo(item: TodoListItem, ctx: AgentContext) {
         const g = this.getGrouper(ctx.attemptId)
         g.flushReasoning(ctx)
-        ctx.emit({
-            type: 'conversation',
-            item: {
-                type: 'message',
-                timestamp: new Date().toISOString(),
-                role: 'assistant',
-                text: ['To-do list:', ...item.items.map((t) => `- [${t.completed ? 'x' : ' '}] ${t.text}`)].join('\n'),
-                format: 'markdown',
-                profileId: ctx.profileId ?? null,
-            },
-        })
+
+        const todos: AttemptTodoSummary = (() => {
+            const items = (item.items ?? []).map((t, index) => {
+                const text = (t as any).text ?? ''
+                const completed = Boolean((t as any).completed)
+                const idSource = (t as any).id
+                const id =
+                    typeof idSource === 'string' && idSource.trim().length
+                        ? idSource
+                        : `todo-${index}`
+                return {
+                    id,
+                    text,
+                    status: completed ? 'done' : 'open',
+                } as const
+            })
+            const total = items.length
+            const completedCount = items.filter((t) => t.status === 'done').length
+            return {
+                total,
+                completed: completedCount,
+                items,
+            }
+        })()
+
+        ctx.emit({type: 'todo', todos})
     }
 
     private handleError(item: ErrorItem, ctx: AgentContext) {

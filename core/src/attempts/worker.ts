@@ -3,6 +3,7 @@ import type {
     AttemptStatus,
     ConversationItem,
     ConversationAutomationItem,
+    AttemptTodoSummary,
 } from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {createWorktree} from '../ports/worktree'
@@ -13,6 +14,7 @@ import {
     insertAttemptLog,
     insertConversationItem,
     updateAttempt,
+    upsertAttemptTodos,
 } from './repo'
 import {
     createCleanupRunner,
@@ -177,7 +179,8 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                       }
                     | {type: 'status'; status: string}
                     | {type: 'session'; id: string}
-                    | {type: 'conversation'; item: ConversationItem},
+                    | {type: 'conversation'; item: ConversationItem}
+                    | {type: 'todo'; todos: AttemptTodoSummary},
             ) => {
                 const metaNow = running.get(attemptId)
                 const isAborted = !!metaNow?.aborted
@@ -235,6 +238,14 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                         attemptId,
                         boardId,
                         item: payloadItem,
+                    })
+                } else if (evt.type === 'todo') {
+                    const todosJson = JSON.stringify(evt.todos)
+                    await upsertAttemptTodos(attemptId, todosJson)
+                    events.publish('attempt.todos.updated', {
+                        attemptId,
+                        boardId,
+                        todos: evt.todos,
                     })
                 } else if (evt.type === 'session') {
                     try {

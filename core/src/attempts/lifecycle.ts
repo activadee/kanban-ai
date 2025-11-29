@@ -1,5 +1,4 @@
-import type {AttemptStatus} from 'shared'
-import type {ConversationItem} from 'shared'
+import type {AttemptStatus, ConversationItem, AttemptTodoSummary} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -14,6 +13,7 @@ import {
     updateAttempt,
     listAttemptLogs as repoListAttemptLogs,
     listConversationItems as repoListConversationItems,
+    getAttemptTodos as repoGetAttemptTodos,
 } from './repo'
 import {
     abortRunningAttempt,
@@ -62,10 +62,29 @@ export async function getLatestAttemptForCard(boardId: string, cardId: string) {
     if (!selected) return null
     const logs = await repoListAttemptLogs(selected.id)
     const items = await repoListConversationItems(selected.id)
+    const todosSummary = await (async (): Promise<AttemptTodoSummary | null> => {
+        const row = await repoGetAttemptTodos(selected.id)
+        if (!row) return null
+        try {
+            const parsed = JSON.parse(row.todosJson) as AttemptTodoSummary
+            const total = Array.isArray(parsed.items) ? parsed.items.length : 0
+            const completed = Array.isArray(parsed.items)
+                ? parsed.items.filter((t) => t.status === 'done').length
+                : 0
+            return {
+                total,
+                completed,
+                items: Array.isArray(parsed.items) ? parsed.items : [],
+            }
+        } catch {
+            return null
+        }
+    })()
     return {
         attempt: selected,
         logs,
         conversation: items.map(deserializeConversationItem),
+        todos: todosSummary,
     }
 }
 
@@ -321,4 +340,3 @@ export async function followupAttempt(
         events,
     )
 }
-

@@ -33,7 +33,13 @@ export const conversationItems = sqliteTable('conversation_items', {
     itemJson: text('item_json').notNull(),
 })
 
+export const attemptTodos = sqliteTable('attempt_todos', {
+    attemptId: text('attempt_id').primaryKey(),
+    todosJson: text('todos_json').notNull(),
+    updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
+})
+
 export type Attempt = typeof attempts.$inferSelect
 export type AttemptLog = typeof attemptLogs.$inferSelect
 export type ConversationItemRow = typeof conversationItems.$inferSelect
-
+export type AttemptTodoRow = typeof attemptTodos.$inferSelect

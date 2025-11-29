@@ -64,7 +64,7 @@ export function CardInspector({
                 onCopyTicketKey={header.handleCopyTicketKey}
                 onClose={onClose}
             />
-            <DetailsSection
+                <DetailsSection
                 values={details.values}
                 locked={locked}
                 availableCards={availableCards}
@@ -80,6 +80,7 @@ export function CardInspector({
                         card={card}
                         attempt={attempt.attempt}
                         openButtonDisabledReason={git.openButtonDisabledReason}
+                        todoSummary={git.todoSummary}
                         onOpenEditor={git.handleOpenEditor}
                         changesOpen={git.changesOpen}
                         onChangesOpenChange={git.setChangesOpen}

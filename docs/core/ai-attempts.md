@@ -28,6 +28,7 @@ Last updated: 2025-11-28
   - `attempt.log.appended`
   - `attempt.conversation.appended`
   - `attempt.session.recorded`
+  - `attempt.todos.updated`
   - `attempt.completed`
   - `attempt.autocommit.requested`
   - `attempt.stopped`
@@ -56,6 +57,9 @@ Last updated: 2025-11-28
   - **Processes** – summaries of dev/automation processes (e.g. project dev scripts), including controls to re-run or
     stop them.
   - **Logs** – structured log output, including script output and internal diagnostics via `attempt.log.appended`.
+  - **Todos panel** – a read‑only list of the latest AI‑generated todos for the Attempt, shown next to **Open editor**
+    as `<completed>/<total> Todos`; it is powered by `attempt.todos.updated` events and is kept separate from assistant
+    messages so todo text is never reused as commit message content.
 - Follow-up prompts:
   - Sent via `POST /attempts/:id/messages`.
   - Reuse the same Attempt session so the agent can use prior context.

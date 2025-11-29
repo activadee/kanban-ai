@@ -7,6 +7,7 @@ import type {
     ConversationAutomationItem,
     ConversationItem,
     Card as TCard,
+    AttemptTodoSummary,
 } from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
@@ -77,6 +78,7 @@ export type CardInspectorGitState = {
     mergeOpen: boolean
     setMergeOpen: (open: boolean) => void
     prDefaults: { title: string; body: string }
+    todoSummary: AttemptTodoSummary | null
 }
 
 export type CardInspectorActivityState = {
@@ -126,6 +128,7 @@ export function useCardInspectorState({
     const [logs, setLogs] = useState<AttemptLog[]>([])
     const [conversation, setConversation] = useState<ConversationItem[]>([])
     const [followup, setFollowup] = useState('')
+    const [todoSummary, setTodoSummary] = useState<AttemptTodoSummary | null>(null)
 
     const attemptAgent = attempt?.agent ? (attempt.agent as AgentKey) : undefined
     const manualAgentRef = useRef(false)
@@ -310,10 +313,12 @@ export function useCardInspectorState({
             setAttempt(attemptDetailQuery.data.attempt)
             setLogs(attemptDetailQuery.data.logs ?? [])
             setConversation(attemptDetailQuery.data.conversation ?? [])
+            setTodoSummary(attemptDetailQuery.data.todos ?? null)
         } else {
             setAttempt(null)
             setLogs([])
             setConversation([])
+            setTodoSummary(null)
         }
     }, [card.id, card.title, card.description, card.dependsOn, attemptDetailQuery.data])
 
@@ -463,6 +468,23 @@ export function useCardInspectorState({
                      | undefined) => {
                     if (!prev) return prev
                     return {...prev, attempt: {...prev.attempt, sessionId}}
+                },
+            )
+        },
+        onTodos: (summary) => {
+            setTodoSummary(summary)
+            queryClient.setQueryData(
+                cardAttemptKeys.detail(projectId, card.id),
+                (prev:
+                     | {
+                attempt: Attempt
+                logs: AttemptLog[]
+                conversation: ConversationItem[]
+                todos?: AttemptTodoSummary | null
+            }
+                     | undefined) => {
+                    if (!prev) return prev
+                    return {...prev, todos: summary}
                 },
             )
         },
@@ -646,6 +668,7 @@ export function useCardInspectorState({
             mergeOpen,
             setMergeOpen,
             prDefaults,
+            todoSummary,
         },
         activity: {
             devScriptConfigured,

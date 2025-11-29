@@ -1,4 +1,10 @@
-import type {Attempt, AttemptLog, ConversationAutomationItem, ConversationItem} from 'shared'
+import type {
+    Attempt,
+    AttemptLog,
+    ConversationAutomationItem,
+    ConversationItem,
+    AttemptTodoSummary,
+} from 'shared'
 import {SERVER_URL} from '@/lib/env'
 import {parseApiResponse} from '@/api/http'
 
@@ -16,10 +22,16 @@ export async function getAttemptLogs(attemptId: string): Promise<AttemptLog[]> {
 export async function getAttemptDetailForCard(projectId: string, cardId: string): Promise<{
     attempt: Attempt;
     logs: AttemptLog[];
-    conversation: ConversationItem[]
+    conversation: ConversationItem[];
+    todos?: AttemptTodoSummary | null;
 }> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/cards/${cardId}/attempt`)
-    return parseApiResponse<{ attempt: Attempt; logs: AttemptLog[]; conversation: ConversationItem[] }>(res)
+    return parseApiResponse<{
+        attempt: Attempt;
+        logs: AttemptLog[];
+        conversation: ConversationItem[];
+        todos?: AttemptTodoSummary | null;
+    }>(res)
 }
 
 export async function startAttemptRequest(params: {

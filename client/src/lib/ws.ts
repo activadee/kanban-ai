@@ -184,6 +184,9 @@ export function useKanbanWS(boardId: string | null) {
                     case 'attempt_session':
                         eventBus.emit('attempt_session', msg.payload)
                         break
+                    case 'attempt_todos':
+                        eventBus.emit('attempt_todos', msg.payload)
+                        break
                     case 'git:status':
                         eventBus.emit('git_status', null)
                         break

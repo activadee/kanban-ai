@@ -1,4 +1,4 @@
-import type {AttemptStatus, ConversationItem} from 'shared'
+import type {AttemptStatus, ConversationItem, AttemptTodoSummary} from 'shared'
 
 export interface AttemptQueuedEvent {
     attemptId: string
@@ -49,6 +49,12 @@ export interface AttemptSessionRecordedEvent {
     sessionId: string
 }
 
+export interface AttemptTodosUpdatedEvent {
+    attemptId: string
+    boardId: string
+    todos: AttemptTodoSummary
+}
+
 export interface AttemptCompletedEvent {
     attemptId: string
     boardId: string
@@ -81,6 +87,7 @@ export type AttemptEventMap = {
     'attempt.log.appended': AttemptLogAppendedEvent
     'attempt.conversation.appended': AttemptConversationAppendedEvent
     'attempt.session.recorded': AttemptSessionRecordedEvent
+    'attempt.todos.updated': AttemptTodosUpdatedEvent
     'attempt.completed': AttemptCompletedEvent
     'attempt.autocommit.requested': AttemptAutocommitRequestedEvent
     'attempt.stopped': AttemptStoppedEvent
