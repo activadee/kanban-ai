@@ -87,6 +87,8 @@ export function Board({
         null,
     );
     const [editingCardId, setEditingCardId] = useState<string | null>(null);
+    const [editingCardAutoEnhance, setEditingCardAutoEnhance] =
+        useState<boolean>(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const resolvedSelectedId = useMemo(
         () => (selectedId && state.cards[selectedId] ? selectedId : null),
@@ -287,12 +289,26 @@ export function Board({
                                                 enhancementStatusByCardId={
                                                     enhancementStatusByCardId
                                                 }
-                                                onSelectCard={(cardId) =>
-                                                    setSelectedId(cardId)
-                                                }
                                                 onCardEnhancementClick={
                                                     onCardEnhancementClick
                                                 }
+                                                projectId={projectId}
+                                                isCardBlocked={isBlocked}
+                                                onSelectCard={(cardId) =>
+                                                    setSelectedId(cardId)
+                                                }
+                                                onEditCard={(cardId) => {
+                                                    setEditingCardId(cardId);
+                                                    setEditingCardAutoEnhance(
+                                                        false,
+                                                    );
+                                                }}
+                                                onEnhanceCard={(cardId) => {
+                                                    setEditingCardId(cardId);
+                                                    setEditingCardAutoEnhance(
+                                                        true,
+                                                    );
+                                                }}
                                             />
                                         ))}
                                     </div>
@@ -446,6 +462,7 @@ export function Board({
                     cardTicketKey={editingCard.ticketKey ?? null}
                     projectId={projectId}
                     cardId={editingCard.id}
+                    autoEnhanceOnOpen={editingCardAutoEnhance}
                     onSubmit={async (values) => {
                         await handlers.onUpdateCard(editingCard.id, values);
                     }}

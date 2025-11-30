@@ -4,10 +4,13 @@ import {CSS} from '@dnd-kit/utilities'
 import type {Card as TCard} from 'shared'
 import {KanbanCard} from './Card'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
+import type {CardLane} from './cardLane'
 
 type Props = {
     card: TCard
     columnId: string
+    projectId: string
+    lane: CardLane
     isDone?: boolean
     showAgentComingSoon?: boolean
     blocked?: boolean
@@ -15,11 +18,15 @@ type Props = {
     onSelect?: (cardId: string) => void
     enhancementStatus?: CardEnhancementStatus
     onCardEnhancementClick?: (cardId: string) => void
+    onEdit?: (cardId: string) => void
+    onEnhance?: (cardId: string) => void
 }
 
 export function DraggableCard({
                                   card,
                                   columnId,
+                                  projectId,
+                                  lane,
                                   isDone,
                                   showAgentComingSoon,
                                   blocked,
@@ -27,6 +34,8 @@ export function DraggableCard({
                                   onSelect,
                                   enhancementStatus,
                                   onCardEnhancementClick,
+                                  onEdit,
+                                  onEnhance,
                               }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const {
@@ -73,6 +82,14 @@ export function DraggableCard({
                         : undefined
                 }
                 disabled={isEnhancing}
+                menuContext={{
+                    projectId,
+                    lane,
+                    blocked: Boolean(blocked),
+                    onOpenDetails: onSelect ? () => onSelect(card.id) : undefined,
+                    onEdit: onEdit ? () => onEdit(card.id) : undefined,
+                    onEnhanceTicket: onEnhance ? () => onEnhance(card.id) : undefined,
+                }}
             />
         </div>
     )

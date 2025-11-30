@@ -5,6 +5,7 @@ import {useDroppable} from '@dnd-kit/core'
 import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {DraggableCard} from './DraggableCard'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
+import type {CardLane} from './cardLane'
 
 type Props = {
     column: TColumn
@@ -12,9 +13,23 @@ type Props = {
     onSelectCard: (cardId: string) => void
     enhancementStatusByCardId?: Record<string, CardEnhancementStatus>
     onCardEnhancementClick?: (cardId: string) => void
+    onEditCard: (cardId: string) => void
+    onEnhanceCard: (cardId: string) => void
+    projectId: string
+    isCardBlocked: (cardId: string) => boolean
 }
 
-export function Column({column, state, onSelectCard, enhancementStatusByCardId, onCardEnhancementClick}: Props) {
+export function Column({
+                           column,
+                           state,
+                           onSelectCard,
+                           enhancementStatusByCardId,
+                           onCardEnhancementClick,
+                           onEditCard,
+                           onEnhanceCard,
+                           projectId,
+                           isCardBlocked,
+                       }: Props) {
     const cards = useMemo(
         () => column.cardIds.map((id) => state.cards[id]).filter(Boolean),
         [column.cardIds, state.cards]
@@ -22,8 +37,20 @@ export function Column({column, state, onSelectCard, enhancementStatusByCardId, 
     const {setNodeRef, isOver} = useDroppable({id: column.id, data: {type: 'column', columnId: column.id}})
 
     const normalizedTitle = column.title.trim().toLowerCase()
+    const isBacklogColumn = column.key === 'backlog' || normalizedTitle === 'backlog'
+    const isInProgressColumn = column.key === 'inProgress' || normalizedTitle === 'in progress'
     const isReviewColumn = column.key === 'review' || normalizedTitle === 'review'
     const isDoneColumn = column.key === 'done' || normalizedTitle === 'done'
+
+    const lane: CardLane = isBacklogColumn
+        ? 'backlog'
+        : isInProgressColumn
+            ? 'inProgress'
+            : isReviewColumn
+                ? 'review'
+                : isDoneColumn
+                    ? 'done'
+                    : 'other'
 
     const doneColumnIds = useMemo(
         () => Object.values(state.columns).filter((c) => (c.key === 'done') || c.title.trim().toLowerCase() === 'done').map((c) => c.id),
@@ -45,7 +72,7 @@ export function Column({column, state, onSelectCard, enhancementStatusByCardId, 
                 <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
                     {cards.map((c) => {
                         const deps = c?.dependsOn ?? []
-                        const blocked = deps.some((id) => !doneCardIds.has(id))
+                        const blocked = isCardBlocked(c.id)
                         const blockerLabels = deps
                             .filter((id) => !doneCardIds.has(id))
                             .map((id) => state.cards[id])
@@ -56,6 +83,8 @@ export function Column({column, state, onSelectCard, enhancementStatusByCardId, 
                                 key={c.id}
                                 card={c}
                                 columnId={column.id}
+                                projectId={projectId}
+                                lane={lane}
                                 isDone={isDoneColumn}
                                 showAgentComingSoon={isReviewColumn}
                                 blocked={blocked}
@@ -63,6 +92,8 @@ export function Column({column, state, onSelectCard, enhancementStatusByCardId, 
                                 enhancementStatus={enhancementStatusByCardId?.[c.id]}
                                 onCardEnhancementClick={onCardEnhancementClick}
                                 onSelect={onSelectCard}
+                                onEdit={onEditCard}
+                                onEnhance={onEnhanceCard}
                             />
                         )
                     })}

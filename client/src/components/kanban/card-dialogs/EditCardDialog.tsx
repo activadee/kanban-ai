@@ -35,6 +35,11 @@ type EditProps = BaseDialogProps & {
     projectId: string;
     cardId?: string;
     onEnhanceInBackground?: (values: CardFormValues) => Promise<void> | void;
+    /**
+     * When true, automatically triggers the "Enhance in background"
+     * flow once on open using the current title/description.
+     */
+    autoEnhanceOnOpen?: boolean;
 };
 
 export function EditCardDialog({
@@ -48,6 +53,7 @@ export function EditCardDialog({
     projectId,
     cardId,
     onEnhanceInBackground,
+    autoEnhanceOnOpen = false,
 }: EditProps) {
     const [values, setValues] = useState<CardFormValues>({
         title: cardTitle,
@@ -60,10 +66,12 @@ export function EditCardDialog({
     const [logs, setLogs] = useState<AttemptLog[]>([]);
     const [conversation, setConversation] = useState<ConversationItem[]>([]);
     const queryClient = useQueryClient();
+    const [hasAutoEnhanced, setHasAutoEnhanced] = useState(false);
 
     useEffect(() => {
         if (open) {
             setValues({ title: cardTitle, description: cardDescription ?? "" });
+            setHasAutoEnhanced(false);
         }
     }, [open, cardTitle, cardDescription]);
 
@@ -156,6 +164,13 @@ export function EditCardDialog({
             setSaving(false);
         }
     };
+
+    useEffect(() => {
+        if (!open || !autoEnhanceOnOpen || hasAutoEnhanced) return;
+        if (!values.title.trim()) return;
+        void handleEnhanceInBackground();
+        setHasAutoEnhanced(true);
+    }, [open, autoEnhanceOnOpen, hasAutoEnhanced, values.title]);
 
     const handleSave = async () => {
         if (!values.title.trim()) return;
@@ -413,3 +428,4 @@ export function EditCardDialog({
         </Dialog>
     );
 }
+
