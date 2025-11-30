@@ -109,8 +109,9 @@ export function createGithubProjectRouter() {
                         })
                     }
                     log.error(
+                        'github:pull-requests:summary',
+                        'inline task failed',
                         {err: error, projectId, base, branch, agent, profileId},
-                        '[github:pull-requests:summary] inline task failed',
                     )
                     return problemJson(c, {
                         status: 502,
@@ -135,8 +136,9 @@ export function createGithubProjectRouter() {
 
                 if (status >= 500) {
                     log.error(
+                        'github:pull-requests:summary',
+                        'failed',
                         {err: error, projectId, base, branch, agent, profileId},
-                        '[github:pull-requests:summary] failed',
                     )
                 }
 
