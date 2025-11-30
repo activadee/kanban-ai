@@ -8,7 +8,10 @@ This guide describes how to use the card inspector to start and manage Attempts,
 
 ## Card inspector overview
 
-The Card Inspector is opened by clicking a card on the board. Its layout consists of:
+The Card Inspector is opened by clicking a card on the board. On desktop it now floats above the right edge of the board
+instead of shrinking the column grid, and the slender handle lets you resize it between about 360px and 900px while your
+preferred width is saved to `kanban-inspector-width` in local storage for the next time.
+Its layout consists of:
 
 - Header:
   - Ticket key and card title.

@@ -9,6 +9,7 @@ import type {
     GitOriginResponse,
     TicketKeyPreview,
     TicketType,
+    CardEnhancementSuggestion,
 } from 'shared'
 import {SERVER_URL} from '@/lib/env'
 import {parseApiResponse} from '@/api/http'
@@ -27,6 +28,11 @@ export type EnhanceTicketResponse = {
         title: string
         description: string
     }
+}
+
+export type CardEnhancementEntryResponse = {
+    status: 'enhancing' | 'ready'
+    suggestion?: CardEnhancementSuggestion
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {
@@ -120,4 +126,30 @@ export async function enhanceTicketRequest(params: EnhanceTicketRequestParams): 
     })
 
     return parseApiResponse<EnhanceTicketResponse>(res)
+}
+
+export async function listProjectEnhancements(projectId: string): Promise<Record<string, CardEnhancementEntryResponse>> {
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/enhancements`)
+    const data = await parseApiResponse<{ enhancements: Record<string, CardEnhancementEntryResponse> }>(res)
+    return data.enhancements ?? {}
+}
+
+export async function setProjectCardEnhancement(
+    projectId: string,
+    cardId: string,
+    entry: CardEnhancementEntryResponse,
+): Promise<void> {
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/cards/${cardId}/enhancement`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(entry),
+    })
+    await parseApiResponse(res)
+}
+
+export async function clearProjectCardEnhancement(projectId: string, cardId: string): Promise<void> {
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/cards/${cardId}/enhancement`, {
+        method: 'DELETE',
+    })
+    await parseApiResponse(res)
 }

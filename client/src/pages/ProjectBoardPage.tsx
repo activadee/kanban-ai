@@ -98,7 +98,7 @@ export function ProjectBoardPage() {
         startEnhancementForNewCard,
         startEnhancementForExistingCard,
         clearEnhancement,
-    } = useTicketEnhancementQueue();
+    } = useTicketEnhancementQueue(projectId);
 
     const enhancementStatusByCardId = useMemo(() => {
         const entries = Object.entries(enhancements);
