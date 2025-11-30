@@ -54,19 +54,9 @@ You can also create cards directly in a column using column-specific controls (e
     - Card title.
     - Status/blocked indicators when relevant.
     - Copy ticket key and close buttons.
-  - **Details**:
-    - Editable title and description. The details area now shows an **Enhance in background** button near the description
-      controls. Clicking it saves your latest edits and queues an enhancement job whose progress is reflected by the
-      **Enhancing** badge on the card. When the suggestion is ready, use the sparkles icon to open the diff dialog and
-      accept or reject the rewrite.
-    - Dependencies picker (select other cards).
-  - **Git section**:
-    - Buttons for:
-      - Open in editor.
-      - View changes (diff dialog).
-      - Commit.
-      - Open PR.
-      - Merge with base branch.
+  - **Top-level tabs**:
+    - **Ticket** – contains the Details and Git areas for editing card metadata. The details panel still provides title/description editing, the **Enhance in background** button, and the dependencies picker, while the Git section exposes Open in editor, View changes, Commit, Open PR, and Merge controls for the selected card/Attempt.
+    - **Attempts** – surfaces attempt controls for the card. When no Attempt exists, you see the **Attempt create form** here (agent/profile selectors, Start button); once an Attempt is running, the tab shows nested **Messages**, **Processes**, and **Logs** sub-tabs for interacting with the current Attempt.
 
 See the “Attempts & inspector (UI)” guide for the Attempts and activity sections inside the inspector.
 
