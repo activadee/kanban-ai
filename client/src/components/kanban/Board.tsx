@@ -1,4 +1,4 @@
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
@@ -8,11 +8,6 @@ import {KanbanCard} from "./Card";
 import {CreateCardDialog, EditCardDialog, type CardFormValues} from "./CardDialogs";
 import {ClipboardList} from "lucide-react";
 import {CardInspector} from "./CardInspector";
-import {
-    ResizablePanelGroup,
-    ResizablePanel,
-    ResizableHandle,
-} from "@/components/ui/resizable";
 import {Sheet, SheetContent} from "@/components/ui/sheet";
 import {useMediaQuery} from "@/lib/useMediaQuery";
 import {useBoardDnd} from "./board/useBoardDnd";
@@ -52,6 +47,14 @@ export type BoardHandlers = {
     ) => Promise<void> | void;
 };
 
+const DEFAULT_INSPECTOR_WIDTH = 480;
+const MIN_INSPECTOR_WIDTH = 360;
+const MAX_INSPECTOR_WIDTH = 900;
+const INSPECTOR_WIDTH_STORAGE_KEY = "kanban-inspector-width";
+
+const clampInspectorWidth = (value: number) =>
+    Math.min(Math.max(value, MIN_INSPECTOR_WIDTH), MAX_INSPECTOR_WIDTH);
+
 type Props = {
     projectId: string;
     state: BoardState;
@@ -86,10 +89,6 @@ export function Board({
         () => (selectedId && state.cards[selectedId] ? selectedId : null),
         [selectedId, state.cards],
     );
-    const selectedCard = resolvedSelectedId
-        ? state.cards[resolvedSelectedId]
-        : undefined;
-
     // Compute Done set and helper for blocked status
     const doneColumnIds = useMemo(
         () =>
@@ -122,6 +121,25 @@ export function Board({
         onBlocked: handlers.onMoveBlocked,
     });
 
+    const [inspectorWidth, setInspectorWidth] = useState<number>(() => {
+        if (typeof window === "undefined") return DEFAULT_INSPECTOR_WIDTH;
+        const stored = window.localStorage.getItem(
+            INSPECTOR_WIDTH_STORAGE_KEY,
+        );
+        const parsed = stored ? Number.parseInt(stored, 10) : NaN;
+        return Number.isFinite(parsed)
+            ? clampInspectorWidth(parsed)
+            : DEFAULT_INSPECTOR_WIDTH;
+    });
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        window.localStorage.setItem(
+            INSPECTOR_WIDTH_STORAGE_KEY,
+            String(inspectorWidth),
+        );
+    }, [inspectorWidth]);
+
     const editingCard = editingCardId
         ? (state.cards[editingCardId] ?? null)
         : null;
@@ -130,6 +148,82 @@ export function Board({
         : null;
 
     const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+    const inspectorData = useMemo(() => {
+        if (!resolvedSelectedId) return null;
+        const card = state.cards[resolvedSelectedId];
+        if (!card) return null;
+
+        const availableCards = Object.values(state.cards)
+            .filter(
+                (c) => c.id !== resolvedSelectedId && !doneCardIds.has(c.id),
+            )
+            .map((c) => ({
+                id: c.id,
+                title: c.title,
+                ticketKey: c.ticketKey ?? undefined,
+            }));
+
+        const cardsIndex = new Map(
+            Object.values(state.cards).map((c) => [
+                c.id,
+                {
+                    id: c.id,
+                    title: c.title,
+                    ticketKey: c.ticketKey ?? undefined,
+                },
+            ]),
+        );
+
+        const locked = columns.some(
+            (c) =>
+                c.title === "Done" &&
+                state.columns[c.id]?.cardIds.includes(resolvedSelectedId),
+        );
+
+        return {
+            card,
+            availableCards,
+            cardsIndex,
+            blocked: isBlocked(resolvedSelectedId),
+            locked,
+        } as const;
+    }, [
+        columns,
+        doneCardIds,
+        isBlocked,
+        resolvedSelectedId,
+        state.cards,
+        state.columns,
+    ]);
+
+    const boardPaddingRight =
+        isDesktop && resolvedSelectedId ? inspectorWidth : 0;
+
+    const startInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        const startX = event.clientX;
+        const startWidth = inspectorWidth;
+
+        const handleMove = (moveEvent: PointerEvent) => {
+            const delta = startX - moveEvent.clientX;
+            setInspectorWidth(clampInspectorWidth(startWidth + delta));
+        };
+
+        const stop = () => {
+            document.body.style.removeProperty("cursor");
+            document.body.style.removeProperty("user-select");
+            window.removeEventListener("pointermove", handleMove);
+            window.removeEventListener("pointerup", stop);
+            window.removeEventListener("pointercancel", stop);
+        };
+
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+        window.addEventListener("pointermove", handleMove);
+        window.addEventListener("pointerup", stop);
+        window.addEventListener("pointercancel", stop);
+    };
 
     return (
         <div className="flex h-full min-h-0 flex-col">
@@ -188,42 +282,13 @@ export function Board({
                             }}
                         >
                             <SheetContent side="right">
-                                {resolvedSelectedId && selectedCard && (
+                                {resolvedSelectedId && inspectorData && (
                                     <CardInspector
                                         projectId={projectId}
-                                        card={selectedCard}
-                                        availableCards={Object.values(
-                                            state.cards,
-                                        )
-                                            .filter(
-                                                (c) =>
-                                                    c.id !==
-                                                        resolvedSelectedId &&
-                                                    !doneCardIds.has(c.id),
-                                            )
-                                            .map((c) => ({
-                                                id: c.id,
-                                                title: c.title,
-                                                ticketKey:
-                                                    c.ticketKey ?? undefined,
-                                            }))}
-                                        cardsIndex={
-                                            new Map(
-                                                Object.values(state.cards).map(
-                                                    (c) => [
-                                                        c.id,
-                                                        {
-                                                            id: c.id,
-                                                            title: c.title,
-                                                            ticketKey:
-                                                                c.ticketKey ??
-                                                                undefined,
-                                                        },
-                                                    ],
-                                                ),
-                                            )
-                                        }
-                                        blocked={isBlocked(resolvedSelectedId)}
+                                        card={inspectorData.card}
+                                        availableCards={inspectorData.availableCards}
+                                        cardsIndex={inspectorData.cardsIndex}
+                                        blocked={inspectorData.blocked}
                                         onUpdate={(values) =>
                                             handlers.onUpdateCard(
                                                 resolvedSelectedId,
@@ -258,21 +323,22 @@ export function Board({
                             </SheetContent>
                         </Sheet>
                     ) : (
-                        // Desktop resizable layout
-                        <ResizablePanelGroup
-                            direction="horizontal"
-                            className="h-full min-h-0"
-                        >
-                            <ResizablePanel
-                                defaultSize={resolvedSelectedId ? 70 : 100}
-                                minSize={50}
+                        // Desktop overlay layout
+                        <div className="relative flex-1 min-h-0">
+                            <DndContext
+                                sensors={sensors}
+                                onDragStart={handleDragStart}
+                                onDragEnd={handleDragEnd}
                             >
-                                <DndContext
-                                    sensors={sensors}
-                                    onDragStart={handleDragStart}
-                                    onDragEnd={handleDragEnd}
-                                >
-                                    <div className="grid h-full min-h-0 grid-cols-1 gap-4 auto-rows-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-4">
+                                <div className="h-full min-h-0 overflow-x-auto">
+                                    <div
+                                        className="grid h-full min-h-0 grid-cols-1 gap-4 auto-rows-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-4"
+                                        style={
+                                            boardPaddingRight
+                                                ? { paddingRight: boardPaddingRight }
+                                                : undefined
+                                        }
+                                    >
                                         {columns.map((col) => (
                                             <Column
                                                 key={col.id}
@@ -304,74 +370,43 @@ export function Board({
                                             />
                                         ))}
                                     </div>
-                                    <DragOverlay dropAnimation={null}>
-                                        {activeId ? (
-                                            <KanbanCard
-                                                card={state.cards[activeId]}
-                                            />
-                                        ) : null}
-                                    </DragOverlay>
-                                </DndContext>
-                            </ResizablePanel>
-                            {resolvedSelectedId && selectedCard && (
-                                <>
-                                    <ResizableHandle withHandle />
-                                    <ResizablePanel
-                                        defaultSize={30}
-                                        minSize={20}
-                                        maxSize={50}
-                                        className="min-h-0"
+                                </div>
+                                <DragOverlay dropAnimation={null}>
+                                    {activeId ? (
+                                        <KanbanCard
+                                            card={state.cards[activeId]}
+                                        />
+                                    ) : null}
+                                </DragOverlay>
+                            </DndContext>
+
+                            {resolvedSelectedId && inspectorData && (
+                                <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex">
+                                    <div
+                                        className="pointer-events-auto flex h-full shadow-xl"
+                                        style={{ width: inspectorWidth }}
                                     >
-                                        <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4">
+                                        <div
+                                            className="w-1 cursor-col-resize bg-border/70 transition-colors hover:bg-primary"
+                                            role="separator"
+                                            aria-orientation="vertical"
+                                            aria-label="Resize inspector"
+                                            onPointerDown={startInspectorResize}
+                                        />
+                                        <div className="flex h-full min-h-0 flex-1 flex-col gap-3 rounded-l-none rounded-lg border border-border/60 bg-muted/10 p-4">
                                             <CardInspector
                                                 projectId={projectId}
-                                                card={selectedCard}
-                                                availableCards={Object.values(
-                                                    state.cards,
-                                                )
-                                                    .filter(
-                                                        (c) =>
-                                                            c.id !==
-                                                                resolvedSelectedId &&
-                                                            !doneCardIds.has(
-                                                                c.id,
-                                                            ),
-                                                    )
-                                                    .map((c) => ({
-                                                        id: c.id,
-                                                        title: c.title,
-                                                        ticketKey:
-                                                            c.ticketKey ??
-                                                            undefined,
-                                                    }))}
-                                                cardsIndex={
-                                                    new Map(
-                                                        Object.values(
-                                                            state.cards,
-                                                        ).map((c) => [
-                                                            c.id,
-                                                            {
-                                                                id: c.id,
-                                                                title: c.title,
-                                                                ticketKey:
-                                                                    c.ticketKey ??
-                                                                    undefined,
-                                                            },
-                                                        ]),
-                                                    )
+                                                card={inspectorData.card}
+                                                availableCards={
+                                                    inspectorData.availableCards
                                                 }
-                                                blocked={isBlocked(
-                                                    resolvedSelectedId,
-                                                )}
-                                                locked={columns.some(
-                                                    (c) =>
-                                                        c.title === "Done" &&
-                                                        state.columns[
-                                                            c.id
-                                                        ]?.cardIds.includes(
-                                                            resolvedSelectedId,
-                                                        ),
-                                                )}
+                                                cardsIndex={
+                                                    inspectorData.cardsIndex
+                                                }
+                                                blocked={
+                                                    inspectorData.blocked
+                                                }
+                                                locked={inspectorData.locked}
                                                 onUpdate={(values) =>
                                                     handlers.onUpdateCard(
                                                         resolvedSelectedId,
@@ -405,10 +440,10 @@ export function Board({
                                                 }
                                             />
                                         </div>
-                                    </ResizablePanel>
-                                </>
+                                    </div>
+                                </div>
                             )}
-                        </ResizablePanelGroup>
+                        </div>
                     )}
                 </>
             )}
