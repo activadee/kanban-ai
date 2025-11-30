@@ -1,3 +1,20 @@
+## [0.12.0](https://github.com/activadee/kanban-ai/compare/v0.11.1...v0.12.0) (2025-11-30)
+
+### Features
+
+* **client:** make CardInspector overlap board JIRA-style (KA-113) ([#201](https://github.com/activadee/kanban-ai/issues/201)) ([75aab59](https://github.com/activadee/kanban-ai/commit/75aab5927248192b3f3344ece3fa670640df388a))
+* **github:** make PR inline summary agent non-blocking ([#202](https://github.com/activadee/kanban-ai/issues/202)) ([3b18080](https://github.com/activadee/kanban-ai/commit/3b18080fb5f91df06b7c4e65320ebb2baf4c32de))
+* persist ticket enhancement suggestions across reloads ([#200](https://github.com/activadee/kanban-ai/issues/200)) ([3d515b1](https://github.com/activadee/kanban-ai/commit/3d515b13bdebc7d0ace4e5ffb45317f22b1b6d5e))
+* **server:** delete mismatched migration hashes and fail-safe alignment ([fe08596](https://github.com/activadee/kanban-ai/commit/fe08596f2b0956685c5cc029449ef4cbf284c19f))
+
+### Bug Fixes
+
+* **server:** harden migration reconciliation safety ([170d624](https://github.com/activadee/kanban-ai/commit/170d624bb26da0c5cd07ba39bc87eb54bdb9a1ef))
+
+### CI
+
+* refine semantic-release workflow triggers and validation ([#199](https://github.com/activadee/kanban-ai/issues/199)) ([3a6954c](https://github.com/activadee/kanban-ai/commit/3a6954c997c03a7bfda5ec511e1be8f4aae9434f))
+
 ## [0.11.1](https://github.com/activadee/kanban-ai/compare/v0.11.0...v0.11.1) (2025-11-30)
 
 ### Bug Fixes
