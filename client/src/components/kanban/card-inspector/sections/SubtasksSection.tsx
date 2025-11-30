@@ -1,4 +1,4 @@
-import {useMemo, useState} from 'react'
+import {useEffect, useMemo, useState} from 'react'
 import type {Subtask, SubtaskStatus} from 'shared'
 import {Input} from '@/components/ui/input'
 import {Button} from '@/components/ui/button'
