@@ -1,3 +1,16 @@
+## [0.11.1](https://github.com/activadee/kanban-ai/compare/v0.11.0...v0.11.1) (2025-11-30)
+
+### Bug Fixes
+
+* **server:** narrow migration hash access ([4eb7662](https://github.com/activadee/kanban-ai/commit/4eb76621fb27adae3f2dc1c9222e50afabc15415))
+
+### Chores
+
+* **server:** include expected count and positional tags in migration logs ([06e7b5f](https://github.com/activadee/kanban-ai/commit/06e7b5fa1c7c52692425f997f808bcbc10a20553))
+* **server:** log applied migrations summary ([b1d2571](https://github.com/activadee/kanban-ai/commit/b1d257168c24d4f671505ffa0d17cc66badba67d))
+* **server:** log migration application ([7b9c2ec](https://github.com/activadee/kanban-ai/commit/7b9c2eca26c8d3b6be42a446bc7edf09bca29c10))
+* **server:** report migration hashes/tags after apply ([3cdf0f8](https://github.com/activadee/kanban-ai/commit/3cdf0f87731967dada91a318abe9c91b8d5fb1ab))
+
 ## [0.11.0](https://github.com/activadee/kanban-ai/compare/v0.10.3...v0.11.0) (2025-11-30)
 
 ### Features

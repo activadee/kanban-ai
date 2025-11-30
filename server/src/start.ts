@@ -171,18 +171,36 @@ function getExpectedMigrations(resolved: ResolvedMigrations): ExpectedMigration[
   }
 
   const journalPath = path.join(resolved.path, 'meta', '_journal.json')
-  const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
-  const entries = Array.isArray(journal?.entries) ? journal.entries : []
-
-  const expected: ExpectedMigration[] = []
-  for (const entry of entries) {
-    const filename = `${entry.tag}.sql`
-    const fullPath = path.join(resolved.path, filename)
-    const sql = readFileSync(fullPath, 'utf8')
-    const hash = crypto.createHash('sha256').update(sql).digest('hex')
-    expected.push({ hash, tag: entry.tag })
+  if (!existsSync(journalPath)) {
+    log.warn('migrations', 'journal not found for reconciliation', { journalPath })
+    return []
   }
-  return expected
+
+  try {
+    const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
+    const entries = Array.isArray(journal?.entries) ? journal.entries : []
+
+    const expected: ExpectedMigration[] = []
+    for (const entry of entries) {
+      const filename = `${entry.tag}.sql`
+      const fullPath = path.join(resolved.path, filename)
+      if (!existsSync(fullPath)) {
+        log.warn('migrations', 'migration file missing for reconciliation', { file: fullPath })
+        continue
+      }
+      try {
+        const sql = readFileSync(fullPath, 'utf8')
+        const hash = crypto.createHash('sha256').update(sql).digest('hex')
+        expected.push({ hash, tag: entry.tag })
+      } catch (err) {
+        log.warn('migrations', 'failed to read migration file for reconciliation', { file: fullPath, err })
+      }
+    }
+    return expected
+  } catch (err) {
+    log.warn('migrations', 'failed to parse journal for reconciliation', { journalPath, err })
+    return []
+  }
 }
 
 function readDbMigrations(dbResources: DbResources): { table: string | null; rows: Array<{ id: number; hash: string }> } {
@@ -207,17 +225,33 @@ function reconcileMigrations(resolved: ResolvedMigrations, dbResources: DbResour
   const { table, rows } = readDbMigrations(dbResources)
   if (!table || rows.length === 0) return
 
-  const mismatched = rows.filter((r) => !expectedHashes.has(r.hash))
-  if (mismatched.length === 0) return
+  if (expected.length === 0) return
 
-  const placeholders = mismatched.map(() => '?').join(', ')
-  dbResources.sqlite.run(`DELETE FROM ${table} WHERE hash IN (${placeholders})`, mismatched.map((m) => m.hash))
+  // Only treat hashes beyond the longest matching prefix as removable to avoid re-running altered DDL.
+  let prefix = 0
+  const limit = Math.min(expected.length, rows.length)
+  while (prefix < limit && rows[prefix].hash === expected[prefix].hash) {
+    prefix++
+  }
 
-  log.warn('migrations', 'removed mismatched migration hashes', {
-    removed: mismatched.length,
-    table,
-    removedHashes: mismatched.map((m) => m.hash),
-  })
+  const tail = rows.slice(prefix)
+  const removable = tail.filter((r) => !expectedHashes.has(r.hash))
+  if (removable.length === 0) return
+
+  const placeholders = removable.map(() => '?').join(', ')
+  try {
+    dbResources.sqlite
+      .query(`DELETE FROM ${table} WHERE hash IN (${placeholders})`)
+      .run(...removable.map((m) => m.hash))
+
+    log.warn('migrations', 'removed mismatched migration hashes', {
+      removed: removable.length,
+      table,
+      removedHashes: removable.map((m) => m.hash),
+    })
+  } catch (err) {
+    log.warn('migrations', 'failed to delete mismatched migration hashes', { err, table })
+  }
 }
 
 export async function startServer(options: StartOptions): Promise<StartResult> {
