@@ -2,6 +2,7 @@ import type { AppEnv, ServerConfig } from './env'
 import { setRuntimeConfig } from './env'
 import type { UpgradeWebSocket } from 'hono/ws'
 import { resolveMigrations, markReady } from './runtime'
+import type { ResolvedMigrations } from './runtime'
 import { createDbClient } from './db/client'
 import { registerCoreDbProvider } from './db/provider'
 import { settingsService } from 'core'
@@ -52,18 +53,55 @@ function describeFolderMigrations(folderPath: string) {
   }
 }
 
-function describeAppliedMigrations(dbResources: DbResources) {
-  try {
-    const rows = dbResources.sqlite
-      .query('SELECT tag FROM drizzle_migrations ORDER BY id DESC LIMIT 5')
-      .all() as Array<{ tag: string }>
-    const tags = rows.map((r) => r.tag)
-    return { count: tags.length, latest: tags[0] ?? null, recent: tags }
-  } catch (err) {
-    // Table might not exist yet on a fresh DB; keep it best-effort.
-    log.debug('migrations', 'could not read drizzle_migrations table', { err })
-    return { count: 0, latest: null, recent: [] as string[] }
+function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: DbResources) {
+  const hashRows = (() => {
+    try {
+      return dbResources.sqlite
+        .query('SELECT hash FROM __drizzle_migrations ORDER BY id DESC LIMIT 5')
+        .all() as Array<{ hash: string }>
+    } catch (err) {
+      try {
+        return dbResources.sqlite
+          .query('SELECT hash FROM drizzle_migrations ORDER BY id DESC LIMIT 5')
+          .all() as Array<{ hash: string }>
+      } catch (err2) {
+        log.debug('migrations', 'could not read migrations table', { err: err2 })
+        return [] as Array<{ hash: string }>
+      }
+    }
+  })()
+
+  const hashes = hashRows.map((r) => r.hash)
+  let latestTag: string | null = null
+  let recentTags: string[] = []
+
+  if (hashes.length > 0) {
+    if (resolved.kind === 'bundled') {
+      const map = new Map<string, string>()
+      for (const m of resolved.migrations) {
+        if (m.hash) map.set(m.hash, (m as any).tag ?? '')
+      }
+      latestTag = map.get(hashes[0]) ?? null
+      recentTags = hashes.map((h) => map.get(h) ?? h)
+    } else {
+      // folder: best-effort map by journal order
+      try {
+        const journalPath = path.join(resolved.path, 'meta', '_journal.json')
+        const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
+        const entries = Array.isArray(journal?.entries) ? journal.entries : []
+        const byIndex = entries.map((e: any) => e?.tag).filter(Boolean)
+        const appliedCount = hashRows.length
+        const lastIdx = appliedCount - 1
+        latestTag = byIndex[lastIdx] ?? null
+        recentTags = byIndex.slice(-appliedCount)
+      } catch (err) {
+        log.debug('migrations', 'failed to map folder hashes to tags', { err })
+        recentTags = hashes
+      }
+    }
   }
+
+  return { count: hashes.length, latestTag, latestHash: hashes[0] ?? null, recentTags, recentHashes: hashes }
 }
 
 async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, migrationsDir?: string) {
@@ -78,24 +116,26 @@ async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, 
     })
     const { migrate } = await import('drizzle-orm/bun-sqlite/migrator')
     await migrate(dbResources.db, { migrationsFolder: resolved.path })
-    const applied = describeAppliedMigrations(dbResources)
+    const applied = describeAppliedMigrations(resolved, dbResources)
     log.info('migrations', 'folder migrations applied', {
       path: resolved.path,
       dbPath: dbResources.path,
-      latest: applied.latest,
-      recent: applied.recent,
+      latestTag: applied.latestTag,
+      latestHash: applied.latestHash,
+      recentTags: applied.recentTags,
     })
   } else {
     log.info('migrations', 'applying bundled migrations', {
       count: resolved.migrations.length,
     })
     await (dbResources.db as any).dialect.migrate(resolved.migrations, (dbResources.db as any).session)
-    const applied = describeAppliedMigrations(dbResources)
+    const applied = describeAppliedMigrations(resolved, dbResources)
     log.info('migrations', 'bundled migrations applied', {
       count: resolved.migrations.length,
       dbPath: dbResources.path,
-      latest: applied.latest,
-      recent: applied.recent,
+      latestTag: applied.latestTag,
+      latestHash: applied.latestHash,
+      recentTags: applied.recentTags,
     })
   }
 

@@ -92,6 +92,7 @@ function buildBundledMigrations(): any[] | null {
       bps: entry.breakpoints,
       folderMillis: entry.when,
       hash,
+      tag: entry.tag,
     })
   }
 
