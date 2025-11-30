@@ -15,8 +15,6 @@ vi.mock("@/components/kanban/card-inspector/useCardInspectorState", () => ({
 }));
 
 vi.mock("@/components/ui/tabs", () => {
-    const React = require("react");
-
     const TabsContext = React.createContext<{ value?: string; onValueChange?: (v: string) => void }>({});
 
     const Tabs = ({ value, onValueChange, children, className, ...props }: any) => (
