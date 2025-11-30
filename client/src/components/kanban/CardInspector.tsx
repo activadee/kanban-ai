@@ -10,6 +10,7 @@ import {AttemptsSection} from './card-inspector/sections/AttemptsSection'
 import {ActivitySection} from './card-inspector/sections/ActivitySection'
 import {useCardInspectorState, type InspectorTab} from './card-inspector/useCardInspectorState'
 import type {CardFormValues} from './CardDialogs'
+import {AttemptToolbar} from './card-inspector/AttemptToolbar'
 
 type TopLevelTab = 'ticket' | 'attempts'
 
@@ -91,6 +92,20 @@ export function CardInspector({
                 copied={header.copied}
                 onCopyTicketKey={header.handleCopyTicketKey}
                 onClose={onClose}
+                actions={
+                    attempt.attempt ? (
+                        <AttemptToolbar
+                            attempt={attempt.attempt}
+                            openButtonDisabledReason={git.openButtonDisabledReason}
+                            onOpenEditor={git.handleOpenEditor}
+                            todoSummary={git.todoSummary}
+                            onOpenChanges={() => git.setChangesOpen(true)}
+                            onOpenCommit={() => git.setCommitOpen(true)}
+                            onOpenPr={() => git.setPrOpen(true)}
+                            onOpenMerge={() => git.setMergeOpen(true)}
+                        />
+                    ) : null
+                }
             />
             <Tabs
                 value={activeTopLevelTab}
@@ -134,9 +149,6 @@ export function CardInspector({
                                 projectId={projectId}
                                 card={card}
                                 attempt={attempt.attempt}
-                                openButtonDisabledReason={git.openButtonDisabledReason}
-                                todoSummary={git.todoSummary}
-                                onOpenEditor={git.handleOpenEditor}
                                 changesOpen={git.changesOpen}
                                 onChangesOpenChange={git.setChangesOpen}
                                 commitOpen={git.commitOpen}

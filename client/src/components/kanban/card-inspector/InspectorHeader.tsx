@@ -1,3 +1,4 @@
+import type {ReactNode} from 'react'
 import {Badge} from '@/components/ui/badge'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {X, Lock, Copy} from 'lucide-react'
@@ -11,6 +12,7 @@ export function InspectorHeader({
                                     copied,
                                     onCopyTicketKey,
                                     onClose,
+                                    actions,
                                 }: {
     card: TCard
     locked?: boolean
@@ -18,9 +20,10 @@ export function InspectorHeader({
     copied: boolean
     onCopyTicketKey: () => void
     onClose?: () => void
+    actions?: ReactNode
 }) {
     return (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 {card.ticketKey ? (
                     <div className="flex items-center gap-2">
@@ -57,12 +60,15 @@ export function InspectorHeader({
                     <Badge variant="outline" className="border-destructive/50 text-destructive">Blocked</Badge>
                 ) : null}
             </div>
-            {onClose && (
-                <button className="text-muted-foreground hover:text-foreground" onClick={onClose} title="Close"
-                        aria-label="Close">
-                    <X className="size-4"/>
-                </button>
-            )}
+            <div className="flex items-center gap-2">
+                {actions}
+                {onClose && (
+                    <button className="text-muted-foreground hover:text-foreground" onClick={onClose} title="Close"
+                            aria-label="Close">
+                        <X className="size-4"/>
+                    </button>
+                )}
+            </div>
         </div>
     )
 }

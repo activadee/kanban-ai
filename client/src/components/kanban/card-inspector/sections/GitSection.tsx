@@ -1,17 +1,13 @@
-import type {Attempt, AttemptTodoSummary, Card as TCard} from 'shared'
+import type {Attempt, Card as TCard} from 'shared'
 import {AttemptChangesDialog} from '@/components/git/AttemptChangesDialog'
 import {CommitDialog} from '@/components/git/CommitDialog'
 import {CreatePrDialog} from '@/components/git/CreatePrDialog'
 import {MergeBaseDialog} from '@/components/git/MergeBaseDialog'
-import {AttemptToolbar} from '../AttemptToolbar'
 
 export type GitSectionProps = {
     projectId: string
     card: TCard
     attempt: Attempt | null
-    openButtonDisabledReason: string | null
-    todoSummary: AttemptTodoSummary | null
-    onOpenEditor: () => void
     changesOpen: boolean
     onChangesOpenChange: (open: boolean) => void
     commitOpen: boolean
@@ -27,9 +23,6 @@ export function GitSection({
                                projectId,
                                card,
                                attempt,
-                               openButtonDisabledReason,
-                               todoSummary,
-                               onOpenEditor,
                                changesOpen,
                                onChangesOpenChange,
                                commitOpen,
@@ -39,19 +32,9 @@ export function GitSection({
                                mergeOpen,
                                onMergeOpenChange,
                                prDefaults,
-                           }: GitSectionProps) {
+                            }: GitSectionProps) {
     return (
         <>
-            <AttemptToolbar
-                attempt={attempt}
-                openButtonDisabledReason={openButtonDisabledReason}
-                onOpenEditor={onOpenEditor}
-                todoSummary={todoSummary}
-                onOpenChanges={() => onChangesOpenChange(true)}
-                onOpenCommit={() => onCommitOpenChange(true)}
-                onOpenPr={() => onPrOpenChange(true)}
-                onOpenMerge={() => onMergeOpenChange(true)}
-            />
             <AttemptChangesDialog
                 attemptId={attempt?.id ?? ''}
                 open={changesOpen && Boolean(attempt?.id)}
