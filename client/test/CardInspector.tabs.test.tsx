@@ -248,11 +248,45 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
         const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
         const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
 
-        expect(attemptsTab.getAttribute("data-state")).toBe("active");
-        expect(ticketTab.getAttribute("data-state")).toBe("inactive");
+        await waitFor(() => {
+            expect(attemptsTab.getAttribute("data-state")).toBe("active");
+            expect(ticketTab.getAttribute("data-state")).toBe("inactive");
+        });
 
         expect(screen.getByText("AttemptsSection")).not.toBeNull();
         expect(screen.queryByText("AttemptCreateForm")).toBeNull();
+    });
+
+    it("switches to Attempts after attempt data loads for the current card", async () => {
+        mockInspectorState = createInspectorState();
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        const { rerender } = renderInspector();
+
+        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
+        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
+
+        expect(ticketTab.getAttribute("data-state")).toBe("active");
+        expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
+
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        rerender(
+            <CardInspector
+                projectId="proj-1"
+                card={baseCard}
+                onUpdate={async () => {}}
+                onDelete={async () => {}}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(attemptsTab.getAttribute("data-state")).toBe("active");
+            expect(ticketTab.getAttribute("data-state")).toBe("inactive");
+        });
     });
 
     it("recalculates top-level tab when switching to a card without an attempt", async () => {
@@ -341,6 +375,48 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
 
         const messagesTab = screen.getByRole("tab", { name: /Messages/i });
         expect(messagesTab.getAttribute("data-state")).toBe("active");
+    });
+
+    it("does not keep Attempts active when switching to a card without an attempt even if previous attempt lingers", async () => {
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        const { rerender } = renderInspector();
+
+        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
+        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
+
+        await waitFor(() => expect(attemptsTab.getAttribute("data-state")).toBe("active"));
+
+        const nextCard: Card = {
+            ...baseCard,
+            id: "card-2",
+            title: "Next Card",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        // Simulate stale attempt data that still references the old card.
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: { ...baseAttempt, cardId: "card-1" } },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        rerender(
+            <CardInspector
+                projectId="proj-1"
+                card={nextCard}
+                onUpdate={async () => {}}
+                onDelete={async () => {}}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(ticketTab.getAttribute("data-state")).toBe("active");
+            expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
+        });
     });
 
     it("View logs switches only the inner attempt tab", async () => {
