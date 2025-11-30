@@ -1,3 +1,18 @@
+## [0.13.0](https://github.com/activadee/kanban-ai/compare/v0.12.0...v0.13.0) (2025-11-30)
+
+### Features
+
+* **server:** use separate dev SQLite database file ([#204](https://github.com/activadee/kanban-ai/issues/204)) ([ca96d3e](https://github.com/activadee/kanban-ai/commit/ca96d3e8d3ddfb4a2bd36af56fbc0ac5fb11decc))
+
+### Bug Fixes
+
+* client build ([14c8b62](https://github.com/activadee/kanban-ai/commit/14c8b62d3de785c37c56454511010b4064c1c1c1))
+* keep board scrollable with resizable inspector ([#205](https://github.com/activadee/kanban-ai/issues/205)) ([6281d03](https://github.com/activadee/kanban-ai/commit/6281d03f5467da671133583fdae367cb0c6a01a8))
+
+### Refactors
+
+* move card inspector attempt actions into header ([#203](https://github.com/activadee/kanban-ai/issues/203)) ([ce0df3a](https://github.com/activadee/kanban-ai/commit/ce0df3a4857385c817f6ee848a1b643a09c40a18))
+
 ## [0.12.0](https://github.com/activadee/kanban-ai/compare/v0.11.1...v0.12.0) (2025-11-30)
 
 ### Features
