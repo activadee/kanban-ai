@@ -23,6 +23,8 @@ only when you explicitly accept it via the board UI.
   track which card the enhancement belongs to.
 - While the enhancement job runs, the card shows an **Enhancing** badge and is temporarily marked as non-draggable to
   prevent accidental moves.
+- After the board records the new card, a toast pops up with “Ticket created” and clarifies that enhancement is running in the background so you stay focused on the board while the agents work.
+- A temporary banner above the board columns also appears while one or more enhancements are pending, showing a spinner and the count of cards being enhanced so you know the system is processing without reopening each card manually.
 - Once a suggestion arrives, the card displays a sparkles icon that opens the enhancement diff dialog (see below).
 
 ### Enhancing existing cards
@@ -36,6 +38,7 @@ only when you explicitly accept it via the board UI.
 
 - When an enhancement job finishes, click the sparkles icon on the card to open the enhancement diff dialog. The dialog
   compares the persisted title/description on the left with the AI-enhanced copy on the right.
+- The dialog header surfaces a subtle “AI suggestion ready” label and reminds you that the ticket already exists, so the suggestion is just a refinement to the saved draft.
 - **Accept** automatically updates the card via `PATCH /boards/:boardId/cards/:cardId`, overriding the title/description
   with the suggestion and clearing the enhancement state.
 - **Reject** dismisses the suggestion without mutating the card and keeps the enhancement badge cleared so you can rerun
