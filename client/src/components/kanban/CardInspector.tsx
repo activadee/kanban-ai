@@ -10,6 +10,7 @@ import {AttemptsSection} from './card-inspector/sections/AttemptsSection'
 import {ActivitySection} from './card-inspector/sections/ActivitySection'
 import {useCardInspectorState, type InspectorTab} from './card-inspector/useCardInspectorState'
 import type {CardFormValues} from './CardDialogs'
+import {AttemptToolbar} from './card-inspector/AttemptToolbar'
 
 type TopLevelTab = 'ticket' | 'attempts'
 
@@ -91,6 +92,20 @@ export function CardInspector({
                 copied={header.copied}
                 onCopyTicketKey={header.handleCopyTicketKey}
                 onClose={onClose}
+                actions={
+                    attempt.attempt ? (
+                        <AttemptToolbar
+                            attempt={attempt.attempt}
+                            openButtonDisabledReason={git.openButtonDisabledReason}
+                            onOpenEditor={git.handleOpenEditor}
+                            todoSummary={git.todoSummary}
+                            onOpenChanges={() => git.setChangesOpen(true)}
+                            onOpenCommit={() => git.setCommitOpen(true)}
+                            onOpenPr={() => git.setPrOpen(true)}
+                            onOpenMerge={() => git.setMergeOpen(true)}
+                        />
+                    ) : null
+                }
             />
             <Tabs
                 value={activeTopLevelTab}
@@ -129,25 +144,6 @@ export function CardInspector({
                         }
                         saving={details.saving}
                         deleting={details.deleting}
-                        gitSection={
-                            <GitSection
-                                projectId={projectId}
-                                card={card}
-                                attempt={attempt.attempt}
-                                openButtonDisabledReason={git.openButtonDisabledReason}
-                                todoSummary={git.todoSummary}
-                                onOpenEditor={git.handleOpenEditor}
-                                changesOpen={git.changesOpen}
-                                onChangesOpenChange={git.setChangesOpen}
-                                commitOpen={git.commitOpen}
-                                onCommitOpenChange={git.setCommitOpen}
-                                prOpen={git.prOpen}
-                                onPrOpenChange={git.setPrOpen}
-                                mergeOpen={git.mergeOpen}
-                                onMergeOpenChange={git.setMergeOpen}
-                                prDefaults={git.prDefaults}
-                            />
-                        }
                     />
                 </TabsContent>
                 <TabsContent value="attempts" className="flex min-h-0 flex-1 flex-col gap-3">
@@ -221,6 +217,20 @@ export function CardInspector({
                     )}
                 </TabsContent>
             </Tabs>
+            <GitSection
+                projectId={projectId}
+                card={card}
+                attempt={attempt.attempt}
+                changesOpen={git.changesOpen}
+                onChangesOpenChange={git.setChangesOpen}
+                commitOpen={git.commitOpen}
+                onCommitOpenChange={git.setCommitOpen}
+                prOpen={git.prOpen}
+                onPrOpenChange={git.setPrOpen}
+                mergeOpen={git.mergeOpen}
+                onMergeOpenChange={git.setMergeOpen}
+                prDefaults={git.prDefaults}
+            />
         </div>
     )
 }

@@ -59,7 +59,7 @@ export function AttemptToolbar({
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline">
-                        <GithubIcon/>
+                        <GithubIcon className="size-4"/>
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">

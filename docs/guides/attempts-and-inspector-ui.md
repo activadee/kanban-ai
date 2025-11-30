@@ -17,6 +17,7 @@ Its layout consists of:
   - Ticket key and card title.
   - Copy ticket key button.
   - Blocked indicator (when dependencies are not satisfied).
+  - Attempt toolbar (Open in editor, View changes, Commit, PR, and Merge buttons plus the Todos summary) that only appears when an Attempt exists and stays visible even as you switch between the Ticket and Attempts tabs.
   - Close button.
 - Top-level tabs:
   - **Ticket** – shows the Details and Git controls for the card. This is the default tab whenever you open the inspector or switch to a different card.
@@ -91,7 +92,7 @@ The **Logs** sub-tab (inside **Attempts**) displays structured **logs** for the 
 
 ## Git, commit & PR flows in the inspector
 
-These Git controls live in the Ticket tab’s Details area so you can edit card metadata while the Attempts tab shows agent activity. The Git section provides buttons and dialogs for:
+The Git toolbar now lives in the inspector header whenever an Attempt exists so those buttons remain available no matter which top-level tab you are viewing. The toolbar opens the same dialogs and workflows as before:
 
 - **Open in editor**:
   - Launches your preferred editor at the Attempt worktree path.
@@ -114,9 +115,7 @@ These actions map directly to the Attempt Git and PR APIs documented in `core/gi
 
 ### Todos panel
 
-- Next to the **Open in editor** button you now see a `<completed>/<total> Todos` button whenever the agent publishes todos for
-  the current Attempt. It is powered by `attempt.todos.updated` events streamed through WebSockets so it always reflects the
-  latest summary and never reuses todo text for commits.
+- Next to the **Open in editor** button you now see a `<completed>/<total> Todos` button (also part of the header toolbar) whenever the agent publishes todos for the current Attempt. It is powered by `attempt.todos.updated` events streamed through WebSockets so it always reflects the latest summary and never reuses todo text for commits.
 - Clicking the button opens a read-only dialog that lists each todo with a tiny status indicator (`done` items are grayed
   out and struck through). The items are sorted so unfinished work appears first, helping you understand what the agent
   thinks still needs to happen without scrolling through the Messages tab.

@@ -8,6 +8,7 @@ import type { UseCardInspectorStateResult } from "@/components/kanban/card-inspe
 
 const mocks = vi.hoisted(() => ({
     useCardInspectorStateMock: vi.fn(),
+    gitSectionProps: [] as any[],
 }));
 
 vi.mock("@/components/kanban/card-inspector/useCardInspectorState", () => ({
@@ -67,7 +68,12 @@ vi.mock("@/components/ui/tabs", () => {
 let mockInspectorState: UseCardInspectorStateResult;
 
 vi.mock("@/components/kanban/card-inspector/InspectorHeader", () => ({
-    InspectorHeader: () => <div data-testid="inspector-header">InspectorHeader</div>,
+    InspectorHeader: ({ actions }: { actions?: React.ReactNode }) => (
+        <div data-testid="inspector-header">
+            InspectorHeader
+            {actions}
+        </div>
+    ),
 }));
 
 vi.mock("@/components/kanban/card-inspector/sections/DetailsSection", () => ({
@@ -80,7 +86,30 @@ vi.mock("@/components/kanban/card-inspector/sections/DetailsSection", () => ({
 }));
 
 vi.mock("@/components/kanban/card-inspector/sections/GitSection", () => ({
-    GitSection: () => <div data-testid="git-section">GitSection</div>,
+    GitSection: (props: any) => {
+        mocks.gitSectionProps.push(props);
+        return <div data-testid="git-section">GitSection</div>;
+    },
+}));
+
+vi.mock("@/components/kanban/card-inspector/AttemptToolbar", () => ({
+    AttemptToolbar: ({
+                         attempt,
+                         onOpenEditor,
+                         onOpenChanges,
+                         onOpenCommit,
+                         onOpenPr,
+                         onOpenMerge,
+                     }: any) =>
+        attempt ? (
+            <div data-testid="attempt-toolbar">
+                <button type="button" onClick={onOpenEditor}>Open editor</button>
+                <button type="button" onClick={onOpenChanges}>Changes</button>
+                <button type="button" onClick={onOpenCommit}>Commit…</button>
+                <button type="button" onClick={onOpenPr}>PR…</button>
+                <button type="button" onClick={onOpenMerge}>Merge</button>
+            </div>
+        ) : null,
 }));
 
 vi.mock("@/components/kanban/card-inspector/AttemptCreateForm", () => ({
@@ -213,6 +242,7 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
     beforeEach(() => {
         cleanup();
         vi.clearAllMocks();
+        mocks.gitSectionProps.length = 0;
         mockInspectorState = createInspectorState();
         mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
     });
@@ -417,6 +447,71 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
             expect(ticketTab.getAttribute("data-state")).toBe("active");
             expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
         });
+    });
+
+    it("renders attempt actions in the header whenever an attempt exists", async () => {
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        renderInspector();
+
+        expect(screen.getByTestId("attempt-toolbar")).not.toBeNull();
+
+        // Switch tabs to ensure header actions persist.
+        fireEvent.click(screen.getByRole("tab", { name: /Ticket/i }));
+        await waitFor(() => expect(screen.getByRole("tab", { name: /Ticket/i }).getAttribute("data-state")).toBe("active"));
+
+        expect(screen.getByTestId("attempt-toolbar")).not.toBeNull();
+    });
+
+    it("does not show header attempt actions when no attempt exists", () => {
+        renderInspector();
+
+        expect(screen.queryByTestId("attempt-toolbar")).toBeNull();
+    });
+
+    it("opens git dialogs from header actions even on the Attempts tab", async () => {
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        renderInspector();
+
+        await waitFor(() => expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active"));
+
+        fireEvent.click(screen.getByRole("button", { name: "Changes" }));
+        expect(mockInspectorState.git.setChangesOpen).toHaveBeenCalledWith(true);
+
+        fireEvent.click(screen.getByRole("button", { name: "Open editor" }));
+        expect(mockInspectorState.git.handleOpenEditor).toHaveBeenCalled();
+    });
+
+    it("keeps git dialog hosts mounted regardless of active tab", async () => {
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        renderInspector();
+
+        expect(screen.getByTestId("git-section")).not.toBeNull();
+        expect(mocks.gitSectionProps.at(-1)?.changesOpen).toBe(false);
+
+        fireEvent.click(screen.getByRole("tab", { name: /Ticket/i }));
+        await waitFor(() =>
+            expect(screen.getByRole("tab", { name: /Ticket/i }).getAttribute("data-state")).toBe("active"),
+        );
+
+        fireEvent.click(screen.getByRole("tab", { name: /Attempts/i }));
+        await waitFor(() =>
+            expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active"),
+        );
+
+        expect(screen.getByTestId("git-section")).not.toBeNull();
+        expect(mocks.gitSectionProps.at(-1)?.changesOpen).toBe(false);
     });
 
     it("View logs switches only the inner attempt tab", async () => {
