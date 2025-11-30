@@ -66,6 +66,16 @@ export const enhanceTicketSchema = z.object({
     ticketType: ticketTypeSchema,
 });
 
+export const setCardEnhancementSchema = z.object({
+    status: z.enum(["enhancing", "ready"]),
+    suggestion: z
+        .object({
+            title: z.string(),
+            description: z.string().optional().nullable(),
+        })
+        .optional(),
+});
+
 export const createCardSchema = z.object({
     columnId: z.string().min(1, "Column ID is required"),
     title: z.string().min(1, "Title is required"),

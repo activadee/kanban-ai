@@ -20,12 +20,16 @@ import {
     getGithubOriginHandler,
     getProjectCardAttemptHandler,
     startProjectCardAttemptHandler,
+    getCardEnhancementsHandler,
+    setCardEnhancementHandler,
+    clearCardEnhancementHandler,
 } from "./project.handlers";
 import {registerProjectAgentRoutes} from "./project.agents.routes";
 import {createBoardRouter, resolveBoardForProject} from "./board.routes";
 import {problemJson} from "../http/problem";
 import {startAttemptSchema} from "../attempts/attempts.schemas";
 import {enhanceTicketHandler} from "./project.enhance.handlers";
+import {setCardEnhancementSchema} from "./project.schemas";
 
 export const createProjectsRouter = () => {
     const router = new Hono<AppEnv>();
@@ -56,6 +60,34 @@ export const createProjectsRouter = () => {
             const ctx = await loadProjectBoard(c);
             if (ctx instanceof Response) return ctx;
             return getProjectCardAttemptHandler(c, ctx);
+        },
+    );
+
+    router.get(
+        "/:projectId/enhancements",
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return getCardEnhancementsHandler(c, ctx);
+        },
+    );
+
+    router.put(
+        "/:projectId/cards/:cardId/enhancement",
+        zValidator("json", setCardEnhancementSchema),
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return setCardEnhancementHandler(c, ctx);
+        },
+    );
+
+    router.delete(
+        "/:projectId/cards/:cardId/enhancement",
+        async (c) => {
+            const ctx = await loadProjectBoard(c);
+            if (ctx instanceof Response) return ctx;
+            return clearCardEnhancementHandler(c, ctx);
         },
     );
 

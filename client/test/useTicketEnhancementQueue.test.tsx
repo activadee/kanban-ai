@@ -1,13 +1,10 @@
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, waitFor, cleanup } from "@testing-library/react";
+import { render, waitFor, cleanup, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { useTicketEnhancementQueue } from "@/hooks/tickets";
 import { toast } from "@/components/ui/toast";
-
-const STORAGE_KEY = "kanbanai:ticket-enhancements";
-const ENTRY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 vi.mock("@/lib/env", () => ({
     SERVER_URL: "http://test-server/api/v1",
@@ -30,97 +27,32 @@ function TestComponent(props: {
     return null;
 }
 
-describe("useTicketEnhancementQueue", () => {
+describe("useTicketEnhancementQueue (DB persistence)", () => {
     beforeEach(() => {
         cleanup();
         vi.restoreAllMocks();
-        localStorage.clear();
-
-        // Re-establish mocked modules after restoreAllMocks
         vi.mocked(toast).mockClear();
     });
 
-    it("starts enhancement for a new card and stores suggestion", async () => {
-        const fetchMock = vi.fn().mockResolvedValue(
-            new Response(
-                JSON.stringify({
-                    ticket: {
-                        title: "Enhanced Title",
-                        description: "Enhanced Description",
-                    },
-                }),
-                {
-                    status: 200,
-                    headers: { "Content-Type": "application/json" },
-                },
-            ),
-        );
-
-        const fetchSpy = vi
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .spyOn(global as any, "fetch")
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .mockImplementation(fetchMock as any);
-
-        const queryClient = new QueryClient();
-        let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
-
-        render(
-            <QueryClientProvider client={queryClient}>
-                <TestComponent onReady={(q) => (queue = q)} />
-            </QueryClientProvider>,
-        );
-
-        await waitFor(() => {
-            expect(queue).toBeDefined();
+    it("hydrates enhancements from server on mount", async () => {
+        const fetchMock = vi.fn(async (url) => {
+            if (url.toString().endsWith("/projects/proj-1/enhancements")) {
+                return new Response(
+                    JSON.stringify({
+                        enhancements: {
+                            "card-1": {
+                                status: "ready",
+                                suggestion: { title: "Saved", description: "Saved desc" },
+                            },
+                        },
+                    }),
+                    { status: 200, headers: { "Content-Type": "application/json" } },
+                );
+            }
+            throw new Error(`Unexpected fetch ${url}`);
         });
 
-        await queue!.startEnhancementForNewCard({
-            projectId: "proj-1",
-            cardId: "card-1",
-            title: "Original Title",
-            description: "Original Description",
-        });
-
-        await waitFor(() => {
-            expect(queue!.enhancements["card-1"]?.status).toBe("ready");
-        });
-
-        const entry = queue!.enhancements["card-1"];
-        expect(entry?.suggestion).toEqual({
-            title: "Enhanced Title",
-            description: "Enhanced Description",
-        });
-
-        expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock).toHaveBeenCalledWith(
-            "http://test-server/api/v1/projects/proj-1/tickets/enhance",
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title: "Original Title",
-                    description: "Original Description",
-                    agent: undefined,
-                    profileId: undefined,
-                }),
-            },
-        );
-        expect(fetchSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it("hydrates enhancements from localStorage on mount", async () => {
-        const persisted = {
-            "proj-1:card-1": {
-                status: "ready",
-                suggestion: {
-                    title: "Saved title",
-                    description: "Saved description",
-                },
-                updatedAt: Date.now(),
-            },
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
+        vi.spyOn(global, "fetch" as any).mockImplementation(fetchMock as any);
 
         const queryClient = new QueryClient();
         let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
@@ -136,31 +68,39 @@ describe("useTicketEnhancementQueue", () => {
         });
 
         expect(queue!.enhancements["card-1"]?.suggestion).toEqual({
-            title: "Saved title",
-            description: "Saved description",
+            title: "Saved",
+            description: "Saved desc",
         });
+        expect(fetchMock.mock.calls[0]?.[0]).toBe("http://test-server/api/v1/projects/proj-1/enhancements");
     });
 
-    it("persists enhancement updates to localStorage", async () => {
-        const fetchMock = vi.fn().mockResolvedValue(
-            new Response(
-                JSON.stringify({
-                    ticket: {
-                        title: "Enhanced Title",
-                        description: "Enhanced Description",
-                    },
-                }),
-                {
+    it("persists enhancement lifecycle to the API", async () => {
+        const fetchMock = vi.fn(async (url, options?: RequestInit) => {
+            const href = url.toString();
+            if (href.endsWith("/projects/proj-1/enhancements") && (!options || options.method === undefined)) {
+                return new Response(JSON.stringify({ enhancements: {} }), {
                     status: 200,
                     headers: { "Content-Type": "application/json" },
-                },
-            ),
-        );
+                });
+            }
+            if (href.includes("/tickets/enhance")) {
+                return new Response(
+                    JSON.stringify({
+                        ticket: { title: "Enhanced Title", description: "Enhanced Description" },
+                    }),
+                    { status: 200, headers: { "Content-Type": "application/json" } },
+                );
+            }
+            if (href.includes("/enhancement") && options?.method === "PUT") {
+                return new Response(JSON.stringify({ ok: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            throw new Error(`Unexpected fetch ${href}`);
+        });
 
-        vi.spyOn(global as any, "fetch").mockImplementation(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            fetchMock as any,
-        );
+        vi.spyOn(global, "fetch" as any).mockImplementation(fetchMock as any);
 
         const queryClient = new QueryClient();
         let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
@@ -175,36 +115,44 @@ describe("useTicketEnhancementQueue", () => {
             expect(queue).toBeDefined();
         });
 
-        await queue!.startEnhancementForExistingCard({
-            projectId: "proj-1",
-            cardId: "card-3",
-            title: "Title",
-            description: "Description",
+        await act(async () => {
+            await queue!.startEnhancementForExistingCard({
+                projectId: "proj-1",
+                cardId: "card-3",
+                title: "Title",
+                description: "Description",
+            });
         });
 
         await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-            expect(stored["proj-1:card-3"]?.status).toBe("ready");
+            expect(queue!.enhancements["card-3"]?.status).toBe("ready");
         });
+
+        const calls = fetchMock.mock.calls.map(([u, o]) => [u.toString(), o?.method]);
+        expect(calls).toContainEqual(["http://test-server/api/v1/projects/proj-1/enhancements", undefined]);
+        expect(calls).toContainEqual(["http://test-server/api/v1/projects/proj-1/cards/card-3/enhancement", "PUT"]);
+        expect(calls).toContainEqual(["http://test-server/api/v1/projects/proj-1/tickets/enhance", "POST"]);
     });
 
     it("clears persisted enhancement on clearEnhancement", async () => {
-        const fetchMock = vi.fn().mockResolvedValue(
-            new Response(
-                JSON.stringify({
-                    ticket: { title: "T", description: "D" },
-                }),
-                {
+        const fetchMock = vi.fn(async (url, options?: RequestInit) => {
+            const href = url.toString();
+            if (href.endsWith("/projects/proj-1/enhancements") && (!options || options.method === undefined)) {
+                return new Response(JSON.stringify({ enhancements: { "card-4": { status: "ready" } } }), {
                     status: 200,
                     headers: { "Content-Type": "application/json" },
-                },
-            ),
-        );
+                });
+            }
+            if (href.includes("/enhancement") && options?.method === "DELETE") {
+                return new Response(JSON.stringify({ ok: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            throw new Error(`Unexpected fetch ${href}`);
+        });
 
-        vi.spyOn(global as any, "fetch").mockImplementation(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            fetchMock as any,
-        );
+        vi.spyOn(global, "fetch" as any).mockImplementation(fetchMock as any);
 
         const queryClient = new QueryClient();
         let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
@@ -216,89 +164,54 @@ describe("useTicketEnhancementQueue", () => {
         );
 
         await waitFor(() => {
-            expect(queue).toBeDefined();
+            expect(queue?.enhancements["card-4"]?.status).toBe("ready");
         });
 
-        await queue!.startEnhancementForExistingCard({
-            projectId: "proj-1",
-            cardId: "card-4",
-            title: "Title",
-            description: "Description",
+        act(() => {
+            queue!.clearEnhancement("card-4");
         });
 
         await waitFor(() => {
-            expect(queue!.enhancements["card-4"]?.status).toBe("ready");
-        });
-
-        queue!.clearEnhancement("card-4");
-
-        await waitFor(() => {
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-            expect(stored["proj-1:card-4"]).toBeUndefined();
             expect(queue!.enhancements["card-4"]).toBeUndefined();
         });
-    });
 
-    it("ignores malformed localStorage content", async () => {
-        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-        localStorage.setItem(STORAGE_KEY, "not-json");
-
-        const queryClient = new QueryClient();
-        let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
-
-        render(
-            <QueryClientProvider client={queryClient}>
-                <TestComponent onReady={(q) => (queue = q)} />
-            </QueryClientProvider>,
+        expect(fetchMock).toHaveBeenCalledWith(
+            "http://test-server/api/v1/projects/proj-1/cards/card-4/enhancement",
+            expect.objectContaining({ method: "DELETE" }),
         );
-
-        await waitFor(() => {
-            expect(queue?.enhancements).toEqual({});
-        });
-
-        expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
-        warnSpy.mockRestore();
-    });
-
-    it("drops expired enhancement entries", async () => {
-        const expired = Date.now() - ENTRY_TTL_MS * 2;
-        const persisted = {
-            "proj-1:stale-card": {
-                status: "ready",
-                suggestion: { title: "Old", description: "Old" },
-                updatedAt: expired,
-            },
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
-
-        const queryClient = new QueryClient();
-        let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
-
-        render(
-            <QueryClientProvider client={queryClient}>
-                <TestComponent onReady={(q) => (queue = q)} />
-            </QueryClientProvider>,
-        );
-
-        await waitFor(() => {
-            expect(queue?.enhancements).toEqual({});
-        });
-
-        expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     });
 
     it("clears state and shows a toast on enhancement failure", async () => {
-        const fetchMock = vi.fn().mockResolvedValue(
-            new Response(JSON.stringify({ error: "fail" }), {
-                status: 500,
-                headers: { "Content-Type": "application/json" },
-            }),
-        );
+        const fetchMock = vi.fn(async (url, options?: RequestInit) => {
+            const href = url.toString();
+            if (href.endsWith("/projects/proj-1/enhancements") && (!options || options.method === undefined)) {
+                return new Response(JSON.stringify({ enhancements: {} }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            if (href.includes("/enhancement") && options?.method === "PUT") {
+                return new Response(JSON.stringify({ ok: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            if (href.includes("/tickets/enhance")) {
+                return new Response(JSON.stringify({ error: "fail" }), {
+                    status: 500,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            if (href.includes("/enhancement") && options?.method === "DELETE") {
+                return new Response(JSON.stringify({ ok: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+            throw new Error(`Unexpected fetch ${href}`);
+        });
 
-        vi.spyOn(global as any, "fetch").mockImplementation(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            fetchMock as any,
-        );
+        vi.spyOn(global, "fetch" as any).mockImplementation(fetchMock as any);
 
         const queryClient = new QueryClient();
         let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
@@ -309,15 +222,15 @@ describe("useTicketEnhancementQueue", () => {
             </QueryClientProvider>,
         );
 
-        await waitFor(() => {
-            expect(queue).toBeDefined();
-        });
+        await waitFor(() => expect(queue).toBeDefined());
 
-        await queue!.startEnhancementForExistingCard({
-            projectId: "proj-1",
-            cardId: "card-2",
-            title: "Broken Title",
-            description: "Broken Description",
+        await act(async () => {
+            await queue!.startEnhancementForExistingCard({
+                projectId: "proj-1",
+                cardId: "card-2",
+                title: "Broken Title",
+                description: "Broken Description",
+            });
         });
 
         await waitFor(() => {
