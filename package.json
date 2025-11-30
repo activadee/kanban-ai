@@ -1,7 +1,7 @@
 {
     "name": "kanban-ai",
     "version": "0.10.2",
-    "author": "Steve Simkins",
+    "author": "Patryk Kalwak",
     "devDependencies": {
         "@semantic-release/changelog": "^6.0.3",
         "@semantic-release/commit-analyzer": "^13.0.1",
