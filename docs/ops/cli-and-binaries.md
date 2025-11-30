@@ -88,7 +88,8 @@ LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod
 
 ## Release automation
 
-- Semantic-release runs on `main` via `.github/workflows/release.yml` to version, tag, publish the CLI to npm, and create GitHub Releases with binaries attached.
+- Semantic-release runs on `main` via `.github/workflows/release.yml`, which is now triggered manually (`workflow_dispatch`) rather than by push events; use the GitHub Actions tab or `gh workflow run release.yml` to start it.
+- The job still versions, tags, publishes the CLI to npm, and creates GitHub Releases with binaries attached.
 - PR titles must follow Conventional Commits; `.github/workflows/semantic-pr.yml` enforces this check (require it in branch protection for effect).
 - Release steps: analyze commits → bump versions (`package.json`, `cli/package.json`) → update `CHANGELOG.md` → build binaries with `bun run build:binary` → publish npm from `cli/` → upload `dist/kanban-ai-*` to the GitHub release.
 - npm publish uses npm Trusted Publishing (OIDC) — no long-lived `NPM_TOKEN` required; workflow has `id-token: write` and runs with `NPM_CONFIG_PROVENANCE=true`.
