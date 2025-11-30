@@ -5,7 +5,7 @@ import { render, screen } from "@testing-library/react";
 import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnhancementDialog";
 
 describe("CardEnhancementDialog – header", () => {
-    it("shows an AI suggestion label and clarification copy", () => {
+    it("shows an AI suggestion label and explanatory text", () => {
         render(
             <CardEnhancementDialog
                 open
@@ -18,8 +18,6 @@ describe("CardEnhancementDialog – header", () => {
         );
 
         expect(screen.getByText(/AI suggestion ready/i)).toBeTruthy();
-        expect(
-            screen.getByText(/Your ticket was created successfully/i),
-        ).toBeTruthy();
+        expect(screen.getByText(/AI-enhanced suggestion/i)).toBeTruthy();
     });
 });

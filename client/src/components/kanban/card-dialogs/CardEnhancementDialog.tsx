@@ -64,7 +64,7 @@ export function CardEnhancementDialog({
                     </div>
                     <DialogTitle>Review AI enhancement</DialogTitle>
                     <DialogDescription>
-                        Your ticket was created successfully. Compare the current copy with the AI-enhanced suggestion, then accept or reject the changes.
+                        Compare the current ticket with the AI-enhanced suggestion, then accept or reject the changes.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
