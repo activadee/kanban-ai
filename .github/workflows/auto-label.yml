@@ -14,3 +14,5 @@ jobs:
     secrets: inherit
     with:
       max_labels: 3
+      model: "gpt-5.1"
+      effort: "none"

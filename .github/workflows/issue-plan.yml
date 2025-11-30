@@ -14,3 +14,6 @@ jobs:
     if: github.event.label.name == 'codex-plan' && github.event.sender.login == github.repository_owner
     uses: activadee/codex-shared-workflows/.github/workflows/issue-plan.yml@main
     secrets: inherit
+    with:
+      model: "gpt-5.1"
+      effort: "high"
