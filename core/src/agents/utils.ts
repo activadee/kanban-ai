@@ -1,4 +1,4 @@
-import type { TicketEnhanceInput, TicketEnhanceResult } from "./types";
+import type {PrSummaryInlineInput, TicketEnhanceInput, TicketEnhanceResult} from './types'
 
 export function splitTicketMarkdown(
     markdown: string,
@@ -44,23 +44,69 @@ export function buildTicketEnhancePrompt(
     const description = input.description?.trim() || "(keine Beschreibung)";
 
     const base = [
-        "You are a ticket generator for a software project.",
-        "",
-        "Input:",
+        'You are a ticket generator for a software project.',
+        '',
+        'Input:',
         `Title: ${input.title}`,
-        "Description:",
+        'Description:',
         description,
-        "",
-        "Task:",
-        "Write an improved ticket that meets the following requirements:",
-        "- Markdown.",
-        "- First line: # <New title or unchanged title>.",
-        "- Detailed description with steps and acceptance criteria.",
-        "- At least one ```mermaid``` diagram (graph or sequenceDiagram).",
-        "- Preferably an additional sequence diagram, if it makes sense.",
-        "- No meta-explanation, only the ticket content.",
-    ].join("\n");
+        '',
+        'Task:',
+        'Write an improved ticket that meets the following requirements:',
+        '- Markdown.',
+        '- First line: # <New title or unchanged title>.',
+        '- Detailed description with steps and acceptance criteria.',
+        '- At least one ```mermaid``` diagram (graph or sequenceDiagram).',
+        '- Preferably an additional sequence diagram, if it makes sense.',
+        '- No meta-explanation, only the ticket content.',
+    ].join('\n')
 
-    const extra = (appendPrompt ?? "").trim();
-    return extra ? `${base}\n\n${extra}` : base;
+    const extra = (appendPrompt ?? '').trim()
+    return extra ? `${base}\n\n${extra}` : base
+}
+
+export function buildPrSummaryPrompt(
+    input: PrSummaryInlineInput,
+    appendPrompt?: string | null,
+): string {
+    const parts: string[] = []
+
+    parts.push('You are a pull request generator for a software project.')
+    parts.push('')
+    parts.push('Repository context:')
+    parts.push(`- Repository path: ${input.repositoryPath}`)
+    parts.push(`- Base branch: ${input.baseBranch}`)
+    parts.push(`- Head branch: ${input.headBranch}`)
+
+    const commitSummary = (input.commitSummary ?? '').trim()
+    const diffSummary = (input.diffSummary ?? '').trim()
+
+    if (commitSummary || diffSummary) {
+        parts.push('')
+        parts.push('Summary of changes between base and head:')
+        if (commitSummary) {
+            parts.push('')
+            parts.push('Commits (base..head):')
+            parts.push(commitSummary)
+        }
+        if (diffSummary) {
+            parts.push('')
+            parts.push('Diff summary (files and stats):')
+            parts.push(diffSummary)
+        }
+    }
+
+    parts.push('')
+    parts.push('Task:')
+    parts.push('Write a pull request title and body that meet the following requirements:')
+    parts.push('- Markdown.')
+    parts.push('- First line: # <New title or unchanged title>.')
+    parts.push('- Detailed description of the changes with steps and rationale.')
+    parts.push('- At least one ```mermaid``` diagram (graph or sequenceDiagram) summarizing the change.')
+    parts.push('- Preferably an additional sequence diagram, if it makes sense.')
+    parts.push('- No meta-explanation, only the PR body content.')
+
+    const base = parts.join('\n')
+    const extra = (appendPrompt ?? '').trim()
+    return extra ? `${base}\n\n${extra}` : base
 }

@@ -8,10 +8,12 @@ import type {
     InlineTaskInputByKind,
     InlineTaskKind,
     InlineTaskResultByKind,
+    PrSummaryInlineInput,
+    PrSummaryInlineResult,
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
-import {buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
 import {DroidProfileSchema, defaultProfile, type DroidProfile} from '../profiles/schema'
 import {buildDroidCommand, buildDroidFollowupCommand} from '../profiles/build'
 import {DroidStreamProcessor} from './parse'
@@ -208,6 +210,14 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
             const result = await this.enhance(input as TicketEnhanceInput, profile)
             return result as InlineTaskResultByKind[K]
         }
+        if (kind === 'prSummary') {
+            const result = await this.summarizePullRequest(
+                input as PrSummaryInlineInput,
+                profile,
+                _opts?.signal,
+            )
+            return result as InlineTaskResultByKind[K]
+        }
         throw new Error(`Droid inline kind ${kind} is not implemented`)
     }
 
@@ -226,6 +236,31 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
             return {title: input.title, description: input.description}
         }
         return splitTicketMarkdown(markdown, input.title, input.description)
+    }
+
+    async summarizePullRequest(
+        input: PrSummaryInlineInput,
+        profile: DroidProfile,
+        signal?: AbortSignal,
+    ): Promise<PrSummaryInlineResult> {
+        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
+        const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
+        const effectiveAppend = inline.length > 0 ? inline : baseAppend
+        const prompt = buildPrSummaryPrompt(input, effectiveAppend ?? undefined)
+        const quotedPrompt = `"${prompt.replace(/"/g, '\\"')}"`
+        const {base, params, env} = buildDroidCommand(profile, quotedPrompt, 'text')
+        const line = [base, ...params].join(' ')
+        const cwd = input.repositoryPath || process.cwd()
+        const controller = signal ?? new AbortController().signal
+        const raw = await runDroidTextCommand(line, cwd, env, controller)
+        const markdown = raw.trim()
+        const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`
+        const fallbackBody = `Changes from ${input.baseBranch} to ${input.headBranch} in ${input.repositoryPath}`
+        if (!markdown) {
+            return {title: fallbackTitle, body: fallbackBody}
+        }
+        const split = splitTicketMarkdown(markdown, fallbackTitle, fallbackBody)
+        return {title: split.title, body: split.description}
     }
 }
 

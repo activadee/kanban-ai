@@ -63,4 +63,5 @@ Additional configuration endpoints:
   - `attemptId` – associates the PR with an Attempt.
   - `cardId` – links the PR back to a board card.
 - The PR helper emits `github.pr.created` so other modules can react (for example, refreshing PR lists or updating activity feeds).
-
+- For inline PR summaries (title + body suggestions), the API also exposes:
+  - `POST /projects/:projectId/pull-requests/summary` – uses the configured inline agent/profile to summarize the diff between a base and head branch, returning `{summary: {title, body}}` for the Create PR dialog.

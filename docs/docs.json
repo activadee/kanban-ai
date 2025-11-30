@@ -57,7 +57,8 @@
                     "core/advanced-agent-profiles",
                     "core/advanced-auto-start",
                     "core/advanced-auto-commit-push",
-                    "core/advanced-ticket-enhancement"
+                    "core/advanced-ticket-enhancement",
+                    "core/pr-inline-summary"
                 ]
             },
             {

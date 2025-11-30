@@ -39,6 +39,7 @@ export {bindAgentEventBus, registerAgent, getAgent, listAgents} from './agents/r
 export * as agentTypes from './agents/types'
 export {runInlineTask} from './agents/inline'
 export {agentEnhanceTicket} from './agents/enhance'
+export {agentSummarizePullRequest} from './agents/pr-summary'
 export type {
     Agent,
     AgentInfo,
@@ -50,9 +51,10 @@ export type {
     InlineTaskContext,
     InlineTaskInputByKind,
     InlineTaskResultByKind,
-    InlineTaskError,
     InlineTaskErrorCode,
 } from './agents/types'
+export type {InlineTaskError} from './agents/types'
+export {isInlineTaskError} from './agents/types'
 export * as agentProfilesRepo from './agents/repo'
 export * as agentProfiles from './agents/profiles'
 export * as agentProfilesGlobalRepo from './agents/global-repo'

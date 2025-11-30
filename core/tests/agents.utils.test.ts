@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {splitTicketMarkdown} from '../src/agents/utils'
+import {buildPrSummaryPrompt, splitTicketMarkdown} from '../src/agents/utils'
 
 describe('agents/utils splitTicketMarkdown', () => {
     it('extracts title from H1 on first line and uses remaining text as description', () => {
@@ -52,6 +52,35 @@ describe('agents/utils splitTicketMarkdown', () => {
             title: 'Title With Spaces',
             description: 'Body text here.',
         })
+    })
+})
+
+describe('agents/utils buildPrSummaryPrompt', () => {
+    it('includes repository path and branch names', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+        })
+
+        expect(prompt).toContain('Repository path: /tmp/repo')
+        expect(prompt).toContain('Base branch: main')
+        expect(prompt).toContain('Head branch: feature/test')
+    })
+
+    it('embeds commit and diff summaries when provided', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+            commitSummary: 'abc123 Add feature',
+            diffSummary: '3 files changed',
+        })
+
+        expect(prompt).toContain('Commits (base..head):')
+        expect(prompt).toContain('abc123 Add feature')
+        expect(prompt).toContain('Diff summary (files and stats):')
+        expect(prompt).toContain('3 files changed')
     })
 })
 
