@@ -69,7 +69,8 @@ export function KanbanCard({
         Boolean(card.prUrl) ||
         blocked ||
         isEnhancing ||
-        isReady
+        isReady ||
+        Boolean(menuContext)
 
     const cardInner = (
         <UICard
@@ -216,17 +217,20 @@ type MenuProps = {
 function KanbanCardMenu({card, context}: MenuProps) {
     const {projectId, lane, blocked, onOpenDetails, onEdit, onEnhanceTicket} = context
 
+    const [menuOpen, setMenuOpen] = useState(false)
     const [prOpen, setPrOpen] = useState(false)
 
     const projectSettingsQuery = useProjectSettings(projectId)
     const appSettingsQuery = useAppSettings()
     const editorsQuery = useEditors()
 
+    const shouldLoadAttempt = menuOpen && (lane === 'inProgress' || lane === 'review')
+
     const cardAttemptQuery = useCardAttempt(
         projectId,
-        lane === 'inProgress' || lane === 'review' ? card.id : undefined,
+        shouldLoadAttempt ? card.id : undefined,
         {
-            enabled: (lane === 'inProgress' || lane === 'review') && Boolean(projectId && card.id),
+            enabled: shouldLoadAttempt && Boolean(projectId && card.id),
         },
     )
 
@@ -368,7 +372,7 @@ function KanbanCardMenu({card, context}: MenuProps) {
 
     return (
         <>
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={setMenuOpen}>
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="ghost"
