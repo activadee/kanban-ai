@@ -277,11 +277,14 @@ export function ProjectBoardPage() {
                                 });
                                 const cardId = result.cardId;
                                 if (cardId) {
-                                    await startEnhancementForNewCard({
+                                    // Fire-and-forget so the dialog can close immediately; internal hook toasts on error.
+                                    startEnhancementForNewCard({
                                         projectId: project.id,
                                         cardId,
                                         title: values.title,
                                         description: values.description,
+                                    }).catch((err) => {
+                                        console.error("Background enhancement failed", err);
                                     });
 
                                     toast({
