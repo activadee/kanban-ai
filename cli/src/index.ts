@@ -178,7 +178,7 @@ export async function runCli(): Promise<void> {
         });
     }
 
-    await execBinary(binaryPath, cliOptions.passThroughArgs);
+    await execBinary(binaryPath, cliOptions.passThroughArgs, targetVersion);
 }
 
 export function readCliPackageVersion(): string {
@@ -192,10 +192,15 @@ export function readCliPackageVersion(): string {
     }
 }
 
-export function execBinary(binaryPath: string, args: string[]): Promise<void> {
+export function execBinary(binaryPath: string, args: string[], version?: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const child = spawn(binaryPath, args, {
             stdio: "inherit",
+            env: {
+                ...process.env,
+                // Expose the binary version to the server so version checks don’t fall back to 0.0.0-dev when packaged.
+                KANBANAI_VERSION: version ?? process.env.KANBANAI_VERSION,
+            },
         });
 
         child.on("error", (err) => {

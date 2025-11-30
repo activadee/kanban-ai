@@ -127,7 +127,7 @@ describe("index helpers", () => {
         process.exit = exitSpy;
 
         try {
-            await execBinary("/path/to/binary", ["--foo", "bar"]);
+            await execBinary("/path/to/binary", ["--foo", "bar"], "1.2.3");
             expect(exitSpy).toHaveBeenCalledWith(0);
         } finally {
             // @ts-expect-error restore original
@@ -140,7 +140,7 @@ describe("index helpers", () => {
             .spyOn(console, "error")
             .mockImplementation(() => {});
 
-        await expect(execBinary("/path/to/fail", [])).rejects.toThrow(
+        await expect(execBinary("/path/to/fail", [], "1.2.3")).rejects.toThrow(
             "spawn failed",
         );
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -155,7 +155,7 @@ describe("index helpers", () => {
             .spyOn(process, "kill")
             .mockImplementation(() => true as any);
 
-        await execBinary("/path/to/signal", []);
+        await execBinary("/path/to/signal", [], "1.2.3");
 
         expect(killSpy).toHaveBeenCalledWith(process.pid, "SIGTERM");
         killSpy.mockRestore();
