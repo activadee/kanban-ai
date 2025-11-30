@@ -1,15 +1,24 @@
-import {useCallback, useMemo, useState} from 'react'
+import {useCallback, useEffect, useMemo, useState} from 'react'
 import {useEnhanceTicket} from '@/hooks/projects'
 import {toast} from '@/components/ui/toast'
 import {describeApiError} from '@/api/http'
-import type {TicketType} from 'shared'
+import type {TicketType, CardEnhancementSuggestion} from 'shared'
+import {
+    clearProjectCardEnhancement,
+    listProjectEnhancements,
+    setProjectCardEnhancement,
+    type CardEnhancementEntryResponse,
+} from '@/api/projects'
+
+const toSuggestionPayload = (suggestion?: CardEnhancementSuggestion) =>
+    suggestion
+        ? {
+              title: suggestion.title,
+              description: suggestion.description,
+          }
+        : undefined
 
 export type CardEnhancementStatus = 'enhancing' | 'ready'
-
-export type CardEnhancementSuggestion = {
-    title: string
-    description: string
-}
 
 type CardEnhancementEntry = {
     status: CardEnhancementStatus
@@ -17,6 +26,7 @@ type CardEnhancementEntry = {
 }
 
 type CardEnhancementState = Record<string, CardEnhancementEntry>
+
 
 export type StartTicketEnhancementOptions = {
     projectId: string
@@ -54,15 +64,41 @@ export type TicketEnhancementQueue = {
     clearEnhancement: (cardId: string) => void
 }
 
-export function useTicketEnhancementQueue(): TicketEnhancementQueue {
+export function useTicketEnhancementQueue(projectId?: string): TicketEnhancementQueue {
     const [enhancements, setEnhancements] = useState<CardEnhancementState>({})
     const enhanceMutation = useEnhanceTicket()
+
+    useEffect(() => {
+        let cancelled = false
+        async function hydrate() {
+            if (!projectId) {
+                setEnhancements({})
+                return
+            }
+            try {
+                const remote = await listProjectEnhancements(projectId)
+                if (cancelled) return
+                setEnhancements(remote)
+            } catch (err) {
+                console.error('Failed to load enhancements', err)
+                if (!cancelled) {
+                    setEnhancements({})
+                }
+            }
+        }
+        void hydrate()
+        return () => {
+            cancelled = true
+        }
+    }, [projectId])
 
     const startEnhancement = useCallback(
         async ({projectId, cardId, title, description, ticketType}: StartTicketEnhancementOptions) => {
             const trimmedTitle = title.trim()
             const trimmedDescription = description?.trim() ?? ''
             if (!trimmedTitle) return
+
+            const previousSuggestion = enhancements[cardId]?.suggestion
 
             setEnhancements((prev) => ({
                 ...prev,
@@ -73,6 +109,16 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
                     suggestion: prev[cardId]?.suggestion,
                 },
             }))
+
+            if (projectId) {
+                const payload: CardEnhancementEntryResponse = {
+                    status: 'enhancing',
+                    suggestion: toSuggestionPayload(previousSuggestion),
+                }
+                setProjectCardEnhancement(projectId, cardId, payload).catch((err) => {
+                    console.error('Failed to persist enhancement status', err)
+                })
+            }
 
             try {
                 const result = await enhanceMutation.mutateAsync({
@@ -92,6 +138,19 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
                         },
                     },
                 }))
+
+                if (projectId) {
+                    const payload: CardEnhancementEntryResponse = {
+                        status: 'ready',
+                        suggestion: {
+                            title: result.ticket.title,
+                            description: result.ticket.description,
+                        },
+                    }
+                    setProjectCardEnhancement(projectId, cardId, payload).catch((err) => {
+                        console.error('Failed to persist enhancement result', err)
+                    })
+                }
             } catch (err) {
                 console.error('Enhance ticket failed', err)
                 const {title: errorTitle, description} = describeApiError(err, 'Failed to enhance ticket')
@@ -106,9 +165,15 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
                     const {[cardId]: _removed, ...rest} = prev
                     return rest
                 })
+
+                if (projectId) {
+                    clearProjectCardEnhancement(projectId, cardId).catch((error) => {
+                        console.error('Failed to clear enhancement after error', error)
+                    })
+                }
             }
         },
-        [enhanceMutation],
+        [enhanceMutation, projectId],
     )
 
     const startEnhancementForNewCard = useCallback(
@@ -125,12 +190,21 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
         [startEnhancement],
     )
 
-    const clearEnhancement = useCallback((cardId: string) => {
-        setEnhancements((prev) => {
-            const {[cardId]: _removed, ...rest} = prev
-            return rest
-        })
-    }, [])
+    const clearEnhancement = useCallback(
+        (cardId: string) => {
+            setEnhancements((prev) => {
+                const {[cardId]: _removed, ...rest} = prev
+                return rest
+            })
+
+            if (projectId) {
+                clearProjectCardEnhancement(projectId, cardId).catch((err) => {
+                    console.error('Failed to clear enhancement', err)
+                })
+            }
+        },
+        [projectId],
+    )
 
     const getStatus = useCallback(
         (cardId: string): CardEnhancementStatus | 'idle' => {

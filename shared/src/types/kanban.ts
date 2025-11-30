@@ -10,6 +10,11 @@ export type CardId = ID
 
 export type ColumnKey = 'backlog' | 'inProgress' | 'review' | 'done'
 
+export type CardEnhancementSuggestion = {
+    title: string
+    description?: string
+}
+
 export interface Card {
     id: CardId
     ticketKey?: string | null
