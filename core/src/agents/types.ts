@@ -1,5 +1,5 @@
 import type {z} from 'zod'
-import type {ConversationItem, AttemptTodoSummary} from 'shared'
+import type {ConversationItem, AttemptTodoSummary, TicketType} from 'shared'
 
 export type AgentCapabilities = {
     resume?: boolean
@@ -17,6 +17,7 @@ export type AgentContext = {
     baseBranch: string
     cardTitle: string
     cardDescription?: string | null
+    ticketType?: TicketType | null
     profileId?: string | null
     sessionId?: string
     followupPrompt?: string
@@ -38,6 +39,7 @@ export type TicketEnhanceInput = {
     baseBranch: string
     title: string
     description: string
+    ticketType?: TicketType | null
     profileId?: string | null
     signal: AbortSignal
 }
@@ -60,6 +62,10 @@ export type InlineTaskContext = {
      * Optional branch name the inline task is scoped to (e.g. PR head).
      */
     branchName?: string | null
+    /**
+     * Optional Conventional Commit style ticket type (e.g., feat, fix).
+     */
+    ticketType?: TicketType | null
     /**
      * Optional HEAD commit SHA for the inline task (if applicable).
      */

@@ -29,4 +29,14 @@ describe('git/branch', () => {
 
         expect(name).toBe('ABC/abc')
     })
+
+    it('supports ticket type placeholder for conventional branches', () => {
+        const name = renderBranchName('{type}/{ticketKey}-{slug}', {
+            type: 'feat',
+            ticketKey: 'PRJ-9',
+            slugSource: 'Add auth flow',
+        })
+
+        expect(name).toBe('feat/PRJ-9-add-auth-flow')
+    })
 })

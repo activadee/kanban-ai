@@ -1,3 +1,4 @@
+import type {TicketType} from 'shared'
 import {withTx, type DbExecutor} from '../db/with-tx'
 import {
     listColumnsForBoard,
@@ -8,6 +9,7 @@ import {
     updateCard,
     deleteCard,
     getMaxCardOrder,
+    type CardUpdate,
 } from '../projects/repo'
 import {isUniqueTicketKeyError, reserveNextTicketKey} from '../projects/tickets/service'
 import {publishTaskEvent} from './events'
@@ -21,9 +23,15 @@ async function reorderColumn(columnId: string, executor: DbExecutor) {
     }
 }
 
-export async function createBoardCard(columnId: string, title: string, description?: string, opts?: {
-    suppressBroadcast?: boolean
-}): Promise<string> {
+export async function createBoardCard(
+    columnId: string,
+    title: string,
+    description?: string,
+    ticketType?: TicketType | null,
+    opts?: {
+        suppressBroadcast?: boolean
+    },
+): Promise<string> {
     const maxAttempts = 3
     let createdCardId: string | null = null
     let createdBoardId: string | null = null
@@ -43,6 +51,7 @@ export async function createBoardCard(columnId: string, title: string, descripti
                         id: cardId,
                         title,
                         description: description ?? null,
+                        ticketType: ticketType ?? null,
                         order: nextOrder,
                         columnId,
                         boardId: columnRow.boardId,
@@ -131,7 +140,7 @@ export async function moveCardToColumnByTitle(boardId: string, cardId: string, c
     await moveBoardCard(cardId, target.id, nextOrder)
 }
 
-export async function updateBoardCard(cardId: string, updates: { title?: string; description?: string }, opts?: {
+export async function updateBoardCard(cardId: string, updates: { title?: string; description?: string; ticketType?: TicketType | null }, opts?: {
     suppressBroadcast?: boolean
 }) {
     const existing = await getCardById(cardId)
@@ -143,11 +152,12 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
         boardId = column?.boardId ?? null
     }
 
-    const payload: Partial<Parameters<typeof updateCard>[1]> = {
+    const payload: CardUpdate & { ticketType?: TicketType | null } = {
         updatedAt: new Date(),
     }
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.description !== undefined) payload.description = updates.description ?? null
+    if (updates.ticketType !== undefined) payload.ticketType = updates.ticketType ?? null
 
     await updateCard(cardId, payload)
 
@@ -158,6 +168,7 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
             changes: {
                 title: updates.title,
                 description: updates.description ?? null,
+                ticketType: updates.ticketType ?? null,
             },
         })
         if (!opts?.suppressBroadcast) {
@@ -195,4 +206,3 @@ export async function deleteBoardCard(cardId: string) {
         await broadcastBoard(boardId)
     }
 }
-

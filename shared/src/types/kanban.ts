@@ -1,6 +1,7 @@
 import type {ConversationItem} from './conversation'
 import type {DashboardOverview} from './dashboard'
 import type {AttemptTodoSummary} from './attempt-todos'
+import type {TicketType} from './ticket'
 
 export type ID = string
 
@@ -13,6 +14,7 @@ export interface Card {
     id: CardId
     ticketKey?: string | null
     prUrl?: string | null
+    ticketType?: TicketType | null
     title: string
     description?: string
     /**
@@ -44,9 +46,9 @@ export type WsMsg =
     | { type: 'get_state' }
     | { type: 'ping'; payload?: { ts?: string } }
     | { type: 'pong'; payload?: { ts?: string } }
-    | { type: 'create_card'; payload: { columnId: ColumnId; title: string; description?: string } }
+    | { type: 'create_card'; payload: { columnId: ColumnId; title: string; description?: string; ticketType?: TicketType | null } }
     | { type: 'move_card'; payload: { cardId: CardId; toColumnId: ColumnId; toIndex: number } }
-    | { type: 'update_card'; payload: { cardId: CardId; title?: string; description?: string } }
+    | { type: 'update_card'; payload: { cardId: CardId; title?: string; description?: string; ticketType?: TicketType | null } }
     | { type: 'delete_card'; payload: { cardId: CardId } }
     // Attempt event envelopes broadcast by server; client may ignore until UI lands
     | { type: 'attempt_started'; payload: { attemptId: string; cardId: string } }

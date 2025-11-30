@@ -15,6 +15,7 @@ import {Bot, EllipsisVertical, GitPullRequest, Sparkles, Loader2} from 'lucide-r
 import type {Card as TCard} from 'shared'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
+import {formatTicketType, ticketTypeBadgeClass} from '@/lib/ticketTypes'
 import {
     useCardAttempt,
     useOpenAttemptEditor,
@@ -63,9 +64,11 @@ export function KanbanCard({
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
     const isCardDisabled = disabled || isEnhancing
+    const showType = card.ticketType !== undefined && card.ticketType !== null
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
+        showType ||
         showAgentComingSoon ||
         Boolean(card.prUrl) ||
         blocked ||
@@ -82,6 +85,14 @@ export function KanbanCard({
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
+                            {showType ? (
+                                <Badge
+                                    variant="outline"
+                                    className={`text-[10px] font-semibold tracking-tight ${ticketTypeBadgeClass(card.ticketType)}`}
+                                >
+                                    {formatTicketType(card.ticketType)}
+                                </Badge>
+                            ) : null}
                             {card.ticketKey ? (
                                 <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
                                     {card.ticketKey}

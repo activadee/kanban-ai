@@ -20,13 +20,13 @@ type BoardOptions = Partial<UseQueryOptions<BoardState>>
 type CreateArgs = {
     boardId: string;
     columnId: string;
-    values: { title: string; description?: string | null; dependsOn?: string[] }
+    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null }
 }
 
 type UpdateArgs = {
     boardId: string;
     cardId: string;
-    values: { title?: string; description?: string | null; dependsOn?: string[] }
+    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null }
 }
 
 type DeleteArgs = { boardId: string; cardId: string }

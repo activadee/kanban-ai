@@ -1,5 +1,5 @@
 import {SERVER_URL} from '@/lib/env'
-import type {BoardState, Card, Column, ColumnId} from 'shared'
+import type {BoardState, Card, Column, ColumnId, TicketType} from 'shared'
 import {parseApiResponse} from '@/api/http'
 
 const jsonHeaders = {'Content-Type': 'application/json'}
@@ -23,7 +23,7 @@ export async function fetchBoardState(boardId: string): Promise<BoardState> {
 export async function createCard(
     boardId: string,
     columnId: string,
-    values: { title: string; description?: string | null; dependsOn?: string[] },
+    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null },
 ): Promise<CreateCardResponse> {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards`, {
         method: 'POST',
@@ -32,7 +32,8 @@ export async function createCard(
             columnId,
             title: values.title,
             description: values.description ?? null,
-            dependsOn: values.dependsOn ?? []
+            dependsOn: values.dependsOn ?? [],
+            ticketType: values.ticketType ?? null,
         }),
     })
     return parseApiResponse<CreateCardResponse>(res)
@@ -41,7 +42,7 @@ export async function createCard(
 export async function updateCard(
     boardId: string,
     cardId: string,
-    values: { title?: string; description?: string | null; dependsOn?: string[] },
+    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null },
 ) {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}`, {
         method: 'PATCH',
@@ -50,6 +51,7 @@ export async function updateCard(
             title: values.title,
             description: values.description ?? null,
             dependsOn: values.dependsOn,
+            ticketType: values.ticketType === undefined ? undefined : values.ticketType ?? null,
         }),
     })
     return parseApiResponse(res)

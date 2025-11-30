@@ -5,7 +5,7 @@ import type {BoardState, Column as ColumnType} from "shared";
 import {Button} from "@/components/ui/button";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
 import {KanbanCard} from "./Card";
-import {CreateCardDialog, EditCardDialog} from "./CardDialogs";
+import {CreateCardDialog, EditCardDialog, type CardFormValues} from "./CardDialogs";
 import {ClipboardList} from "lucide-react";
 import {CardInspector} from "./CardInspector";
 import {
@@ -22,26 +22,18 @@ import type {CardEnhancementStatus} from "@/hooks/tickets";
 export type BoardHandlers = {
     onCreateCard: (
         columnId: string,
-        values: {
-            title: string;
-            description: string;
-            dependsOn?: string[];
-        },
+        values: CardFormValues,
     ) => Promise<void> | void;
     /**
      * Optional variant of create that also triggers background enhancement.
      */
     onCreateAndEnhanceCard?: (
         columnId: string,
-        values: {
-            title: string;
-            description: string;
-            dependsOn?: string[];
-        },
+        values: CardFormValues,
     ) => Promise<void> | void;
     onUpdateCard: (
         cardId: string,
-        values: { title: string; description: string; dependsOn?: string[] },
+        values: CardFormValues,
     ) => Promise<void> | void;
     onDeleteCard: (cardId: string) => Promise<void> | void;
     onMoveCard: (
@@ -56,7 +48,7 @@ export type BoardHandlers = {
      */
     onEnhanceCard?: (
         cardId: string,
-        values: { title: string; description: string; dependsOn?: string[] },
+        values: CardFormValues,
     ) => Promise<void> | void;
 };
 
@@ -460,6 +452,7 @@ export function Board({
                     cardTitle={editingCard.title}
                     cardDescription={editingCard.description ?? ""}
                     cardTicketKey={editingCard.ticketKey ?? null}
+                    cardTicketType={editingCard.ticketType ?? null}
                     projectId={projectId}
                     cardId={editingCard.id}
                     autoEnhanceOnOpen={editingCardAutoEnhance}

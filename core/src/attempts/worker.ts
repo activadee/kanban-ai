@@ -4,6 +4,7 @@ import type {
     ConversationItem,
     ConversationAutomationItem,
     AttemptTodoSummary,
+    TicketType,
 } from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {createWorktree} from '../ports/worktree'
@@ -64,6 +65,7 @@ type AttemptWorkerCommonParams = {
     previousStatus: AttemptStatus
     cardTitle: string
     cardDescription: string | null
+    ticketType?: TicketType | null
     automation: AttemptAutomationConfig
 }
 
@@ -128,6 +130,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
         previousStatus,
         cardTitle,
         cardDescription,
+        ticketType,
         automation,
     } = params
 
@@ -343,6 +346,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                                   baseBranch,
                                   cardTitle,
                                   cardDescription,
+                                  ticketType,
                                   signal: ac.signal,
                                   emit,
                                   profileId: profileId ?? null,
@@ -394,6 +398,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                             baseBranch,
                             cardTitle,
                             cardDescription,
+                            ticketType,
                             signal: ac.signal,
                             emit,
                             sessionId: params.sessionId,

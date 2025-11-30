@@ -2,6 +2,7 @@ import {useCallback, useMemo, useState} from 'react'
 import {useEnhanceTicket} from '@/hooks/projects'
 import {toast} from '@/components/ui/toast'
 import {describeApiError} from '@/api/http'
+import type {TicketType} from 'shared'
 
 export type CardEnhancementStatus = 'enhancing' | 'ready'
 
@@ -22,6 +23,7 @@ export type StartTicketEnhancementOptions = {
     cardId: string
     title: string
     description?: string
+    ticketType?: TicketType | null
 }
 
 export type TicketEnhancementQueue = {
@@ -57,7 +59,7 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
     const enhanceMutation = useEnhanceTicket()
 
     const startEnhancement = useCallback(
-        async ({projectId, cardId, title, description}: StartTicketEnhancementOptions) => {
+        async ({projectId, cardId, title, description, ticketType}: StartTicketEnhancementOptions) => {
             const trimmedTitle = title.trim()
             const trimmedDescription = description?.trim() ?? ''
             if (!trimmedTitle) return
@@ -77,6 +79,7 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
                     projectId,
                     title: trimmedTitle,
                     description: trimmedDescription,
+                    ticketType,
                 })
 
                 setEnhancements((prev) => ({
@@ -148,4 +151,3 @@ export function useTicketEnhancementQueue(): TicketEnhancementQueue {
         [enhancements, getStatus, startEnhancementForExistingCard, startEnhancementForNewCard, clearEnhancement],
     )
 }
-

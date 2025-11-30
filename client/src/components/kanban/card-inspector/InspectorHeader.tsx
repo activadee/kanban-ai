@@ -2,6 +2,7 @@ import {Badge} from '@/components/ui/badge'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {X, Lock, Copy} from 'lucide-react'
 import type {Card as TCard} from 'shared'
+import {formatTicketType, ticketTypeBadgeClass} from '@/lib/ticketTypes'
 
 export function InspectorHeader({
                                     card,
@@ -33,6 +34,12 @@ export function InspectorHeader({
                         {copied ? <span className="text-xs text-emerald-500">Copied</span> : null}
                     </div>
                 ) : null}
+                <Badge
+                    variant="outline"
+                    className={`text-[11px] font-semibold tracking-tight ${ticketTypeBadgeClass(card.ticketType)}`}
+                >
+                    {formatTicketType(card.ticketType)}
+                </Badge>
                 <span>{card.id.slice(0, 8)}</span>
                 {locked ? (
                     <TooltipProvider>
@@ -59,4 +66,3 @@ export function InspectorHeader({
         </div>
     )
 }
-

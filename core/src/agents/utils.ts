@@ -43,11 +43,14 @@ export function buildTicketEnhancePrompt(
 ): string {
     const description = input.description?.trim() || "(keine Beschreibung)";
 
+    const typeLine = input.ticketType ? `Type: ${input.ticketType}` : null;
+
     const base = [
         'You are a ticket generator for a software project.',
         '',
         'Input:',
         `Title: ${input.title}`,
+        ...(typeLine ? [typeLine] : []),
         'Description:',
         description,
         '',

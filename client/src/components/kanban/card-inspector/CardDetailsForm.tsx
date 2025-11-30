@@ -2,9 +2,12 @@ import {Label} from '@/components/ui/label'
 import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 import {Badge} from '@/components/ui/badge'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {DependenciesPicker} from '@/components/kanban/DependenciesPicker'
+import type {TicketType} from 'shared'
+import {formatTicketType, ticketTypeOptions} from '@/lib/ticketTypes'
 
-export type DetailsValues = { title: string; description: string; dependsOn: string[] }
+export type DetailsValues = { title: string; description: string; dependsOn: string[]; ticketType: TicketType | null }
 
 export function CardDetailsForm({
                                     values,
@@ -30,6 +33,29 @@ export function CardDetailsForm({
                 <Label htmlFor="ins-desc">Description</Label>
                 <Textarea id="ins-desc" rows={4} value={values.description}
                           onChange={(e) => onChange({description: e.target.value})} disabled={locked}/>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="ins-type">Type</Label>
+                <Select
+                    value={(values.ticketType ?? 'none') as string}
+                    onValueChange={(next) =>
+                        onChange({ticketType: next === 'none' ? null : (next as TicketType)})
+                    }
+                    disabled={locked}
+                >
+                    <SelectTrigger id="ins-type" className="w-full">
+                        <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                        <SelectItem value="none">None</SelectItem>
+                        {ticketTypeOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{formatTicketType(values.ticketType)}</p>
             </div>
             <div className="space-y-2">
                 <Label>Dependencies</Label>
@@ -59,4 +85,3 @@ export function CardDetailsForm({
         </>
     )
 }
-

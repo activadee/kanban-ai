@@ -62,6 +62,7 @@ describe('useEnhanceTicket', () => {
             description: 'Original Description',
             agent: 'CODEX',
             profileId: 'profile-1',
+            ticketType: 'feat',
         })
 
         expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -75,6 +76,7 @@ describe('useEnhanceTicket', () => {
                     description: 'Original Description',
                     agent: 'CODEX',
                     profileId: 'profile-1',
+                    ticketType: 'feat',
                 }),
             },
         )

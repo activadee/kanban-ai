@@ -93,7 +93,32 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             description: "Original Description",
             agentKey: undefined,
             profileId: undefined,
+            ticketType: undefined,
         });
+    });
+
+    it("forwards ticketType when provided", async () => {
+        const app = createApp();
+        const {agentEnhanceTicket} = await import("core");
+        (agentEnhanceTicket as any).mockResolvedValue({
+            title: "Enhanced Title",
+            description: "Enhanced Description",
+        });
+
+        const res = await app.request("/projects/proj-1/tickets/enhance", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                title: "Original Title",
+                description: "Original Description",
+                ticketType: "FEAT",
+            }),
+        });
+
+        expect(res.status).toBe(200);
+        expect((agentEnhanceTicket as any)).toHaveBeenCalledWith(
+            expect.objectContaining({ticketType: "feat"}),
+        );
     });
 
     it("returns problem JSON when project is not found", async () => {
@@ -168,6 +193,24 @@ describe("POST /projects/:projectId/tickets/enhance", () => {
             status: 400,
             detail: "Agent CODEX does not support ticket enhancement",
         });
+    });
+
+    it("rejects invalid ticket type", async () => {
+        const app = createApp();
+
+        const res = await app.request("/projects/proj-1/tickets/enhance", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                title: "Original Title",
+                description: "Original Description",
+                ticketType: "unknown-type",
+            }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = (await res.json()) as any;
+        expect(JSON.stringify(data)).toContain("Invalid ticket type: unknown-type");
     });
 
     // Inline agent fallback now uses the project's default agent (or DROID)

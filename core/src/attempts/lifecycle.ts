@@ -121,6 +121,7 @@ export async function startAttempt(
             prefix,
             ticketKey: ticket,
             slugSource,
+            type: cardRow?.ticketType ?? undefined,
         })
     }
     if (!branch) branch = `kanbanai/${Math.random().toString(36).slice(2, 8)}`
@@ -192,6 +193,7 @@ export async function startAttempt(
             previousStatus,
             cardTitle: cardRow?.title ?? '(untitled)',
             cardDescription: cardRow?.description ?? null,
+            ticketType: cardRow?.ticketType ?? null,
             automation: {
                 copyScript,
                 setupScript,

@@ -13,11 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { CardFormValues, BaseDialogProps } from "./types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { TicketType } from "shared";
+import { ticketTypeOptions } from "@/lib/ticketTypes";
 
 type EditProps = BaseDialogProps & {
     cardTitle: string;
     cardDescription?: string | null;
     cardTicketKey?: string | null;
+    cardTicketType?: TicketType | null;
     onSubmit: (values: CardFormValues) => Promise<void> | void;
     onDelete: () => Promise<void> | void;
     projectId: string;
@@ -36,14 +40,18 @@ export function EditCardDialog({
     cardTitle,
     cardDescription,
     cardTicketKey,
+    cardTicketType,
     onSubmit,
     onDelete,
     onEnhanceInBackground,
     autoEnhanceOnOpen = false,
 }: EditProps) {
+    const initialTicketType = cardTicketType ?? null;
+
     const [values, setValues] = useState<CardFormValues>({
         title: cardTitle,
         description: cardDescription ?? "",
+        ticketType: initialTicketType,
     });
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -51,10 +59,14 @@ export function EditCardDialog({
 
     useEffect(() => {
         if (open) {
-            setValues({ title: cardTitle, description: cardDescription ?? "" });
+            setValues({
+                title: cardTitle,
+                description: cardDescription ?? "",
+                ticketType: cardTicketType ?? null,
+            });
             setHasAutoEnhanced(false);
         }
-    }, [open, cardTitle, cardDescription]);
+    }, [open, cardTitle, cardDescription, cardTicketType]);
 
     const handleEnhanceInBackground = async () => {
         if (!values.title.trim()) return;
@@ -64,6 +76,7 @@ export function EditCardDialog({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
+                ticketType: values.ticketType ?? null,
             };
             await onSubmit(payload);
             if (onEnhanceInBackground) {
@@ -89,6 +102,7 @@ export function EditCardDialog({
             await onSubmit({
                 title: values.title.trim(),
                 description: values.description.trim(),
+                ticketType: values.ticketType ?? null,
             });
             onOpenChange(false);
         } finally {
@@ -145,6 +159,30 @@ export function EditCardDialog({
                                 }))
                             }
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="edit-card-type">Type</Label>
+                        <Select
+                            value={(values.ticketType ?? "none") as string}
+                            onValueChange={(next) =>
+                                setValues((prev) => ({
+                                    ...prev,
+                                    ticketType: next === "none" ? null : (next as TicketType),
+                                }))
+                            }
+                        >
+                            <SelectTrigger id="edit-card-type" className="w-full">
+                                <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 overflow-y-auto">
+                                <SelectItem value="none">None</SelectItem>
+                                {ticketTypeOptions.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button

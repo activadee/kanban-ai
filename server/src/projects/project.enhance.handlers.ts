@@ -7,6 +7,7 @@ type EnhanceTicketBody = {
     description?: string;
     agent?: string;
     profileId?: string;
+    ticketType?: import("shared").TicketType | null;
 };
 
 export const enhanceTicketHandler = async (c: any) => {
@@ -20,6 +21,7 @@ export const enhanceTicketHandler = async (c: any) => {
             description: body.description ?? "",
             agentKey: body.agent,
             profileId: body.profileId,
+            ticketType: body.ticketType ?? undefined,
         });
 
         return c.json({ticket: result}, 200);
