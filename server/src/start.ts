@@ -75,6 +75,9 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
   const latestHash = hashes[0] ?? null
   let latestTag: string | null = null
   let recentTags: string[] = []
+  const byPositionTag = hashes.length > 0 && resolved.kind === 'bundled'
+    ? (resolved.migrations[Math.min(hashes.length, resolved.migrations.length) - 1] as any)?.tag ?? null
+    : null
 
   if (hashes.length > 0) {
     if (resolved.kind === 'bundled') {
@@ -82,8 +85,8 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
       for (const m of resolved.migrations) {
         if (m.hash) map.set(m.hash, (m as any).tag ?? '')
       }
-      latestTag = latestHash ? map.get(latestHash) ?? latestHash : null
-      recentTags = hashes.map((h) => map.get(h) ?? h)
+      latestTag = latestHash ? map.get(latestHash) ?? byPositionTag ?? latestHash : byPositionTag
+      recentTags = hashes.map((h, idx) => map.get(h) ?? (resolved.migrations[idx] as any)?.tag ?? h)
     } else {
       // folder: best-effort map by journal order
       try {
@@ -102,7 +105,14 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
     }
   }
 
-  return { count: hashes.length, latestTag, latestHash, recentTags, recentHashes: hashes }
+  return {
+    count: hashes.length,
+    latestTag: latestTag ?? byPositionTag,
+    latestHash,
+    recentTags,
+    recentHashes: hashes,
+    expectedCount: resolved.kind === 'bundled' ? resolved.migrations.length : undefined,
+  }
 }
 
 async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, migrationsDir?: string) {
@@ -137,6 +147,7 @@ async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, 
       latestTag: applied.latestTag,
       latestHash: applied.latestHash,
       recentTags: applied.recentTags,
+      expectedCount: applied.expectedCount,
     })
   }
 
