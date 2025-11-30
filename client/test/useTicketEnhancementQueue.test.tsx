@@ -51,8 +51,11 @@ describe("useTicketEnhancementQueue", () => {
             ),
         );
 
-        // @ts-expect-error - assigning to global fetch in test environment
-        global.fetch = fetchMock;
+        const fetchSpy = vi
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .spyOn(global as any, "fetch")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .mockImplementation(fetchMock as any);
 
         const queryClient = new QueryClient();
         let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
@@ -98,6 +101,7 @@ describe("useTicketEnhancementQueue", () => {
                 }),
             },
         );
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
     });
 
     it("clears state and shows a toast on enhancement failure", async () => {
@@ -108,8 +112,10 @@ describe("useTicketEnhancementQueue", () => {
             }),
         );
 
-        // @ts-expect-error - assigning to global fetch in test environment
-        global.fetch = fetchMock;
+        vi.spyOn(global as any, "fetch").mockImplementation(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            fetchMock as any,
+        );
 
         const queryClient = new QueryClient();
         let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
