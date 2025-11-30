@@ -224,7 +224,8 @@ function KanbanCardMenu({card, context}: MenuProps) {
     const appSettingsQuery = useAppSettings()
     const editorsQuery = useEditors()
 
-    const shouldLoadAttempt = menuOpen && (lane === 'inProgress' || lane === 'review')
+    const shouldLoadAttempt =
+        (menuOpen || prOpen) && (lane === 'inProgress' || lane === 'review')
 
     const cardAttemptQuery = useCardAttempt(
         projectId,
@@ -441,7 +442,7 @@ function KanbanCardMenu({card, context}: MenuProps) {
                     )}
                     {hasReviewActions && (
                         <>
-                            <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
                                 Review actions
                             </DropdownMenuLabel>
                             <DropdownMenuItem
@@ -453,9 +454,13 @@ function KanbanCardMenu({card, context}: MenuProps) {
                                 Create PR…
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                                disabled={!!openButtonDisabledReason}
+                                disabled={!attempt || !!openButtonDisabledReason}
                                 onClick={handleOpenEditor}
-                                title={openButtonDisabledReason ?? undefined}
+                                title={
+                                    !attempt
+                                        ? 'Start an Attempt before opening the editor.'
+                                        : openButtonDisabledReason ?? undefined
+                                }
                             >
                                 Open in editor
                             </DropdownMenuItem>
