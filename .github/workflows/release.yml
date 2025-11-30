@@ -1,9 +1,6 @@
 name: Semantic Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -38,12 +35,8 @@ jobs:
       - name: Install dependencies (frozen)
         run: bun install --frozen-lockfile
 
-      - name: Run tests
-        run: bun run test
-
-      - name: Build CLI package
-        working-directory: ./cli
-        run: bun run build
+      - name: Validate (tests then build)
+        run: bun run test && bun run build
 
       - name: Semantic release
         env:
