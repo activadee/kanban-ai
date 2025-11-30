@@ -35,8 +35,6 @@ export function CardInspector({
     onClose?: () => void
     onEnhanceCard?: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
 }) {
-    const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('ticket')
-    const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
     const previousCardIdRef = useRef(card.id)
     const previousAttemptIdRef = useRef<string | undefined>(undefined)
 
@@ -52,14 +50,19 @@ export function CardInspector({
     })
 
     const {details, header, attempt, git, activity} = inspectorState
+    const initialTopLevelTab: TopLevelTab = attempt.attempt ? 'attempts' : 'ticket'
+
+    const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>(initialTopLevelTab)
+    const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
 
     useEffect(() => {
         if (previousCardIdRef.current !== card.id) {
-            setActiveTopLevelTab('ticket')
+            const nextTopLevelTab: TopLevelTab = attempt.attempt ? 'attempts' : 'ticket'
+            setActiveTopLevelTab(nextTopLevelTab)
             setActiveAttemptTab('messages')
             previousCardIdRef.current = card.id
         }
-    }, [card.id])
+    }, [card.id, attempt.attempt])
 
     useEffect(() => {
         const currentAttemptId = attempt.attempt?.id
