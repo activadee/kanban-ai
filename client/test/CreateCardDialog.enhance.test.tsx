@@ -107,6 +107,25 @@ describe("CreateCardDialog – Create & Enhance", () => {
         expect(onOpenChange).toHaveBeenCalledWith(false);
     });
 
+    it("closes once and does not re-open when enhancing", async () => {
+        const { onOpenChange } = renderDialog();
+
+        const titleInput = screen.getByLabelText("Title");
+        fireEvent.change(titleInput, { target: { value: "Enhance me" } });
+
+        const createEnhanceButton = screen.getByRole("button", {
+            name: "Create & Enhance",
+        });
+
+        fireEvent.click(createEnhanceButton);
+
+        await waitFor(() => {
+            expect(onOpenChange).toHaveBeenCalledTimes(1);
+        });
+
+        expect(onOpenChange.mock.calls[0]).toEqual([false]);
+    });
+
     it("Create Ticket calls onSubmit and not onCreateAndEnhance", async () => {
         const { onSubmit, onCreateAndEnhance } = renderDialog();
 

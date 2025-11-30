@@ -8,6 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import {Button} from '@/components/ui/button'
+import {Sparkles} from 'lucide-react'
 
 type TicketSnapshot = {
     title: string
@@ -57,9 +58,13 @@ export function CardEnhancementDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl">
                 <DialogHeader>
-                    <DialogTitle>Review enhancement</DialogTitle>
+                    <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-tight text-primary">
+                        <Sparkles className="size-3" />
+                        AI suggestion ready
+                    </div>
+                    <DialogTitle>Review AI enhancement</DialogTitle>
                     <DialogDescription>
-                        Compare the current ticket with the AI-enhanced suggestion, then accept or reject the changes.
+                        Your ticket was created successfully. Compare the current copy with the AI-enhanced suggestion, then accept or reject the changes.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -109,4 +114,3 @@ export function CardEnhancementDialog({
         </Dialog>
     )
 }
-

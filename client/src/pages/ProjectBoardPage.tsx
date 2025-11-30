@@ -24,6 +24,7 @@ import { useKanbanWS } from "@/lib/ws";
 import { toast } from "@/components/ui/toast.tsx";
 import { eventBus } from "@/lib/events.ts";
 import { describeApiError } from "@/api/http";
+import { Loader2 } from "lucide-react";
 
 export function ProjectBoardPage() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -106,6 +107,14 @@ export function ProjectBoardPage() {
         }
         return result;
     }, [enhancements]);
+
+    const enhancingCount = useMemo(
+        () =>
+            Object.values(enhancements).filter(
+                (entry) => entry.status === "enhancing",
+            ).length,
+        [enhancements],
+    );
 
     const [enhancementDialogCardId, setEnhancementDialogCardId] = useState<string | null>(null);
 
@@ -195,6 +204,17 @@ export function ProjectBoardPage() {
                 </div>
             </div>
 
+            {enhancingCount > 0 && (
+                <div className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    <span>
+                        {enhancingCount === 1
+                            ? "Enhancing 1 ticket in the background"
+                            : `Enhancing ${enhancingCount} tickets in the background`}
+                    </span>
+                </div>
+            )}
+
             <div className="flex-1 min-h-0 px-4 pb-4">
                 <Board
                     projectId={project.id}
@@ -262,6 +282,13 @@ export function ProjectBoardPage() {
                                         cardId,
                                         title: values.title,
                                         description: values.description,
+                                    });
+
+                                    toast({
+                                        title: "Ticket created",
+                                        description:
+                                            "Enhancing in the background. We'll surface the suggestion once it's ready.",
+                                        variant: "default",
                                     });
                                 }
                             } catch (err) {
