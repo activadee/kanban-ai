@@ -2,6 +2,7 @@ import { createApp } from '../app'
 import { createWebSocket, startServer } from '../start'
 import { log, applyLogConfig } from '../log'
 import { loadConfig, setRuntimeConfig } from '../env'
+import { applyDevDatabaseConfig } from './dev-config'
 
 if (import.meta.main) {
   const run = async () => {
@@ -21,7 +22,7 @@ if (import.meta.main) {
       return
     }
 
-    const baseConfig = loadConfig()
+    const baseConfig = applyDevDatabaseConfig(loadConfig())
     const port = Number(getArg('--port', '-p') ?? baseConfig.port)
     const host = getArg('--host') ?? baseConfig.host
     const config = {
@@ -36,7 +37,7 @@ if (import.meta.main) {
     const { upgradeWebSocket, websocket } = await createWebSocket()
     const app = createApp({ upgradeWebSocket, config })
     const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
-    log.info('server', 'listening', { url, dbFile })
+    log.info('server', 'listening', { url, dbFile, mode: 'dev' })
   }
   run().catch((error) => {
     log.error('server', 'failed to start', { err: error })

@@ -38,6 +38,10 @@ Common issues and how to debug them when running KanbanAI locally or in self-hos
 - Confirm `DATABASE_URL`:
   - If unset, the server will use the default OS data directory path.
   - If set, ensure the directory exists and the process has write permission.
+- Dev vs prod databases:
+  - `bun run dev` writes to `kanban-dev.db` under the OS data directory (e.g. `~/.local/share/kanbanai/kanban-dev.db`).
+  - `bun run prod` and binaries continue to use `kanban.db` in the same directory when no override is provided.
+  - To reset the dev database, stop the dev server and delete `kanban-dev.db` (or point `KANBANAI_DEV_DATABASE_URL` / `DATABASE_URL` at a fresh path).
 - Check migrations:
   - Migrations run automatically on start.
   - If you override `KANBANAI_MIGRATIONS_DIR`, ensure it points at a valid Drizzle migrations directory.

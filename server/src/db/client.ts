@@ -1,21 +1,10 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
 import { dbSchema } from 'core'
-import os from 'os'
 import path from 'path'
 import fs from 'fs'
-import type { RuntimeEnv, ServerConfig } from '../env'
-
-const resolveDataDir = (env: RuntimeEnv) => {
-  const platform = process.platform
-  if (platform === 'darwin') return path.join(os.homedir(), 'Library', 'Application Support', 'KanbanAI')
-  if (platform === 'win32') {
-    const base = env.LOCALAPPDATA || env.APPDATA || path.join(os.homedir(), 'AppData', 'Local')
-    return path.join(base, 'KanbanAI')
-  }
-  const xdg = env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
-  return path.join(xdg, 'kanbanai')
-}
+import type { ServerConfig } from '../env'
+import { resolveDefaultDbPath } from './paths'
 
 const normalizeDbPath = (raw: string) => {
   if (raw === ':memory:') return raw
@@ -57,7 +46,7 @@ const resolveDbPath = (config: ServerConfig) => {
     return path.isAbsolute(normalized) ? normalized : path.resolve(process.cwd(), normalized)
   }
 
-  return path.join(resolveDataDir(config.env), 'kanban.db')
+  return resolveDefaultDbPath(config)
 }
 
 export type DbClient = ReturnType<typeof drizzle>
