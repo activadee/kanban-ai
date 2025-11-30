@@ -1,4 +1,4 @@
-import {useMemo, useState} from 'react'
+import {useEffect, useMemo, useState} from 'react'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card as UICard, CardContent} from '@/components/ui/card'
@@ -62,6 +62,7 @@ export function KanbanCard({
                            }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
+    const isCardDisabled = disabled || isEnhancing
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -75,7 +76,7 @@ export function KanbanCard({
     const cardInner = (
         <UICard
             className={`${
-                disabled || isEnhancing ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
+                isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
             } ${blocked && !done ? 'border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10' : ''}`}>
             <CardContent className="p-3">
                 {showHeaderRow ? (
@@ -174,7 +175,7 @@ export function KanbanCard({
                                 </TooltipProvider>
                             ) : null}
                             {menuContext ? (
-                                <KanbanCardMenu card={card} context={menuContext}/>
+                                <KanbanCardMenu card={card} context={menuContext} disabled={isCardDisabled}/>
                             ) : null}
                         </div>
                     </div>
@@ -212,13 +213,20 @@ export function KanbanCard({
 type MenuProps = {
     card: TCard
     context: KanbanCardMenuContext
+    disabled?: boolean
 }
 
-function KanbanCardMenu({card, context}: MenuProps) {
+function KanbanCardMenu({card, context, disabled = false}: MenuProps) {
     const {projectId, lane, blocked, onOpenDetails, onEdit, onEnhanceTicket} = context
 
     const [menuOpen, setMenuOpen] = useState(false)
     const [prOpen, setPrOpen] = useState(false)
+
+    useEffect(() => {
+        if (!disabled) return
+        setMenuOpen(false)
+        setPrOpen(false)
+    }, [disabled])
 
     const projectSettingsQuery = useProjectSettings(projectId)
     const appSettingsQuery = useAppSettings()
@@ -373,13 +381,20 @@ function KanbanCardMenu({card, context}: MenuProps) {
 
     return (
         <>
-            <DropdownMenu onOpenChange={setMenuOpen}>
+            <DropdownMenu
+                open={disabled ? false : menuOpen}
+                onOpenChange={(open) => {
+                    if (disabled) return
+                    setMenuOpen(open)
+                }}
+            >
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="ghost"
                         size="icon"
                         aria-label={menuAriaLabel}
                         className="ml-1 text-muted-foreground"
+                        disabled={disabled}
                         onClick={(event) => event.stopPropagation()}
                         onPointerDown={(event) => event.stopPropagation()}
                     >
