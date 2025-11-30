@@ -1,3 +1,9 @@
+## [0.10.0](https://github.com/activadee/kanban-ai/compare/v0.9.1...v0.10.0) (2025-11-30)
+
+### Features
+
+* add in-app release check and update reminder banner ([#196](https://github.com/activadee/kanban-ai/issues/196)) ([ed6ab7b](https://github.com/activadee/kanban-ai/commit/ed6ab7b3a114d277c841c5bd665aecd3896f1b14))
+
 ## [0.9.1](https://github.com/activadee/kanban-ai/compare/v0.9.0...v0.9.1) (2025-11-30)
 
 ### Bug Fixes
