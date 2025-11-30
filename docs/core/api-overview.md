@@ -28,6 +28,9 @@ All examples below omit the `/api/v1` prefix for brevity.
   - `GET  /projects/:projectId/settings` – load per-project settings.
   - `PATCH /projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, automation flags).
   - `POST /projects/:projectId/tickets/enhance` – send `{title, description?, agent?, profileId?}` to the configured agent and receive `{ticket}` with rewritten text (RFC 7807 errors on failure).
+  - `GET  /projects/:projectId/enhancements` – hydrate persisted enhancement entries. Returns `{ enhancements: Record<string, { status: "enhancing" | "ready", suggestion?: { title: string, description?: string } }> }` so the UI can show badges and up-to-date suggestions.
+  - `PUT  /projects/:projectId/cards/:cardId/enhancement` – record a card’s enhancement status (`"enhancing"` while the job runs, `"ready"` when the agent response is available) and an optional suggestion payload.
+  - `DELETE /projects/:projectId/cards/:cardId/enhancement` – clear the persisted enhancement state after acceptance, rejection, or abandonment.
 - Boards:
   - `GET    /boards/:boardId` – board state (columns + cards).
   - `POST   /boards/:boardId/cards` – create a card. Responds with `{ state, cardId }` so clients can track the created card (e.g. when queuing background enhancements).

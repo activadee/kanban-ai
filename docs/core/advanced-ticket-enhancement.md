@@ -76,6 +76,25 @@ The UI and integrations continue to use the same enhancement endpoint, but now t
   - The board UI queues this request, watches the enhancement status, and applies the accepted suggestion via the normal
     card APIs.
 
+## Enhancement state persistence
+
+Enhancements are now persisted per-card so the UI can show badges and ready-state indicators even if you reload the
+board or switch devices:
+
+- `GET /projects/:projectId/enhancements`
+  - Returns `{ "enhancements": { "<cardId>": { "status": "enhancing" | "ready", "suggestion"?: { "title": string, "description"?: string } } } }`.
+  - The client polls this endpoint on board load and after state changes to hydrate each card’s badge and sparkle icon.
+- `PUT /projects/:projectId/cards/:cardId/enhancement`
+  - Persists the current status (`"enhancing"` while the job is running, `"ready"` once the agent response arrives) and
+    an optional `suggestion` payload derived from the enhancement result.
+  - Called when the UI queues a background job and again when the suggestion is ready so other clients can pick up the
+    same state.
+- `DELETE /projects/:projectId/cards/:cardId/enhancement`
+  - Clears the persisted entry when a suggestion is accepted, rejected, or abandoned so the card returns to its normal
+    state.
+
+The persisted state lets sessions share information about pending and ready suggestions without refetching every card.
+
 ## Agent pipeline
 
 Under the hood, ticket enhancement is orchestrated by `agentEnhanceTicket` in the core layer, implemented as a generic
