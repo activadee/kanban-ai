@@ -1,3 +1,13 @@
+## [0.10.3](https://github.com/activadee/kanban-ai/compare/v0.10.2...v0.10.3) (2025-11-30)
+
+### Bug Fixes
+
+* default CardInspector to Attempts tab when an attempt exists ([#197](https://github.com/activadee/kanban-ai/issues/197)) ([fdf6f90](https://github.com/activadee/kanban-ai/commit/fdf6f909dd77e4e6259e1974962ccce0bb486632))
+
+### Chores
+
+* update author ([6d22c54](https://github.com/activadee/kanban-ai/commit/6d22c54257dc68f3df62fe71230174f165cb2ba4))
+
 ## [0.10.2](https://github.com/activadee/kanban-ai/compare/v0.10.1...v0.10.2) (2025-11-30)
 
 ### Bug Fixes

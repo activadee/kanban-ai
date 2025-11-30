@@ -1,6 +1,6 @@
 {
   "name": "kanban-ai",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "Thin CLI wrapper that downloads and runs the KanbanAI binary from GitHub releases.",
   "bin": {
     "kanban-ai": "dist/index.js"
