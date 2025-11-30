@@ -17,7 +17,7 @@ export function dashboardWebsocketHandlers() {
                 const overview = await getDashboardOverview()
                 ws.send(serialize({type: 'dashboard_overview', payload: overview}))
             } catch (error) {
-                log.error({err: error}, '[ws:dashboard] failed to load overview')
+                log.error('ws:dashboard', 'failed to load overview', {err: error})
             }
         },
         onClose(_evt: CloseEvent, ws: WSContext) {

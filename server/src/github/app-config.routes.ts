@@ -55,7 +55,7 @@ export const createGithubAppConfigRouter = () => {
             const repos = await listUserRepos()
             return c.json({repos}, 200)
         } catch (error) {
-            log.error({err: error}, '[github:repos] failed')
+            log.error('github:repos', 'failed', {err: error})
             const message = error instanceof Error ? error.message : 'GitHub repo listing failed'
             const isAuth = message.toLowerCase().includes('not connected') || message.toLowerCase().includes('token')
             return problemJson(c, {
@@ -75,7 +75,7 @@ export const createGithubAppConfigRouter = () => {
             })
             return c.body(null, 204)
         } catch (error) {
-            log.error({err: error}, '[github:logout] failed')
+            log.error('github:auth', 'logout failed', {err: error})
             return problemJson(c, {
                 status: 502,
                 title: 'GitHub logout failed',
@@ -86,4 +86,3 @@ export const createGithubAppConfigRouter = () => {
 
     return router
 }
-

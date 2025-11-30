@@ -10,7 +10,7 @@ export const getBoardStateHandler = async (c: any, ctx: BoardContext) => {
         const state = await fetchBoardState(ctx.boardId);
         return c.json({state}, 200);
     } catch (error) {
-        log.error({err: error, boardId: ctx.boardId}, "[board:state] failed");
+        log.error("board:state", "failed", {err: error, boardId: ctx.boardId});
         return problemJson(c, {status: 502, detail: "Failed to fetch board state"});
     }
 };

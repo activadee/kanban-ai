@@ -86,7 +86,7 @@ export const createApp = ({
     if (appConfig.debugLogging) {
         app.use('*', logger((str, ...rest) => {
             const line = rest.length ? [str, ...rest].join(' ') : str
-            log.debug({source: 'hono'}, line)
+            log.debug('hono', line)
         }))
     }
 
@@ -160,7 +160,7 @@ export const createApp = ({
     app.notFound((c) => problemJson(c, {status: 404, detail: 'Not Found'}))
 
     app.onError((err, c) => {
-        log.error({err}, '[app:error]')
+        log.error('app', 'error', {err})
         if (err instanceof ProblemError) {
             return problemJson(c, err.toProblem())
         }

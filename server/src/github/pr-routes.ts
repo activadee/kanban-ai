@@ -45,7 +45,7 @@ export function createGithubProjectRouter() {
             })
             return c.json({pullRequests}, 200)
         } catch (error) {
-            log.error({err: error, projectId, branch, state}, '[github:pull-requests:list] failed')
+            log.error('github:pull-requests:list', 'failed', {err: error, projectId, branch, state})
             const message = error instanceof Error ? error.message : 'Failed to list pull requests'
             const lowered = message.toLowerCase()
             const status: 401 | 502 = lowered.includes('auth') || lowered.includes('credential') || lowered.includes('401') ? 401 : 502
@@ -65,7 +65,7 @@ export function createGithubProjectRouter() {
             const pr = await getPullRequest(projectId, auth.accessToken, number)
             return c.json({pr}, 200)
         } catch (error) {
-            log.error({err: error, projectId, number}, '[github:pull-requests:get] failed')
+            log.error('github:pull-requests:get', 'failed', {err: error, projectId, number})
             const message = error instanceof Error ? error.message : 'Failed to load pull request'
             const lowered = message.toLowerCase()
             const status: 401 | 502 = lowered.includes('auth') || lowered.includes('credential') || lowered.includes('401') ? 401 : 502
@@ -144,15 +144,24 @@ export function createGithubProjectRouter() {
                     await tasks.broadcastBoard(boardId)
                 }
             } catch (persistError) {
-                log.error(
-                    {err: persistError, projectId, attemptId, cardId: card?.id ?? attempt?.cardId, prUrl: pr.url},
-                    '[github:pull-requests:create] failed to persist PR url',
-                )
+                log.error('github:pull-requests:create', 'failed to persist PR url', {
+                    err: persistError,
+                    projectId,
+                    attemptId,
+                    cardId: card?.id ?? attempt?.cardId,
+                    prUrl: pr.url,
+                })
             }
 
             return c.json({pr}, 200)
         } catch (error) {
-            log.error({err: error, projectId, attemptId, branch: branch ?? undefined, base}, '[github:pull-requests:create] failed')
+            log.error('github:pull-requests:create', 'failed', {
+                err: error,
+                projectId,
+                attemptId,
+                branch: branch ?? undefined,
+                base,
+            })
             const message = error instanceof Error ? error.message : 'Failed to create PR'
             const lowered = message.toLowerCase()
             const status: 401 | 502 = lowered.includes('auth') || lowered.includes('permission') || lowered.includes('credential') || lowered.includes('401')

@@ -7,7 +7,7 @@ export function registerSettingsListeners(bus: AppEventBus) {
         try {
             await ensureAppSettings()
         } catch (error) {
-            log.error({err: error}, '[settings] failed to refresh cache on settings.global.updated')
+            log.error('settings', 'failed to refresh cache on settings.global.updated', {err: error})
         }
     })
 }

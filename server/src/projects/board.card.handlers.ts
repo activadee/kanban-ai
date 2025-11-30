@@ -41,10 +41,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         const state = await fetchBoardState(boardId);
         return c.json({state}, 201);
     } catch (error) {
-        log.error(
-            {err: error, boardId, projectId: project.id},
-            "[board:cards:create] failed",
-        );
+        log.error("board:cards", "create failed", {err: error, boardId, projectId: project.id});
         return problemJson(c, {status: 502, detail: "Failed to create card"});
     }
 };
@@ -195,10 +192,7 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
     } catch (error) {
         const msg =
             error instanceof Error ? error.message : "Failed to update card";
-        log.error(
-            {err: error, boardId, cardId},
-            "[board:cards:update] failed",
-        );
+        log.error("board:cards", "update failed", {err: error, boardId, cardId});
         const status =
             msg === "dependency_board_mismatch" || msg === "dependency_cycle"
                 ? 400
@@ -230,10 +224,7 @@ export const deleteCardHandler = async (c: any, ctx: BoardContext) => {
         await broadcastBoard(boardId);
         return c.body(null, 204);
     } catch (error) {
-        log.error(
-            {err: error, boardId, cardId},
-            "[board:cards:delete] failed",
-        );
+        log.error("board:cards", "delete failed", {err: error, boardId, cardId});
         return problemJson(c, {
             status: 502,
             detail: "Failed to delete card",

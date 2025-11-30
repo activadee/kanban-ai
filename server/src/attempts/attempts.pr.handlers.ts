@@ -50,10 +50,12 @@ export async function createAttemptPrHandler(c: any) {
             await projectsRepo.updateCard(attempt.cardId, {prUrl: pr.url, updatedAt: new Date()})
             await tasks.broadcastBoard(attempt.boardId)
         } catch (error) {
-            log.error(
-                {err: error, attemptId: attempt.id, cardId: attempt.cardId, prUrl: pr.url},
-                '[attempts:pr] failed to persist PR url',
-            )
+            log.error('attempts:pr', 'failed to persist PR url', {
+                err: error,
+                attemptId: attempt.id,
+                cardId: attempt.cardId,
+                prUrl: pr.url,
+            })
         }
         return c.json({pr}, 200)
     } catch (error) {

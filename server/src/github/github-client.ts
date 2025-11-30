@@ -150,7 +150,7 @@ export async function fetchGithubAccount(token: string): Promise<{
         const primary = emails.find((entry) => entry.primary)
         primaryEmail = primary?.email ?? null
     } catch (err) {
-        log.error({err}, 'GitHub email lookup failed')
+        log.error('github:account', 'GitHub email lookup failed', {err})
     }
 
     return {

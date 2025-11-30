@@ -67,6 +67,6 @@ export async function removeWorktree(repoPath: string, worktreePath: string, met
         await run('git', ['worktree', 'remove', '--force', worktreePath], repoPath)
         publishWorktreeRemoved(meta, worktreePath)
     } catch (err) {
-        log.warn({err}, '[worktree:remove] failed')
+        log.warn('worktree:remove', 'failed', {err})
     }
 }

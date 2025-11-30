@@ -13,7 +13,7 @@ export const createFilesystemRouter = () => {
             const entries = await discoverGitRepositories({basePath: path ?? undefined})
             return c.json({entries}, 200)
         } catch (error) {
-            log.error({err: error}, '[fs:git-repos] failed')
+            log.error('fs:git-repos', 'failed', {err: error})
             return problemJson(c, {status: 502, detail: 'Failed to scan for git repositories'})
         }
     })

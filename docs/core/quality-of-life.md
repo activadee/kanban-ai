@@ -54,18 +54,18 @@ Last updated: 2025-11-28
   - Drag-and-drop moves, GitHub imports, Attempt status changes, and profile updates appear in real time for all
     connected users.
 
-## Structured logging and debug traces
+## Logging and debug traces
 
-- The server uses a Pino-based logger for structured logs:
-  - Log level is controlled by `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default `info`).
-  - Logs are emitted as JSON, suitable for local development and production log aggregation.
+- The server uses a Winston-backed adapter that emits human-readable lines:
+  - `LEVEL [scope] message key=value ...`
+  - Scopes follow logical domains like `settings`, `github:repos`, `attempts:git`, `ws:dashboard`, `server`, etc.
+  - Context is appended as key/value pairs without JSON blobs (e.g. `err="Error: failed" boardId=abc123`).
+- Log level is controlled by `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default `info`), and can also be enabled via `KANBANAI_DEBUG` / `DEBUG` as described in `server/src/env.ts`.
 - Request-level traces:
-  - Hono’s logger middleware can be enabled in debug setups:
+  - Hono’s logger middleware is enabled when debug logging is on:
     - `KANBANAI_DEBUG=1` or `DEBUG=*` / `DEBUG=kanbanai*` or `LOG_LEVEL=debug`.
-  - When enabled, per-request lines are logged at `debug` level alongside structured application logs.
-- Examples:
+  - When enabled, per-request lines are logged at `debug` level with the `hono` scope, for example:
 
 ```bash
-LOG_LEVEL=info bun run prod                       # structured logs, no per-request traces
-LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod     # structured logs + Hono request lines
+DEBUG=kanbanai* LOG_LEVEL=debug bun run prod   # debug logs + Hono request lines (scope=hono)
 ```

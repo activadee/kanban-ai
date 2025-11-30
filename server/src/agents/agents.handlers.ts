@@ -42,7 +42,7 @@ export async function getAgentProfileSchemaHandler(c: any) {
         const schema = buildAgentProfileSchema(agent)
         return c.json(schema)
     } catch (err) {
-        log.error({err}, '[agents:schema] failed')
+        log.error('agents:schema', 'failed', {err})
         return problemJson(c, {status: 500, detail: 'Failed to build profile schema'})
     }
 }
@@ -88,7 +88,7 @@ export async function createGlobalAgentProfileHandler(c: any) {
         if (!row) return problemJson(c, {status: 500, detail: 'Failed to create profile'})
         return c.json(row, 201)
     } catch (err) {
-        log.error({err}, '[agents:profiles:create] failed')
+        log.error('agents:profiles', 'create failed', {err})
         return problemJson(c, {status: 500, detail: 'Failed to create profile'})
     }
 }
@@ -134,7 +134,7 @@ export async function updateGlobalAgentProfileHandler(c: any) {
         if (!row) return problemJson(c, {status: 404, detail: 'Profile not found'})
         return c.json(row)
     } catch (err) {
-        log.error({err}, '[agents:profiles:update] failed')
+        log.error('agents:profiles', 'update failed', {err})
         return problemJson(c, {status: 500, detail: 'Failed to update profile'})
     }
 }
@@ -147,7 +147,7 @@ export async function deleteGlobalAgentProfileHandler(c: any) {
         await agentProfilesGlobal.deleteGlobalAgentProfile(id)
         return c.body(null, 204)
     } catch (err) {
-        log.error({err}, '[agents:profiles:delete] failed')
+        log.error('agents:profiles', 'delete failed', {err})
         return problemJson(c, {status: 500, detail: 'Failed to delete profile'})
     }
 }

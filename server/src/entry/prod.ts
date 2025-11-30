@@ -48,7 +48,7 @@ const run = async () => {
     bun run server/src/entry/prod.ts [--host <host>] [--port <port>] [--migrations-dir <path>]
     bun run prod                    # via root package.json script
   `
-    log.info(usage.trim())
+    log.info('prod', 'usage', { usage: usage.trim() })
     return
   }
 
@@ -77,12 +77,12 @@ const run = async () => {
     migrationsDir,
   })
 
-  log.info({ url, dbFile, migrationsDir: resolvedMigrationsDir }, '[prod] listening')
+  log.info('prod', 'listening', { url, dbFile, migrationsDir: resolvedMigrationsDir })
 }
 
 if (import.meta.main) {
   run().catch((error) => {
-    log.error({ err: error }, '[prod] failed to start')
+    log.error('prod', 'failed to start', { err: error })
     process.exit(1)
   })
 }

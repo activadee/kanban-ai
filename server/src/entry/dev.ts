@@ -17,7 +17,7 @@ if (import.meta.main) {
 
     if (hasFlag('--help') || hasFlag('-h')) {
       const usage = `\nkanbanai — KanbanAI server (dev)\n\nUsage:\n  bun run server/src/entry/dev.ts [--host <host>] [--port <port>]\n`
-      log.info(usage.trim())
+      log.info('server', 'usage', { usage: usage.trim() })
       return
     }
 
@@ -36,10 +36,10 @@ if (import.meta.main) {
     const { upgradeWebSocket, websocket } = await createWebSocket()
     const app = createApp({ upgradeWebSocket, config })
     const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
-    log.info({ url, dbFile }, '[server] listening')
+    log.info('server', 'listening', { url, dbFile })
   }
   run().catch((error) => {
-    log.error({ err: error }, '[server] failed to start')
+    log.error('server', 'failed to start', { err: error })
     process.exit(1)
   })
 }

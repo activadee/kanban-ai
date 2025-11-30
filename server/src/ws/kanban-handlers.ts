@@ -137,7 +137,7 @@ export function kanbanWebsocketHandlers(boardId: string) {
                         break
                 }
             } catch (error) {
-                log.error({err: error, boardId}, '[ws:message] failed')
+                log.error('ws:message', 'failed', {err: error, boardId})
             }
         },
     }

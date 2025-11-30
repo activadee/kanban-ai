@@ -63,7 +63,7 @@ This page gives you a tour of the main product features and how they fit togethe
 - **Auto‑commit and auto‑push** – When enabled, successful Attempts can trigger an automatic commit (and optional push) using the latest agent message as commit content.
 - **Dependency‑aware moves** – Moving a blocked card shows helpful toasts explaining which dependencies must be completed first.
 - **Realtime board sync** – WebSocket listeners broadcast board, Attempt, git, and agent events to all connected clients.
-- **Structured logging** – Server logs are structured JSON via Pino with configurable log levels and optional request tracing in debug mode.
+- **Readable logging** – Server logs are human‑readable lines with scopes (e.g. `[github:repos] failed`) and optional key/value context, with log level controlled by `LOG_LEVEL` / `KANBANAI_DEBUG` / `DEBUG`.
 
 ## API & realtime
 

@@ -44,7 +44,7 @@ export const listProjectBranchesHandler = async (c: any) => {
         const branches = await listProjectBranches(projectId);
         return c.json({branches}, 200);
     } catch (error) {
-        log.error({err: error, projectId}, "[projects:branches] failed");
+        log.error("projects:branches", "failed", {err: error, projectId});
         return problemJson(c, {
             status: 502,
             detail: "Failed to list branches",
