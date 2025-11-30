@@ -1,3 +1,9 @@
+## [0.10.1](https://github.com/activadee/kanban-ai/compare/v0.10.0...v0.10.1) (2025-11-30)
+
+### Bug Fixes
+
+* **client:** clarify create & enhance dialog flow ([#195](https://github.com/activadee/kanban-ai/issues/195)) ([ccca8bc](https://github.com/activadee/kanban-ai/commit/ccca8bc061e8fa7989596220bd16aaf192d4e54f))
+
 ## [0.10.0](https://github.com/activadee/kanban-ai/compare/v0.9.1...v0.10.0) (2025-11-30)
 
 ### Features
