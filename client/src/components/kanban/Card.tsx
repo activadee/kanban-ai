@@ -2,9 +2,10 @@ import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card as UICard, CardContent} from "@/components/ui/card"
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
-import {Bot, GitPullRequest, Sparkles, Loader2} from 'lucide-react'
+import {Bot, GitPullRequest, Sparkles, Loader2, Badge} from 'lucide-react'
 import type {Card as TCard} from 'shared'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
+import { Button } from "@/components/ui/button"
 
 type Props = {
     card: TCard
@@ -47,16 +48,16 @@ export function KanbanCard({
                     <div className="mb-2 flex items-start justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                             {card.ticketKey ? (
-                                <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
+                                <Badge fontVariant="outline" className="text-[10px] font-semibold tracking-tight">
                                     {card.ticketKey}
                                 </Badge>
                             ) : null}
                             {blocked && !done ? (
-                                <Badge variant="outline"
+                                <Badge fontVariant="outline"
                                        className="border-destructive/50 text-destructive">Blocked</Badge>
                             ) : null}
                             {isEnhancing ? (
-                                <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                                <Badge fontVariant="outline" className="flex items-center gap-1 text-xs">
                                     <Loader2 className="size-3 animate-spin"/>
                                     Enhancing
                                 </Badge>
