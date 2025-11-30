@@ -75,7 +75,7 @@ export function CardInspector({
                 onSave={details.handleSave}
                 onDelete={details.handleDelete}
                 onEnhanceInBackground={
-                    onUpdate && onEnhanceCard
+                    onEnhanceCard
                         ? async () => {
                             // Save latest edits, then start background enhancement.
                             await details.handleSave()

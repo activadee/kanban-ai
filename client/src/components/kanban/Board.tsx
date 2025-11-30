@@ -236,6 +236,15 @@ export function Board({
                                                 values,
                                             )
                                         }
+                                        onEnhanceCard={
+                                            handlers.onEnhanceCard
+                                                ? (values) =>
+                                                    handlers.onEnhanceCard?.(
+                                                        resolvedSelectedId,
+                                                        values,
+                                                    )
+                                                : undefined
+                                        }
                                         onDelete={async () => {
                                             try {
                                                 await handlers.onDeleteCard(
@@ -440,6 +449,16 @@ export function Board({
                     onSubmit={async (values) => {
                         await handlers.onUpdateCard(editingCard.id, values);
                     }}
+                    onEnhanceInBackground={
+                        handlers.onEnhanceCard
+                            ? async (values) => {
+                                await handlers.onEnhanceCard?.(
+                                    editingCard.id,
+                                    values,
+                                );
+                            }
+                            : undefined
+                    }
                     onDelete={async () => {
                         await handlers.onDeleteCard(editingCard.id);
                     }}

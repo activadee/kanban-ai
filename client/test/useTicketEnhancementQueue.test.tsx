@@ -14,13 +14,6 @@ vi.mock("@/components/ui/toast", () => ({
     toast: vi.fn(),
 }));
 
-vi.mock("@/api/http", () => ({
-    describeApiError: (_err: unknown, fallback: string) => ({
-        title: fallback,
-        description: String(_err ?? ""),
-    }),
-}));
-
 function TestComponent(props: {
     onReady: (queue: ReturnType<typeof useTicketEnhancementQueue>) => void;
 }) {
@@ -145,4 +138,3 @@ describe("useTicketEnhancementQueue", () => {
         expect(toast).toHaveBeenCalled();
     });
 });
-

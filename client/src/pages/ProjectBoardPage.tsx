@@ -16,6 +16,7 @@ import {
     useUpdateCard,
     useTicketEnhancementQueue,
 } from "@/hooks";
+import type { CardEnhancementStatus } from "@/hooks/tickets";
 import type { MoveCardResponse } from "@/api/board";
 import type { BoardState } from "shared";
 import { boardKeys } from "@/hooks/board";
@@ -98,8 +99,8 @@ export function ProjectBoardPage() {
 
     const enhancementStatusByCardId = useMemo(() => {
         const entries = Object.entries(enhancements);
-        if (!entries.length) return {} as Record<string, import("@/hooks/tickets").CardEnhancementStatus>;
-        const result: Record<string, import("@/hooks/tickets").CardEnhancementStatus> = {};
+        if (!entries.length) return {} as Record<string, CardEnhancementStatus>;
+        const result: Record<string, CardEnhancementStatus> = {};
         for (const [cardId, entry] of entries) {
             result[cardId] = entry.status;
         }

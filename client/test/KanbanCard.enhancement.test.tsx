@@ -22,7 +22,8 @@ describe("KanbanCard – enhancement status", () => {
             />,
         );
 
-        expect(screen.getByText("Enhancing")).toBeInTheDocument();
+        const badge = screen.getByText("Enhancing");
+        expect(badge).toBeTruthy();
         expect(
             screen.queryByRole("button", { name: "View enhancement diff" }),
         ).toBeNull();
@@ -48,4 +49,3 @@ describe("KanbanCard – enhancement status", () => {
         expect(onEnhancementClick).toHaveBeenCalledTimes(1);
     });
 });
-
