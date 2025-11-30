@@ -65,3 +65,4 @@ Additional configuration endpoints:
 - The PR helper emits `github.pr.created` so other modules can react (for example, refreshing PR lists or updating activity feeds).
 - For inline PR summaries (title + body suggestions), the API also exposes:
   - `POST /projects/:projectId/pull-requests/summary` – uses the configured inline agent/profile to summarize the diff between a base and head branch, returning `{summary: {title, body}}` for the Create PR dialog.
+  - The client caches inline summary results per project + branch so users can trigger a summary, close the PR dialog, and return later to apply the cached suggestion; cancellation is explicit (AbortController) rather than tied to dialog lifecycle.
