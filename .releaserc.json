@@ -28,15 +28,10 @@
       }
     ],
     [
-      "@semantic-release/npm",
-      {
-        "pkgRoot": "cli"
-      }
-    ],
-    [
       "@semantic-release/exec",
       {
-        "prepareCmd": "bun run build:binary"
+        "prepareCmd": "node scripts/semrel-sync-cli-version.js ${nextRelease.version} && (cd cli && bun run build) && bun run build:binary",
+        "publishCmd": "cd cli && npm publish --provenance --access public"
       }
     ],
     [
