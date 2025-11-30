@@ -6,7 +6,7 @@ title: PR inline summary
 
 ## Overview
 
-PR inline summary lets KanbanAI draft pull request titles and descriptions based on the changes between a base branch and a feature branch. It is an inline operation: it does not create Attempts, branches, or commits; it simply returns a suggested PR title/body that you can accept or ignore in the **Create Pull Request** dialog.
+PR inline summary lets KanbanAI draft pull request titles and descriptions based on the changes between a base branch and a feature branch. It remains an inline operation: it does not create Attempts, branches, or commits; it simply returns a suggested PR title/body that you can accept or ignore. The request now runs in the background, survives dialog close/reopen, and caches the latest suggestion per project + branch (+ optional base).
 
 ## UI behavior
 
@@ -16,10 +16,16 @@ PR inline summary lets KanbanAI draft pull request titles and descriptions based
   - Disabled while a summary request is already in flight.
 - When you click it:
   - The current title/description and branch information are sent to the server for summarization.
-  - The button shows a spinner while the request runs.
+  - A toast appears: “Drafting PR template…” and notes you can close the dialog while it runs.
+  - The button shows a spinner while the request runs, but closing the dialog no longer cancels the task.
+- Background lifecycle:
+  - Results are cached per `(projectId, headBranch, baseBranch|auto)`.
+  - If the dialog is closed when the summary finishes, a toast says “PR template ready for branch &lt;branch&gt;” with an action to reopen the dialog.
+  - Reopening the dialog for the same project/branch rehydrates the cached suggestion—no re-run required.
+  - A running request shows a small inline banner with a cancel button; cancellation uses `AbortController` and clears the cached state.
 - On success:
   - An “AI suggestion preview” box appears below the form.
-  - The preview shows Original vs Suggestion titles and descriptions side-by-side.
+  - The preview shows Original vs Suggestion titles and descriptions side-by-side (using the snapshot captured when you clicked the bot).
   - You can click **Accept** to apply the suggestion into the form, or **Reject** to discard it and keep your original text.
   - After Accept/Reject you can click the bot button again to request a new suggestion.
 - Summarization never creates a PR on its own:
@@ -75,4 +81,3 @@ PR summarization reuses the same inline infrastructure as ticket enhancement:
 - Keeping inline behavior aligned with your chosen agent/profile, so ticket enhancement and PR summary share the same tuning.
 
 For implementation details on agents, profiles, and inline tasks, see `core/agents-and-profiles.md` and `core/advanced-ticket-enhancement.md`.
-

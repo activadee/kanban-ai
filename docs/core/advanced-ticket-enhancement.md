@@ -11,6 +11,10 @@ you create or update a card. It is still an inline operation in the sense that n
 started automatically; instead, the enhancement request is queued as a background job and the rewritten text is persisted
 only when you explicitly accept it via the board UI.
 
+The same inline infrastructure powers PR inline summaries/templates: both flows keep requests non-blocking, cache
+results per project/branch, and let users close dialogs while the inline task runs, then rehydrate the suggestion when
+they return.
+
 ## UI behavior
 
 ### Creating tickets

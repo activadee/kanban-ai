@@ -106,11 +106,13 @@ export type PrSummaryResponse = {
 export async function summarizeProjectPullRequest(
     projectId: string,
     payload: CreatePrSummaryPayload,
+    signal?: AbortSignal,
 ): Promise<PrSummaryResponse['summary']> {
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/pull-requests/summary`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload),
+        signal,
     })
     const data = await parseApiResponse<PrSummaryResponse>(res)
     if (!data?.summary) {

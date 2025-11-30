@@ -51,7 +51,7 @@ describe('useSummarizePullRequest', () => {
             branch: 'feature/test',
             agent: undefined,
             profileId: undefined,
-        })
+        }, undefined)
 
         expect(result).toEqual({
             title: 'PR Title',

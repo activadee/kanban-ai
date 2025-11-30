@@ -1,6 +1,12 @@
 import {useEffect, useState} from 'react'
 
-type Toast = { id: string; title?: string; description?: string; variant?: 'default' | 'success' | 'destructive' }
+type Toast = {
+    id: string;
+    title?: string;
+    description?: string;
+    variant?: 'default' | 'success' | 'destructive';
+    action?: { label: string; onClick: () => void };
+}
 
 const listeners = new Set<(t: Toast) => void>()
 
@@ -30,10 +36,28 @@ export function Toaster() {
             <div className="flex w-full max-w-sm flex-col gap-2">
                 {items.map((t) => (
                     <div key={t.id} className={`pointer-events-auto rounded-md border p-3 shadow-sm ${
-                        t.variant === 'destructive' ? 'border-destructive/40 bg-destructive/10 text-destructive' : t.variant === 'success' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300' : 'border-border/60 bg-background'
+                        t.variant === 'destructive'
+                            ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                            : t.variant === 'success'
+                                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                                : 'border-border/60 bg-background'
                     }`}>
                         {t.title ? <div className="text-sm font-medium">{t.title}</div> : null}
                         {t.description ? <div className="text-xs opacity-80">{t.description}</div> : null}
+                        {t.action ? (
+                            <button
+                                className="mt-2 inline-flex text-xs font-semibold underline underline-offset-4"
+                                onClick={() => {
+                                    try {
+                                        t.action?.onClick()
+                                    } finally {
+                                        setItems((prev) => prev.filter((x) => x.id !== t.id))
+                                    }
+                                }}
+                            >
+                                {t.action.label}
+                            </button>
+                        ) : null}
                     </div>
                 ))}
             </div>

@@ -1,4 +1,4 @@
-import {useQuery, type UseQueryOptions} from '@tanstack/react-query'
+import {useQuery, useQueryClient, type UseQueryOptions} from '@tanstack/react-query'
 import {useMutation, type UseMutationOptions} from '@tanstack/react-query'
 import type {PRInfo, FileChange} from 'shared'
 import {
@@ -13,6 +13,60 @@ import {
 import {SERVER_URL} from '@/lib/env'
 
 const gitKey = (attemptId: string, suffix: string) => ['attempt-git', attemptId, suffix] as const
+
+export const prInlineSummaryKeys = {
+    all: ['pr-inline-summary'] as const,
+    detail: (projectId: string, headBranch: string, baseBranch?: string) =>
+        [...prInlineSummaryKeys.all, projectId, headBranch, baseBranch ?? '__auto__'] as const,
+    disabled: ['pr-inline-summary', 'disabled'] as const,
+}
+
+export type PrInlineSummaryError = { title?: string; description?: string; status?: number }
+
+export type PrInlineSummaryCache = {
+    status: 'idle' | 'running' | 'success' | 'error'
+    summary?: PrSummaryResult
+    error?: PrInlineSummaryError
+    original?: { title: string; body: string }
+    branch?: string
+    base?: string
+    requestedAt?: number
+    completedAt?: number
+}
+
+const normalizeBranch = (branch?: string | null) => branch?.trim() || ''
+const normalizeBase = (base?: string | null) => base?.trim() || undefined
+
+export function usePrInlineSummaryCache(
+    projectId?: string,
+    branch?: string | null,
+    base?: string | null,
+) {
+    const queryClient = useQueryClient()
+    const headBranch = normalizeBranch(branch)
+    const baseBranch = normalizeBase(base)
+    const key = projectId && headBranch ? prInlineSummaryKeys.detail(projectId, headBranch, baseBranch) : prInlineSummaryKeys.disabled
+    const query = useQuery<PrInlineSummaryCache>({
+        queryKey: key,
+        queryFn: () =>
+            queryClient.getQueryData<PrInlineSummaryCache>(key) ?? {
+                status: 'idle',
+                branch: headBranch,
+                base: baseBranch,
+            },
+        enabled: Boolean(projectId && headBranch),
+        staleTime: Infinity,
+        gcTime: 1000 * 60 * 30,
+        initialData: () =>
+            queryClient.getQueryData<PrInlineSummaryCache>(key) ?? {
+                status: 'idle',
+                branch: headBranch,
+                base: baseBranch,
+            },
+    })
+
+    return {...query, key: projectId && headBranch ? key : null}
+}
 
 export function useAttemptGitStatus(
     attemptId: string | undefined,
@@ -83,6 +137,7 @@ type PrSummaryArgs = {
     branch?: string
     agent?: string
     profileId?: string
+    signal?: AbortSignal
 }
 
 type PrSummaryResult = {title: string; body: string}
@@ -91,8 +146,8 @@ export function useSummarizePullRequest(
     options?: UseMutationOptions<PrSummaryResult, Error, PrSummaryArgs>,
 ) {
     return useMutation({
-        mutationFn: ({projectId, ...payload}: PrSummaryArgs) =>
-            summarizeProjectPullRequest(projectId, payload),
+        mutationFn: ({projectId, signal, ...payload}: PrSummaryArgs) =>
+            summarizeProjectPullRequest(projectId, payload, signal),
         ...options,
     })
 }
