@@ -9,6 +9,11 @@ export type MoveCardResponse = {
     columns: Record<ColumnId, Column>;
 }
 
+export type CreateCardResponse = {
+    state: BoardState;
+    cardId: string;
+}
+
 export async function fetchBoardState(boardId: string): Promise<BoardState> {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}`)
     const data = await parseApiResponse<{ state: BoardState }>(res)
@@ -19,7 +24,7 @@ export async function createCard(
     boardId: string,
     columnId: string,
     values: { title: string; description?: string | null; dependsOn?: string[] },
-) {
+): Promise<CreateCardResponse> {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards`, {
         method: 'POST',
         headers: jsonHeaders,
@@ -30,7 +35,7 @@ export async function createCard(
             dependsOn: values.dependsOn ?? []
         }),
     })
-    return parseApiResponse(res)
+    return parseApiResponse<CreateCardResponse>(res)
 }
 
 export async function updateCard(

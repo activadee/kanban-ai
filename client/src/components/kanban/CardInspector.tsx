@@ -20,6 +20,7 @@ export function CardInspector({
                                   onUpdate,
                                   onDelete,
                                   onClose,
+                                  onEnhanceCard,
                               }: {
     projectId: string
     card: TCard
@@ -30,6 +31,7 @@ export function CardInspector({
     onUpdate: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
     onDelete: () => Promise<void> | void
     onClose?: () => void
+    onEnhanceCard?: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
 }) {
     const [activeTab, setActiveTab] = useState<InspectorTab>('messages')
     const previousCardIdRef = useRef(card.id)
@@ -72,6 +74,19 @@ export function CardInspector({
                 onChangeValues={(patch) => details.setValues((prev) => ({...prev, ...patch}))}
                 onSave={details.handleSave}
                 onDelete={details.handleDelete}
+                onEnhanceInBackground={
+                    onUpdate && onEnhanceCard
+                        ? async () => {
+                            // Save latest edits, then start background enhancement.
+                            await details.handleSave()
+                            await onEnhanceCard({
+                                title: details.values.title.trim(),
+                                description: details.values.description.trim(),
+                                dependsOn: details.values.dependsOn,
+                            })
+                        }
+                        : undefined
+                }
                 saving={details.saving}
                 deleting={details.deleting}
                 gitSection={

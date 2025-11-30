@@ -39,7 +39,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         }
         await broadcastBoard(boardId);
         const state = await fetchBoardState(boardId);
-        return c.json({state}, 201);
+        return c.json({state, cardId}, 201);
     } catch (error) {
         log.error("board:cards", "create failed", {err: error, boardId, projectId: project.id});
         return problemJson(c, {status: 502, detail: "Failed to create card"});

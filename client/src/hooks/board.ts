@@ -1,6 +1,14 @@
 import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
 import type {BoardState} from 'shared'
-import {fetchBoardState, createCard, updateCard, deleteCard, moveCard, type MoveCardResponse} from '@/api/board'
+import {
+    fetchBoardState,
+    createCard,
+    updateCard,
+    deleteCard,
+    moveCard,
+    type MoveCardResponse,
+    type CreateCardResponse,
+} from '@/api/board'
 
 export const boardKeys = {
     all: ['board'] as const,
@@ -35,7 +43,7 @@ export function useBoardState(boardId: string | undefined, options?: BoardOption
     })
 }
 
-type CreateOptions = UseMutationOptions<unknown, Error, CreateArgs>
+type CreateOptions = UseMutationOptions<CreateCardResponse, Error, CreateArgs>
 
 type UpdateOptions = UseMutationOptions<unknown, Error, UpdateArgs>
 
@@ -44,7 +52,7 @@ type DeleteOptions = UseMutationOptions<unknown, Error, DeleteArgs>
 type MoveOptions = UseMutationOptions<MoveCardResponse, Error, MoveArgs>
 
 export function useCreateCard(options?: CreateOptions) {
-    return useMutation({
+    return useMutation<CreateCardResponse, Error, CreateArgs>({
         mutationFn: ({boardId, columnId, values}: CreateArgs) => createCard(boardId, columnId, values),
         ...options,
     })

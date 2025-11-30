@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Board } from "@/components/kanban/Board";
+import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnhancementDialog";
 import { ImportIssuesDialog } from "@/components/github/ImportIssuesDialog";
 import { ConnectionLostDialog } from "@/components/system/ConnectionLostDialog";
 import {
@@ -13,6 +14,7 @@ import {
     useMoveCard,
     useProject,
     useUpdateCard,
+    useTicketEnhancementQueue,
 } from "@/hooks";
 import type { MoveCardResponse } from "@/api/board";
 import type { BoardState } from "shared";
@@ -86,6 +88,25 @@ export function ProjectBoardPage() {
     const moveCardMutation = useMoveCard({
         onSuccess: (data) => applyMovePatch(data),
     });
+
+    const {
+        enhancements,
+        startEnhancementForNewCard,
+        startEnhancementForExistingCard,
+        clearEnhancement,
+    } = useTicketEnhancementQueue();
+
+    const enhancementStatusByCardId = useMemo(() => {
+        const entries = Object.entries(enhancements);
+        if (!entries.length) return {} as Record<string, import("@/hooks/tickets").CardEnhancementStatus>;
+        const result: Record<string, import("@/hooks/tickets").CardEnhancementStatus> = {};
+        for (const [cardId, entry] of entries) {
+            result[cardId] = entry.status;
+        }
+        return result;
+    }, [enhancements]);
+
+    const [enhancementDialogCardId, setEnhancementDialogCardId] = useState<string | null>(null);
 
     const connectionLabel = reconnecting
         ? "Reconnecting…"
@@ -177,6 +198,10 @@ export function ProjectBoardPage() {
                 <Board
                     projectId={project.id}
                     state={boardState}
+                    enhancementStatusByCardId={enhancementStatusByCardId}
+                    onCardEnhancementClick={(cardId) =>
+                        setEnhancementDialogCardId(cardId)
+                    }
                     handlers={{
                         onCreateCard: async (
                             columnId,
@@ -199,6 +224,47 @@ export function ProjectBoardPage() {
                                 });
                             } catch (err) {
                                 console.error("Create card failed", err);
+                                const problem = describeApiError(
+                                    err,
+                                    "Failed to create card",
+                                );
+                                toast({
+                                    title: problem.title,
+                                    description: problem.description,
+                                    variant: "destructive",
+                                });
+                            }
+                        },
+                        onCreateAndEnhanceCard: async (
+                            columnId,
+                            values: {
+                                title: string;
+                                description: string;
+                                dependsOn?: string[];
+                            },
+                        ) => {
+                            try {
+                                const result = await createCardMutation.mutateAsync({
+                                    boardId,
+                                    columnId,
+                                    values: {
+                                        title: values.title,
+                                        description:
+                                            values.description || undefined,
+                                        dependsOn: values.dependsOn ?? [],
+                                    },
+                                });
+                                const cardId = result.cardId;
+                                if (cardId) {
+                                    await startEnhancementForNewCard({
+                                        projectId: project.id,
+                                        cardId,
+                                        title: values.title,
+                                        description: values.description,
+                                    });
+                                }
+                            } catch (err) {
+                                console.error("Create & enhance card failed", err);
                                 const problem = describeApiError(
                                     err,
                                     "Failed to create card",
@@ -292,6 +358,28 @@ export function ProjectBoardPage() {
                                 }
                             }
                         },
+                        onEnhanceCard: async (
+                            cardId,
+                            values: {
+                                title: string;
+                                description: string;
+                                dependsOn?: string[];
+                            },
+                        ) => {
+                            try {
+                                await startEnhancementForExistingCard({
+                                    projectId: project.id,
+                                    cardId,
+                                    title: values.title,
+                                    description: values.description,
+                                });
+                            } catch (err) {
+                                console.error(
+                                    "Enhance existing card failed",
+                                    err,
+                                );
+                            }
+                        },
                         onMoveBlocked: () => {
                             toast({
                                 title: "Task is blocked by dependencies",
@@ -303,6 +391,75 @@ export function ProjectBoardPage() {
                     }}
                 />
             </div>
+            <CardEnhancementDialog
+                open={Boolean(
+                    enhancementDialogCardId &&
+                        enhancements[enhancementDialogCardId]?.suggestion,
+                )}
+                onOpenChange={(open) => {
+                    if (!open) setEnhancementDialogCardId(null);
+                }}
+                current={{
+                    title:
+                        (enhancementDialogCardId &&
+                            boardState.cards[enhancementDialogCardId]?.title) ||
+                        "",
+                    description:
+                        (enhancementDialogCardId &&
+                            boardState.cards[enhancementDialogCardId]
+                                ?.description) ||
+                        "",
+                }}
+                enhanced={{
+                    title:
+                        (enhancementDialogCardId &&
+                            enhancements[enhancementDialogCardId]?.suggestion
+                                ?.title) ||
+                        "",
+                    description:
+                        (enhancementDialogCardId &&
+                            enhancements[enhancementDialogCardId]?.suggestion
+                                ?.description) ||
+                        "",
+                }}
+                onAccept={async () => {
+                    if (!enhancementDialogCardId) return;
+                    const suggestion =
+                        enhancements[enhancementDialogCardId]?.suggestion;
+                    if (!suggestion) return;
+                    try {
+                        await updateCardMutation.mutateAsync({
+                            boardId,
+                            cardId: enhancementDialogCardId,
+                            values: {
+                                title: suggestion.title,
+                                description: suggestion.description,
+                            },
+                        });
+                        clearEnhancement(enhancementDialogCardId);
+                        setEnhancementDialogCardId(null);
+                    } catch (err) {
+                        console.error(
+                            "Accept enhancement update failed",
+                            err,
+                        );
+                        const problem = describeApiError(
+                            err,
+                            "Failed to apply enhancement",
+                        );
+                        toast({
+                            title: problem.title,
+                            description: problem.description,
+                            variant: "destructive",
+                        });
+                    }
+                }}
+                onReject={async () => {
+                    if (!enhancementDialogCardId) return;
+                    clearEnhancement(enhancementDialogCardId);
+                    setEnhancementDialogCardId(null);
+                }}
+            />
             <ImportIssuesDialog
                 projectId={projectId}
                 boardId={boardId}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Bot, Loader2 } from "lucide-react";
+import { Bot } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -13,8 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
-import { describeApiError } from "@/api/http";
 import type { AgentKey, Attempt, AttemptLog, ConversationItem } from "shared";
 import { attemptKeys, cardAttemptKeys } from "@/lib/queryClient";
 import {
@@ -25,10 +23,8 @@ import {
     useStopAttempt,
 } from "@/hooks";
 import { useAttemptEventStream } from "@/hooks/useAttemptEventStream";
-import { useEnhanceTicket } from "@/hooks/projects";
 import type { CardFormValues, BaseDialogProps } from "./types";
 import { DialogConversationRow } from "./DialogConversationRow";
-import { EnhancePreview } from "./EnhancePreview";
 
 type EditProps = BaseDialogProps & {
     cardTitle: string;
@@ -38,6 +34,7 @@ type EditProps = BaseDialogProps & {
     onDelete: () => Promise<void> | void;
     projectId: string;
     cardId?: string;
+    onEnhanceInBackground?: (values: CardFormValues) => Promise<void> | void;
 };
 
 export function EditCardDialog({
@@ -50,14 +47,12 @@ export function EditCardDialog({
     onDelete,
     projectId,
     cardId,
+    onEnhanceInBackground,
 }: EditProps) {
     const [values, setValues] = useState<CardFormValues>({
         title: cardTitle,
         description: cardDescription ?? "",
     });
-    const [enhancing, setEnhancing] = useState(false);
-    const [enhanced, setEnhanced] = useState<CardFormValues | null>(null);
-    const [enhanceOriginal, setEnhanceOriginal] = useState<CardFormValues | null>(null);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [agent, setAgent] = useState<AgentKey>("");
@@ -69,9 +64,6 @@ export function EditCardDialog({
     useEffect(() => {
         if (open) {
             setValues({ title: cardTitle, description: cardDescription ?? "" });
-            setEnhancing(false);
-            setEnhanced(null);
-            setEnhanceOriginal(null);
         }
     }, [open, cardTitle, cardDescription]);
 
@@ -146,55 +138,23 @@ export function EditCardDialog({
         },
     });
 
-    const enhanceMutation = useEnhanceTicket();
-
-    const handleEnhance = () => {
-        const trimmedTitle = values.title.trim();
-        if (!trimmedTitle || enhancing) return;
-
-        const originalValues: CardFormValues = {
-            ...values,
-            title: trimmedTitle,
-            description: values.description,
-            dependsOn: values.dependsOn ?? [],
-        };
-
-        setEnhancing(true);
-        setEnhanceOriginal(originalValues);
-
-        enhanceMutation.mutate(
-            {
-                projectId,
-                title: trimmedTitle,
-                description: values.description,
-            },
-            {
-                onSuccess: (data) => {
-                    const nextValues: CardFormValues = {
-                        ...originalValues,
-                        title: data.ticket.title,
-                        description: data.ticket.description,
-                    };
-                    setEnhanced(nextValues);
-                    setEnhancing(false);
-                },
-                onError: (err) => {
-                    console.error("Enhance ticket failed", err);
-                    const { title, description } = describeApiError(
-                        err,
-                        "Failed to enhance ticket",
-                    );
-                    toast({
-                        title,
-                        description,
-                        variant: "destructive",
-                    });
-                    setEnhancing(false);
-                    setEnhanced(null);
-                    setEnhanceOriginal(null);
-                },
-            },
-        );
+    const handleEnhanceInBackground = async () => {
+        if (!values.title.trim()) return;
+        try {
+            setSaving(true);
+            const payload: CardFormValues = {
+                title: values.title.trim(),
+                description: values.description.trim(),
+                dependsOn: values.dependsOn ?? [],
+            };
+            await onSubmit(payload);
+            if (onEnhanceInBackground) {
+                await onEnhanceInBackground(payload);
+            }
+            onOpenChange(false);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleSave = async () => {
@@ -291,51 +251,30 @@ export function EditCardDialog({
                         <Label htmlFor="edit-card-description">
                             Description
                         </Label>
-                        <div className="relative">
-                            <Textarea
-                                id="edit-card-description"
-                                rows={4}
-                                value={values.description}
-                                onChange={(event) =>
-                                    setValues((prev) => ({
-                                        ...prev,
-                                        description: event.target.value,
-                                    }))
-                                }
-                                className="pr-10"
-                            />
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="outline"
-                                className="absolute bottom-2 right-2 h-7 w-7 rounded-full"
-                                disabled={!values.title.trim() || enhancing}
-                                onClick={handleEnhance}
-                                aria-label="Enhance ticket"
-                            >
-                                {enhancing ? (
-                                    <Loader2 className="size-4 animate-spin" />
-                                ) : (
-                                    <Bot className="size-4" />
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                    {enhanced && enhanceOriginal ? (
-                        <EnhancePreview
-                            original={enhanceOriginal}
-                            enhanced={enhanced}
-                            onAccept={() => {
-                                setValues(enhanced);
-                                setEnhanced(null);
-                                setEnhanceOriginal(null);
-                            }}
-                            onReject={() => {
-                                setEnhanced(null);
-                                setEnhanceOriginal(null);
-                            }}
+                        <Textarea
+                            id="edit-card-description"
+                            rows={4}
+                            value={values.description}
+                            onChange={(event) =>
+                                setValues((prev) => ({
+                                    ...prev,
+                                    description: event.target.value,
+                                }))
+                            }
                         />
-                    ) : null}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={handleEnhanceInBackground}
+                            disabled={!values.title.trim() || saving}
+                        >
+                            <Bot className="mr-1 size-4" /> Enhance in
+                            background
+                        </Button>
+                    </div>
                     {cardTicketKey ? (
                         <div className="space-y-2">
                             <Label htmlFor="edit-card-ticket-key">

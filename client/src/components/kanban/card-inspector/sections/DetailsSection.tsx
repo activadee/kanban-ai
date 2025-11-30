@@ -1,6 +1,7 @@
 import type {ReactNode} from 'react'
 import {Button} from '@/components/ui/button'
 import {CardDetailsForm, type DetailsValues} from '../CardDetailsForm'
+import {Bot} from 'lucide-react'
 
 export type DetailsSectionProps = {
     values: DetailsValues
@@ -13,6 +14,7 @@ export type DetailsSectionProps = {
     saving: boolean
     deleting: boolean
     gitSection?: ReactNode
+    onEnhanceInBackground?: () => void
 }
 
 export function DetailsSection({
@@ -26,6 +28,7 @@ export function DetailsSection({
                                    saving,
                                    deleting,
                                    gitSection,
+                                   onEnhanceInBackground,
                                }: DetailsSectionProps) {
     return (
         <>
@@ -44,6 +47,16 @@ export function DetailsSection({
                 >
                     {saving ? 'Saving…' : 'Save'}
                 </Button>
+                {onEnhanceInBackground ? (
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={onEnhanceInBackground}
+                        disabled={locked || !values.title.trim() || saving}
+                    >
+                        <Bot className="mr-1 size-4"/> Enhance in background
+                    </Button>
+                ) : null}
                 <Button
                     size="sm"
                     variant="destructive"
@@ -59,4 +72,3 @@ export function DetailsSection({
         </>
     )
 }
-
