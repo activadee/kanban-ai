@@ -84,6 +84,7 @@ export async function getBoardState(boardId: string): Promise<BoardState> {
             id: card.id,
             ticketKey: card.ticketKey ?? undefined,
             prUrl: card.prUrl ?? undefined,
+            ticketType: card.ticketType ?? null,
             title: card.title,
             description: card.description ?? undefined,
             dependsOn: depMap.get(card.id) ?? undefined,
@@ -110,4 +111,3 @@ export async function ensureBoardExists(boardId: string) {
     if (!existing) throw new Error('Board not found')
     await ensureDefaultColumns(boardId)
 }
-

@@ -9,6 +9,7 @@ import {GitSection} from './card-inspector/sections/GitSection'
 import {AttemptsSection} from './card-inspector/sections/AttemptsSection'
 import {ActivitySection} from './card-inspector/sections/ActivitySection'
 import {useCardInspectorState, type InspectorTab} from './card-inspector/useCardInspectorState'
+import type {CardFormValues} from './CardDialogs'
 
 type TopLevelTab = 'ticket' | 'attempts'
 
@@ -30,10 +31,10 @@ export function CardInspector({
     blocked?: boolean
     availableCards?: { id: string; title: string; ticketKey?: string }[]
     cardsIndex?: Map<string, { id: string; title: string; ticketKey?: string }>
-    onUpdate: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
+    onUpdate: (values: CardFormValues) => Promise<void> | void
     onDelete: () => Promise<void> | void
     onClose?: () => void
-    onEnhanceCard?: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
+    onEnhanceCard?: (values: CardFormValues) => Promise<void> | void
 }) {
     const previousCardIdRef = useRef(card.id)
     const previousAttemptIdRef = useRef<string | undefined>(undefined)
@@ -121,6 +122,7 @@ export function CardInspector({
                                         title: details.values.title.trim(),
                                         description: details.values.description.trim(),
                                         dependsOn: details.values.dependsOn,
+                                        ticketType: details.values.ticketType ?? null,
                                     })
                                 }
                                 : undefined

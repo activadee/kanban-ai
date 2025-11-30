@@ -9,6 +9,7 @@ export * from './app'
 export * from './dashboard'
 export * from './onboarding'
 export * from './version'
+export * from './ticket'
 
 export type ApiResponse = {
     message: string

@@ -20,6 +20,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         title: string;
         description?: string | null;
         dependsOn?: string[];
+        ticketType?: import("shared").TicketType | null;
     };
 
     const column = await getColumnById(body.columnId);
@@ -32,6 +33,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
             body.columnId,
             body.title,
             body.description ?? undefined,
+            body.ticketType ?? undefined,
             {suppressBroadcast: true},
         );
         if (Array.isArray(body.dependsOn) && body.dependsOn.length > 0) {
@@ -70,10 +72,11 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
         dependsOn?: string[];
         columnId?: string;
         index?: number;
+        ticketType?: import("shared").TicketType | null;
     };
     const wantsMove = body.columnId !== undefined || body.index !== undefined;
     const hasContentUpdate =
-        body.title !== undefined || body.description !== undefined;
+        body.title !== undefined || body.description !== undefined || body.ticketType !== undefined;
     const hasDeps = Array.isArray(body.dependsOn);
     const suppressBroadcast = wantsMove || hasDeps;
 
@@ -105,6 +108,8 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
                 {
                     title: body.title,
                     description: body.description ?? undefined,
+                    ticketType:
+                        body.ticketType === undefined ? undefined : body.ticketType,
                 },
                 {suppressBroadcast},
             );
@@ -173,6 +178,7 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
             const cardPayload = {
                 id: updatedCard.id,
                 ticketKey: updatedCard.ticketKey ?? undefined,
+                ticketType: updatedCard.ticketType ?? null,
                 prUrl: updatedCard.prUrl ?? undefined,
                 title: updatedCard.title,
                 description: updatedCard.description ?? undefined,

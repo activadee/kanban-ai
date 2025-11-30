@@ -1,5 +1,21 @@
 import {z} from "zod";
-import type {CreateProjectRequest, UpdateProjectRequest} from "shared";
+import {TICKET_TYPES, type CreateProjectRequest, type UpdateProjectRequest} from "shared";
+
+const ticketTypeSchema = z
+    .string()
+    .trim()
+    .toLowerCase()
+    .optional()
+    .nullable()
+    .superRefine((val, ctx) => {
+        if (val === undefined || val === null) return;
+        if (!TICKET_TYPES.includes(val as any)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Invalid ticket type: ${val}`,
+            });
+        }
+    }) as z.ZodType<import("shared").TicketType | null | undefined>;
 
 export const createProjectSchema = z.object({
     name: z.string().min(1, "Project name is required"),
@@ -47,6 +63,7 @@ export const enhanceTicketSchema = z.object({
     description: z.string().default(""),
     agent: z.string().optional(),
     profileId: z.string().optional(),
+    ticketType: ticketTypeSchema,
 });
 
 export const createCardSchema = z.object({
@@ -54,6 +71,7 @@ export const createCardSchema = z.object({
     title: z.string().min(1, "Title is required"),
     description: z.string().optional().nullable(),
     dependsOn: z.array(z.string()).optional(),
+    ticketType: ticketTypeSchema,
 });
 
 export const updateCardSchema = z
@@ -63,12 +81,14 @@ export const updateCardSchema = z
         dependsOn: z.array(z.string()).optional(),
         columnId: z.string().min(1, "Column ID is required").optional(),
         index: z.number().int().min(0).optional(),
+        ticketType: ticketTypeSchema,
     })
     .superRefine((data, ctx) => {
         const hasContent =
             data.title !== undefined ||
             data.description !== undefined ||
-            data.dependsOn !== undefined;
+            data.dependsOn !== undefined ||
+            data.ticketType !== undefined;
         const wantsMove = data.columnId !== undefined || data.index !== undefined;
 
         if (wantsMove && (data.columnId === undefined || data.index === undefined)) {

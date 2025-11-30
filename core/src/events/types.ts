@@ -5,6 +5,7 @@ import type {
     FileChange,
     PRInfo,
     AttemptTodoSummary,
+    TicketType,
 } from 'shared'
 
 export interface ProjectCreatedEvent {
@@ -58,7 +59,7 @@ export interface CardCreatedEvent {
 export interface CardUpdatedEvent {
     boardId: string
     cardId: string
-    changes: Partial<{ title: string; description: string | null; ticketKey: string | null }>
+    changes: Partial<{ title: string; description: string | null; ticketKey: string | null; ticketType: TicketType | null }>
 }
 
 export interface CardMovedEvent {

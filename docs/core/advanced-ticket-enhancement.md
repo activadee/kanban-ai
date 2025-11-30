@@ -61,6 +61,7 @@ The UI and integrations continue to use the same enhancement endpoint, but now t
     - `description` (string, optional, defaults to empty when omitted).
     - `agent` (string, optional agent key override).
     - `profileId` (string, optional profile ID override).
+    - `ticketType` (string, optional Conventional Commit style type: `feat`, `fix`, `chore`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `revert`).
   - Successful response (`200 OK`):
     - `{ "ticket": { "title": "...", "description": "..." } }`
 - Error handling:
@@ -68,6 +69,8 @@ The UI and integrations continue to use the same enhancement endpoint, but now t
   - Unknown agent key or agent without ticket-enhancement support → `400` problem response.
   - Internal errors in the enhancement pipeline → `502` problem response with a generic `"Failed to enhance ticket"`
     message.
+  - Invalid ticket type → `400` with a message like `"Invalid ticket type: <value>"` (the value is normalized to
+    lowercase when valid).
 - The endpoint remains a pure transformation:
   - It does not create, update, or persist cards and leaves that to the board APIs.
   - The board UI queues this request, watches the enhancement status, and applies the accepted suggestion via the normal
@@ -80,7 +83,7 @@ inline task with `kind = "ticketEnhance"`:
 
 - Input options:
   - `projectId`, optional `boardId`.
-  - `title`, `description`.
+  - `title`, `description`, optional `ticketType`.
   - Optional `agentKey`, optional `profileId`, optional `AbortSignal`.
 - Behavior:
   - Loads the project and its settings (including `baseBranch`, `inlineAgent`, `inlineProfileId`).
@@ -95,8 +98,9 @@ inline task with `kind = "ticketEnhance"`:
     - `Agent <KEY> does not support ticket enhancement`.
   - Constructs:
     - A `TicketEnhanceInput` containing project/board identifiers, repository path, base branch, title, description,
-      profile ID, and a cancellation signal.
-    - An `InlineTaskContext` with project, repo, branch, and agent/profile metadata.
+      optional ticket type, profile ID, and a cancellation signal. When provided, the type is echoed into the prompt so
+      agents can suggest Conventional Commit–aligned titles.
+    - An `InlineTaskContext` with project, repo, branch, optional ticket type, and agent/profile metadata.
   - Resolves an agent profile:
     - Uses the explicit `profileId` when provided.
     - Otherwise, when using the project’s `inlineAgent`, prefers the project’s configured `inlineProfileId`.

@@ -1,4 +1,4 @@
-import type {ProjectSummary} from 'shared'
+import type {ProjectSummary, TicketType} from 'shared'
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getAgent} from './registry'
@@ -19,6 +19,7 @@ export type AgentEnhanceTicketOptions = {
     agentKey?: string
     profileId?: string
     signal?: AbortSignal
+    ticketType?: TicketType | null
 }
 
 function resolveBoardId(opts: AgentEnhanceTicketOptions, project: ProjectSummary): string {
@@ -125,6 +126,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
         baseBranch: settings.baseBranch,
         title: opts.title,
         description: opts.description,
+        ticketType: opts.ticketType ?? null,
         profileId,
         signal,
     }
@@ -137,6 +139,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
         repositoryPath: project.repositoryPath,
         baseBranch: settings.baseBranch,
         branchName: settings.baseBranch,
+        ticketType: opts.ticketType ?? null,
         headCommit: null,
         agentKey,
         profileId,

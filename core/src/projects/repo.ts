@@ -1,5 +1,6 @@
 import {asc, desc, eq, inArray, sql} from 'drizzle-orm'
 import {boards, cards, columns, type Board, type Card, type Column} from '../db/schema'
+import type {TicketType} from 'shared'
 import type {DbExecutor} from '../db/with-tx'
 import {resolveDb} from '../db/with-tx'
 
@@ -7,7 +8,7 @@ export type BoardInsert = typeof boards.$inferInsert
 export type BoardUpdate = Partial<typeof boards.$inferInsert>
 export type ColumnInsert = typeof columns.$inferInsert
 export type CardInsert = typeof cards.$inferInsert
-export type CardUpdate = Partial<typeof cards.$inferInsert>
+export type CardUpdate = Partial<typeof cards.$inferInsert> & { ticketType?: TicketType | null }
 
 export async function listBoards(executor?: DbExecutor): Promise<Board[]> {
     const database = resolveDb(executor)

@@ -10,6 +10,8 @@ import {projectsKeys} from '@/lib/queryClient'
 import {useNextTicketKey} from '@/hooks'
 import {DependenciesPicker} from '@/components/kanban/DependenciesPicker'
 import type {CardFormValues, BaseDialogProps} from './types'
+import type {TicketType} from 'shared'
+import {defaultTicketType, ticketTypeOptions} from '@/lib/ticketTypes'
 
 type CreateProps = BaseDialogProps & {
     columns: { id: string; title: string }[]
@@ -30,7 +32,12 @@ export function CreateCardDialog({
                                      availableCards = [],
                                      onCreateAndEnhance,
                                  }: CreateProps) {
-    const [values, setValues] = useState<CardFormValues>({title: '', description: '', dependsOn: []})
+    const [values, setValues] = useState<CardFormValues>({
+        title: '',
+        description: '',
+        dependsOn: [],
+        ticketType: defaultTicketType,
+    })
     const [columnId, setColumnId] = useState<string>(defaultColumnId ?? columns[0]?.id ?? '')
     const [submitting, setSubmitting] = useState(false)
     const queryClient = useQueryClient()
@@ -42,7 +49,7 @@ export function CreateCardDialog({
 
     useEffect(() => {
         if (!open) {
-            setValues({title: '', description: '', dependsOn: []})
+            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
         }
     }, [open, columns, defaultColumnId])
@@ -55,9 +62,10 @@ export function CreateCardDialog({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
+                ticketType: values.ticketType ?? null,
             })
             onOpenChange(false)
-            setValues({title: '', description: '', dependsOn: []})
+            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
@@ -74,9 +82,10 @@ export function CreateCardDialog({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
+                ticketType: values.ticketType ?? null,
             })
             onOpenChange(false)
-            setValues({title: '', description: '', dependsOn: []})
+            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
@@ -123,6 +132,30 @@ export function CreateCardDialog({
                             value={values.description}
                             onChange={(e) => setValues((p) => ({...p, description: e.target.value}))}
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="card-type">Type</Label>
+                        <Select
+                            value={(values.ticketType ?? 'none') as string}
+                            onValueChange={(next) =>
+                                setValues((prev) => ({
+                                    ...prev,
+                                    ticketType: next === 'none' ? null : (next as TicketType),
+                                }))
+                            }
+                        >
+                            <SelectTrigger id="card-type" className="w-full">
+                                <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 overflow-y-auto">
+                                <SelectItem value="none">None</SelectItem>
+                                {ticketTypeOptions.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <Label>Dependencies</Label>

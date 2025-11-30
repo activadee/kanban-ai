@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Board } from "@/components/kanban/Board";
 import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnhancementDialog";
+import type { CardFormValues } from "@/components/kanban/CardDialogs";
 import { ImportIssuesDialog } from "@/components/github/ImportIssuesDialog";
 import { ConnectionLostDialog } from "@/components/system/ConnectionLostDialog";
 import { VersionIndicator } from "@/components/system/VersionIndicator";
@@ -228,11 +229,7 @@ export function ProjectBoardPage() {
                     handlers={{
                         onCreateCard: async (
                             columnId,
-                            values: {
-                                title: string;
-                                description: string;
-                                dependsOn?: string[];
-                            },
+                            values: CardFormValues,
                         ) => {
                             try {
                                 await createCardMutation.mutateAsync({
@@ -243,6 +240,7 @@ export function ProjectBoardPage() {
                                         description:
                                             values.description || undefined,
                                         dependsOn: values.dependsOn ?? [],
+                                        ticketType: values.ticketType ?? null,
                                     },
                                 });
                             } catch (err) {
@@ -260,11 +258,7 @@ export function ProjectBoardPage() {
                         },
                         onCreateAndEnhanceCard: async (
                             columnId,
-                            values: {
-                                title: string;
-                                description: string;
-                                dependsOn?: string[];
-                            },
+                            values: CardFormValues,
                         ) => {
                             try {
                                 const result = await createCardMutation.mutateAsync({
@@ -275,6 +269,7 @@ export function ProjectBoardPage() {
                                         description:
                                             values.description || undefined,
                                         dependsOn: values.dependsOn ?? [],
+                                        ticketType: values.ticketType ?? null,
                                     },
                                 });
                                 const cardId = result.cardId;
@@ -285,6 +280,7 @@ export function ProjectBoardPage() {
                                         cardId,
                                         title: values.title,
                                         description: values.description,
+                                        ticketType: values.ticketType,
                                     }).catch((err) => {
                                         console.error("Background enhancement failed", err);
                                     });
@@ -311,11 +307,7 @@ export function ProjectBoardPage() {
                         },
                         onUpdateCard: async (
                             cardId,
-                            values: {
-                                title: string;
-                                description: string;
-                                dependsOn?: string[];
-                            },
+                            values: CardFormValues,
                         ) => {
                             try {
                                 await updateCardMutation.mutateAsync({
@@ -326,6 +318,7 @@ export function ProjectBoardPage() {
                                         description:
                                             values.description || undefined,
                                         dependsOn: values.dependsOn,
+                                        ticketType: values.ticketType,
                                     },
                                 });
                             } catch (err) {
@@ -393,11 +386,7 @@ export function ProjectBoardPage() {
                         },
                         onEnhanceCard: async (
                             cardId,
-                            values: {
-                                title: string;
-                                description: string;
-                                dependsOn?: string[];
-                            },
+                            values: CardFormValues,
                         ) => {
                             try {
                                 await startEnhancementForExistingCard({
@@ -405,6 +394,7 @@ export function ProjectBoardPage() {
                                     cardId,
                                     title: values.title,
                                     description: values.description,
+                                    ticketType: values.ticketType,
                                 });
                             } catch (err) {
                                 console.error(

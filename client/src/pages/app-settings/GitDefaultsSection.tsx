@@ -31,10 +31,9 @@ export function GitDefaultsSection({form, onChange}: {
                               onChange={(e) => onChange({branchTemplate: e.target.value})} className="h-20"
                               placeholder="{prefix}/{ticketKey}-{slug}"/>
                     <p className="mt-1 text-xs text-muted-foreground">Supported
-                        tokens: {`{prefix}`}, {`{ticketKey}`}, {`{slug}`}</p>
+                        tokens: {`{prefix}`}, {`{ticketKey}`}, {`{slug}`}, {`{type}`}</p>
                 </div>
             </div>
         </section>
     )
 }
-

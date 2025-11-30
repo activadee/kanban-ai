@@ -98,11 +98,15 @@ describe("CreateCardDialog – Create & Enhance", () => {
 
         expect(onSubmit).not.toHaveBeenCalled();
 
-        expect(onCreateAndEnhance).toHaveBeenCalledWith("col-1", {
-            title: "Original Title",
-            description: "Original Description",
-            dependsOn: [],
-        });
+        expect(onCreateAndEnhance).toHaveBeenCalledWith(
+            "col-1",
+            expect.objectContaining({
+                title: "Original Title",
+                description: "Original Description",
+                dependsOn: [],
+                ticketType: "feat",
+            }),
+        );
 
         expect(onOpenChange).toHaveBeenCalledWith(false);
     });

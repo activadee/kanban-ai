@@ -8,6 +8,7 @@ import type {
     ConversationItem,
     Card as TCard,
     AttemptTodoSummary,
+    TicketType,
 } from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
@@ -31,8 +32,8 @@ import {eventBus} from '@/lib/events'
 export type InspectorTab = 'messages' | 'processes' | 'logs'
 
 export type CardInspectorDetailsState = {
-    values: { title: string; description: string; dependsOn: string[] }
-    setValues: Dispatch<SetStateAction<{ title: string; description: string; dependsOn: string[] }>>
+    values: { title: string; description: string; dependsOn: string[]; ticketType: TicketType | null }
+    setValues: Dispatch<SetStateAction<{ title: string; description: string; dependsOn: string[]; ticketType: TicketType | null }>>
     saving: boolean
     deleting: boolean
     handleSave: () => Promise<void>
@@ -95,7 +96,7 @@ export type UseCardInspectorStateArgs = {
     blocked?: boolean
     availableCards?: { id: string; title: string; ticketKey?: string }[]
     cardsIndex?: Map<string, { id: string; title: string; ticketKey?: string }>
-    onUpdate: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
+    onUpdate: (values: { title: string; description: string; dependsOn?: string[]; ticketType?: TicketType | null }) => Promise<void> | void
     onDelete: () => Promise<void> | void
 }
 
@@ -119,6 +120,7 @@ export function useCardInspectorState({
         title: card.title,
         description: card.description ?? '',
         dependsOn: (card.dependsOn ?? []) as string[],
+        ticketType: card.ticketType ?? null,
     })
     const [saving, setSaving] = useState(false)
     const [deleting, setDeleting] = useState(false)
@@ -307,6 +309,7 @@ export function useCardInspectorState({
             title: card.title,
             description: card.description ?? '',
             dependsOn: (card.dependsOn ?? []) as string[],
+            ticketType: card.ticketType ?? null,
         })
 
         if (attemptDetailQuery.data) {
@@ -320,7 +323,7 @@ export function useCardInspectorState({
             setConversation([])
             setTodoSummary(null)
         }
-    }, [card.id, card.title, card.description, card.dependsOn, attemptDetailQuery.data])
+    }, [card.id, card.title, card.description, card.dependsOn, card.ticketType, attemptDetailQuery.data])
 
     useEffect(() => {
         manualAgentRef.current = false
@@ -498,6 +501,7 @@ export function useCardInspectorState({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 dependsOn: values.dependsOn,
+                ticketType: values.ticketType ?? null,
             })
         } finally {
             setSaving(false)

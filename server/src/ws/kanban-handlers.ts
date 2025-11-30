@@ -95,7 +95,12 @@ export function kanbanWebsocketHandlers(boardId: string) {
                         break
                     }
                     case 'create_card':
-                        await createBoardCard(msg.payload.columnId, msg.payload.title, msg.payload.description)
+                        await createBoardCard(
+                            msg.payload.columnId,
+                            msg.payload.title,
+                            msg.payload.description,
+                            msg.payload.ticketType,
+                        )
                         break
                     case 'move_card': {
                         // Prevent moving cards out of Done
@@ -128,6 +133,7 @@ export function kanbanWebsocketHandlers(boardId: string) {
                         await updateBoardCard(msg.payload.cardId, {
                             title: msg.payload.title,
                             description: msg.payload.description,
+                            ticketType: msg.payload.ticketType,
                         })
                         break
                     case 'delete_card':

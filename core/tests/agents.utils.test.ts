@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {buildPrSummaryPrompt, splitTicketMarkdown} from '../src/agents/utils'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../src/agents/utils'
 
 describe('agents/utils splitTicketMarkdown', () => {
     it('extracts title from H1 on first line and uses remaining text as description', () => {
@@ -84,3 +84,24 @@ describe('agents/utils buildPrSummaryPrompt', () => {
     })
 })
 
+describe('agents/utils buildTicketEnhancePrompt', () => {
+    const baseInput = {
+        projectId: 'p1',
+        boardId: 'b1',
+        repositoryPath: '/repo',
+        baseBranch: 'main',
+        title: 'Add login',
+        description: 'Implement basic login form',
+        signal: new AbortController().signal,
+    }
+
+    it('includes ticket type when provided', () => {
+        const prompt = buildTicketEnhancePrompt({...baseInput, ticketType: 'feat'})
+        expect(prompt).toContain('Type: feat')
+    })
+
+    it('omits ticket type when not set', () => {
+        const prompt = buildTicketEnhancePrompt(baseInput)
+        expect(prompt).not.toContain('Type:')
+    })
+})
