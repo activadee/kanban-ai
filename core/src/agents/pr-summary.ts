@@ -2,6 +2,7 @@ import type {ProjectSummary} from 'shared'
 
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
+import {getPrDiffSummary} from '../git/service'
 import {getAgent} from './registry'
 import {runInlineTask} from './inline'
 import type {
@@ -117,10 +118,28 @@ export async function agentSummarizePullRequest(
 
     const signal = createSignal(opts.signal)
 
+    let commitSummary: string | undefined
+    let diffSummary: string | undefined
+    try {
+        const summary = await getPrDiffSummary(opts.projectId, baseBranch, headBranch)
+        if (summary) {
+            if (summary.commitSummary && summary.commitSummary.trim().length > 0) {
+                commitSummary = summary.commitSummary.trim()
+            }
+            if (summary.diffSummary && summary.diffSummary.trim().length > 0) {
+                diffSummary = summary.diffSummary.trim()
+            }
+        }
+    } catch {
+        // Best-effort: if git summary fails, proceed without diff context.
+    }
+
     const input: PrSummaryInlineInput = {
         repositoryPath: project.repositoryPath,
         baseBranch,
         headBranch,
+        commitSummary,
+        diffSummary,
     }
 
     const profile = await resolveProfileForAgent(agent, opts.projectId, profileId)
@@ -147,4 +166,3 @@ export async function agentSummarizePullRequest(
         signal,
     })
 }
-

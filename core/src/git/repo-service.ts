@@ -82,6 +82,51 @@ export async function getDiff(projectId: string, path?: string, staged?: boolean
     return diff
 }
 
+export type PrDiffSummary = {
+    commitSummary?: string
+    diffSummary?: string
+}
+
+export async function getPrDiffSummary(
+    projectId: string,
+    baseBranch: string,
+    headBranch: string,
+    options?: {maxCommits?: number},
+): Promise<PrDiffSummary> {
+    const repoPath = await getRepoPath(projectId)
+    const g = git(repoPath)
+    const base = baseBranch.trim()
+    const head = headBranch.trim()
+    const range = `${base}..${head}`
+    const maxCommits = options?.maxCommits ?? 20
+
+    let commitSummary: string | undefined
+    let diffSummary: string | undefined
+
+    try {
+        const [logOut, statOut] = await Promise.all([
+            g
+                .raw(['log', '--oneline', `--max-count=${maxCommits}`, range])
+                .catch(() => ''),
+            g.raw(['diff', '--stat', range]).catch(() => ''),
+        ])
+
+        const logTrimmed = logOut.trim()
+        const statTrimmed = statOut.trim()
+
+        if (logTrimmed.length > 0) {
+            commitSummary = logTrimmed
+        }
+        if (statTrimmed.length > 0) {
+            diffSummary = statTrimmed
+        }
+    } catch {
+        // Swallow git errors here so inline summaries remain best-effort.
+    }
+
+    return {commitSummary, diffSummary}
+}
+
 export async function stageFiles(projectId: string, paths: string[]): Promise<void> {
     const repoPath = await getRepoPath(projectId)
     const g = git(repoPath)

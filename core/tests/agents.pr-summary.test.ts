@@ -22,6 +22,13 @@ vi.mock('../src/agents/profile-resolution', () => ({
     resolveAgentProfile: vi.fn(),
 }))
 
+vi.mock('../src/git/service', () => ({
+    getPrDiffSummary: vi.fn().mockResolvedValue({
+        commitSummary: 'abc123 First commit',
+        diffSummary: '3 files changed',
+    }),
+}))
+
 describe('agents/pr-summary agentSummarizePullRequest', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -34,6 +41,7 @@ describe('agents/pr-summary agentSummarizePullRequest', () => {
         const {getAgent} = await import('../src/agents/registry')
         const {resolveAgentProfile} = await import('../src/agents/profile-resolution')
         const {runInlineTask} = await import('../src/agents/inline')
+        const {getPrDiffSummary} = await import('../src/git/service')
         const {agentSummarizePullRequest} = await import('../src/agents/pr-summary')
 
         const project = {
@@ -116,6 +124,7 @@ describe('agents/pr-summary agentSummarizePullRequest', () => {
             baseBranch: 'main',
             headBranch: 'feature/test',
         })
+        expect(getPrDiffSummary).toHaveBeenCalledWith('proj-1', 'main', 'feature/test')
         expect(callArg.context).toMatchObject({
             projectId: 'proj-1',
             boardId: 'board-1',
@@ -349,4 +358,3 @@ describe('agents/pr-summary agentSummarizePullRequest', () => {
         expect(resolveAgentProfile).not.toHaveBeenCalled()
     })
 })
-
