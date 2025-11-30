@@ -1,24 +1,23 @@
-import { useMemo, useState } from "react";
-import { Column } from "./Column";
-import { Separator } from "@/components/ui/separator";
-import type { BoardState, Column as ColumnType } from "shared";
-import { Button } from "@/components/ui/button";
-import { DndContext, DragOverlay } from "@dnd-kit/core";
-import { KanbanCard } from "./Card";
-import { CreateCardDialog, EditCardDialog } from "./CardDialogs";
-import { ClipboardList } from "lucide-react";
-import { CardInspector } from "./CardInspector";
+import {useMemo, useState} from "react";
+import {Column} from "./Column";
+import {Separator} from "@/components/ui/separator";
+import type {BoardState, Column as ColumnType} from "shared";
+import {Button} from "@/components/ui/button";
+import {DndContext, DragOverlay} from "@dnd-kit/core";
+import {KanbanCard} from "./Card";
+import {CreateCardDialog, EditCardDialog} from "./CardDialogs";
+import {ClipboardList} from "lucide-react";
+import {CardInspector} from "./CardInspector";
 import {
     ResizablePanelGroup,
     ResizablePanel,
     ResizableHandle,
 } from "@/components/ui/resizable";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/lib/useMediaQuery";
-import { useBoardDnd } from "./board/useBoardDnd";
-import { makeIsCardBlocked } from "./board/isCardBlocked";
-
-//
+import {Sheet, SheetContent} from "@/components/ui/sheet";
+import {useMediaQuery} from "@/lib/useMediaQuery";
+import {useBoardDnd} from "./board/useBoardDnd";
+import {makeIsCardBlocked} from "./board/isCardBlocked";
+import type {CardEnhancementStatus} from "@/hooks/tickets";
 
 export type BoardHandlers = {
     onCreateCard: (
@@ -29,9 +28,20 @@ export type BoardHandlers = {
             dependsOn?: string[];
         },
     ) => Promise<void> | void;
+    /**
+     * Optional variant of create that also triggers background enhancement.
+     */
+    onCreateAndEnhanceCard?: (
+        columnId: string,
+        values: {
+            title: string;
+            description: string;
+            dependsOn?: string[];
+        },
+    ) => Promise<void> | void;
     onUpdateCard: (
         cardId: string,
-        values: { title: string; description: string },
+        values: { title: string; description: string; dependsOn?: string[] },
     ) => Promise<void> | void;
     onDeleteCard: (cardId: string) => Promise<void> | void;
     onMoveCard: (
@@ -40,15 +50,31 @@ export type BoardHandlers = {
         toIndex: number,
     ) => Promise<void> | void;
     onMoveBlocked?: () => void;
+    /**
+     * Optional handler used when editing an existing ticket and triggering
+     * background enhancement from the inspector or edit dialog.
+     */
+    onEnhanceCard?: (
+        cardId: string,
+        values: { title: string; description: string; dependsOn?: string[] },
+    ) => Promise<void> | void;
 };
 
 type Props = {
     projectId: string;
     state: BoardState;
     handlers: BoardHandlers;
+    enhancementStatusByCardId?: Record<string, CardEnhancementStatus>;
+    onCardEnhancementClick?: (cardId: string) => void;
 };
 
-export function Board({ projectId, state, handlers }: Props) {
+export function Board({
+                          projectId,
+                          state,
+                          handlers,
+                          enhancementStatusByCardId,
+                          onCardEnhancementClick,
+                      }: Props) {
     const columns = useMemo<ColumnType[]>(
         () => state.columnOrder.map((id) => state.columns[id]).filter(Boolean),
         [state],
@@ -210,6 +236,15 @@ export function Board({ projectId, state, handlers }: Props) {
                                                 values,
                                             )
                                         }
+                                        onEnhanceCard={
+                                            handlers.onEnhanceCard
+                                                ? (values) =>
+                                                    handlers.onEnhanceCard?.(
+                                                        resolvedSelectedId,
+                                                        values,
+                                                    )
+                                                : undefined
+                                        }
                                         onDelete={async () => {
                                             try {
                                                 await handlers.onDeleteCard(
@@ -249,8 +284,14 @@ export function Board({ projectId, state, handlers }: Props) {
                                                 key={col.id}
                                                 column={col}
                                                 state={state}
+                                                enhancementStatusByCardId={
+                                                    enhancementStatusByCardId
+                                                }
                                                 onSelectCard={(cardId) =>
                                                     setSelectedId(cardId)
+                                                }
+                                                onCardEnhancementClick={
+                                                    onCardEnhancementClick
                                                 }
                                             />
                                         ))}
@@ -329,6 +370,15 @@ export function Board({ projectId, state, handlers }: Props) {
                                                         values,
                                                     )
                                                 }
+                                                onEnhanceCard={
+                                                    handlers.onEnhanceCard
+                                                        ? (values) =>
+                                                            handlers.onEnhanceCard?.(
+                                                                resolvedSelectedId,
+                                                                values,
+                                                            )
+                                                        : undefined
+                                                }
                                                 onDelete={async () => {
                                                     try {
                                                         await handlers.onDeleteCard(
@@ -376,6 +426,13 @@ export function Board({ projectId, state, handlers }: Props) {
                 onSubmit={async (columnId, values) => {
                     await handlers.onCreateCard(columnId, values);
                 }}
+                onCreateAndEnhance={
+                    handlers.onCreateAndEnhanceCard
+                        ? async (columnId, values) => {
+                            await handlers.onCreateAndEnhanceCard?.(columnId, values)
+                        }
+                        : undefined
+                }
             />
 
             {editingCard && (
@@ -392,6 +449,16 @@ export function Board({ projectId, state, handlers }: Props) {
                     onSubmit={async (values) => {
                         await handlers.onUpdateCard(editingCard.id, values);
                     }}
+                    onEnhanceInBackground={
+                        handlers.onEnhanceCard
+                            ? async (values) => {
+                                await handlers.onEnhanceCard?.(
+                                    editingCard.id,
+                                    values,
+                                );
+                            }
+                            : undefined
+                    }
                     onDelete={async () => {
                         await handlers.onDeleteCard(editingCard.id);
                     }}

@@ -32,10 +32,12 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
 - Submit to create the card in the chosen column.
 
 While editing the description, a small bot button in the textarea lets you send the current title/description to the
-project’s configured enhancement agent. The button activates once a non-empty title is present, shows a spinner while
-the enhancement request runs, and then displays an **AI suggestion preview** comparing the original and rewritten
-content side by side. Choose **Accept** to apply the suggested title/description to the form or **Reject** to discard it
-and keep editing manually.
+project’s configured enhancement agent. The dialog now includes a **Create & Enhance** button beside **Create Ticket**,
+which creates the card and immediately queues a background enhancement job. While the enhancement runs, the newly created
+card surfaces an **Enhancing** badge and cannot be dragged. When the suggestion is ready, a sparkles icon appears on the
+card; clicking it opens the enhancement diff dialog to compare the persisted title/description with the AI suggestion.
+Accepting the suggestion updates the card, while rejecting it just clears the pending enhancement so you can try again
+later.
 
 You can also create cards directly in a column using column-specific controls (e.g. “Add card”) where present.
 
@@ -53,7 +55,10 @@ You can also create cards directly in a column using column-specific controls (e
     - Status/blocked indicators when relevant.
     - Copy ticket key and close buttons.
   - **Details**:
-    - Editable title and description. The description textarea also exposes the same enhancement button used in the Create Ticket dialog: once the title has text you can trigger the agent, review the side-by-side AI suggestion preview, then accept or reject the rewritten copy without leaving the inspector.
+    - Editable title and description. The details area now shows an **Enhance in background** button near the description
+      controls. Clicking it saves your latest edits and queues an enhancement job whose progress is reflected by the
+      **Enhancing** badge on the card. When the suggestion is ready, use the sparkles icon to open the diff dialog and
+      accept or reject the rewrite.
     - Dependencies picker (select other cards).
   - **Git section**:
     - Buttons for:

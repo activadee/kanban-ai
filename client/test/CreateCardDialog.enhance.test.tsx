@@ -11,14 +11,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { CreateCardDialog } from "@/components/kanban/card-dialogs/CreateCardDialog";
 
-const { useNextTicketKeyMock, enhanceMutationRef } = vi.hoisted(() => {
+const { useNextTicketKeyMock } = vi.hoisted(() => {
     return {
         useNextTicketKeyMock: vi.fn(),
-        enhanceMutationRef: {
-            current: {
-                mutate: vi.fn(),
-            } as { mutate: ReturnType<typeof vi.fn> },
-        },
     };
 });
 
@@ -26,42 +21,31 @@ vi.mock("@/hooks", () => ({
     useNextTicketKey: useNextTicketKeyMock,
 }));
 
-vi.mock("@/hooks/projects", () => ({
-    useEnhanceTicket: () => enhanceMutationRef.current,
-}));
-
-vi.mock("@/components/ui/toast", () => ({
-    toast: vi.fn(),
-}));
-
-vi.mock("@/api/http", () => ({
-    describeApiError: vi.fn((_err: unknown, fallback: string) => ({
-        title: fallback,
-        description: String(_err ?? ""),
-    })),
-}));
-
-let latestMutate: ReturnType<typeof vi.fn>;
-
 function renderDialog() {
     const queryClient = new QueryClient();
+    const onSubmit = vi.fn();
+    const onCreateAndEnhance = vi.fn();
+    const onOpenChange = vi.fn();
 
-    return render(
+    render(
         <QueryClientProvider client={queryClient}>
             <CreateCardDialog
                 open
-                onOpenChange={() => {}}
+                onOpenChange={onOpenChange}
                 columns={[{ id: "col-1", title: "Backlog" }]}
                 defaultColumnId="col-1"
                 projectId="proj-1"
-                onSubmit={vi.fn()}
+                onSubmit={onSubmit}
+                onCreateAndEnhance={onCreateAndEnhance}
                 availableCards={[]}
             />
         </QueryClientProvider>,
     );
+
+    return { onSubmit, onCreateAndEnhance, onOpenChange };
 }
 
-describe("CreateCardDialog – Enhance ticket", () => {
+describe("CreateCardDialog – Create & Enhance", () => {
     beforeEach(() => {
         cleanup();
         vi.clearAllMocks();
@@ -70,150 +54,82 @@ describe("CreateCardDialog – Enhance ticket", () => {
             isLoading: false,
             data: { key: "PRJ-1" },
         });
-
-        latestMutate = vi.fn();
-        enhanceMutationRef.current = {
-            mutate: latestMutate,
-        };
     });
 
-    it("disables enhance button without title and calls mutation with trimmed title", () => {
+    it("disables Create & Enhance without a title", () => {
         renderDialog();
 
-        const enhanceButton = screen.getByRole("button", {
-            name: "Enhance ticket",
+        const createEnhanceButton = screen.getByRole("button", {
+            name: "Create & Enhance",
         }) as HTMLButtonElement;
 
-        expect(enhanceButton.disabled).toBe(true);
+        expect(createEnhanceButton.disabled).toBe(true);
 
         const titleInput = screen.getByLabelText("Title");
+        fireEvent.change(titleInput, {
+            target: { value: "Some title" },
+        });
 
-        fireEvent.change(titleInput, { target: { value: "  Original Title  " } });
+        expect(createEnhanceButton.disabled).toBe(false);
+    });
 
-        expect(enhanceButton.disabled).toBe(false);
+    it("calls onCreateAndEnhance with trimmed values", async () => {
+        const { onSubmit, onCreateAndEnhance, onOpenChange } = renderDialog();
 
-        fireEvent.click(enhanceButton);
+        const titleInput = screen.getByLabelText("Title");
+        const descriptionInput = screen.getByLabelText("Description");
 
-        expect(latestMutate).toHaveBeenCalledTimes(1);
+        fireEvent.change(titleInput, {
+            target: { value: "  Original Title  " },
+        });
+        fireEvent.change(descriptionInput, {
+            target: { value: "Original Description" },
+        });
 
-        const [params] = latestMutate.mock.calls[0] as [any];
+        const createEnhanceButton = screen.getByRole("button", {
+            name: "Create & Enhance",
+        });
 
-        expect(params).toMatchObject({
-            projectId: "proj-1",
+        fireEvent.click(createEnhanceButton);
+
+        await waitFor(() => {
+            expect(onCreateAndEnhance).toHaveBeenCalledTimes(1);
+        });
+
+        expect(onSubmit).not.toHaveBeenCalled();
+
+        expect(onCreateAndEnhance).toHaveBeenCalledWith("col-1", {
             title: "Original Title",
-            description: "",
+            description: "Original Description",
+            dependsOn: [],
         });
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
     });
 
-    it("shows suggestion preview and Accept applies enhanced values", async () => {
-        const mutateSpy = vi.fn(
-            (_params: any, options?: { onSuccess?: (data: any) => void }) => {
-                options?.onSuccess?.({
-                    ticket: {
-                        title: "Enhanced Title",
-                        description: "Enhanced Description",
-                    },
-                });
-            },
-        );
-
-        enhanceMutationRef.current = {
-            mutate: mutateSpy,
-        };
-
-        renderDialog();
+    it("Create Ticket calls onSubmit and not onCreateAndEnhance", async () => {
+        const { onSubmit, onCreateAndEnhance } = renderDialog();
 
         const titleInput = screen.getByLabelText("Title");
         const descriptionInput = screen.getByLabelText("Description");
 
         fireEvent.change(titleInput, {
-            target: { value: "Original Title" },
+            target: { value: "Only Title" },
         });
         fireEvent.change(descriptionInput, {
-            target: { value: "Original Description" },
+            target: { value: "Some description" },
         });
 
-        const enhanceButton = screen.getByRole("button", {
-            name: "Enhance ticket",
+        const createButton = screen.getByRole("button", {
+            name: "Create Ticket",
         });
 
-        fireEvent.click(enhanceButton);
-
-        expect(mutateSpy).toHaveBeenCalledTimes(1);
+        fireEvent.click(createButton);
 
         await waitFor(() => {
-            expect(screen.queryByText("AI suggestion preview")).not.toBeNull();
+            expect(onSubmit).toHaveBeenCalledTimes(1);
         });
 
-        const acceptButton = screen.getByRole("button", { name: "Accept" });
-
-        fireEvent.click(acceptButton);
-
-        await waitFor(() => {
-            expect(screen.queryByText("AI suggestion preview")).toBeNull();
-        });
-
-        expect(
-            (screen.getByLabelText("Title") as HTMLInputElement).value,
-        ).toBe("Enhanced Title");
-        expect(
-            (screen.getByLabelText("Description") as HTMLTextAreaElement).value,
-        ).toBe("Enhanced Description");
-    });
-
-    it("Reject hides suggestion preview and keeps original values", async () => {
-        const mutateSpy = vi.fn(
-            (_params: any, options?: { onSuccess?: (data: any) => void }) => {
-                options?.onSuccess?.({
-                    ticket: {
-                        title: "Enhanced Title",
-                        description: "Enhanced Description",
-                    },
-                });
-            },
-        );
-
-        enhanceMutationRef.current = {
-            mutate: mutateSpy,
-        };
-
-        renderDialog();
-
-        const titleInput = screen.getByLabelText("Title");
-        const descriptionInput = screen.getByLabelText("Description");
-
-        fireEvent.change(titleInput, {
-            target: { value: "Original Title" },
-        });
-        fireEvent.change(descriptionInput, {
-            target: { value: "Original Description" },
-        });
-
-        const enhanceButton = screen.getByRole("button", {
-            name: "Enhance ticket",
-        });
-
-        fireEvent.click(enhanceButton);
-
-        expect(mutateSpy).toHaveBeenCalledTimes(1);
-
-        await waitFor(() => {
-            expect(screen.queryByText("AI suggestion preview")).not.toBeNull();
-        });
-
-        const rejectButton = screen.getByRole("button", { name: "Reject" });
-
-        fireEvent.click(rejectButton);
-
-        await waitFor(() => {
-            expect(screen.queryByText("AI suggestion preview")).toBeNull();
-        });
-
-        expect(
-            (screen.getByLabelText("Title") as HTMLInputElement).value,
-        ).toBe("Original Title");
-        expect(
-            (screen.getByLabelText("Description") as HTMLTextAreaElement).value,
-        ).toBe("Original Description");
+        expect(onCreateAndEnhance).not.toHaveBeenCalled();
     });
 });

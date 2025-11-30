@@ -3,6 +3,7 @@ import {useSortable} from '@dnd-kit/sortable'
 import {CSS} from '@dnd-kit/utilities'
 import type {Card as TCard} from 'shared'
 import {KanbanCard} from './Card'
+import type {CardEnhancementStatus} from '@/hooks/tickets'
 
 type Props = {
     card: TCard
@@ -12,9 +13,22 @@ type Props = {
     blocked?: boolean
     blockers?: string[]
     onSelect?: (cardId: string) => void
+    enhancementStatus?: CardEnhancementStatus
+    onCardEnhancementClick?: (cardId: string) => void
 }
 
-export function DraggableCard({card, columnId, isDone, showAgentComingSoon, blocked, blockers, onSelect}: Props) {
+export function DraggableCard({
+                                  card,
+                                  columnId,
+                                  isDone,
+                                  showAgentComingSoon,
+                                  blocked,
+                                  blockers,
+                                  onSelect,
+                                  enhancementStatus,
+                                  onCardEnhancementClick,
+                              }: Props) {
+    const isEnhancing = enhancementStatus === 'enhancing'
     const {
         attributes,
         listeners,
@@ -22,7 +36,11 @@ export function DraggableCard({card, columnId, isDone, showAgentComingSoon, bloc
         transform,
         transition,
         isDragging,
-    } = useSortable({id: card.id, data: {type: 'card', cardId: card.id, columnId}})
+    } = useSortable({
+        id: card.id,
+        data: {type: 'card', cardId: card.id, columnId},
+        disabled: isEnhancing,
+    })
 
     const style: CSSProperties = {
         transform: CSS.Transform.toString(transform),
@@ -35,15 +53,28 @@ export function DraggableCard({card, columnId, isDone, showAgentComingSoon, bloc
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...listeners}
+            {...(!isEnhancing ? listeners : undefined)}
             onClick={(e) => {
                 e.stopPropagation()
+                if (isEnhancing) return
                 onSelect?.(card.id)
             }}
-            className="select-none"
+            className={`select-none ${isEnhancing ? 'cursor-not-allowed opacity-70' : ''}`}
         >
-            <KanbanCard card={card} done={isDone} showAgentComingSoon={showAgentComingSoon} blocked={blocked}
-                        blockers={blockers}/>
+            <KanbanCard
+                card={card}
+                done={isDone}
+                showAgentComingSoon={showAgentComingSoon}
+                blocked={blocked}
+                blockers={blockers}
+                enhancementStatus={enhancementStatus}
+                onEnhancementClick={
+                    enhancementStatus === 'ready' && onCardEnhancementClick
+                        ? () => onCardEnhancementClick(card.id)
+                        : undefined
+                }
+                disabled={isEnhancing}
+            />
         </div>
     )
 }

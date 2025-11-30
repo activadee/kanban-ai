@@ -1,0 +1,140 @@
+import React from "react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { render, waitFor, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { useTicketEnhancementQueue } from "@/hooks/tickets";
+import { toast } from "@/components/ui/toast";
+
+vi.mock("@/lib/env", () => ({
+    SERVER_URL: "http://test-server/api/v1",
+}));
+
+vi.mock("@/components/ui/toast", () => ({
+    toast: vi.fn(),
+}));
+
+function TestComponent(props: {
+    onReady: (queue: ReturnType<typeof useTicketEnhancementQueue>) => void;
+}) {
+    const queue = useTicketEnhancementQueue();
+
+    React.useEffect(() => {
+        props.onReady(queue);
+    }, [queue, props]);
+
+    return null;
+}
+
+describe("useTicketEnhancementQueue", () => {
+    beforeEach(() => {
+        cleanup();
+        vi.restoreAllMocks();
+
+        // Re-establish mocked modules after restoreAllMocks
+        vi.mocked(toast).mockClear();
+    });
+
+    it("starts enhancement for a new card and stores suggestion", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    ticket: {
+                        title: "Enhanced Title",
+                        description: "Enhanced Description",
+                    },
+                }),
+                {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                },
+            ),
+        );
+
+        // @ts-expect-error - assigning to global fetch in test environment
+        global.fetch = fetchMock;
+
+        const queryClient = new QueryClient();
+        let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <TestComponent onReady={(q) => (queue = q)} />
+            </QueryClientProvider>,
+        );
+
+        await waitFor(() => {
+            expect(queue).toBeDefined();
+        });
+
+        await queue!.startEnhancementForNewCard({
+            projectId: "proj-1",
+            cardId: "card-1",
+            title: "Original Title",
+            description: "Original Description",
+        });
+
+        await waitFor(() => {
+            expect(queue!.enhancements["card-1"]?.status).toBe("ready");
+        });
+
+        const entry = queue!.enhancements["card-1"];
+        expect(entry?.suggestion).toEqual({
+            title: "Enhanced Title",
+            description: "Enhanced Description",
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledWith(
+            "http://test-server/api/v1/projects/proj-1/tickets/enhance",
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: "Original Title",
+                    description: "Original Description",
+                    agent: undefined,
+                    profileId: undefined,
+                }),
+            },
+        );
+    });
+
+    it("clears state and shows a toast on enhancement failure", async () => {
+        const fetchMock = vi.fn().mockResolvedValue(
+            new Response(JSON.stringify({ error: "fail" }), {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+            }),
+        );
+
+        // @ts-expect-error - assigning to global fetch in test environment
+        global.fetch = fetchMock;
+
+        const queryClient = new QueryClient();
+        let queue: ReturnType<typeof useTicketEnhancementQueue> | undefined;
+
+        render(
+            <QueryClientProvider client={queryClient}>
+                <TestComponent onReady={(q) => (queue = q)} />
+            </QueryClientProvider>,
+        );
+
+        await waitFor(() => {
+            expect(queue).toBeDefined();
+        });
+
+        await queue!.startEnhancementForExistingCard({
+            projectId: "proj-1",
+            cardId: "card-2",
+            title: "Broken Title",
+            description: "Broken Description",
+        });
+
+        await waitFor(() => {
+            expect(queue!.enhancements["card-2"]).toBeUndefined();
+        });
+
+        expect(toast).toHaveBeenCalled();
+    });
+});

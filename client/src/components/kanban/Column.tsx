@@ -4,14 +4,17 @@ import type {BoardState, Column as TColumn} from 'shared'
 import {useDroppable} from '@dnd-kit/core'
 import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {DraggableCard} from './DraggableCard'
+import type {CardEnhancementStatus} from '@/hooks/tickets'
 
 type Props = {
     column: TColumn
     state: BoardState
     onSelectCard: (cardId: string) => void
+    enhancementStatusByCardId?: Record<string, CardEnhancementStatus>
+    onCardEnhancementClick?: (cardId: string) => void
 }
 
-export function Column({column, state, onSelectCard}: Props) {
+export function Column({column, state, onSelectCard, enhancementStatusByCardId, onCardEnhancementClick}: Props) {
     const cards = useMemo(
         () => column.cardIds.map((id) => state.cards[id]).filter(Boolean),
         [column.cardIds, state.cards]
@@ -57,6 +60,8 @@ export function Column({column, state, onSelectCard}: Props) {
                                 showAgentComingSoon={isReviewColumn}
                                 blocked={blocked}
                                 blockers={blockerLabels}
+                                enhancementStatus={enhancementStatusByCardId?.[c.id]}
+                                onCardEnhancementClick={onCardEnhancementClick}
                                 onSelect={onSelectCard}
                             />
                         )
