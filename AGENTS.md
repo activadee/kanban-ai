@@ -1,6 +1,6 @@
 # KanbanAI Development Guidelines
 
-Last updated: 2025-11-23
+Last updated: 2025-11-30
 
 ## Active Technologies
 
@@ -28,7 +28,7 @@ core/     # Core logic + tests/coverage gates
 - Build client/server: `bun run build:client` / `bun run build:server`
 - Single-origin production server (API + static UI): `bun run prod` (builds client + server, generates the embedded static bundle, and starts the Hono server on one port).
 - Build single binary server: `bun run build:binary` (emits self-contained executables for `linux-x64`, `linux-arm64`, `darwin-arm64`, and `win-x64` in `dist/kanban-ai-<platform>`; each binary serves API + static UI with embedded migrations and static assets by default, with overrides via `KANBANAI_STATIC_DIR` / `KANBANAI_MIGRATIONS_DIR`).
-- CLI workspace: from `cli/`, `bun run build` compiles via `tsc`, `bun run test` runs Vitest. Publish via the manual **Release CLI (npm)** workflow after bumping `cli/package.json`.
+- CLI workspace: from `cli/`, `bun run build` compiles via `tsc`, `bun run test` runs Vitest. Releases run through `semantic-release` (`bun run release`, triggered by `.github/workflows/release.yml`), which builds binaries, publishes the npm package, updates `CHANGELOG.md`, and uploads assets to GitHub Releases. PR titles must follow Conventional Commits; `.github/workflows/semantic-pr.yml` enforces the check, and the old manual release workflows (`release-binary.yml`, `release-cli.yml`) remain as fallbacks.
 
 ## Contribution Boundaries
 
@@ -41,3 +41,4 @@ core/     # Core logic + tests/coverage gates
 
 - For development, always use split dev servers: `bun run dev` (Turbo orchestrated Vite + API).
 - For single-origin self-hosting, use the dedicated `prod` entrypoint (see the Mintlify docs in `docs/index.mdx` for details on running `bun run prod` + the bundled static assets).
+- For releases, trust the semantic-release workflow above; existing manual jobs (`release-binary.yml`, `release-cli.yml`) remain available as fallbacks.
