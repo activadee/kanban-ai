@@ -39,13 +39,24 @@ const normalizeLevel = (raw?: string): LogLevel => {
   }
 }
 
-const formatValue = (value: unknown): string => {
-  if (value instanceof Error) {
-    const name = value.name || 'Error'
-    const message = value.message || 'unknown error'
-    return quoteIfNeeded(`${name}: ${message}`)
-  }
+const escapeString = (value: string): string => {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')
+}
 
+const quoteIfNeeded = (value: string): string => {
+  if (value === '') return '""'
+  if (/\s|=/.test(value) || /["\\]/.test(value)) {
+    return `"${escapeString(value)}"`
+  }
+  return value
+}
+
+const formatValue = (value: unknown): string => {
   if (value === null || value === undefined) return String(value)
 
   if (typeof value === 'string') return quoteIfNeeded(value)
@@ -64,19 +75,25 @@ const formatValue = (value: unknown): string => {
   }
 }
 
-const quoteIfNeeded = (value: string): string => {
-  if (value === '') return '""'
-  if (/\s|=/.test(value)) {
-    const escaped = value.replace(/"/g, '\\"')
-    return `"${escaped}"`
-  }
-  return value
-}
-
 const formatContext = (context: Record<string, unknown>): string => {
-  const entries = Object.entries(context).filter(([, v]) => v !== undefined)
-  if (!entries.length) return ''
-  const parts = entries.map(([key, value]) => `${key}=${formatValue(value)}`)
+  const parts: string[] = []
+
+  for (const [key, value] of Object.entries(context)) {
+    if (value === undefined) continue
+
+    if (value instanceof Error) {
+      const name = value.name || 'Error'
+      const message = value.message || 'unknown error'
+      parts.push(`${key}=${quoteIfNeeded(`${name}: ${message}`)}`)
+      if (value.stack) {
+        parts.push(`${key}_stack=${quoteIfNeeded(value.stack)}`)
+      }
+      continue
+    }
+
+    parts.push(`${key}=${formatValue(value)}`)
+  }
+
   return parts.length ? ' ' + parts.join(' ') : ''
 }
 
@@ -87,11 +104,15 @@ const winstonLogger = createLogger({
   levels: LOG_LEVELS,
   transports: [new transports.Console()],
   format: format.printf((info) => {
-    const {level, scope, message, ...meta} = info as {level: string; scope?: string; message: string} & Record<string, unknown>
+    const {level, scope, message, ...meta} = info as {level: string; scope?: string; message: string} & Record<
+      string,
+      unknown
+    >
     const lvl = (level || 'info').toUpperCase().padEnd(5, ' ')
     const sc = scope || 'server'
+    const msg = typeof message === 'string' ? message.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') : String(message)
     const ctx = formatContext(meta)
-    return `${lvl} [${sc}] ${message}${ctx}`
+    return `${lvl} [${sc}] ${msg}${ctx}`
   }),
 })
 
