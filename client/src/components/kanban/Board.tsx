@@ -52,7 +52,7 @@ const DEFAULT_INSPECTOR_WIDTH = 480;
 const MIN_INSPECTOR_WIDTH = 360;
 const MAX_INSPECTOR_WIDTH = 900;
 
-const FALLBACK_INSPECTOR_SIZE = { defaultSize: 35, minSize: 22, maxSize: 65 } as const;
+const FALLBACK_INSPECTOR_SIZE: { defaultSize: number; minSize: number; maxSize: number } = { defaultSize: 35, minSize: 22, maxSize: 65 } as const;
 
 const computeInspectorSize = () => {
     if (typeof window === "undefined") return FALLBACK_INSPECTOR_SIZE;
