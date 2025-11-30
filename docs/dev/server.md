@@ -21,3 +21,8 @@ open http://localhost:3000
 ---
 title: Server overview
 ---
+
+## Version endpoint
+- `/api/v1/version` exposes the running server version plus the latest available release.
+- The running version is resolved from `KANBANAI_VERSION` or the nearest `package.json` named `kanban-ai`.
+- Latest release metadata is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`) with a short in-memory cache; failures return the current version with `updateAvailable: false` so the UI stays quiet when offline.

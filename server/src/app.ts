@@ -25,6 +25,7 @@ import {dashboardWebsocketHandlers} from './ws/dashboard-handlers'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
 import {log, applyLogConfig} from './log'
+import {createVersionRouter} from './version/routes'
 // Readiness flag for /api/v1/readyz (shimmed on /api/readyz temporarily)
 let ready = false
 export const setAppReady = (v: boolean) => { ready = v }
@@ -134,6 +135,7 @@ export const createApp = ({
     api.route('/settings', createAppSettingsRouter())
     api.route('/dashboard', createDashboardRouter())
     api.route('/onboarding', createOnboardingRouter())
+    api.route('/version', createVersionRouter())
 
     if (upgradeWebSocket) {
         api.get(

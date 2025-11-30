@@ -8,6 +8,7 @@ export * from './attempt-todos'
 export * from './app'
 export * from './dashboard'
 export * from './onboarding'
+export * from './version'
 
 export type ApiResponse = {
     message: string

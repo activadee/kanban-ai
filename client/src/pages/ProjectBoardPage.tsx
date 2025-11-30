@@ -7,6 +7,7 @@ import { Board } from "@/components/kanban/Board";
 import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnhancementDialog";
 import { ImportIssuesDialog } from "@/components/github/ImportIssuesDialog";
 import { ConnectionLostDialog } from "@/components/system/ConnectionLostDialog";
+import { VersionIndicator } from "@/components/system/VersionIndicator";
 import {
     useBoardState,
     useCreateCard,
@@ -177,9 +178,10 @@ export function ProjectBoardPage() {
     return (
         <div className="flex h-full min-h-0 flex-col">
             <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                     <img src={"/vite.svg"} className="h-6 w-6" />
                     <div className="text-xl font-semibold">{project.name}</div>
+                    <VersionIndicator />
                 </div>
                 <div className="flex items-center gap-2">
                     <Badge variant={connectionBadgeVariant}>
