@@ -17,9 +17,9 @@ The Card Inspector is opened by clicking a card on the board. Its layout consist
   - Close button.
 - Top-level tabs:
   - **Ticket** – shows the Details and Git controls for the card. This is the default tab whenever you open the inspector or switch to a different card.
-  - **Attempts** – surfaces attempt-related controls. When no Attempt is running, you see the **Attempt create form** here; once an Attempt exists, this tab renders a nested tab view with **Messages**, **Processes**, and **Logs** sub-tabs for the selected Attempt.
+  - **Attempts** – surfaces attempt-related controls. When no Attempt is running, you see the **Attempt create form** here; once an Attempt exists, this tab renders a nested tab view with **Messages**, **Processes**, and **Logs** sub-tabs for the selected Attempt. Cards with existing Attempts now open on this tab by default, while cards without Attempts still open on Ticket.
 
-Switching cards resets the outer tab to **Ticket**, and navigating between Attempts resets the inner tab back to **Messages**, so you always start from the same view when focusing on new work.
+Switching cards recalculates which top-level tab should be active: cards without Attempts fall back to **Ticket**, while cards with Attempts open on **Attempts** (and its inner tabs). Navigating between Attempts, or when a new Attempt is detected, still resets the inner tab back to **Messages**, so you always start from the same view when focusing on new work.
 
 ## Starting an Attempt
 

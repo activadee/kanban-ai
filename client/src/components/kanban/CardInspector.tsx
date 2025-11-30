@@ -35,10 +35,9 @@ export function CardInspector({
     onClose?: () => void
     onEnhanceCard?: (values: { title: string; description: string; dependsOn?: string[] }) => Promise<void> | void
 }) {
-    const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('ticket')
-    const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
     const previousCardIdRef = useRef(card.id)
     const previousAttemptIdRef = useRef<string | undefined>(undefined)
+    const userSetTopLevelTabRef = useRef(false)
 
     const inspectorState = useCardInspectorState({
         projectId,
@@ -53,13 +52,26 @@ export function CardInspector({
 
     const {details, header, attempt, git, activity} = inspectorState
 
+    const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('ticket')
+    const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
+
     useEffect(() => {
-        if (previousCardIdRef.current !== card.id) {
-            setActiveTopLevelTab('ticket')
-            setActiveAttemptTab('messages')
+        const attemptForCard = attempt.attempt && attempt.attempt.cardId === card.id ? attempt.attempt : null
+        const cardChanged = previousCardIdRef.current !== card.id
+        const desiredTopLevel: TopLevelTab = attemptForCard ? 'attempts' : 'ticket'
+
+        if (cardChanged) {
             previousCardIdRef.current = card.id
+            userSetTopLevelTabRef.current = false
+            setActiveTopLevelTab(desiredTopLevel)
+            setActiveAttemptTab('messages')
+            return
         }
-    }, [card.id])
+
+        if (!userSetTopLevelTabRef.current && activeTopLevelTab !== desiredTopLevel) {
+            setActiveTopLevelTab(desiredTopLevel)
+        }
+    }, [card.id, attempt.attempt?.id, attempt.attempt?.cardId, activeTopLevelTab])
 
     useEffect(() => {
         const currentAttemptId = attempt.attempt?.id
@@ -81,7 +93,10 @@ export function CardInspector({
             />
             <Tabs
                 value={activeTopLevelTab}
-                onValueChange={(value) => setActiveTopLevelTab(value as TopLevelTab)}
+                onValueChange={(value) => {
+                    userSetTopLevelTabRef.current = true
+                    setActiveTopLevelTab(value as TopLevelTab)
+                }}
                 className="flex min-h-0 flex-1 flex-col gap-3"
             >
                 <TabsList>
