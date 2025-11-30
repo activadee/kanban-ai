@@ -12,7 +12,7 @@ export const createGithubAuthRouter = () => {
             const payload = await startGithubDeviceFlow(c.get('config').env)
             return c.json(payload, 200)
         } catch (error) {
-            log.error({err: error}, '[github:device-start] failed')
+            log.error('github:auth', 'device start failed', {err: error})
             return problemJson(c, {
                 status: 503,
                 title: 'GitHub device flow unavailable',
@@ -66,7 +66,7 @@ export const createGithubAuthRouter = () => {
                 detail: result.message ?? 'GitHub device poll failed',
             })
         } catch (error) {
-            log.error({err: error}, '[github:device-poll] failed')
+            log.error('github:auth', 'device poll failed', {err: error})
             return problemJson(c, {
                 status: 502,
                 title: 'GitHub device poll failed',
@@ -80,7 +80,7 @@ export const createGithubAuthRouter = () => {
             const result = await checkGithubConnection()
             return c.json(result, 200)
         } catch (error) {
-            log.error({err: error}, '[github:check] failed')
+            log.error('github:auth', 'check failed', {err: error})
             return problemJson(c, {
                 status: 502,
                 title: 'GitHub check failed',
@@ -91,4 +91,3 @@ export const createGithubAuthRouter = () => {
 
     return router
 }
-

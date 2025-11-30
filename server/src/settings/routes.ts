@@ -41,7 +41,7 @@ export function createAppSettingsRouter() {
             })
             return c.json({settings}, 200)
         } catch (err) {
-            log.error({err}, '[settings:update] failed')
+            log.error('settings', 'update failed', {err})
             return problemJson(c, {status: 502, detail: 'Failed to update settings'})
         }
     })

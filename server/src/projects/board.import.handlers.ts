@@ -27,10 +27,13 @@ export const importGithubIssuesHandler = async (
         );
         return c.json(result, 200);
     } catch (error) {
-        log.error(
-            {err: error, boardId, owner, repo, state},
-            "[board:import:github] failed",
-        );
+        log.error("board:import:github", "failed", {
+            err: error,
+            boardId,
+            owner,
+            repo,
+            state,
+        });
         const detail =
             error instanceof Error ? error.message : "GitHub import failed";
         const status = detail.toLowerCase().includes("github") ? 502 : 500;

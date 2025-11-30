@@ -37,15 +37,12 @@ export const enhanceTicketHandler = async (c: any) => {
         }
 
         if (status >= 500) {
-            log.error(
-                {
-                    err: error,
-                    projectId,
-                    agent: body.agent,
-                    profileId: body.profileId,
-                },
-                "[projects:tickets:enhance] failed",
-            );
+            log.error("projects:tickets", "enhance failed", {
+                err: error,
+                projectId,
+                agent: body.agent,
+                profileId: body.profileId,
+            });
         }
 
         return problemJson(c, {

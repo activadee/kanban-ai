@@ -50,7 +50,7 @@ async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, 
   try {
     await settingsService.ensure()
   } catch (error) {
-    log.warn({ err: error }, '[settings] init failed')
+    log.warn('settings', 'init failed', { err: error })
   }
   return resolved.kind === 'folder' ? resolved.path : '__bundled__'
 }

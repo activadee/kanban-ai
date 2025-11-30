@@ -25,7 +25,7 @@ export async function gitStatusHandler(c: any) {
         const status = await getStatusAgainstBaseAtPath(attempt.worktreePath, baseAncestor)
         return c.json(status, 200)
     } catch (error) {
-        log.error({err: error, attemptId: attempt.id, boardId: attempt.boardId}, '[attempts:git:status] failed')
+        log.error('attempts:git', 'status failed', {err: error, attemptId: attempt.id, boardId: attempt.boardId})
         return problemJson(c, {status: 502, detail: 'Failed to get git status'})
     }
 }
@@ -48,10 +48,13 @@ export async function gitFileHandler(c: any) {
         const content = await getFileContentAtPath(attempt.worktreePath, path, source, ref)
         return c.json({content}, 200)
     } catch (error) {
-        log.error(
-            {err: error, attemptId: attempt.id, boardId: attempt.boardId, path, source},
-            '[attempts:git:file] failed',
-        )
+        log.error('attempts:git', 'file failed', {
+            err: error,
+            attemptId: attempt.id,
+            boardId: attempt.boardId,
+            path,
+            source,
+        })
         return problemJson(c, {status: 502, detail: 'Failed to fetch file content'})
     }
 }

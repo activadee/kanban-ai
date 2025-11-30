@@ -18,10 +18,7 @@ export const getProjectCardAttemptHandler = async (
         }
         return c.json(data, 200);
     } catch (error) {
-        log.error(
-            {err: error, boardId, cardId: c.req.param("cardId")},
-            "[attempts:attempt] failed",
-        );
+        log.error("attempts", "attempt failed", {err: error, boardId, cardId: c.req.param("cardId")});
         return problemJson(c, {
             status: 502,
             detail:
@@ -82,16 +79,13 @@ export const startProjectCardAttemptHandler = async (
         );
         return c.json(attempt, 201);
     } catch (error) {
-        log.error(
-            {
-                err: error,
-                boardId,
-                cardId: c.req.param("cardId"),
-                agent: body.agent,
-                profileId: body.profileId,
-            },
-            "[attempts:start:project] failed",
-        );
+        log.error("attempts", "start project failed", {
+            err: error,
+            boardId,
+            cardId: c.req.param("cardId"),
+            agent: body.agent,
+            profileId: body.profileId,
+        });
         return problemJson(c, {
             status: 502,
             detail:

@@ -33,10 +33,10 @@ export const listProjectAgentProfilesHandler = async (c: any) => {
         const rows = await agentProfiles.listAgentProfiles(c.req.param("projectId"));
         return c.json({profiles: rows}, 200);
     } catch (error) {
-        log.error(
-            {err: error, projectId: c.req.param("projectId")},
-            "[agents:profiles:list] failed",
-        );
+        log.error("agents:profiles", "list failed", {
+            err: error,
+            projectId: c.req.param("projectId"),
+        });
         return problemJson(c, {
             status: 502,
             detail: "Failed to list profiles",
@@ -82,15 +82,12 @@ export const createProjectAgentProfileHandler = async (c: any) => {
         });
         return c.json(row, 201);
     } catch (error) {
-        log.error(
-            {
-                err: error,
-                projectId: c.req.param("projectId"),
-                agent: agentKey,
-                name,
-            },
-            "[agents:profiles:create] failed",
-        );
+        log.error("agents:profiles", "create failed", {
+            err: error,
+            projectId: c.req.param("projectId"),
+            agent: agentKey,
+            name,
+        });
         return problemJson(c, {
             status: 502,
             detail: "Failed to create profile",
@@ -109,14 +106,11 @@ export const getProjectAgentProfileHandler = async (c: any) => {
         }
         return c.json(row, 200);
     } catch (error) {
-        log.error(
-            {
-                err: error,
-                projectId: c.req.param("projectId"),
-                profileId: c.req.param("pid"),
-            },
-            "[agents:profiles:get] failed",
-        );
+        log.error("agents:profiles", "get failed", {
+            err: error,
+            projectId: c.req.param("projectId"),
+            profileId: c.req.param("pid"),
+        });
         return problemJson(c, {
             status: 502,
             detail: "Failed to fetch profile",
@@ -184,14 +178,11 @@ export const updateProjectAgentProfileHandler = async (c: any) => {
         });
         return c.json(row, 200);
     } catch (error) {
-        log.error(
-            {
-                err: error,
-                projectId: c.req.param("projectId"),
-                profileId: c.req.param("pid"),
-            },
-            "[agents:profiles:update] failed",
-        );
+        log.error("agents:profiles", "update failed", {
+            err: error,
+            projectId: c.req.param("projectId"),
+            profileId: c.req.param("pid"),
+        });
         return problemJson(c, {
             status: 502,
             detail: "Failed to update profile",
@@ -221,14 +212,11 @@ export const deleteProjectAgentProfileHandler = async (c: any) => {
         });
         return c.body(null, 204);
     } catch (error) {
-        log.error(
-            {
-                err: error,
-                projectId: c.req.param("projectId"),
-                profileId: c.req.param("pid"),
-            },
-            "[agents:profiles:delete] failed",
-        );
+        log.error("agents:profiles", "delete failed", {
+            err: error,
+            projectId: c.req.param("projectId"),
+            profileId: c.req.param("pid"),
+        });
         return problemJson(c, {
             status: 502,
             detail: "Failed to delete profile",

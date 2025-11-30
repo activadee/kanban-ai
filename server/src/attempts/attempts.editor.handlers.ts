@@ -52,7 +52,7 @@ export async function openEditorHandler(c: any) {
             editorKey: attemptedEditorKey ?? 'VS_CODE',
             error: error instanceof Error ? error.message : String(error),
         })
-        log.error({err: error, attemptId: attempt.id, boardId: attempt.boardId}, '[attempts:open-editor] failed')
+        log.error('attempts:editor', 'open failed', {err: error, attemptId: attempt.id, boardId: attempt.boardId})
         return problemJson(c, {status: 500, detail: 'Failed to open editor'})
     }
 }

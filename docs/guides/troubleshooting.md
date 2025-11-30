@@ -58,16 +58,17 @@ Common issues and how to debug them when running KanbanAI locally or in self-hos
 
 ## Logging & debugging
 
-- Logs are structured JSON via Pino:
-  - `LOG_LEVEL` controls verbosity (`debug`, `info`, `warn`, `error`).
-  - Default is `info`.
+- Logs are human-readable lines emitted via Winston:
+  - Format: `LEVEL [scope] message key=value ...`.
+  - Scopes align with domains (e.g. `[github:repos]`, `[tasks]`, `[ws:kanban]`, `server`).
+  - `LOG_LEVEL` controls verbosity (`debug`, `info`, `warn`, `error`; default `info`).
 - Request-level traces:
-  - Enable with `KANBANAI_DEBUG=1`, `DEBUG=*`/`DEBUG=kanbanai*`, or `LOG_LEVEL=debug`.
+  - Enabled with `KANBANAI_DEBUG=1`, `DEBUG=*` / `DEBUG=kanbanai*`, or `LOG_LEVEL=debug`.
+  - When on, Hono logs appear at `debug` level with the `hono` scope alongside regular server logs.
 - Examples:
 
 ```bash
-LOG_LEVEL=info bun run prod                       # structured logs, no per-request traces
-LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod     # structured logs + Hono request lines
+DEBUG=kanbanai* LOG_LEVEL=debug bun run prod   # debug logs + Hono request lines (scope=hono)
 ```
 
 ## Ports & host conflicts
@@ -80,4 +81,3 @@ LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod     # structured logs + Hono reque
 - Overrides:
   - `HOST` and `PORT` env vars.
 - Ensure nothing else is running on the chosen port and that your client `.env` (`VITE_SERVER_URL`) matches.
-

@@ -15,7 +15,7 @@ function scheduleBroadcast() {
             const overview = await getDashboardOverview()
             broadcast(CHANNEL_ID, JSON.stringify({type: 'dashboard_overview', payload: overview}))
         } catch (error) {
-            log.error({err: error}, '[dashboard] broadcast failed')
+            log.error('dashboard', 'broadcast failed', {err: error})
         } finally {
             scheduled = false
         }

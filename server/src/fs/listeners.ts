@@ -32,7 +32,7 @@ export function registerFsListeners(bus: AppEventBus) {
             // removed folders so `git worktree list` stays clean.
             await pruneGitWorktrees(repositoryPath)
         } catch (error) {
-            log.error({err: error}, '[fs] failed to cleanup worktrees on project.deleted')
+            log.error('fs', 'failed to cleanup worktrees on project.deleted', {err: error})
         }
     })
 }

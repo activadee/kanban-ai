@@ -68,7 +68,7 @@ export async function runDevAutomationHandler(c: any) {
         else if (message.startsWith('No automation script configured')) status = 422
         else if (message.includes('Worktree is missing')) status = 409
         if (status >= 500) {
-            log.error({err: error, attemptId: c.req.param('id')}, '[attempts:automation:dev] failed')
+            log.error('attempts:automation:dev', 'failed', {err: error, attemptId: c.req.param('id')})
         }
         return problemJson(c, {status, detail: message})
     }

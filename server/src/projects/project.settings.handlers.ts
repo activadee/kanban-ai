@@ -188,10 +188,7 @@ export const updateProjectSettingsHandler = async (c: any) => {
         });
         return c.json({settings}, 200);
     } catch (error) {
-        log.error(
-            {err: error, projectId},
-            "[projects:settings:update] failed",
-        );
+        log.error("projects:settings", "update failed", {err: error, projectId});
         return problemJson(c, {
             status: 502,
             detail: "Failed to update project settings",
