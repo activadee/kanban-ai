@@ -53,14 +53,15 @@ You can also create cards directly in a column using column-specific controls (e
   - On mobile:
     - The inspector still opens as a full-height sheet that slides in from the side, keeping the focus on the tapped card.
 - The inspector includes:
-  - **Header**:
-    - Ticket key (if present).
-    - Card title.
-    - Status/blocked indicators when relevant.
-    - Copy ticket key and close buttons.
-  - **Top-level tabs**:
-    - **Ticket** – contains the Details and Git areas for editing card metadata. The details panel still provides title/description editing, the **Enhance in background** button, and the dependencies picker, while the Git section exposes Open in editor, View changes, Commit, Open PR, and Merge controls for the selected card/Attempt.
-    - **Attempts** – surfaces attempt controls for the card. When no Attempt exists, you see the **Attempt create form** here (agent/profile selectors, Start button); once an Attempt is running, the tab shows nested **Messages**, **Processes**, and **Logs** sub-tabs for interacting with the current Attempt.
+- **Header**:
+  - Ticket key (if present).
+  - Card title.
+  - Status/blocked indicators when relevant.
+  - Copy ticket key and close buttons.
+  - Attempt toolbar (Open in editor, View changes, Commit, Open PR, Merge, and Todos controls) that appears whenever an Attempt exists and stays visible next to the close button so Git actions are usable even while viewing Attempts tabs.
+- **Top-level tabs**:
+  - **Ticket** – contains the Details and Git areas for editing card metadata. The details panel still provides title/description editing, the **Enhance in background** button, and the dependencies picker. The Git section continues to host the dialogs for changes, commits, PRs, and merges, while the action buttons themselves now live in the header toolbar so they stay available even when you are viewing other tabs.
+  - **Attempts** – surfaces attempt controls for the card. When no Attempt exists, you see the **Attempt create form** here (agent/profile selectors, Start button); once an Attempt is running, the tab shows nested **Messages**, **Processes**, and **Logs** sub-tabs for interacting with the current Attempt.
 
 See the “Attempts & inspector (UI)” guide for the Attempts and activity sections inside the inspector.
 
