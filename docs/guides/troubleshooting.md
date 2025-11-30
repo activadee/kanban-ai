@@ -41,6 +41,10 @@ Common issues and how to debug them when running KanbanAI locally or in self-hos
 - Check migrations:
   - Migrations run automatically on start.
   - If you override `KANBANAI_MIGRATIONS_DIR`, ensure it points at a valid Drizzle migrations directory.
+  - The server now reconciles the migration history on every startup: it compares the hashes of the embedded/background SQL
+    files with the rows in `__drizzle_migrations`/`drizzle_migrations` and removes any entries whose hashes no longer match.
+    You will see a WARN log `migrations removed mismatched migration hashes …` when that happens. Make sure your on-disk
+    migration files match what shipped in the binary when you see this so the reconciliation stops after fixing the drift.
 - Look at logs around startup for `migrations` or `db` errors.
 
 ## Worktrees & disk usage
