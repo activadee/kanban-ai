@@ -8,6 +8,7 @@ import type { UseCardInspectorStateResult } from "@/components/kanban/card-inspe
 
 const mocks = vi.hoisted(() => ({
     useCardInspectorStateMock: vi.fn(),
+    gitSectionProps: [] as any[],
 }));
 
 vi.mock("@/components/kanban/card-inspector/useCardInspectorState", () => ({
@@ -85,7 +86,10 @@ vi.mock("@/components/kanban/card-inspector/sections/DetailsSection", () => ({
 }));
 
 vi.mock("@/components/kanban/card-inspector/sections/GitSection", () => ({
-    GitSection: () => <div data-testid="git-section">GitSection</div>,
+    GitSection: (props: any) => {
+        mocks.gitSectionProps.push(props);
+        return <div data-testid="git-section">GitSection</div>;
+    },
 }));
 
 vi.mock("@/components/kanban/card-inspector/AttemptToolbar", () => ({
@@ -238,6 +242,7 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
     beforeEach(() => {
         cleanup();
         vi.clearAllMocks();
+        mocks.gitSectionProps.length = 0;
         mockInspectorState = createInspectorState();
         mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
     });
@@ -482,6 +487,31 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Open editor" }));
         expect(mockInspectorState.git.handleOpenEditor).toHaveBeenCalled();
+    });
+
+    it("keeps git dialog hosts mounted regardless of active tab", async () => {
+        mockInspectorState = createInspectorState({
+            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
+        });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
+
+        renderInspector();
+
+        expect(screen.getByTestId("git-section")).not.toBeNull();
+        expect(mocks.gitSectionProps.at(-1)?.changesOpen).toBe(false);
+
+        fireEvent.click(screen.getByRole("tab", { name: /Ticket/i }));
+        await waitFor(() =>
+            expect(screen.getByRole("tab", { name: /Ticket/i }).getAttribute("data-state")).toBe("active"),
+        );
+
+        fireEvent.click(screen.getByRole("tab", { name: /Attempts/i }));
+        await waitFor(() =>
+            expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active"),
+        );
+
+        expect(screen.getByTestId("git-section")).not.toBeNull();
+        expect(mocks.gitSectionProps.at(-1)?.changesOpen).toBe(false);
     });
 
     it("View logs switches only the inner attempt tab", async () => {

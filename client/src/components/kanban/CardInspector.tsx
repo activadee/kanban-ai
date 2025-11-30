@@ -144,22 +144,6 @@ export function CardInspector({
                         }
                         saving={details.saving}
                         deleting={details.deleting}
-                        gitSection={
-                            <GitSection
-                                projectId={projectId}
-                                card={card}
-                                attempt={attempt.attempt}
-                                changesOpen={git.changesOpen}
-                                onChangesOpenChange={git.setChangesOpen}
-                                commitOpen={git.commitOpen}
-                                onCommitOpenChange={git.setCommitOpen}
-                                prOpen={git.prOpen}
-                                onPrOpenChange={git.setPrOpen}
-                                mergeOpen={git.mergeOpen}
-                                onMergeOpenChange={git.setMergeOpen}
-                                prDefaults={git.prDefaults}
-                            />
-                        }
                     />
                 </TabsContent>
                 <TabsContent value="attempts" className="flex min-h-0 flex-1 flex-col gap-3">
@@ -233,6 +217,20 @@ export function CardInspector({
                     )}
                 </TabsContent>
             </Tabs>
+            <GitSection
+                projectId={projectId}
+                card={card}
+                attempt={attempt.attempt}
+                changesOpen={git.changesOpen}
+                onChangesOpenChange={git.setChangesOpen}
+                commitOpen={git.commitOpen}
+                onCommitOpenChange={git.setCommitOpen}
+                prOpen={git.prOpen}
+                onPrOpenChange={git.setPrOpen}
+                mergeOpen={git.mergeOpen}
+                onMergeOpenChange={git.setMergeOpen}
+                prDefaults={git.prDefaults}
+            />
         </div>
     )
 }
