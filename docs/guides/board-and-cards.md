@@ -46,10 +46,11 @@ You can also create cards directly in a column using column-specific controls (e
 
 - Click a card to open the **Card Inspector**:
   - On desktop:
-    - The inspector now overlays the right edge of the board (rather than shrinking the column layout), so the board
-      stays fully visible underneath.
-    - Drag the slender vertical handle to resize the pane between ~360px and ~900px; your preferred width is saved locally
-      (`kanban-inspector-width`) so the next time you open an inspector it appears at the same size.
+    - The inspector now appears as the right panel in a horizontal split so it shares space with the board instead of
+      overlaying it, and the handle resizes the panels side-by-side.
+    - Drag the vertical handle to repartition the board/inspector widths (roughly 22 %–65 % of the viewport) and
+      the layout state is stored under the `kanban-board-inspector` auto-save key so reopening the board restores the
+      same ratio.
   - On mobile:
     - The inspector still opens as a full-height sheet that slides in from the side, keeping the focus on the tapped card.
 - The inspector includes:

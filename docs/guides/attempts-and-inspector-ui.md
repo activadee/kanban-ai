@@ -8,9 +8,13 @@ This guide describes how to use the card inspector to start and manage Attempts,
 
 ## Card inspector overview
 
-The Card Inspector is opened by clicking a card on the board. On desktop it now floats above the right edge of the board
-instead of shrinking the column grid, and the slender handle lets you resize it between about 360px and 900px while your
-preferred width is saved to `kanban-inspector-width` in local storage for the next time.
+The Card Inspector is opened by clicking a card on the board. On desktop it now shares space with the board in a
+horizontal split: the board stays in the first panel while the inspector sits to the right, and a built-in handle
+lets you repartition the width between them. You can adjust the inspector width relative to the viewport
+(approximately 22 %–65 %, defaulting near 35 %) and the layout state is persisted under the `kanban-board-inspector`
+auto-save key so reopening the board restores your preferred size. On mobile the inspector still opens as a full-height
+sheet that slides in from the side, keeping the focus on the tapped card.
+
 Its layout consists of:
 
 - Header:
