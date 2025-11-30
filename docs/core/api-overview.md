@@ -30,7 +30,7 @@ All examples below omit the `/api/v1` prefix for brevity.
   - `POST /projects/:projectId/tickets/enhance` – send `{title, description?, agent?, profileId?}` to the configured agent and receive `{ticket}` with rewritten text (RFC 7807 errors on failure).
 - Boards:
   - `GET    /boards/:boardId` – board state (columns + cards).
-  - `POST   /boards/:boardId/cards` – create a card.
+  - `POST   /boards/:boardId/cards` – create a card. Responds with `{ state, cardId }` so clients can track the created card (e.g. when queuing background enhancements).
   - `PATCH  /boards/:boardId/cards/:cardId` – update card content or move cards (column + index).
   - `DELETE /boards/:boardId/cards/:cardId` – delete a card.
   - `POST   /boards/:boardId/import/github/issues` – import GitHub issues as cards.
