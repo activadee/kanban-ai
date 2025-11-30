@@ -87,6 +87,7 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
 ## Card action menu
 
 - Every card displays an ellipsis menu in its header with quick actions. **Open details** and **Edit…** are always available.
+  - When the card is running a background enhancement job, the ellipsis menu is temporarily disabled and any open menu closes so the card keeps its focus on the pending enhancement.
 - Backlog columns:
   - **Enhance ticket…** opens the Edit Ticket dialog for that card and immediately queues the background enhancement job using the current title/description.
   - **Start work** kicks off an Attempt using the project’s default agent and profile. The board shows a toast if the card is blocked or if no default agent/profile is configured.
