@@ -1,4 +1,4 @@
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
@@ -51,6 +51,21 @@ export type BoardHandlers = {
 const DEFAULT_INSPECTOR_WIDTH = 480;
 const MIN_INSPECTOR_WIDTH = 360;
 const MAX_INSPECTOR_WIDTH = 900;
+
+const FALLBACK_INSPECTOR_SIZE = { defaultSize: 35, minSize: 22, maxSize: 65 } as const;
+
+const computeInspectorSize = () => {
+    if (typeof window === "undefined") return FALLBACK_INSPECTOR_SIZE;
+
+    const vw = window.innerWidth || 1440;
+    const toPercent = (px: number) => Math.min(95, Math.max(5, (px / vw) * 100));
+
+    return {
+        defaultSize: toPercent(DEFAULT_INSPECTOR_WIDTH),
+        minSize: toPercent(MIN_INSPECTOR_WIDTH),
+        maxSize: toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9)),
+    } as const;
+};
 
 type Props = {
     projectId: string;
@@ -175,18 +190,14 @@ export function Board({
         state.columns,
     ]);
 
-    const inspectorSize = useMemo(() => {
-        const fallback = { defaultSize: 35, minSize: 22, maxSize: 65 } as const;
-        if (typeof window === "undefined") return fallback;
+    const [inspectorSize, setInspectorSize] = useState(FALLBACK_INSPECTOR_SIZE);
 
-        const vw = window.innerWidth || 1440;
-        const toPercent = (px: number) => Math.min(95, Math.max(5, (px / vw) * 100));
+    useEffect(() => {
+        const updateSize = () => setInspectorSize(computeInspectorSize());
 
-        return {
-            defaultSize: toPercent(DEFAULT_INSPECTOR_WIDTH),
-            minSize: toPercent(MIN_INSPECTOR_WIDTH),
-            maxSize: toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9)),
-        } as const;
+        updateSize();
+        window.addEventListener("resize", updateSize);
+        return () => window.removeEventListener("resize", updateSize);
     }, []);
 
     const boardContent = (
@@ -284,54 +295,57 @@ export function Board({
             {totalCards > 0 && (
                 <>
                     {!isDesktop ? (
-                        // Mobile Sheet only when not desktop
-                        <Sheet
-                            open={!!resolvedSelectedId}
-                            onOpenChange={(open) => {
-                                if (!open) setSelectedId(null);
-                            }}
-                        >
-                            <SheetContent side="right">
-                                {resolvedSelectedId && inspectorData && (
-                                    <CardInspector
-                                        projectId={projectId}
-                                        card={inspectorData.card}
-                                        availableCards={inspectorData.availableCards}
-                                        cardsIndex={inspectorData.cardsIndex}
-                                        blocked={inspectorData.blocked}
-                                        onUpdate={(values) =>
-                                            handlers.onUpdateCard(
-                                                resolvedSelectedId,
-                                                values,
-                                            )
-                                        }
-                                        onEnhanceCard={
-                                            handlers.onEnhanceCard
-                                                ? (values) =>
-                                                    handlers.onEnhanceCard?.(
-                                                        resolvedSelectedId,
-                                                        values,
-                                                    )
-                                                : undefined
-                                        }
-                                        onDelete={async () => {
-                                            try {
-                                                await handlers.onDeleteCard(
+                        // Mobile/tablet: render board plus inspector sheet overlay
+                        <>
+                            {boardContent}
+                            <Sheet
+                                open={!!resolvedSelectedId}
+                                onOpenChange={(open) => {
+                                    if (!open) setSelectedId(null);
+                                }}
+                            >
+                                <SheetContent side="right">
+                                    {resolvedSelectedId && inspectorData && (
+                                        <CardInspector
+                                            projectId={projectId}
+                                            card={inspectorData.card}
+                                            availableCards={inspectorData.availableCards}
+                                            cardsIndex={inspectorData.cardsIndex}
+                                            blocked={inspectorData.blocked}
+                                            onUpdate={(values) =>
+                                                handlers.onUpdateCard(
                                                     resolvedSelectedId,
-                                                );
-                                                setSelectedId(null);
-                                            } catch (error) {
-                                                console.error(
-                                                    "Failed to delete card",
-                                                    error,
-                                                );
+                                                    values,
+                                                )
                                             }
-                                        }}
-                                        onClose={() => setSelectedId(null)}
-                                    />
-                                )}
-                            </SheetContent>
-                        </Sheet>
+                                            onEnhanceCard={
+                                                handlers.onEnhanceCard
+                                                    ? (values) =>
+                                                        handlers.onEnhanceCard?.(
+                                                            resolvedSelectedId,
+                                                            values,
+                                                        )
+                                                    : undefined
+                                            }
+                                            onDelete={async () => {
+                                                try {
+                                                    await handlers.onDeleteCard(
+                                                        resolvedSelectedId,
+                                                    );
+                                                    setSelectedId(null);
+                                                } catch (error) {
+                                                    console.error(
+                                                        "Failed to delete card",
+                                                        error,
+                                                    );
+                                                }
+                                            }}
+                                            onClose={() => setSelectedId(null)}
+                                        />
+                                    )}
+                                </SheetContent>
+                            </Sheet>
+                        </>
                     ) : (
                         <div className="flex-1 min-h-0">
                             {resolvedSelectedId && inspectorData ? (
