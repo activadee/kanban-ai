@@ -109,4 +109,11 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
   - `GET /metrics` – minimal Prometheus-style metrics for liveness.
   - `GET /healthz`, `GET /readyz` – health probes.
 
+## Server metadata
+
+- `GET /version` – returns `{currentVersion, latestVersion, updateAvailable, checkedAt}`.
+  - `currentVersion` is derived from `KANBANAI_VERSION` or the nearest `kanban-ai` `package.json`.
+  - `latestVersion` is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`), cached for ~15 minutes, and falls back to `currentVersion` when the lookup fails.
+  - `updateAvailable` lets clients know when a newer release exists so UI can prompt for restart.
+
 For realtime message shapes and WebSocket usage, see `core/realtime-and-websockets.md`.

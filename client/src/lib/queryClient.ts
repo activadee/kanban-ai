@@ -62,3 +62,8 @@ export const onboardingKeys = {
     all: ['onboarding'] as const,
     status: () => [...onboardingKeys.all, 'status'] as const,
 }
+
+export const appVersionKeys = {
+    all: ['app-version'] as const,
+    info: () => [...appVersionKeys.all, 'info'] as const,
+}

@@ -6,6 +6,7 @@ import {StatusBadge} from '@/components/common/StatusBadge'
 import {Separator} from '@/components/ui/separator'
 import {useDashboardOverview, useDashboardStream, useGithubAuthStatus, useAgents} from '@/hooks'
 import {formatRelativeTime} from '@/lib/time'
+import {VersionIndicator} from '@/components/system/VersionIndicator'
 
 const relativeTimeFromNow = (value: string | null | undefined) => formatRelativeTime(value) ?? '—'
 
@@ -60,8 +61,11 @@ export function DashboardPage() {
         <div className="flex h-full flex-col overflow-auto bg-background px-8 py-6">
             <div className="mx-auto w-full max-w-6xl space-y-6">
                 <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
-                    <div>
-                        <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+                            <VersionIndicator/>
+                        </div>
                         <p className="mt-2 text-sm text-muted-foreground">
                             Monitor agent activity, recent automation results, and project health at a glance.
                         </p>

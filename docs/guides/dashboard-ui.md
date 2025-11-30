@@ -70,3 +70,7 @@ Use this to identify overloaded projects or boards with too many open cards or A
 
 This panel helps you quickly see whether core integrations (GitHub, agents) are ready before starting work.
 
+## Version indicator
+
+- A small inline indicator beside the Dashboard title shows the current server version (`vX.Y.Z`), or `Version unavailable`/`Checking version…` when the UI is still polling `GET /version`.
+- When `/version` reports `updateAvailable: true`, the indicator surfaces a badge (`Update available — restart to apply`) so you know to restart KanbanAI to pick up the latest release.
