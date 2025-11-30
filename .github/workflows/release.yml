@@ -30,7 +30,7 @@ jobs:
           bun-version: "1.3.3"
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
@@ -40,6 +40,10 @@ jobs:
 
       - name: Run tests
         run: bun run test
+
+      - name: Build CLI package
+        working-directory: ./cli
+        run: bun run build
 
       - name: Semantic release
         env:
