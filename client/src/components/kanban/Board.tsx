@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from "react";
+import {useMemo, useState} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
@@ -9,6 +9,7 @@ import {CreateCardDialog, EditCardDialog, type CardFormValues} from "./CardDialo
 import {ClipboardList} from "lucide-react";
 import {CardInspector} from "./CardInspector";
 import {Sheet, SheetContent} from "@/components/ui/sheet";
+import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
 import {useMediaQuery} from "@/lib/useMediaQuery";
 import {useBoardDnd} from "./board/useBoardDnd";
 import {makeIsCardBlocked} from "./board/isCardBlocked";
@@ -50,10 +51,6 @@ export type BoardHandlers = {
 const DEFAULT_INSPECTOR_WIDTH = 480;
 const MIN_INSPECTOR_WIDTH = 360;
 const MAX_INSPECTOR_WIDTH = 900;
-const INSPECTOR_WIDTH_STORAGE_KEY = "kanban-inspector-width";
-
-const clampInspectorWidth = (value: number) =>
-    Math.min(Math.max(value, MIN_INSPECTOR_WIDTH), MAX_INSPECTOR_WIDTH);
 
 type Props = {
     projectId: string;
@@ -121,25 +118,6 @@ export function Board({
         onBlocked: handlers.onMoveBlocked,
     });
 
-    const [inspectorWidth, setInspectorWidth] = useState<number>(() => {
-        if (typeof window === "undefined") return DEFAULT_INSPECTOR_WIDTH;
-        const stored = window.localStorage.getItem(
-            INSPECTOR_WIDTH_STORAGE_KEY,
-        );
-        const parsed = stored ? Number.parseInt(stored, 10) : NaN;
-        return Number.isFinite(parsed)
-            ? clampInspectorWidth(parsed)
-            : DEFAULT_INSPECTOR_WIDTH;
-    });
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        window.localStorage.setItem(
-            INSPECTOR_WIDTH_STORAGE_KEY,
-            String(inspectorWidth),
-        );
-    }, [inspectorWidth]);
-
     const editingCard = editingCardId
         ? (state.cards[editingCardId] ?? null)
         : null;
@@ -197,33 +175,65 @@ export function Board({
         state.columns,
     ]);
 
-    const boardPaddingRight =
-        isDesktop && resolvedSelectedId ? inspectorWidth : 0;
+    const inspectorSize = useMemo(() => {
+        const fallback = { defaultSize: 35, minSize: 22, maxSize: 65 } as const;
+        if (typeof window === "undefined") return fallback;
 
-    const startInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        const startX = event.clientX;
-        const startWidth = inspectorWidth;
+        const vw = window.innerWidth || 1440;
+        const toPercent = (px: number) => Math.min(95, Math.max(5, (px / vw) * 100));
 
-        const handleMove = (moveEvent: PointerEvent) => {
-            const delta = startX - moveEvent.clientX;
-            setInspectorWidth(clampInspectorWidth(startWidth + delta));
-        };
+        return {
+            defaultSize: toPercent(DEFAULT_INSPECTOR_WIDTH),
+            minSize: toPercent(MIN_INSPECTOR_WIDTH),
+            maxSize: toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9)),
+        } as const;
+    }, []);
 
-        const stop = () => {
-            document.body.style.removeProperty("cursor");
-            document.body.style.removeProperty("user-select");
-            window.removeEventListener("pointermove", handleMove);
-            window.removeEventListener("pointerup", stop);
-            window.removeEventListener("pointercancel", stop);
-        };
-
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-        window.addEventListener("pointermove", handleMove);
-        window.addEventListener("pointerup", stop);
-        window.addEventListener("pointercancel", stop);
-    };
+    const boardContent = (
+        <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
+            <div className="h-full min-h-0 overflow-x-auto">
+                <div className="flex h-full min-h-0 min-w-full items-stretch gap-4">
+                    {columns.map((col) => (
+                        <div
+                            key={col.id}
+                            className="h-full min-h-0 flex-1 min-w-[260px] sm:min-w-[280px] lg:min-w-[300px] xl:min-w-[320px] basis-0"
+                        >
+                            <Column
+                                column={col}
+                                state={state}
+                                enhancementStatusByCardId={
+                                    enhancementStatusByCardId
+                                }
+                                onCardEnhancementClick={
+                                    onCardEnhancementClick
+                                }
+                                projectId={projectId}
+                                isCardBlocked={isBlocked}
+                                onSelectCard={(cardId) =>
+                                    setSelectedId(cardId)
+                                }
+                                onEditCard={(cardId) => {
+                                    setEditingCardId(cardId);
+                                    setEditingCardAutoEnhance(false);
+                                }}
+                                onEnhanceCard={(cardId) => {
+                                    setEditingCardId(cardId);
+                                    setEditingCardAutoEnhance(true);
+                                }}
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <DragOverlay dropAnimation={null}>
+                {activeId ? <KanbanCard card={state.cards[activeId]} /> : null}
+            </DragOverlay>
+        </DndContext>
+    );
 
     return (
         <div className="flex h-full min-h-0 flex-col">
@@ -323,77 +333,31 @@ export function Board({
                             </SheetContent>
                         </Sheet>
                     ) : (
-                        // Desktop overlay layout
-                        <div className="relative flex-1 min-h-0">
-                            <DndContext
-                                sensors={sensors}
-                                onDragStart={handleDragStart}
-                                onDragEnd={handleDragEnd}
-                            >
-                                <div className="h-full min-h-0 overflow-x-auto">
-                                    <div
-                                        className="grid h-full min-h-0 grid-cols-1 gap-4 auto-rows-[minmax(0,1fr)] md:grid-cols-2 xl:grid-cols-4"
-                                        style={
-                                            boardPaddingRight
-                                                ? { paddingRight: boardPaddingRight }
-                                                : undefined
-                                        }
+                        <div className="flex-1 min-h-0">
+                            {resolvedSelectedId && inspectorData ? (
+                                <ResizablePanelGroup
+                                    direction="horizontal"
+                                    autoSaveId="kanban-board-inspector"
+                                    className="h-full min-h-0"
+                                >
+                                    <ResizablePanel
+                                        order={1}
+                                        minSize={Math.max(10, 100 - inspectorSize.maxSize)}
+                                        defaultSize={Math.max(15, 100 - inspectorSize.defaultSize)}
                                     >
-                                        {columns.map((col) => (
-                                            <Column
-                                                key={col.id}
-                                                column={col}
-                                                state={state}
-                                                enhancementStatusByCardId={
-                                                    enhancementStatusByCardId
-                                                }
-                                                onCardEnhancementClick={
-                                                    onCardEnhancementClick
-                                                }
-                                                projectId={projectId}
-                                                isCardBlocked={isBlocked}
-                                                onSelectCard={(cardId) =>
-                                                    setSelectedId(cardId)
-                                                }
-                                                onEditCard={(cardId) => {
-                                                    setEditingCardId(cardId);
-                                                    setEditingCardAutoEnhance(
-                                                        false,
-                                                    );
-                                                }}
-                                                onEnhanceCard={(cardId) => {
-                                                    setEditingCardId(cardId);
-                                                    setEditingCardAutoEnhance(
-                                                        true,
-                                                    );
-                                                }}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                                <DragOverlay dropAnimation={null}>
-                                    {activeId ? (
-                                        <KanbanCard
-                                            card={state.cards[activeId]}
-                                        />
-                                    ) : null}
-                                </DragOverlay>
-                            </DndContext>
-
-                            {resolvedSelectedId && inspectorData && (
-                                <div className="pointer-events-none absolute inset-y-0 right-0 z-30 flex">
-                                    <div
-                                        className="pointer-events-auto flex h-full shadow-xl"
-                                        style={{ width: inspectorWidth }}
+                                        {boardContent}
+                                    </ResizablePanel>
+                                    <ResizableHandle
+                                        withHandle
+                                        className="bg-border/70 w-1"
+                                    />
+                                    <ResizablePanel
+                                        order={2}
+                                        minSize={inspectorSize.minSize}
+                                        maxSize={inspectorSize.maxSize}
+                                        defaultSize={inspectorSize.defaultSize}
                                     >
-                                        <div
-                                            className="w-1 cursor-col-resize bg-border/70 transition-colors hover:bg-primary"
-                                            role="separator"
-                                            aria-orientation="vertical"
-                                            aria-label="Resize inspector"
-                                            onPointerDown={startInspectorResize}
-                                        />
-                                        <div className="flex h-full min-h-0 flex-1 flex-col gap-3 rounded-l-none rounded-lg border border-border/60 bg-muted/10 p-4">
+                                        <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4 shadow-xl">
                                             <CardInspector
                                                 projectId={projectId}
                                                 card={inspectorData.card}
@@ -440,8 +404,10 @@ export function Board({
                                                 }
                                             />
                                         </div>
-                                    </div>
-                                </div>
+                                    </ResizablePanel>
+                                </ResizablePanelGroup>
+                            ) : (
+                                boardContent
                             )}
                         </div>
                     )}
