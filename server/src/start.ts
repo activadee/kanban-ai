@@ -230,7 +230,7 @@ function reconcileMigrations(resolved: ResolvedMigrations, dbResources: DbResour
   // Only treat hashes beyond the longest matching prefix as removable to avoid re-running altered DDL.
   let prefix = 0
   const limit = Math.min(expected.length, rows.length)
-  while (prefix < limit && rows[prefix]?.hash === expected[prefix]?.hash) {
+  while (prefix < limit && rows[prefix].hash === expected[prefix].hash) {
     prefix++
   }
 
