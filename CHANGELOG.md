@@ -1,3 +1,13 @@
+## [0.10.2](https://github.com/activadee/kanban-ai/compare/v0.10.1...v0.10.2) (2025-11-30)
+
+### Bug Fixes
+
+* **cli:** pass binary version to server ([94ac7b6](https://github.com/activadee/kanban-ai/commit/94ac7b6528594a3a5b2280d2e4695af22b2ccd6b))
+
+### Chores
+
+* **release:** show all conventional commit types ([2ffea2e](https://github.com/activadee/kanban-ai/commit/2ffea2ec3e1665c12319abf1adda6a56eea2b272))
+
 ## [0.10.1](https://github.com/activadee/kanban-ai/compare/v0.10.0...v0.10.1) (2025-11-30)
 
 ### Bug Fixes
