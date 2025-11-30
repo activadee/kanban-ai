@@ -1,3 +1,9 @@
+## [0.11.0](https://github.com/activadee/kanban-ai/compare/v0.10.3...v0.11.0) (2025-11-30)
+
+### Features
+
+* **tickets:** support conventional commit ticket types ([#198](https://github.com/activadee/kanban-ai/issues/198)) ([18407d9](https://github.com/activadee/kanban-ai/commit/18407d9b6a0f8eb0aff4a29dca8c809d98ad5e17))
+
 ## [0.10.3](https://github.com/activadee/kanban-ai/compare/v0.10.2...v0.10.3) (2025-11-30)
 
 ### Bug Fixes
