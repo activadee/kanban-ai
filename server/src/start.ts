@@ -10,6 +10,7 @@ import { log, applyLogConfig } from './log'
 import type { DbResources } from './db/client'
 import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
+import crypto from 'node:crypto'
 
 type BunServeOptions = Parameters<typeof Bun.serve>[0];
 
@@ -118,6 +119,8 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
 async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, migrationsDir?: string) {
   const resolved = await resolveMigrations(config, migrationsDir)
 
+  reconcileMigrations(resolved, dbResources)
+
   if (resolved.kind === 'folder') {
     const { count, journalPath } = describeFolderMigrations(resolved.path)
     log.info('migrations', 'applying folder migrations', {
@@ -158,6 +161,63 @@ async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, 
     log.warn('settings', 'init failed', { err: error })
   }
   return resolved.kind === 'folder' ? resolved.path : '__bundled__'
+}
+
+type ExpectedMigration = { hash: string; tag?: string }
+
+function getExpectedMigrations(resolved: ResolvedMigrations): ExpectedMigration[] {
+  if (resolved.kind === 'bundled') {
+    return resolved.migrations.map((m: any) => ({ hash: m.hash, tag: m.tag }))
+  }
+
+  const journalPath = path.join(resolved.path, 'meta', '_journal.json')
+  const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
+  const entries = Array.isArray(journal?.entries) ? journal.entries : []
+
+  const expected: ExpectedMigration[] = []
+  for (const entry of entries) {
+    const filename = `${entry.tag}.sql`
+    const fullPath = path.join(resolved.path, filename)
+    const sql = readFileSync(fullPath, 'utf8')
+    const hash = crypto.createHash('sha256').update(sql).digest('hex')
+    expected.push({ hash, tag: entry.tag })
+  }
+  return expected
+}
+
+function readDbMigrations(dbResources: DbResources): { table: string | null; rows: Array<{ id: number; hash: string }> } {
+  const tables = ['__drizzle_migrations', 'drizzle_migrations']
+  for (const table of tables) {
+    try {
+      const rows = dbResources.sqlite
+        .query(`SELECT id, hash FROM ${table} ORDER BY id`)
+        .all() as Array<{ id: number; hash: string }>
+      return { table, rows }
+    } catch (err) {
+      continue
+    }
+  }
+  return { table: null, rows: [] }
+}
+
+function reconcileMigrations(resolved: ResolvedMigrations, dbResources: DbResources) {
+  const expected = getExpectedMigrations(resolved)
+  const expectedHashes = new Set(expected.map((e) => e.hash))
+
+  const { table, rows } = readDbMigrations(dbResources)
+  if (!table || rows.length === 0) return
+
+  const mismatched = rows.filter((r) => !expectedHashes.has(r.hash))
+  if (mismatched.length === 0) return
+
+  const placeholders = mismatched.map(() => '?').join(', ')
+  dbResources.sqlite.run(`DELETE FROM ${table} WHERE hash IN (${placeholders})`, mismatched.map((m) => m.hash))
+
+  log.warn('migrations', 'removed mismatched migration hashes', {
+    removed: mismatched.length,
+    table,
+    removedHashes: mismatched.map((m) => m.hash),
+  })
 }
 
 export async function startServer(options: StartOptions): Promise<StartResult> {
