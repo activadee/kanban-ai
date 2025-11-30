@@ -29,8 +29,8 @@ Last updated: 2025-11-30
   - `description` (optional)
   - `ticketKey` (optional, e.g. `ABC-123`, often derived from GitHub issues)
   - `dependsOn` relationships to other cards on the same board
-- On the board itself, cards are rendered in a compact form showing only the `title` to maximise vertical space.
-- Blocked cards that are still waiting on dependencies wrap that compact view in a tooltip listing the blockers so you can see what is pending without opening the inspector.
+- On the board itself, cards surface the ticket key (when present) along with the title, a short description snippet, and subtle status indicators for blocked/enhancing/PR/agent actions so that key context is visible at a glance.
+- Blocked cards that are still waiting on dependencies wrap the card view in a tooltip listing the blockers so you can see what is pending without opening the inspector.
 - The “card inspector” in the UI lets you edit these fields, with the ticket key surfaced prominently for quick scanning.
 
 ### Ordering and moves
