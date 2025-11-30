@@ -56,7 +56,6 @@ export function DraggableCard({
             {...(!isEnhancing ? listeners : undefined)}
             onClick={(e) => {
                 e.stopPropagation()
-                if (isEnhancing) return
                 onSelect?.(card.id)
             }}
             className={`select-none ${isEnhancing ? 'cursor-not-allowed opacity-70' : ''}`}

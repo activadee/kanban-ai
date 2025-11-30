@@ -1,6 +1,6 @@
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
-import {Card as UICard, CardContent} from "@/components/ui/card"
+import {Card as UICard, CardContent} from '@/components/ui/card'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {Bot, GitPullRequest, Sparkles, Loader2} from 'lucide-react'
 import type {Card as TCard} from 'shared'
@@ -53,8 +53,12 @@ export function KanbanCard({
                                 </Badge>
                             ) : null}
                             {blocked && !done ? (
-                                <Badge variant="outline"
-                                       className="border-destructive/50 text-destructive">Blocked</Badge>
+                                <Badge
+                                    variant="outline"
+                                    className="border-destructive/50 text-destructive"
+                                >
+                                    Blocked
+                                </Badge>
                             ) : null}
                             {isEnhancing ? (
                                 <Badge variant="outline" className="flex items-center gap-1 text-xs">
@@ -75,11 +79,12 @@ export function KanbanCard({
                                                 aria-label="Open pull request"
                                                 className="text-muted-foreground"
                                             >
-                                                <a href={card.prUrl}
-                                                   target="_blank"
-                                                   rel="noreferrer noopener"
-                                                   onClick={(event) => event.stopPropagation()}
-                                                   onPointerDown={(event) => event.stopPropagation()}
+                                                <a
+                                                    href={card.prUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer noopener"
+                                                    onClick={(event) => event.stopPropagation()}
+                                                    onPointerDown={(event) => event.stopPropagation()}
                                                 >
                                                     <GitPullRequest className="size-4"/>
                                                 </a>
@@ -93,19 +98,21 @@ export function KanbanCard({
                                 <TooltipProvider delayDuration={200}>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                    <span className="inline-flex">
-                      <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled
-                          aria-label="Review with Agents coming soon"
-                          className="text-muted-foreground"
-                      >
-                        <Bot className="size-4"/>
-                      </Button>
-                    </span>
+                                            <span className="inline-flex">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    disabled
+                                                    aria-label="Review with Agents coming soon"
+                                                    className="text-muted-foreground"
+                                                >
+                                                    <Bot className="size-4"/>
+                                                </Button>
+                                            </span>
                                         </TooltipTrigger>
-                                        <TooltipContent align="end">Review with Agents coming soon</TooltipContent>
+                                        <TooltipContent align="end">
+                                            Review with Agents coming soon
+                                        </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
                             ) : null}
@@ -136,11 +143,10 @@ export function KanbanCard({
                     </div>
                 ) : null}
                 <div
-                    className={`text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}>{card.title}</div>
-                {card.description && (
-                    <div
-                        className={`mt-1 text-xs line-clamp-3 ${done ? 'text-muted-foreground/70 line-through' : 'text-muted-foreground'}`}>{card.description}</div>
-                )}
+                    className={`text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}
+                >
+                    {card.title}
+                </div>
             </CardContent>
         </UICard>
     )
@@ -154,7 +160,9 @@ export function KanbanCard({
                         <div className="mb-1 font-medium">Depends on:</div>
                         <ul className="list-inside list-disc space-y-1">
                             {blockers.map((b) => (
-                                <li key={b} className="truncate">{b}</li>
+                                <li key={b} className="truncate">
+                                    {b}
+                                </li>
                             ))}
                         </ul>
                     </div>
