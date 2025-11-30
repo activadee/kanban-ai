@@ -54,7 +54,9 @@ GitHub device flow:
 
 ## Developing / testing
 1) Run server & client: `bun run dev` (monorepo) or `bun run dev:server` + `bun run dev:client`.
-2) Clear onboarding (optional): delete `onboarding_state` row from local SQLite (`~/.local/share/kanbanai/kanban.db`) to re-trigger flow.
+2) Clear onboarding (optional): delete the `onboarding_state` row from your SQLite file (defaults to
+`~/.local/share/kanbanai/kanban-dev.db` when running `bun run dev`; `bun run prod` and binaries still target `kanban.db`).
+   If you override `DATABASE_URL` or `KANBANAI_DEV_DATABASE_URL`, clear the path you configured instead.
 3) Walk through `/onboarding`, provide GitHub client ID/secret, connect via device flow, then confirm redirect to projects.
 
 ## Notes
