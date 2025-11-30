@@ -8,24 +8,23 @@ This guide describes how to use the card inspector to start and manage Attempts,
 
 ## Card inspector overview
 
-The Card Inspector is opened by clicking a card on the board. It contains:
+The Card Inspector is opened by clicking a card on the board. Its layout consists of:
 
 - Header:
   - Ticket key and card title.
   - Copy ticket key button.
   - Blocked indicator (when dependencies are not satisfied).
   - Close button.
-- Details section:
-  - Title, description, and dependencies editor.
-  - Integrated Git section (open editor, changes, commit, PR, merge).
-- Attempts area:
-  - Either an **Attempt create form** (no active attempt yet), or
-  - A tabbed view for an existing attempt (Messages / Processes / Logs).
+- Top-level tabs:
+  - **Ticket** – shows the Details and Git controls for the card. This is the default tab whenever you open the inspector or switch to a different card.
+  - **Attempts** – surfaces attempt-related controls. When no Attempt is running, you see the **Attempt create form** here; once an Attempt exists, this tab renders a nested tab view with **Messages**, **Processes**, and **Logs** sub-tabs for the selected Attempt.
+
+Switching cards resets the outer tab to **Ticket**, and navigating between Attempts resets the inner tab back to **Messages**, so you always start from the same view when focusing on new work.
 
 ## Starting an Attempt
 
 - If the card has no active Attempt:
-  - The **Attempt create form** is shown under the Details section.
+  - The **Attempt create form** appears inside the **Attempts** tab.
   - You can choose:
     - **Agent** – currently focused on the Codex agent.
     - **Profile** – per-project or global agent profile (or default).
@@ -47,9 +46,10 @@ If the card is blocked by dependencies and auto-start is disabled, the UI may pr
 
 ## Messages tab
 
-- Shows the live **conversation** with the agent:
-  - Attempts stream messages as they run.
-  - You can send follow-up prompts by typing into the input and pressing send.
+Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversation** with the agent:
+
+- Attempts stream messages as they run.
+- You can send follow-up prompts by typing into the input and pressing send.
 - Controls:
   - **Stop Attempt**:
     - Sends a stop request to the server.
@@ -61,24 +61,26 @@ Use this tab to direct the agent, clarify requirements, and iterate on changes.
 
 ## Processes tab
 
-- Shows **dev automation and processes** associated with the Attempt:
-  - Latest dev script run (e.g. `bun test`, `npm test`, or other configured commands).
-  - Status of ongoing background tasks (pending, running, succeeded, failed).
+Still inside the **Attempts** tab, the **Processes** sub-tab shows **dev automation and processes** associated with the Attempt:
+
+- Latest dev script run (e.g. `bun test`, `npm test`, or other configured commands).
+- Status of ongoing background tasks (pending, running, succeeded, failed).
 - Controls:
   - **Run dev script**:
     - Re-runs the project’s configured dev script in the Attempt worktree.
   - **Stop Attempt**:
     - Same as in Messages, but surfaced from the processes view.
   - **View logs**:
-    - Jumps to the Logs tab for more detailed output.
+    - Jumps to the **Logs** sub-tab (still inside **Attempts**) for more detailed output.
 
 Use this tab when you want to re-run tests, linters, or other dev automation as part of the Attempt.
 
 ## Logs tab
 
-- Shows structured **logs** for the Attempt:
-  - Agent logs.
-  - Dev script output.
+The **Logs** sub-tab (inside **Attempts**) displays structured **logs** for the Attempt:
+
+- Agent logs.
+- Dev script output.
   - Internal events relevant to the Attempt.
 - This tab is read-only and designed for debugging:
   - Scroll through the stream to see what commands ran and how they behaved.
@@ -86,7 +88,7 @@ Use this tab when you want to re-run tests, linters, or other dev automation as 
 
 ## Git, commit & PR flows in the inspector
 
-The Git section, rendered inside the Details area, provides buttons and dialogs for:
+These Git controls live in the Ticket tab’s Details area so you can edit card metadata while the Attempts tab shows agent activity. The Git section provides buttons and dialogs for:
 
 - **Open in editor**:
   - Launches your preferred editor at the Attempt worktree path.
