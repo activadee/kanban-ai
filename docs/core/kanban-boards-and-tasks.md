@@ -1,6 +1,6 @@
 # Kanban boards & tasks
 
-Last updated: 2025-11-28
+Last updated: 2025-11-30
 
 ## Board model
 
@@ -29,6 +29,7 @@ Last updated: 2025-11-28
   - `description` (optional)
   - `ticketKey` (optional, e.g. `ABC-123`, often derived from GitHub issues)
   - `dependsOn` relationships to other cards on the same board
+- On the board itself, cards are rendered in a compact form showing only the `title` to maximise vertical space.
 - The “card inspector” in the UI lets you edit these fields, with the ticket key surfaced prominently for quick scanning.
 
 ### Ordering and moves
@@ -77,4 +78,3 @@ Last updated: 2025-11-28
   - `agent.profile.changed`, `agent.registered`
 - Clients use these WebSocket messages to keep boards, task details, and Attempt status in sync in real time, without
   manual refresh.
-

@@ -37,7 +37,6 @@ export function KanbanCard({
         blocked ||
         isEnhancing ||
         isReady
-
     const cardInner = (
         <UICard
             className={`${
@@ -137,10 +136,6 @@ export function KanbanCard({
                 ) : null}
                 <div
                     className={`text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}>{card.title}</div>
-                {card.description && (
-                    <div
-                        className={`mt-1 text-xs line-clamp-3 ${done ? 'text-muted-foreground/70 line-through' : 'text-muted-foreground'}`}>{card.description}</div>
-                )}
             </CardContent>
         </UICard>
     )
