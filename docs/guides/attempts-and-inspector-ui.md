@@ -44,7 +44,7 @@ Switching cards resets the outer tab to **Ticket**, and navigating between Attem
 
 If the card is blocked by dependencies and auto-start is disabled, the UI may prevent starting an Attempt depending on configuration.
 
--## Messages tab
+## Messages tab
 
 Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversation** with the agent:
 
@@ -59,7 +59,7 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
 
 Use this tab to direct the agent, clarify requirements, and iterate on changes.
 
--## Processes tab
+## Processes tab
 
 Still inside the **Attempts** tab, the **Processes** sub-tab shows **dev automation and processes** associated with the Attempt:
 
@@ -75,7 +75,7 @@ Still inside the **Attempts** tab, the **Processes** sub-tab shows **dev automat
 
 Use this tab when you want to re-run tests, linters, or other dev automation as part of the Attempt.
 
--## Logs tab
+## Logs tab
 
 The **Logs** sub-tab (inside **Attempts**) displays structured **logs** for the Attempt:
 
