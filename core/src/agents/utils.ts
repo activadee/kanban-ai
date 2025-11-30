@@ -56,8 +56,6 @@ export function buildTicketEnhancePrompt(
         '- Markdown.',
         '- First line: # <New title or unchanged title>.',
         '- Detailed description with steps and acceptance criteria.',
-        '- At least one ```mermaid``` diagram (graph or sequenceDiagram).',
-        '- Preferably an additional sequence diagram, if it makes sense.',
         '- No meta-explanation, only the ticket content.',
     ].join('\n')
 
@@ -102,8 +100,6 @@ export function buildPrSummaryPrompt(
     parts.push('- Markdown.')
     parts.push('- First line: # <New title or unchanged title>.')
     parts.push('- Detailed description of the changes with steps and rationale.')
-    parts.push('- At least one ```mermaid``` diagram (graph or sequenceDiagram) summarizing the change.')
-    parts.push('- Preferably an additional sequence diagram, if it makes sense.')
     parts.push('- No meta-explanation, only the PR body content.')
 
     const base = parts.join('\n')
