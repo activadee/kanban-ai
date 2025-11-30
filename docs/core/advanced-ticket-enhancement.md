@@ -7,34 +7,46 @@ title: Ticket enhancement
 ## Overview
 
 Ticket enhancement lets KanbanAI rewrite rough ticket drafts (title + description) using your configured agents before
-you create or update a card. It is an inline operation: it does not create Attempts, branches, or commits; it simply
-returns an improved draft that you can accept or ignore.
+you create or update a card. It is still an inline operation in the sense that no Attempts, branches, or commits are
+started automatically; instead, the enhancement request is queued as a background job and the rewritten text is persisted
+only when you explicitly accept it via the board UI.
 
 ## UI behavior
 
-### Create / Edit dialogs
+### Creating tickets
 
-- The **Create Ticket** and **Edit Ticket** dialogs show a small robot button next to the Description field labeled
-  “Enhance ticket”.
-- The button is:
-  - Enabled only when the Title field is non-empty.
-  - Disabled while an enhancement request is already in flight.
-- When you click it:
-  - The current title (trimmed) and description are sent to the server for enhancement.
-  - The button shows a spinner while the request runs.
-- On success:
-  - An “AI suggestion preview” box appears below the form.
-  - The preview shows Original vs Suggestion titles and descriptions side-by-side.
-  - You can click **Accept** to apply the suggestion into the form, or **Reject** to discard it and keep your original
-    text.
-  - After Accept/Reject you can click Enhance again to request a new suggestion.
-- Enhancement never saves the card on its own:
-  - For new tickets you still need to click **Create Ticket**.
-  - For existing tickets you still need to click **Save Changes**.
+- The **Create Ticket** dialog still collects a Title and optional Description/Dependencies.
+- A new **Create & Enhance** button sits beside **Create Ticket**. It is enabled only when a non-empty title is present
+  and disabled while the dialog is submitting.
+- Clicking **Create & Enhance** creates the card via `POST /boards/:boardId/cards` and then immediately queues a ticket
+  enhancement job for the newly created card. The board API response now includes the created `cardId` so the client can
+  track which card the enhancement belongs to.
+- While the enhancement job runs, the card shows an **Enhancing** badge and is temporarily marked as non-draggable to
+  prevent accidental moves.
+- Once a suggestion arrives, the card displays a sparkles icon that opens the enhancement diff dialog (see below).
+
+### Enhancing existing cards
+
+- The **Card Inspector** (Details pane) and **Edit Ticket** dialog now surface an **Enhance in background** button near the
+  description controls.
+- Clicking the button saves the latest title/description first, then queues the enhancement job with those values.
+- The same badge and icon behavior applies while the enhancement runs and when a suggestion becomes available.
+
+### Reviewing suggestions
+
+- When an enhancement job finishes, click the sparkles icon on the card to open the enhancement diff dialog. The dialog
+  compares the persisted title/description on the left with the AI-enhanced copy on the right.
+- **Accept** automatically updates the card via `PATCH /boards/:boardId/cards/:cardId`, overriding the title/description
+  with the suggestion and clearing the enhancement state.
+- **Reject** dismisses the suggestion without mutating the card and keeps the enhancement badge cleared so you can rerun
+  enhancement later.
+- After either action you can trigger enhancement again to get a new suggestion.
+- Enhancements still never create Attempts, branches, or commits; they only replace the persisted title/description when
+  you accept a suggestion.
 
 ## API surface
 
-The UI and integrations use a dedicated enhancement endpoint:
+The UI and integrations continue to use the same enhancement endpoint, but now trigger it via the background workflow:
 
 - `POST /projects/:projectId/tickets/enhance`
   - Request body:
@@ -49,9 +61,10 @@ The UI and integrations use a dedicated enhancement endpoint:
   - Unknown agent key or agent without ticket-enhancement support → `400` problem response.
   - Internal errors in the enhancement pipeline → `502` problem response with a generic `"Failed to enhance ticket"`
     message.
-- The endpoint is pure transformation:
-  - It does not create, update, or persist cards.
-  - Callers are expected to copy any accepted suggestion into their own form state and save via the normal card APIs.
+- The endpoint remains a pure transformation:
+  - It does not create, update, or persist cards and leaves that to the board APIs.
+  - The board UI queues this request, watches the enhancement status, and applies the accepted suggestion via the normal
+    card APIs.
 
 ## Agent pipeline
 
