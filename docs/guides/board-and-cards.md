@@ -17,6 +17,7 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - Project name.
   - WebSocket connection status badge (Connected / Connecting… / Reconnecting…).
   - An **Import GitHub issues** button for the current board.
+- Card titles inside the columns are truncated to a single line to keep cards from growing vertically, and hovering over a card reveals the full title in a tooltip so long text remains discoverable.
 - The board header in the main content shows:
   - Title: “Kanban Board”.
   - A **Create Ticket** button to create a new card.
@@ -77,8 +78,8 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
   - Only cards on the same board can be selected.
   - Done-column cards still appear; they count as satisfied dependencies.
 - When a card is **blocked**:
-  - The inspector shows it as blocked (based on current dependencies).
-  - Moving the card into **In Progress** may be prevented:
+- The inspector shows it as blocked (based on current dependencies).
+- Moving the card into **In Progress** may be prevented:
     - Backend validation will return a 409 if any dependency is not in Done.
     - The board shows a toast:
       - Title: “Task is blocked by dependencies”.
