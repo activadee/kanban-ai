@@ -72,6 +72,7 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
   })()
 
   const hashes = hashRows.map((r) => r.hash)
+  const latestHash = hashes[0] ?? null
   let latestTag: string | null = null
   let recentTags: string[] = []
 
@@ -81,7 +82,7 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
       for (const m of resolved.migrations) {
         if (m.hash) map.set(m.hash, (m as any).tag ?? '')
       }
-      latestTag = map.get(hashes[0]) ?? null
+      latestTag = latestHash ? map.get(latestHash) ?? latestHash : null
       recentTags = hashes.map((h) => map.get(h) ?? h)
     } else {
       // folder: best-effort map by journal order
@@ -101,7 +102,7 @@ function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: Db
     }
   }
 
-  return { count: hashes.length, latestTag, latestHash: hashes[0] ?? null, recentTags, recentHashes: hashes }
+  return { count: hashes.length, latestTag, latestHash, recentTags, recentHashes: hashes }
 }
 
 async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, migrationsDir?: string) {
