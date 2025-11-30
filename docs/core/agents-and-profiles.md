@@ -57,8 +57,9 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
 - Agents can optionally implement a unified inline interface:
   - `inline(kind, input, profile, opts?)` alongside `run` / `resume`.
   - `kind` is an `InlineTaskKind` such as:
-    - `'ticketEnhance'` – current ticket enhancement flow.
-    - `'prSummary'` / `'prReview'` – reserved for future PR inline features.
+    - `'ticketEnhance'` – current ticket enhancement flow (Title + Description enhancement).
+    - `'prSummary'` – PR inline summary (Create Pull Request dialog suggestions and checklisted in `docs/core/pr-inline-summary.md`).
+    - `'prReview'` – reserved for future PR review/analysis features.
   - `input`/`result` shapes are mapped via `InlineTaskInputByKind` / `InlineTaskResultByKind`.
     - For `ticketEnhance`, these map directly to `TicketEnhanceInput` / `TicketEnhanceResult`.
   - `opts.context` is an `InlineTaskContext` providing:
