@@ -25,8 +25,11 @@ Last updated: 2025-11-28
      # Optional but recommended for higher limits
      GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
 
-     # Optional: SQLite path (defaults to OS data dir, e.g., ~/.local/share/kanbanai/kanban.db)
+     # Optional: SQLite path (defaults to ~/.local/share/kanbanai/kanban-dev.db when running `bun run dev`; set
+     # `DATABASE_URL` to override both dev/prod or `KANBANAI_DEV_DATABASE_URL` to change only the dev file)
      DATABASE_URL=sqlite:/absolute/path/to/kanban.db
+     # Optional dev-only override used when DATABASE_URL is unset
+     # KANBANAI_DEV_DATABASE_URL=file:/absolute/path/to/kanban-dev.db
 
      # Codex SDK (requires the Codex CLI to be installed and reachable on PATH)
      CODEX_API_KEY=your_codex_or_openai_api_key
@@ -68,4 +71,3 @@ Last updated: 2025-11-28
 - `bun run dev:client` – Vite UI only.
 
 For production and binary builds, see `ops/cli-and-binaries.md`.
-
