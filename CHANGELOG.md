@@ -1,3 +1,9 @@
+## [0.9.1](https://github.com/activadee/kanban-ai/compare/v0.9.0...v0.9.1) (2025-11-30)
+
+### Bug Fixes
+
+* disable ticket menu interactions while card is disabled or enhancing ([#191](https://github.com/activadee/kanban-ai/issues/191)) ([13bc2a3](https://github.com/activadee/kanban-ai/commit/13bc2a34c70a2646de490b55133ef286f8c5db97))
+
 ## [0.9.0](https://github.com/activadee/kanban-ai/compare/v0.8.0...v0.9.0) (2025-11-30)
 
 ### Features
