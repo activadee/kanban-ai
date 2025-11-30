@@ -57,8 +57,9 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
 - Agents can optionally implement a unified inline interface:
   - `inline(kind, input, profile, opts?)` alongside `run` / `resume`.
   - `kind` is an `InlineTaskKind` such as:
-    - `'ticketEnhance'` – current ticket enhancement flow.
-    - `'prSummary'` / `'prReview'` – reserved for future PR inline features.
+    - `'ticketEnhance'` – current ticket enhancement flow (Title + Description enhancement).
+    - `'prSummary'` – PR inline summary (Create Pull Request dialog suggestions and checklisted in `docs/core/pr-inline-summary.md`).
+    - `'prReview'` – reserved for future PR review/analysis features.
   - `input`/`result` shapes are mapped via `InlineTaskInputByKind` / `InlineTaskResultByKind`.
     - For `ticketEnhance`, these map directly to `TicketEnhanceInput` / `TicketEnhanceResult`.
   - `opts.context` is an `InlineTaskContext` providing:
@@ -79,12 +80,13 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
       exported from `core/agentTypes` (via `core/src/index.ts`) so custom agents can share the same types without
       reaching into private modules.
 
-### Core inline orchestrator and ticket enhancement
+### Core inline orchestrator and inline tasks
 
 - The core layer exposes:
   - `runInlineTask({agentKey, kind, input, profile, context, signal?})` from `core/agentInline` (via `core/src/index.ts`)
     as the reusable inline orchestrator.
   - `agentEnhanceTicket(opts)` from `core/agentEnhanceTicket` (via `core/src/index.ts`) as the single entrypoint for ticket enhancement.
+  - `agentSummarizePullRequest(opts)` from `core/agentSummarizePullRequest` (via `core/src/index.ts`) as the entrypoint for PR summaries.
 - `runInlineTask` behavior:
   - Resolves the agent via the registry and validates that it implements `inline`.
   - Delegates to `agent.inline(kind, input, profile, {context, signal})`.
@@ -108,6 +110,18 @@ target Codex as the default coding agent, with Droid/OpenCode reserved for inter
   - Invokes `runInlineTask({kind: 'ticketEnhance', ...})` and returns the resulting `TicketEnhanceResult`.
   - The server layer should call this function instead of wiring agents, profiles, and settings manually.
   - `POST /projects/:projectId/tickets/enhance` (Projects router) is the HTTP surface area: it validates `{title, description?, agent?, profileId?}` payloads, forwards them into `agentEnhanceTicket`, and returns `{ticket}` or RFC 7807 errors so the client can enrich cards without bespoke agent wiring.
+
+- `agentSummarizePullRequest` behavior:
+  - Inputs: `projectId`, required `headBranch`, optional `baseBranch`, optional `agentKey`, optional `profileId`, and an optional `AbortSignal`.
+  - Resolves `agentKey` and `profileId` from project settings and inputs using the same rules as ticket enhancement:
+    - Prefers the project’s configured inline agent/profile when set.
+    - Otherwise falls back to the project’s default agent/profile (or `"DROID"` when no default agent is set).
+    - Allows advanced callers to override `agentKey` / `profileId` explicitly.
+  - Loads the project and settings (including `repositoryPath` and `baseBranch`) and constructs a `PrSummaryInlineInput`:
+    - `repositoryPath`, `baseBranch`, `headBranch`, plus optional change summaries in the future.
+  - Resolves the agent profile using the shared profile resolution helpers, including support for inline-specific prompts via `inlineProfile`.
+  - Builds an `InlineTaskContext` annotated with `profileSource: "inline" | "primary"` so downstream telemetry can distinguish which prompt was used.
+  - Invokes `runInlineTask({agentKey, kind: 'prSummary', input, profile, context, signal})` and returns the resulting `PrSummaryInlineResult` `{title, body}` used to populate PR title/body suggestions in the UI.
 
 ## Profiles: configuration for agents
 

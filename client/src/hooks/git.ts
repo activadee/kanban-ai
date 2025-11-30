@@ -8,6 +8,7 @@ import {
     pushAttempt,
     createProjectPullRequest,
     listProjectPullRequests,
+    summarizeProjectPullRequest,
 } from '@/api/git'
 import {SERVER_URL} from '@/lib/env'
 
@@ -72,6 +73,26 @@ export function useCreatePullRequest(options?: UseMutationOptions<PRInfo, Error,
     return useMutation({
         mutationFn: ({projectId, ...payload}: CreatePrArgs) =>
             createProjectPullRequest(projectId, {...payload, draft: false}),
+        ...options,
+    })
+}
+
+type PrSummaryArgs = {
+    projectId: string
+    base?: string
+    branch?: string
+    agent?: string
+    profileId?: string
+}
+
+type PrSummaryResult = {title: string; body: string}
+
+export function useSummarizePullRequest(
+    options?: UseMutationOptions<PrSummaryResult, Error, PrSummaryArgs>,
+) {
+    return useMutation({
+        mutationFn: ({projectId, ...payload}: PrSummaryArgs) =>
+            summarizeProjectPullRequest(projectId, payload),
         ...options,
     })
 }

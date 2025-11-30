@@ -79,17 +79,25 @@ export type InlineTaskContext = {
     profileSource?: 'inline' | 'primary'
 }
 
-// Placeholder shapes for future inline kinds. These will be refined when
-// PR summary / review features are implemented.
-
 export type PrSummaryInlineInput = {
     repositoryPath: string
     baseBranch: string
     headBranch: string
+    /**
+     * Optional human-readable summary of commits in the PR range.
+     * For example, a trimmed `git log --oneline base..head` excerpt.
+     */
+    commitSummary?: string
+    /**
+     * Optional human-readable summary of the diff between base and head.
+     * For example, a trimmed `git diff --stat base..head` excerpt.
+     */
+    diffSummary?: string
 }
 
 export type PrSummaryInlineResult = {
-    summary: string
+    title: string
+    body: string
 }
 
 export type PrReviewInlineInput = {

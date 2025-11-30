@@ -25,7 +25,7 @@ export function InlineAgentForm({
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold uppercase text-muted-foreground">Inline Agent</h3>
                 <div className="text-xs text-muted-foreground">
-                    Used for inline actions like ticket enhancement.
+                    Used for inline actions like ticket enhancement and PR summaries in the Create PR dialog.
                 </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -102,4 +102,3 @@ export function InlineAgentForm({
         </section>
     )
 }
-

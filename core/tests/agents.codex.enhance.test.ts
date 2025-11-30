@@ -1,7 +1,7 @@
 import {afterAll, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest'
 
-import type {TicketEnhanceInput} from '../src/agents/types'
-import {buildTicketEnhancePrompt} from '../src/agents/utils'
+import type {PrSummaryInlineInput, TicketEnhanceInput} from '../src/agents/types'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt} from '../src/agents/utils'
 import {defaultProfile} from '../src/agents/codex/profiles/schema'
 
 const runMock = vi.fn()
@@ -80,6 +80,65 @@ describe('CodexAgent.enhance', () => {
         expect(result).toEqual({
             title: 'Enhanced Title',
             description: 'Enhanced body',
+        })
+    })
+})
+
+describe('CodexAgent.summarizePullRequest', () => {
+    beforeAll(() => {
+        process.env.CODEX_PATH_OVERRIDE = process.execPath
+        delete process.env.CODEX_PATH
+    })
+
+    afterAll(() => {
+        process.env.CODEX_PATH_OVERRIDE = originalEnv.override
+        process.env.CODEX_PATH = originalEnv.path
+    })
+
+    beforeEach(() => {
+        runMock.mockReset()
+        startThreadMock.mockReset()
+    })
+
+    it('builds a PR-summary prompt and maps markdown to title/body', async () => {
+        const {CodexAgent} = await import('../src/agents/codex/core/agent')
+
+        const controller = new AbortController()
+        const input: PrSummaryInlineInput = {
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+            commitSummary: 'abc123 Add feature',
+            diffSummary: '3 files changed',
+        }
+
+        const prompt = buildPrSummaryPrompt(
+            input,
+            (defaultProfile as any).inlineProfile ?? defaultProfile.appendPrompt ?? undefined,
+        )
+        const markdown = '# PR Title\nPR body'
+
+        runMock.mockResolvedValue({
+            items: [],
+            finalResponse: markdown,
+            usage: null,
+        })
+
+        const result = await (CodexAgent as any).summarizePullRequest(input, defaultProfile, controller.signal)
+
+        expect(startThreadMock).toHaveBeenCalledTimes(1)
+
+        const threadOptions = startThreadMock.mock.calls[0][0]
+        expect(threadOptions.workingDirectory).toBe(input.repositoryPath)
+
+        expect(runMock).toHaveBeenCalledTimes(1)
+        const [promptArg, turnOptions] = runMock.mock.calls[0] as [string, {signal: AbortSignal}]
+        expect(promptArg).toBe(prompt)
+        expect(turnOptions.signal).toBe(controller.signal)
+
+        expect(result).toEqual({
+            title: 'PR Title',
+            body: 'PR body',
         })
     })
 })

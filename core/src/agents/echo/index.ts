@@ -7,6 +7,8 @@ import type {
     InlineTaskInputByKind,
     InlineTaskKind,
     InlineTaskResultByKind,
+    PrSummaryInlineInput,
+    PrSummaryInlineResult,
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../types'
@@ -40,6 +42,15 @@ class EchoImpl implements Agent<EchoProfile> {
             const result: TicketEnhanceResult = {
                 title: typed.title,
                 description: `[ENHANCED] ${typed.description}`,
+            }
+            return result as InlineTaskResultByKind[K]
+        }
+        if (kind === 'prSummary') {
+            const typed = input as PrSummaryInlineInput
+            const fallbackTitle = `PR for ${typed.headBranch} -> ${typed.baseBranch}`
+            const result: PrSummaryInlineResult = {
+                title: fallbackTitle,
+                body: `[SUMMARY] Changes from ${typed.baseBranch} to ${typed.headBranch} in ${typed.repositoryPath}`,
             }
             return result as InlineTaskResultByKind[K]
         }

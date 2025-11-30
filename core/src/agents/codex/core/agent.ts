@@ -21,6 +21,8 @@ import type {
     InlineTaskInputByKind,
     InlineTaskKind,
     InlineTaskResultByKind,
+    PrSummaryInlineInput,
+    PrSummaryInlineResult,
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
@@ -29,7 +31,7 @@ import {SdkAgent} from '../../sdk'
 import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
 import {StreamGrouper} from '../../sdk/stream-grouper'
-import {buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
 
 type CodexInstallation = { executablePath: string }
 const execFileAsync = promisify(execFile)
@@ -399,6 +401,14 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             const result = await this.enhance(input as TicketEnhanceInput, profile)
             return result as InlineTaskResultByKind[K]
         }
+        if (kind === 'prSummary') {
+            const result = await this.summarizePullRequest(
+                input as PrSummaryInlineInput,
+                profile,
+                _opts?.signal,
+            )
+            return result as InlineTaskResultByKind[K]
+        }
         throw new Error(`Codex inline kind ${kind} is not implemented`)
     }
 
@@ -435,6 +445,48 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             return {title: input.title, description: input.description}
         }
         return splitTicketMarkdown(markdown, input.title, input.description)
+    }
+
+    async summarizePullRequest(
+        input: PrSummaryInlineInput,
+        profile: CodexProfile,
+        signal?: AbortSignal,
+    ): Promise<PrSummaryInlineResult> {
+        const summaryCtx: AgentContext = {
+            attemptId: `pr-summary-${input.repositoryPath}`,
+            boardId: 'pr-summary',
+            cardId: 'pr',
+            worktreePath: input.repositoryPath,
+            repositoryPath: input.repositoryPath,
+            branchName: input.headBranch,
+            baseBranch: input.baseBranch,
+            cardTitle: `PR from ${input.headBranch} into ${input.baseBranch}`,
+            cardDescription: undefined,
+            profileId: null,
+            sessionId: undefined,
+            followupPrompt: undefined,
+            signal: signal ?? new AbortController().signal,
+            emit: () => {},
+        }
+
+        const installation = await this.detectInstallation(profile, summaryCtx)
+        const client = await this.createClient(profile, summaryCtx, installation)
+        const codex = client as Codex
+        const thread = codex.startThread(this.threadOptions(profile, summaryCtx))
+
+        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
+        const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
+        const effectiveAppend = inline.length > 0 ? inline : baseAppend
+        const prompt = buildPrSummaryPrompt(input, effectiveAppend ?? undefined)
+        const turn = await thread.run(prompt, {signal: summaryCtx.signal})
+        const markdown = (turn.finalResponse || '').trim()
+        const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`
+        const fallbackBody = `Changes from ${input.baseBranch} to ${input.headBranch} in ${input.repositoryPath}`
+        if (!markdown) {
+            return {title: fallbackTitle, body: fallbackBody}
+        }
+        const split = splitTicketMarkdown(markdown, fallbackTitle, fallbackBody)
+        return {title: split.title, body: split.description}
     }
 }
 

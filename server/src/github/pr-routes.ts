@@ -2,9 +2,9 @@ import {Hono} from 'hono'
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
-import {githubRepo} from 'core'
+import {githubRepo, git, agentSummarizePullRequest, isInlineTaskError} from 'core'
 import {createPR, findOpenPR, getPullRequest, listPullRequests} from './pr'
-import {git, projectsRepo, attempts, tasks} from 'core'
+import {projectsRepo, attempts, tasks} from 'core'
 import {problemJson} from '../http/problem'
 import {log} from '../log'
 
@@ -21,6 +21,13 @@ const createPrSchema = z.object({
 const listPrQuerySchema = z.object({
     branch: z.string().optional(),
     state: z.enum(['open', 'closed', 'all']).optional(),
+})
+
+const createPrSummarySchema = z.object({
+    base: z.string().min(1).optional(),
+    branch: z.string().min(1).optional(),
+    agent: z.string().optional(),
+    profileId: z.string().optional(),
 })
 
 export function createGithubProjectRouter() {
@@ -52,6 +59,95 @@ export function createGithubProjectRouter() {
             return problemJson(c, {status, detail: message})
         }
     })
+
+    // POST /projects/:projectId/pull-requests/summary
+    router.post(
+        '/:projectId/pull-requests/summary',
+        zValidator('json', createPrSummarySchema),
+        async (c) => {
+            const {base, branch, agent, profileId} = c.req.valid('json')
+            const projectId = c.req.param('projectId')
+
+            const trimmedBranch = branch?.trim() || ''
+            let headBranch = trimmedBranch
+
+            try {
+                if (!headBranch) {
+                    const status = await git.getStatus(projectId)
+                    headBranch = status.branch?.trim() || ''
+                }
+
+                if (!headBranch) {
+                    return problemJson(c, {
+                        status: 409,
+                        detail: 'Branch name missing for PR summary',
+                    })
+                }
+
+                const baseBranch = base?.trim() || undefined
+
+                const summary = await agentSummarizePullRequest({
+                    projectId,
+                    baseBranch,
+                    headBranch,
+                    agentKey: agent,
+                    profileId,
+                    signal: c.req.raw.signal,
+                })
+
+                return c.json({summary}, 200)
+            } catch (error) {
+                if (isInlineTaskError(error)) {
+                    const code = error.code
+                    if (code === 'UNKNOWN_AGENT' || code === 'AGENT_NO_INLINE') {
+                        return problemJson(c, {status: 400, detail: error.message})
+                    }
+                    if (code === 'ABORTED') {
+                        return problemJson(c, {
+                            status: 499,
+                            detail: 'Pull request summary cancelled',
+                        })
+                    }
+                    log.error(
+                        {err: error, projectId, base, branch, agent, profileId},
+                        '[github:pull-requests:summary] inline task failed',
+                    )
+                    return problemJson(c, {
+                        status: 502,
+                        detail: 'Failed to summarize pull request',
+                    })
+                }
+
+                const message =
+                    error instanceof Error
+                        ? error.message
+                        : 'Failed to summarize pull request'
+
+                let status = 502
+                if (message === 'Project not found') {
+                    status = 404
+                } else if (
+                    message.startsWith('Unknown agent:') ||
+                    message.includes('does not support inline task: prSummary')
+                ) {
+                    status = 400
+                }
+
+                if (status >= 500) {
+                    log.error(
+                        {err: error, projectId, base, branch, agent, profileId},
+                        '[github:pull-requests:summary] failed',
+                    )
+                }
+
+                return problemJson(c, {
+                    status,
+                    detail:
+                        status >= 500 ? 'Failed to summarize pull request' : message,
+                })
+            }
+        },
+    )
 
     // GET /projects/:projectId/pull-requests/:number
     router.get('/:projectId/pull-requests/:number', async (c) => {

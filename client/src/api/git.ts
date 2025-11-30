@@ -91,3 +91,30 @@ export async function listProjectPullRequests(
     const data = await parseApiResponse<{ pullRequests: PRInfo[] }>(res)
     return data.pullRequests ?? []
 }
+
+export type CreatePrSummaryPayload = {
+    base?: string
+    branch?: string
+    agent?: string
+    profileId?: string
+}
+
+export type PrSummaryResponse = {
+    summary: {title: string; body: string}
+}
+
+export async function summarizeProjectPullRequest(
+    projectId: string,
+    payload: CreatePrSummaryPayload,
+): Promise<PrSummaryResponse['summary']> {
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/pull-requests/summary`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+    })
+    const data = await parseApiResponse<PrSummaryResponse>(res)
+    if (!data?.summary) {
+        throw new Error('PR summary response missing payload')
+    }
+    return data.summary
+}
