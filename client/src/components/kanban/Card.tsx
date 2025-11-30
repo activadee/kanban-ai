@@ -78,9 +78,9 @@ export function KanbanCard({
             className={`${
                 isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
             } ${blocked && !done ? 'border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10' : ''}`}>
-            <CardContent className="p-3">
+            <CardContent className="flex h-full flex-col gap-2 overflow-hidden p-3">
                 {showHeaderRow ? (
-                    <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                             {card.ticketKey ? (
                                 <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
@@ -181,7 +181,8 @@ export function KanbanCard({
                     </div>
                 ) : null}
                 <div
-                    className={`text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}
+                    title={card.title}
+                    className={`truncate text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}
                 >
                     {card.title}
                 </div>
