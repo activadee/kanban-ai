@@ -44,6 +44,10 @@ only when you explicitly accept it via the board UI.
 - Enhancements still never create Attempts, branches, or commits; they only replace the persisted title/description when
   you accept a suggestion.
 
+- From the board, Backlog cards also expose an **Enhance ticket…** action in their three-dots menu:
+  - It opens the Edit Ticket dialog for that card and immediately queues the same background enhancement job using the current title and description.
+  - You review and accept or reject suggestions via the sparkles icon and enhancement diff dialog described above.
+
 ## API surface
 
 The UI and integrations continue to use the same enhancement endpoint, but now trigger it via the background workflow:

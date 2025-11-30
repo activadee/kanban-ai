@@ -22,6 +22,23 @@ Last updated: 2025-11-30
 - Column titles are stored in the database and can be changed in future workflow customisation work, but the default
   behavior assumes these names when determining where to move cards on Attempt events.
 
+## Per-card actions menu
+
+- Each card on the board exposes a three-dots menu in its header for quick, context-aware actions.
+- Backlog columns:
+  - Show **Enhance ticket…** (opens Edit Ticket and runs a one-off inline enhancement).
+  - Show **Start work** (starts an Attempt using the project’s default agent/profile, respecting dependency blocking).
+  - Always include **Open details** and **Edit…**.
+- In Progress columns:
+  - Show **Stop Attempt** when the latest Attempt is running.
+  - Always include **Open details** and **Edit…**.
+- Review columns:
+  - Show **Create PR…** (opens the same pull request dialog as the inspector, with identical defaults).
+  - Show **Open in editor** (reuses the Attempt editor integration and enabled/disabled rules).
+  - Always include **Open details** and **Edit…**.
+- Done and any non-standard columns:
+  - Only expose **Open details** and **Edit…**, keeping Attempt and Git actions read-only for completed tasks.
+
 ## Cards, ticket keys, and details
 
 - **Cards** represent tasks on the board. Each card has:

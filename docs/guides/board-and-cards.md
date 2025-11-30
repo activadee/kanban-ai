@@ -84,6 +84,20 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
       - Title: “Task is blocked by dependencies”.
       - Description explaining that dependencies must be completed first.
 
+## Card action menu
+
+- Every card displays an ellipsis menu in its header with quick actions. **Open details** and **Edit…** are always available.
+- Backlog columns:
+  - **Enhance ticket…** opens the Edit Ticket dialog for that card and immediately queues the background enhancement job using the current title/description.
+  - **Start work** kicks off an Attempt using the project’s default agent and profile. The board shows a toast if the card is blocked or if no default agent/profile is configured.
+- In Progress columns:
+  - **Stop Attempt** becomes enabled while the latest Attempt is running (and shows a disabled state when nothing is active).
+- Review columns:
+  - **Create PR…** opens the same pull request dialog as the inspector, with identical defaults.
+  - **Open in editor** reuses the Attempt editor integration and respects the same enablement rules as the inspector (default editor configured, attempt worktree available).
+- Done and non-standard columns:
+  - Only **Open details** and **Edit…** are shown so completed work stays read-only for Git/Attempt operations.
+
 ## Drag & drop
 
 - Cards can be dragged:
