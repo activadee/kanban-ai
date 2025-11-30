@@ -52,6 +52,20 @@ function describeFolderMigrations(folderPath: string) {
   }
 }
 
+function describeAppliedMigrations(dbResources: DbResources) {
+  try {
+    const rows = dbResources.sqlite
+      .query('SELECT tag FROM drizzle_migrations ORDER BY id DESC LIMIT 5')
+      .all() as Array<{ tag: string }>
+    const tags = rows.map((r) => r.tag)
+    return { count: tags.length, latest: tags[0] ?? null, recent: tags }
+  } catch (err) {
+    // Table might not exist yet on a fresh DB; keep it best-effort.
+    log.debug('migrations', 'could not read drizzle_migrations table', { err })
+    return { count: 0, latest: null, recent: [] as string[] }
+  }
+}
+
 async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, migrationsDir?: string) {
   const resolved = await resolveMigrations(config, migrationsDir)
 
@@ -64,13 +78,25 @@ async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, 
     })
     const { migrate } = await import('drizzle-orm/bun-sqlite/migrator')
     await migrate(dbResources.db, { migrationsFolder: resolved.path })
-    log.info('migrations', 'folder migrations applied', { path: resolved.path })
+    const applied = describeAppliedMigrations(dbResources)
+    log.info('migrations', 'folder migrations applied', {
+      path: resolved.path,
+      dbPath: dbResources.path,
+      latest: applied.latest,
+      recent: applied.recent,
+    })
   } else {
     log.info('migrations', 'applying bundled migrations', {
       count: resolved.migrations.length,
     })
     await (dbResources.db as any).dialect.migrate(resolved.migrations, (dbResources.db as any).session)
-    log.info('migrations', 'bundled migrations applied', { count: resolved.migrations.length })
+    const applied = describeAppliedMigrations(dbResources)
+    log.info('migrations', 'bundled migrations applied', {
+      count: resolved.migrations.length,
+      dbPath: dbResources.path,
+      latest: applied.latest,
+      recent: applied.recent,
+    })
   }
 
   registerCoreDbProvider(dbResources.db)
