@@ -1,26 +1,69 @@
-import type {ProjectSettings, UpdateProjectSettingsRequest} from 'shared'
-import {withTx, type DbExecutor} from '../../db/with-tx'
-import type {ProjectSettingsRow} from '../../db/schema/projects'
-import {getBoardById} from '../repo'
-import {getProjectSettingsRow, insertProjectSettings, updateProjectSettingsRow} from './repo'
-import {deriveDefaultTicketPrefix, sanitizeTicketPrefix} from '../tickets/ticket-keys'
+import type { ProjectSettings, UpdateProjectSettingsRequest } from "shared";
+import { withTx, type DbExecutor } from "../../db/with-tx";
+import type { ProjectSettingsRow } from "../../db/schema/projects";
+import { getBoardById } from "../repo";
+import {
+    getProjectSettingsRow,
+    insertProjectSettings,
+    updateProjectSettingsRow,
+} from "./repo";
+import {
+    deriveDefaultTicketPrefix,
+    sanitizeTicketPrefix,
+} from "../tickets/ticket-keys";
 import {
     DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
     normalizeGithubIssueSyncInterval,
     type GithubIssueSyncStatus,
-} from './github-sync'
+} from "./github-sync";
 
-function mapRow(row: ProjectSettingsRow): ProjectSettings {
-    const toIso = (v: Date | number | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString())
-    const normalizeStatus = (status: string | null | undefined): GithubIssueSyncStatus => {
-        if (status === 'running' || status === 'succeeded' || status === 'failed') return status
-        return 'idle'
+function normalizeDate(
+    value: Date | number | string | null | undefined,
+): Date | null {
+    if (value === null || value === undefined) return null;
+    if (value instanceof Date) return value;
+
+    // Drizzle sometimes stores timestamps as seconds; detect and upscale.
+    if (typeof value === "number" && value > 0 && value < 1_000_000_000_000) {
+        const secondsAsMs = value * 1000;
+        return new Date(secondsAsMs);
     }
 
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function toIso(value: Date | number | string | null | undefined): string {
+    const normalized = normalizeDate(value) ?? new Date();
+    return normalized.toISOString();
+}
+
+function toNullableIso(
+    value: Date | number | string | null | undefined,
+): string | null {
+    const normalized = normalizeDate(value);
+    return normalized ? normalized.toISOString() : null;
+}
+
+function mapRow(row: ProjectSettingsRow): ProjectSettings {
+    const normalizeStatus = (
+        status: string | null | undefined,
+    ): GithubIssueSyncStatus => {
+        if (
+            status === "running" ||
+            status === "succeeded" ||
+            status === "failed"
+        )
+            return status;
+        return "idle";
+    };
+
     const intervalMinutes =
-        typeof row.githubIssueSyncIntervalMinutes === 'number'
-            ? normalizeGithubIssueSyncInterval(row.githubIssueSyncIntervalMinutes)
-            : DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES
+        typeof row.githubIssueSyncIntervalMinutes === "number"
+            ? normalizeGithubIssueSyncInterval(
+                  row.githubIssueSyncIntervalMinutes,
+              )
+            : DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES;
 
     return {
         projectId: row.projectId,
@@ -40,26 +83,32 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         ticketPrefix: row.ticketPrefix,
         nextTicketNumber: row.nextTicketNumber,
         githubIssueSyncEnabled: Boolean(row.githubIssueSyncEnabled),
-        githubIssueSyncState: (row.githubIssueSyncState as 'open' | 'all' | 'closed') ?? 'open',
+        githubIssueSyncState:
+            (row.githubIssueSyncState as "open" | "all" | "closed") ?? "open",
         githubIssueSyncIntervalMinutes: intervalMinutes,
-        lastGithubIssueSyncAt: row.lastGithubIssueSyncAt ? toIso(row.lastGithubIssueSyncAt) : null,
-        lastGithubIssueSyncStatus: normalizeStatus(row.lastGithubIssueSyncStatus),
+        lastGithubIssueSyncAt: toNullableIso(row.lastGithubIssueSyncAt),
+        lastGithubIssueSyncStatus: normalizeStatus(
+            row.lastGithubIssueSyncStatus,
+        ),
         createdAt: toIso(row.createdAt),
         updatedAt: toIso(row.updatedAt),
-    }
+    };
 }
 
-export async function ensureProjectSettings(projectId: string, executor?: DbExecutor): Promise<ProjectSettings> {
-    const existing = await getProjectSettingsRow(projectId, executor)
-    if (existing) return mapRow(existing)
-    const board = await getBoardById(projectId, executor)
-    if (!board) throw new Error('Project not found')
-    const ticketPrefix = deriveDefaultTicketPrefix(board.name)
-    const now = new Date()
+export async function ensureProjectSettings(
+    projectId: string,
+    executor?: DbExecutor,
+): Promise<ProjectSettings> {
+    const existing = await getProjectSettingsRow(projectId, executor);
+    if (existing) return mapRow(existing);
+    const board = await getBoardById(projectId, executor);
+    if (!board) throw new Error("Project not found");
+    const ticketPrefix = deriveDefaultTicketPrefix(board.name);
+    const now = new Date();
     await insertProjectSettings(
         {
             projectId,
-            baseBranch: 'main',
+            baseBranch: "main",
             preferredRemote: null,
             setupScript: null,
             devScript: null,
@@ -74,57 +123,84 @@ export async function ensureProjectSettings(projectId: string, executor?: DbExec
             ticketPrefix,
             nextTicketNumber: 1,
             githubIssueSyncEnabled: false,
-            githubIssueSyncState: 'open',
-            githubIssueSyncIntervalMinutes: DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
+            githubIssueSyncState: "open",
+            githubIssueSyncIntervalMinutes:
+                DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
             lastGithubIssueSyncAt: null,
-            lastGithubIssueSyncStatus: 'idle',
+            lastGithubIssueSyncStatus: "idle",
             createdAt: now,
             updatedAt: now,
         },
         executor,
-    )
-    const created = await getProjectSettingsRow(projectId, executor)
-    if (!created) throw new Error('Failed to initialize project settings')
-    return mapRow(created)
+    );
+    const created = await getProjectSettingsRow(projectId, executor);
+    if (!created) throw new Error("Failed to initialize project settings");
+    return mapRow(created);
 }
 
-export async function getProjectSettings(projectId: string, executor?: DbExecutor): Promise<ProjectSettings> {
-    const row = await ensureProjectSettings(projectId, executor)
-    return row
+export async function getProjectSettings(
+    projectId: string,
+    executor?: DbExecutor,
+): Promise<ProjectSettings> {
+    const row = await ensureProjectSettings(projectId, executor);
+    return row;
 }
 
-export async function updateProjectSettings(projectId: string, updates: UpdateProjectSettingsRequest, executor?: DbExecutor): Promise<ProjectSettings> {
-    const patch: Partial<ProjectSettingsRow> = {}
-    const nn = (v: unknown) => (typeof v === 'string' ? (v.trim() ? v : null) : v === undefined ? undefined : (v as any))
-    if (updates.baseBranch !== undefined) patch.baseBranch = updates.baseBranch
-    if (updates.preferredRemote !== undefined) patch.preferredRemote = nn(updates.preferredRemote)
-    if (updates.setupScript !== undefined) patch.setupScript = nn(updates.setupScript)
-    if (updates.devScript !== undefined) patch.devScript = nn(updates.devScript)
-    if (updates.cleanupScript !== undefined) patch.cleanupScript = nn(updates.cleanupScript)
-    if (updates.copyFiles !== undefined) patch.copyFiles = nn(updates.copyFiles)
-    if (updates.defaultAgent !== undefined) patch.defaultAgent = nn(updates.defaultAgent)
-    if (updates.defaultProfileId !== undefined) patch.defaultProfileId = nn(updates.defaultProfileId)
-    if (updates.inlineAgent !== undefined) patch.inlineAgent = nn(updates.inlineAgent)
-    if (updates.inlineProfileId !== undefined) patch.inlineProfileId = nn(updates.inlineProfileId)
-    if (updates.autoCommitOnFinish !== undefined) patch.autoCommitOnFinish = Boolean(updates.autoCommitOnFinish)
-    if (updates.autoPushOnAutocommit !== undefined) patch.autoPushOnAutocommit = Boolean(updates.autoPushOnAutocommit)
-    if (updates.ticketPrefix !== undefined) patch.ticketPrefix = sanitizeTicketPrefix(updates.ticketPrefix)
+export async function updateProjectSettings(
+    projectId: string,
+    updates: UpdateProjectSettingsRequest,
+    executor?: DbExecutor,
+): Promise<ProjectSettings> {
+    const patch: Partial<ProjectSettingsRow> = {};
+    const nn = (v: unknown) =>
+        typeof v === "string"
+            ? v.trim()
+                ? v
+                : null
+            : v === undefined
+              ? undefined
+              : (v as any);
+    if (updates.baseBranch !== undefined) patch.baseBranch = updates.baseBranch;
+    if (updates.preferredRemote !== undefined)
+        patch.preferredRemote = nn(updates.preferredRemote);
+    if (updates.setupScript !== undefined)
+        patch.setupScript = nn(updates.setupScript);
+    if (updates.devScript !== undefined)
+        patch.devScript = nn(updates.devScript);
+    if (updates.cleanupScript !== undefined)
+        patch.cleanupScript = nn(updates.cleanupScript);
+    if (updates.copyFiles !== undefined)
+        patch.copyFiles = nn(updates.copyFiles);
+    if (updates.defaultAgent !== undefined)
+        patch.defaultAgent = nn(updates.defaultAgent);
+    if (updates.defaultProfileId !== undefined)
+        patch.defaultProfileId = nn(updates.defaultProfileId);
+    if (updates.inlineAgent !== undefined)
+        patch.inlineAgent = nn(updates.inlineAgent);
+    if (updates.inlineProfileId !== undefined)
+        patch.inlineProfileId = nn(updates.inlineProfileId);
+    if (updates.autoCommitOnFinish !== undefined)
+        patch.autoCommitOnFinish = Boolean(updates.autoCommitOnFinish);
+    if (updates.autoPushOnAutocommit !== undefined)
+        patch.autoPushOnAutocommit = Boolean(updates.autoPushOnAutocommit);
+    if (updates.ticketPrefix !== undefined)
+        patch.ticketPrefix = sanitizeTicketPrefix(updates.ticketPrefix);
     if (updates.githubIssueSyncEnabled !== undefined) {
-        patch.githubIssueSyncEnabled = Boolean(updates.githubIssueSyncEnabled)
+        patch.githubIssueSyncEnabled = Boolean(updates.githubIssueSyncEnabled);
     }
     if (updates.githubIssueSyncState !== undefined) {
-        patch.githubIssueSyncState = updates.githubIssueSyncState
+        patch.githubIssueSyncState = updates.githubIssueSyncState;
     }
     if (updates.githubIssueSyncIntervalMinutes !== undefined) {
         patch.githubIssueSyncIntervalMinutes = normalizeGithubIssueSyncInterval(
             updates.githubIssueSyncIntervalMinutes,
-        )
+        );
     }
-    patch.updatedAt = new Date()
-    await updateProjectSettingsRow(projectId, patch as any, executor)
-    const row = await ensureProjectSettings(projectId, executor)
-    return row
+    patch.updatedAt = new Date();
+    await updateProjectSettingsRow(projectId, patch as any, executor);
+    const row = await ensureProjectSettings(projectId, executor);
+    return row;
 }
 
 // Named exports already declared above; keep alias export minimal to avoid conflicts
-export {ensureProjectSettings as ensure}
+export { ensureProjectSettings as ensure };
