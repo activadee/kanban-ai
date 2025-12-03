@@ -49,6 +49,7 @@ export const updateProjectSettingsHandler = async (c: any) => {
         defaultProfileId?: string | null;
         inlineAgent?: string | null;
         inlineProfileId?: string | null;
+        inlineAgentProfileMapping?: import("shared").InlineAgentProfileMapping | null;
         autoCommitOnFinish?: boolean;
         autoPushOnAutocommit?: boolean;
         ticketPrefix?: string;
@@ -56,7 +57,13 @@ export const updateProjectSettingsHandler = async (c: any) => {
         githubIssueSyncState?: "open" | "all" | "closed";
         githubIssueSyncIntervalMinutes?: number;
     };
-    let {defaultAgent, defaultProfileId, inlineAgent, inlineProfileId} = body;
+    let {
+        defaultAgent,
+        defaultProfileId,
+        inlineAgent,
+        inlineProfileId,
+        inlineAgentProfileMapping,
+    } = body;
 
     let agentKey = defaultAgent ?? undefined;
     if (typeof agentKey === "string") {
@@ -167,6 +174,10 @@ export const updateProjectSettingsHandler = async (c: any) => {
     inlineProfileId = normalizeNullable(body.inlineProfileId);
     if (inlineProfileId !== undefined) {
         updates.inlineProfileId = inlineProfileId;
+    }
+    if (inlineAgentProfileMapping !== undefined) {
+        updates.inlineAgentProfileMapping =
+            inlineAgentProfileMapping ?? {};
     }
     if (body.autoCommitOnFinish !== undefined) {
         updates.autoCommitOnFinish = body.autoCommitOnFinish;

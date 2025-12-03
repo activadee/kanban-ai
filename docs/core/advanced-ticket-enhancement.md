@@ -124,11 +124,12 @@ inline task with `kind = "ticketEnhance"`:
       optional ticket type, profile ID, and a cancellation signal. When provided, the type is echoed into the prompt so
       agents can suggest Conventional Commit–aligned titles.
     - An `InlineTaskContext` with project, repo, branch, optional ticket type, and agent/profile metadata.
-  - Resolves an agent profile:
+  - Resolves an agent profile in this order:
     - Uses the explicit `profileId` when provided.
+    - Otherwise, consults the per-inline-agent mapping for `InlineAgentId = "ticketEnhance"` (when configured) to pick a profile dedicated to ticket enhancement.
     - Otherwise, when using the project’s `inlineAgent`, prefers the project’s configured `inlineProfileId`.
     - Otherwise, when falling back to the default agent, prefers the project’s `defaultProfileId` (if configured).
-    - In all cases, falls back to the agent’s default profile when the configured profile is missing or invalid.
+    - In all cases, when the referenced profile is missing or invalid, logs a warning and falls back to the agent’s default profile so enhancement can still proceed.
   - For inline requests, prefers an agent’s inline profile prompt (when configured) over the primary profile prompt:
     - If the resolved profile contains `inlineProfile`, it is used to tailor the ticket-enhancement prompt.
     - Otherwise, the primary profile’s prompt (e.g. `appendPrompt`) is used as before.

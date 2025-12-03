@@ -60,9 +60,10 @@ PR summarization reuses the same inline infrastructure as ticket enhancement:
   - `projectId`, required `headBranch`, optional `baseBranch`.
   - Optional `agentKey`, optional `profileId`, optional `AbortSignal`.
 - Behavior:
-  - Loads the project and its settings (including `baseBranch`, `inlineAgent`, `inlineProfileId`).
+  - Loads the project and its settings (including `baseBranch`, `inlineAgent`, `inlineProfileId`, and the per-inline-agent profile mapping).
   - Resolves an effective agent/profile:
     - Uses the explicit `agentKey` / `profileId` when provided.
+    - Otherwise consults the per-inline-agent mapping for `InlineAgentId = "prSummary"` when configured so PR summaries can use a dedicated profile.
     - Otherwise prefers the project’s configured `inlineAgent` / `inlineProfileId`.
     - When no inline agent is configured, falls back to the project’s `defaultAgent` / `defaultProfileId` (or `"DROID"` when none is set).
   - Constructs a `PrSummaryInlineInput` containing:

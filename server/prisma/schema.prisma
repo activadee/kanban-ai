@@ -40,6 +40,7 @@ model project_settings {
   default_profile_id                 String?
   inline_agent                       String?
   inline_profile_id                  String?
+  inline_agent_profile_mapping_json  String?
   auto_commit_on_finish              Int     @default(0)
   auto_push_on_autocommit            Int     @default(0)
   ticket_prefix                      String  @default("PRJ")

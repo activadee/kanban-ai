@@ -222,6 +222,7 @@ export function ProjectSettingsPanel({
                                 <InlineAgentSection
                                     inlineAgent={form.inlineAgent}
                                     inlineProfileId={form.inlineProfileId}
+                                    inlineAgentProfileMapping={form.inlineAgentProfileMapping}
                                     agents={agents}
                                     profiles={profiles}
                                     onChange={(patch) => updateForm(patch)}
