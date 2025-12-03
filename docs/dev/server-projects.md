@@ -14,6 +14,11 @@
 2. **Project Settings (`project.settings.handlers.ts` + `core/projects/settings`)**
     - `ensureProjectSettings`, `updateProjectSettings` live in the `core` package and manage branch/template defaults.
     - Settings updates emit `project.settings.updated` so other services can refresh caches.
+    - GitHub Issue Sync settings (`githubIssueSyncEnabled`, `githubIssueSyncState`, `githubIssueSyncIntervalMinutes`)
+      are now validated via `project.schemas.ts` and persisted alongside the existing flags, with metadata columns
+      (`lastGithubIssueSyncAt`, `lastGithubIssueSyncStatus`) tracked in `core/projects/settings/github-sync.ts`.
+      Scheduled sync ticks from `server/src/github/sync.ts` consult these values, call `github/import.service.ts`,
+      and update the metadata to avoid overlapping runs.
 3. **Agent Profiles (`project.agents.routes.ts` + `project.agents.handlers.ts` + `core/agents/profiles`)**
     - CRUD endpoints emit `agent.profile.changed` to keep UI caches synced.
 4. **Boards, Cards & Attempts (`board.routes.ts` + `board.*.handlers.ts`)**
