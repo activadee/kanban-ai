@@ -304,6 +304,15 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         return grouper
     }
 
+    private debug(profile: OpencodeProfile, ctx: AgentContext, message: string) {
+        if (!profile.debug) return
+        ctx.emit({
+            type: 'log',
+            level: 'info',
+            message: `[opencode:debug] ${message}`,
+        })
+    }
+
     private extractSessionId(event: SessionEvent): string | undefined {
         const properties = (event as {properties?: unknown}).properties
         if (!properties || typeof properties !== 'object') return undefined
@@ -351,19 +360,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         return common
     }
 
-    private handleMessageUpdated(event: EventMessageUpdated, ctx: AgentContext) {
+    private handleMessageUpdated(event: EventMessageUpdated, ctx: AgentContext, profile: OpencodeProfile) {
         const message = event.properties.info
         const grouper = this.getGrouper(ctx)
         grouper.ensureSession(message.sessionID, ctx)
         grouper.recordMessageRole(message.sessionID, message.id, message.role)
     }
 
-    private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext) {
+    private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
         const part = event.properties.part
         const grouper = this.getGrouper(ctx)
 
         if (part.type === 'text') {
             const textPart = part as TextPart
+            this.debug(
+                profile,
+                ctx,
+                `text part ${textPart.sessionID}/${textPart.messageID}/${textPart.id}: ${textPart.text.slice(0, 120)}`,
+            )
             grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text)
             return
         }
@@ -379,11 +393,21 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 tool: toolPart.tool,
                 state: this.mapToolState(toolPart.state),
             }
+            this.debug(
+                profile,
+                ctx,
+                `tool part ${toolPart.sessionID}/${toolPart.messageID}/${toolPart.id} tool=${toolPart.tool} status=${toolPart.state.status}`,
+            )
             grouper.handleToolEvent(ctx, shareContent)
         }
     }
 
-    private handleTodoUpdated(event: EventTodoUpdated, ctx: AgentContext) {
+    private handleTodoUpdated(event: EventTodoUpdated, ctx: AgentContext, profile: OpencodeProfile) {
+        this.debug(
+            profile,
+            ctx,
+            `todo.updated for session ${event.properties.sessionID} (${event.properties.todos.length} items)`,
+        )
         const todos: AttemptTodoSummary = (() => {
             const items = event.properties.todos.map((todo: Todo, index: number) => {
                 const id = todo.id && todo.id.trim().length ? todo.id : `todo-${index}`
@@ -406,7 +430,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         ctx.emit({type: 'todo', todos})
     }
 
-    private handleSessionError(event: EventSessionError, ctx: AgentContext) {
+    private handleSessionError(event: EventSessionError, ctx: AgentContext, profile: OpencodeProfile) {
         const error = event.properties.error
         if (!error) return
         let message = 'OpenCode session error'
@@ -417,6 +441,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         } else if (typeof name === 'string' && name.length) {
             message = name
         }
+        this.debug(profile, ctx, `session.error: ${message}`)
         ctx.emit({
             type: 'conversation',
             item: {
@@ -427,7 +452,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         })
     }
 
-    protected handleEvent(event: unknown, ctx: AgentContext, _profile: OpencodeProfile): void {
+    protected handleEvent(event: unknown, ctx: AgentContext, profile: OpencodeProfile): void {
         if (!event || typeof event !== 'object' || typeof (event as {type?: unknown}).type !== 'string') return
         const ev = event as SessionEvent
 
@@ -435,18 +460,20 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const eventSessionId = this.extractSessionId(ev)
         if (targetSessionId && eventSessionId && targetSessionId !== eventSessionId) return
 
+        this.debug(profile, ctx, `event ${ev.type}${eventSessionId ? ` session=${eventSessionId}` : ''}`)
+
         switch (ev.type) {
             case 'message.updated':
-                this.handleMessageUpdated(ev as EventMessageUpdated, ctx)
+                this.handleMessageUpdated(ev as EventMessageUpdated, ctx, profile)
                 break
             case 'message.part.updated':
-                this.handleMessagePartUpdated(ev as EventMessagePartUpdated, ctx)
+                this.handleMessagePartUpdated(ev as EventMessagePartUpdated, ctx, profile)
                 break
             case 'todo.updated':
-                this.handleTodoUpdated(ev as EventTodoUpdated, ctx)
+                this.handleTodoUpdated(ev as EventTodoUpdated, ctx, profile)
                 break
             case 'session.error':
-                this.handleSessionError(ev as EventSessionError, ctx)
+                this.handleSessionError(ev as EventSessionError, ctx, profile)
                 break
             default:
                 break
