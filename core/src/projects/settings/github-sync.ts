@@ -1,4 +1,4 @@
-import {and, eq, ne} from 'drizzle-orm'
+import {and, eq, ne, or, isNull, lt} from 'drizzle-orm'
 import type {ProjectSettings} from 'shared'
 import {projectSettings} from '../../db/schema'
 import type {DbExecutor} from '../../db/with-tx'
@@ -9,6 +9,7 @@ export type GithubIssueSyncStatus = 'idle' | 'running' | 'succeeded' | 'failed'
 export const MIN_GITHUB_SYNC_INTERVAL_MINUTES = 5
 export const MAX_GITHUB_SYNC_INTERVAL_MINUTES = 1440
 export const DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES = 15
+const STALE_RUNNING_THRESHOLD_MINUTES = 60
 
 export function normalizeGithubIssueSyncInterval(minutes: number | null | undefined): number {
     if (typeof minutes !== 'number' || !Number.isFinite(minutes)) {
@@ -43,6 +44,7 @@ export async function tryStartGithubIssueSync(
     executor?: DbExecutor,
 ): Promise<boolean> {
     const db = resolveDb(executor)
+    const staleCutoff = new Date(now.getTime() - STALE_RUNNING_THRESHOLD_MINUTES * 60 * 1000)
     const result = await db
         .update(projectSettings)
         .set({
@@ -50,7 +52,16 @@ export async function tryStartGithubIssueSync(
             lastGithubIssueSyncStatus: 'running',
             updatedAt: now,
         })
-        .where(and(eq(projectSettings.projectId, projectId), ne(projectSettings.lastGithubIssueSyncStatus, 'running')))
+        .where(
+            and(
+                eq(projectSettings.projectId, projectId),
+                or(
+                    ne(projectSettings.lastGithubIssueSyncStatus, 'running'),
+                    isNull(projectSettings.lastGithubIssueSyncAt),
+                    lt(projectSettings.lastGithubIssueSyncAt, staleCutoff),
+                ),
+            ),
+        )
         .run()
     const changes = (result as any)?.changes ?? (result as any)?.rowsAffected ?? 0
     return changes > 0
@@ -73,4 +84,3 @@ export async function completeGithubIssueSync(
         .where(eq(projectSettings.projectId, projectId))
         .run()
 }
-

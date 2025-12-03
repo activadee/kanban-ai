@@ -105,6 +105,8 @@ export async function runGithubIssueSyncTick(events: AppEventBus): Promise<void>
                 })
             }
         }
+    } catch (error) {
+        log.error('github:sync', 'Scheduled sync tick failed', {err: error})
     } finally {
         tickInProgress = false
     }
@@ -124,4 +126,3 @@ export function startGithubIssueSyncScheduler(options: GithubIssueSyncSchedulerO
         },
     }
 }
-

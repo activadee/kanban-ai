@@ -168,3 +168,5 @@ export const settingsService = {
     update: updateAppSettings,
     snapshot: getAppSettingsSnapshot,
 };
+
+export type SettingsService = typeof settingsService;
