@@ -1,3 +1,13 @@
+## [0.14.1](https://github.com/activadee/kanban-ai/compare/v0.14.0...v0.14.1) (2025-12-03)
+
+### Bug Fixes
+
+* harden project settings date parsing ([a29766c](https://github.com/activadee/kanban-ai/commit/a29766c358e4ed227b571dd4d48fd11e9dbfc4cd))
+
+### Tests
+
+* cover project settings date normalization ([7b8dc0e](https://github.com/activadee/kanban-ai/commit/7b8dc0efce21b7fb3139cc667b9ed39a06aef7a1))
+
 ## [0.14.0](https://github.com/activadee/kanban-ai/compare/v0.13.0...v0.14.0) (2025-12-03)
 
 ### Features
