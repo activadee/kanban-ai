@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@openai/codex-sdk": "^0.64.0",
+    "@opencode-ai/sdk": "^1.0.129",
     "drizzle-orm": "^0.44.5",
     "shared": "workspace:*",
     "simple-git": "^3.28.0",
