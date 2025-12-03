@@ -150,17 +150,20 @@ export async function bootstrapRuntime(
             : loadFolderMigrations(rootInfo.path!);
 
     if (migrations.length === 0) {
-        log.warn("migrations", "no Prisma migrations found", {
+        const explicit = Boolean(migrationsDir ?? config.migrationsDir);
+        const message =
+            rootInfo.kind === "bundled"
+                ? "no bundled Prisma migrations found; build may be misconfigured"
+                : "no Prisma migrations found in configured migrations folder";
+
+        log.error("migrations", message, {
             source,
             migrationsDir: rootInfo.path,
+            explicit,
         });
-        registerCoreDbProvider(dbResources.db);
-        try {
-            await settingsService.ensure();
-        } catch (error) {
-            log.warn("settings", "init failed", { err: error });
-        }
-        return rootInfo.kind === "bundled" ? "__bundled__" : rootInfo.path!;
+
+        // Fail fast rather than running against an undefined schema.
+        throw new Error(message);
     }
 
     ensureMigrationsTable(dbResources);

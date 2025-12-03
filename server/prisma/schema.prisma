@@ -15,8 +15,8 @@ model boards {
   repository_path String
   repository_url  String?
   repository_slug String?
-  created_at      Int     @default(0)
-  updated_at      Int     @default(0)
+  created_at      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   project_settings project_settings?
   columns          columns[]
@@ -49,8 +49,8 @@ model project_settings {
   github_issue_sync_interval_minutes Int     @default(15)
   last_github_issue_sync_at          Int?
   last_github_issue_sync_status      String  @default("idle")
-  created_at                         Int     @default(0)
-  updated_at                         Int     @default(0)
+  created_at                         Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at                         Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   board boards @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
@@ -62,8 +62,8 @@ model columns {
   title      String
   position   Int
   board_id   String
-  created_at Int    @default(0)
-  updated_at Int    @default(0)
+  created_at Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   board boards  @relation(fields: [board_id], references: [id], onDelete: Cascade)
   cards cards[]
@@ -81,8 +81,8 @@ model cards {
   ticket_key  String?
   ticket_type String?
   pr_url      String?
-  created_at  Int     @default(0)
-  updated_at  Int     @default(0)
+  created_at  Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at  Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   column columns @relation(fields: [column_id], references: [id], onDelete: Cascade)
   board  boards? @relation(fields: [board_id], references: [id], onDelete: Cascade)
@@ -100,7 +100,7 @@ model cards {
 model card_dependencies {
   card_id            String
   depends_on_card_id String
-  created_at         Int    @default(0)
+  created_at         Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   card            cards @relation("CardDependencies_Parent", fields: [card_id], references: [id], onDelete: Cascade)
   depends_on_card cards @relation("CardDependencies_Dependency", fields: [depends_on_card_id], references: [id], onDelete: Cascade)
@@ -115,7 +115,7 @@ model card_enhancements {
   status                 String
   suggestion_title       String?
   suggestion_description String?
-  updated_at             Int     @default(0)
+  updated_at             Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   card cards @relation(fields: [card_id], references: [id], onDelete: Cascade)
 
@@ -138,8 +138,8 @@ model app_settings {
   gh_pr_title_template            String?
   gh_pr_body_template             String?
   gh_autolink_tickets             Int     @default(1)
-  created_at                      Int     @default(0)
-  updated_at                      Int     @default(0)
+  created_at                      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at                      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@map("app_settings")
 }
@@ -150,8 +150,8 @@ model agent_profiles {
   agent       String
   name        String
   config_json String
-  created_at  Int    @default(0)
-  updated_at  Int    @default(0)
+  created_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   board boards @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
@@ -163,8 +163,8 @@ model agent_profiles_global {
   agent       String
   name        String
   config_json String
-  created_at  Int    @default(0)
-  updated_at  Int    @default(0)
+  created_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@map("agent_profiles_global")
 }
@@ -179,8 +179,8 @@ model attempts {
   branch_name   String
   worktree_path String?
   session_id    String?
-  created_at    Int     @default(0)
-  updated_at    Int     @default(0)
+  created_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
   started_at    Int?
   ended_at      Int?
 
@@ -197,7 +197,7 @@ model attempts {
 model attempt_logs {
   id         String @id
   attempt_id String
-  ts         Int    @default(0)
+  ts         Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
   level      String
   message    String
 
@@ -210,7 +210,7 @@ model conversation_items {
   id         String @id
   attempt_id String
   seq        Int
-  ts         Int    @default(0)
+  ts         Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
   item_json  String
 
   attempt attempts @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
@@ -221,7 +221,7 @@ model conversation_items {
 model attempt_todos {
   attempt_id String @id
   todos_json String
-  updated_at Int    @default(0)
+  updated_at Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   attempt attempts @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
 
@@ -235,8 +235,8 @@ model github_connections {
   access_token  String?
   token_type    String?
   scope         String?
-  created_at    Int     @default(0)
-  updated_at    Int     @default(0)
+  created_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@map("github_connections")
 }
@@ -252,8 +252,8 @@ model github_issues {
   title_snapshot String
   url            String
   state          String
-  created_at     Int    @default(0)
-  updated_at     Int    @default(0)
+  created_at     Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at     Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   board boards @relation(fields: [board_id], references: [id], onDelete: Cascade)
   card  cards  @relation(fields: [card_id], references: [id], onDelete: Cascade)
@@ -266,8 +266,8 @@ model onboarding_state {
   status       String  @default("pending")
   last_step    String?
   completed_at Int?
-  created_at   Int     @default(0)
-  updated_at   Int     @default(0)
+  created_at   Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at   Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@map("onboarding_state")
 }
@@ -276,8 +276,8 @@ model github_app_configs {
   id            String  @id @default("singleton")
   client_id     String
   client_secret String?
-  created_at    Int     @default(0)
-  updated_at    Int     @default(0)
+  created_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@map("github_app_configs")
 }
