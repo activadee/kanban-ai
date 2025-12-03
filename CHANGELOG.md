@@ -1,3 +1,20 @@
+## [0.14.0](https://github.com/activadee/kanban-ai/compare/v0.13.0...v0.14.0) (2025-12-03)
+
+### Features
+
+* **github-sync:** add scheduled GitHub issue sync for project boards ([#210](https://github.com/activadee/kanban-ai/issues/210)) ([b775cf9](https://github.com/activadee/kanban-ai/commit/b775cf9cd10078c3c2d9f8716a3bb1df388be21e)), closes [owner/repo/#number](https://github.com/owner/repo//issues/number)
+
+### Chores
+
+* bun.lock ([39962bc](https://github.com/activadee/kanban-ai/commit/39962bc59f325cc4d3396de1306b04990038a81d))
+
+### Build
+
+* **deps:** bump @openai/codex-sdk from 0.63.0 to 0.64.0 ([#208](https://github.com/activadee/kanban-ai/issues/208)) ([1f24cee](https://github.com/activadee/kanban-ai/commit/1f24cee12b5fc7b047c4bb93778b96e2bd7da608))
+* **deps:** bump @openai/codex-sdk from 0.63.0 to 0.64.0 in /core ([#209](https://github.com/activadee/kanban-ai/issues/209)) ([5384838](https://github.com/activadee/kanban-ai/commit/5384838834a3263eb0c62ac291198bd4dcdb3944))
+* **deps:** bump actions/setup-node from 4 to 6 ([#206](https://github.com/activadee/kanban-ai/issues/206)) ([5fd922e](https://github.com/activadee/kanban-ai/commit/5fd922e03efdc3899f267a0543438c63be83bd88))
+* **deps:** bump amannn/action-semantic-pull-request from 5 to 6 ([#207](https://github.com/activadee/kanban-ai/issues/207)) ([5e9ce6a](https://github.com/activadee/kanban-ai/commit/5e9ce6a62a7298d00e16613aaf25d96e2ac6ac25))
+
 ## [0.13.0](https://github.com/activadee/kanban-ai/compare/v0.12.0...v0.13.0) (2025-11-30)
 
 ### Features
