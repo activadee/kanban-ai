@@ -10,7 +10,7 @@ summarizes where data lives and how it is managed.
 ## Database
 
 - Engine:
-  - SQLite via `bun:sqlite`, managed by Drizzle.
+  - SQLite via `bun:sqlite`, managed through Prisma migrations.
 - Location:
   - Production (`bun run prod`, compiled binaries): defaults to `kanban.db` under the OS-specific data directory (e.g.
     `~/.local/share/kanbanai/kanban.db` on Linux).

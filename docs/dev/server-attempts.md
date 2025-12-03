@@ -3,7 +3,7 @@
 ## Purpose
 
 - Manage the lifecycle of agent attempts (create, resume, stop) against project cards.
-- Persist attempt metadata, logs, and conversation history in SQLite via Drizzle.
+- Persist attempt metadata, logs, and conversation history in SQLite via Prisma.
 - Coordinate worktree provisioning and teardown while remaining decoupled through the event bus.
 
 ## Data & Event Flow

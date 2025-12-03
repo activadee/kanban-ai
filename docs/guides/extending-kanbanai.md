@@ -10,7 +10,7 @@ existing layering between `core/` and `server/`.
 ## Architecture recap
 
 - `core/`:
-  - Business logic and data access (Drizzle models, services, event types).
+  - Business logic and data access (Prisma schema, services, event types).
   - No framework or runtime-specific code.
 - `server/`:
   - Hono app, Bun entrypoints, HTTP/WebSocket routes, adapters for core services.
@@ -69,4 +69,3 @@ For production, keep experimental agents (like Droid/OpenCode) unregistered or b
 - `docs/core/ai-attempts.md` – how Attempts work end-to-end.
 - `docs/core/git-integration.md` – git helpers and events.
 - `docs/core/agents-and-profiles.md` – agents module and profiles.
-
