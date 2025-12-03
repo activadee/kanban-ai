@@ -195,8 +195,12 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const pump = (async () => {
             try {
-                for await (const ev of events.stream) {
-                    queue.push(ev as SessionEvent)
+                for await (const raw of events.stream) {
+                    const ev = raw as SessionEvent
+                    queue.push(ev)
+                    if (ev.type === 'session.idle') {
+                        break
+                    }
                 }
             } catch (err) {
                 if (!signal.aborted) {
