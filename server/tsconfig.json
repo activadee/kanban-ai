@@ -1,52 +1,31 @@
 {
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    // Environment settings
-    "lib": [
-      "ESNext"
-    ],
-    "target": "ESNext",
-    "module": "ESNext",
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
-    // Types
-    "types": [
-      "bun"
-    ],
-    // Output settings
-    "declaration": true,
-    "composite": true,
-    "outDir": "dist",
-    "noEmit": false,
-    "emitDecoratorMetadata": true,
-    // Module resolution
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": false
-    ,"paths": {
-      "core": [
-        "../core/dist/index.d.ts"
-      ],
-      "core/*": [
-        "../core/dist/*"
-      ],
-      "shared": [
-        "../shared/dist/index.d.ts"
-      ],
-      "shared/*": [
-        "../shared/dist/*"
-      ]
-    }
-  },
-  "references": [
-    { "path": "../shared" },
-    { "path": "../core" }
-  ],
-  "include": [
-    "src/**/*",
-    "drizzle/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        // Environment settings
+        "lib": ["ESNext"],
+        "target": "ESNext",
+        "module": "ESNext",
+        "jsx": "react-jsx",
+        "jsxImportSource": "hono/jsx",
+        // Types
+        "types": ["bun"],
+        // Output settings
+        "declaration": true,
+        "composite": true,
+        "outDir": "dist",
+        "noEmit": false,
+        "emitDecoratorMetadata": true,
+        // Module resolution
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": false,
+        "paths": {
+            "core": ["../core/dist/index.d.ts"],
+            "core/*": ["../core/dist/*"],
+            "shared": ["../shared/dist/index.d.ts"],
+            "shared/*": ["../shared/dist/*"]
+        }
+    },
+    "references": [{ "path": "../shared" }, { "path": "../core" }],
+    "include": ["src/**/*", "prisma/**/*"],
+    "exclude": ["node_modules", "dist"]
 }
