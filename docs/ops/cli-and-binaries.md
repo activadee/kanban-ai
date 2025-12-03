@@ -39,7 +39,7 @@ Last updated: 2025-11-30
 - The production server entrypoint lives at `server/src/entry/prod.ts`.
 - At the root, `bun run prod`:
   - Runs the `build:prod` pipeline:
-    - Generates migration metadata.
+    - Runs `scripts/build-prisma-migration-bundle.ts` to generate the bundled Prisma migration data consumed at runtime.
     - Builds the client (`client/dist`) and server.
     - Copies `client/dist` into `server/static`.
     - Generates an embedded static bundle.
@@ -58,7 +58,7 @@ Last updated: 2025-11-30
   - `HOST` – interface to bind (defaults to `127.0.0.1`).
   - `PORT` – port to listen on (defaults to `3000`).
   - `DATABASE_URL` – SQLite database path (e.g., `sqlite:/absolute/path/to/kanban.db`); defaults to an OS data directory such as `~/.local/share/kanbanai/kanban.db`.
-  - `KANBANAI_MIGRATIONS_DIR` – directory containing Drizzle migrations; used when not relying solely on the embedded bundle.
+  - `KANBANAI_MIGRATIONS_DIR` – directory containing Prisma migrations (`server/prisma/migrations` format); used when not relying solely on the embedded bundle.
   - `KANBANAI_STATIC_DIR` – optional override for static assets (useful for custom branding or external `client/dist`).
   - `LOG_LEVEL` – `debug` | `info` | `warn` | `error` (default `info`).
   - `KANBANAI_DEBUG` / `DEBUG` – enable additional per-request traces when set to truthy values or appropriate namespaces.
@@ -80,7 +80,7 @@ LOG_LEVEL=debug KANBANAI_DEBUG=1 bun run prod
     - `dist/kanban-ai-darwin-arm64`
     - `dist/kanban-ai-win-x64.exe`
 - Each binary:
-  - Embeds the Drizzle migrations and static assets by default.
+  - Embeds the Prisma migration bundle (the generated `server/prisma/migration-data.generated.ts`) and static assets by default.
   - Serves the API and React UI on a single origin (respecting `HOST`, `PORT`, `DATABASE_URL`, `KANBANAI_MIGRATIONS_DIR`, and `KANBANAI_STATIC_DIR`).
 - In most self-hosted setups:
   - The CLI wrapper downloads and runs the appropriate binary.

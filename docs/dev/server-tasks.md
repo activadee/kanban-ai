@@ -10,7 +10,7 @@
 ## Data & Event Flow
 
 1. **Board State APIs**
-    - `getBoardState` reads columns/cards via Drizzle and lazily ensures default columns exist.
+    - `getBoardState` reads columns/cards via Prisma and lazily ensures default columns exist.
     - Mutations (`createBoardCard`, `moveBoardCard`, `updateBoardCard`, `deleteBoardCard`) emit `card.*` and
       `board.state.changed` events after writing to the database.
 2. **Event Listeners (`listeners.ts`)**

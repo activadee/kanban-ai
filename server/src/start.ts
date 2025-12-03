@@ -1,278 +1,292 @@
-import type { AppEnv, ServerConfig } from './env'
-import { setRuntimeConfig } from './env'
-import type { UpgradeWebSocket } from 'hono/ws'
-import { resolveMigrations, markReady } from './runtime'
-import type { ResolvedMigrations } from './runtime'
-import { createDbClient } from './db/client'
-import { registerCoreDbProvider } from './db/provider'
-import { settingsService } from 'core'
-import { log, applyLogConfig } from './log'
-import type { DbResources } from './db/client'
-import { readFileSync, existsSync } from 'node:fs'
-import path from 'node:path'
-import crypto from 'node:crypto'
+import type { AppEnv, ServerConfig } from "./env";
+import { setRuntimeConfig } from "./env";
+import type { UpgradeWebSocket } from "hono/ws";
+import { resolveMigrations, markReady } from "./runtime";
+import type { ResolvedMigrations } from "./runtime";
+import { createDbClient } from "./db/client";
+import { registerCoreDbProvider } from "./db/provider";
+import { settingsService } from "core";
+import { log, applyLogConfig } from "./log";
+import type { DbResources } from "./db/client";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
+import {
+    prismaMigrations,
+    type PrismaMigrationSpec,
+} from "../prisma/migration-data.generated";
 
 type BunServeOptions = Parameters<typeof Bun.serve>[0];
 
 export type StartOptions = {
-  config: ServerConfig;
-  fetch: NonNullable<BunServeOptions['fetch']>;
-  websocket: NonNullable<BunServeOptions['websocket']>;
-  migrationsDir?: string;
-  db?: DbResources;
+    config: ServerConfig;
+    fetch: NonNullable<BunServeOptions["fetch"]>;
+    websocket: NonNullable<BunServeOptions["websocket"]>;
+    migrationsDir?: string;
+    db?: DbResources;
 };
 
 export type StartResult = {
-  server: ReturnType<(typeof Bun)['serve']>;
-  url: string;
-  dbFile: string | undefined;
-  migrationsDir: string;
+    server: ReturnType<(typeof Bun)["serve"]>;
+    url: string;
+    dbFile: string | undefined;
+    migrationsDir: string;
 };
 
 export async function createWebSocket(): Promise<{
-  upgradeWebSocket: UpgradeWebSocket<AppEnv>;
-  websocket: NonNullable<BunServeOptions["websocket"]>;
+    upgradeWebSocket: UpgradeWebSocket<AppEnv>;
+    websocket: NonNullable<BunServeOptions["websocket"]>;
 }> {
-  const { createBunWebSocket } = await import("hono/bun");
-  const { upgradeWebSocket, websocket } = createBunWebSocket();
-  return {
-    upgradeWebSocket: upgradeWebSocket as UpgradeWebSocket<AppEnv>,
-    websocket: websocket as NonNullable<BunServeOptions["websocket"]>,
-  };
+    const { createBunWebSocket } = await import("hono/bun");
+    const { upgradeWebSocket, websocket } = createBunWebSocket();
+    return {
+        upgradeWebSocket: upgradeWebSocket as UpgradeWebSocket<AppEnv>,
+        websocket: websocket as NonNullable<BunServeOptions["websocket"]>,
+    };
 }
 
-function describeFolderMigrations(folderPath: string) {
-  const journalPath = path.join(folderPath, 'meta', '_journal.json')
-  if (!existsSync(journalPath)) return { count: 0, journalPath }
-  try {
-    const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
-    const entries = Array.isArray(journal?.entries) ? journal.entries.length : 0
-    return { count: entries, journalPath }
-  } catch (err) {
-    log.warn('migrations', 'failed to parse journal for logging', { err, journalPath })
-    return { count: 0, journalPath }
-  }
-}
+const PRISMA_MIGRATIONS_TABLE = "kanban_migrations";
 
-function describeAppliedMigrations(resolved: ResolvedMigrations, dbResources: DbResources) {
-  const hashRows = (() => {
-    try {
-      return dbResources.sqlite
-        .query('SELECT hash FROM __drizzle_migrations ORDER BY id DESC LIMIT 5')
-        .all() as Array<{ hash: string }>
-    } catch (err) {
-      try {
-        return dbResources.sqlite
-          .query('SELECT hash FROM drizzle_migrations ORDER BY id DESC LIMIT 5')
-          .all() as Array<{ hash: string }>
-      } catch (err2) {
-        log.debug('migrations', 'could not read migrations table', { err: err2 })
-        return [] as Array<{ hash: string }>
-      }
+function resolveMigrationsRoot(resolved: ResolvedMigrations): {
+    kind: "bundled" | "folder";
+    path?: string;
+} {
+    if (resolved.kind === "folder") {
+        const root = resolved.path;
+        if (!existsSync(root)) {
+            throw new Error(`Prisma migrations folder not found: ${root}`);
+        }
+
+        // Support pointing at either the migrations root or its parent.
+        const directLock = path.join(root, "migration_lock.toml");
+        if (existsSync(directLock)) {
+            return { kind: "folder", path: root };
+        }
+
+        const nestedMigrations = path.join(root, "migrations");
+        if (existsSync(nestedMigrations)) {
+            return { kind: "folder", path: nestedMigrations };
+        }
+
+        const prismaNested = path.join(root, "prisma", "migrations");
+        if (existsSync(prismaNested)) {
+            return { kind: "folder", path: prismaNested };
+        }
+
+        return { kind: "folder", path: root };
     }
-  })()
 
-  const hashes = hashRows.map((r) => r.hash)
-  const latestHash = hashes[0] ?? null
-  let latestTag: string | null = null
-  let recentTags: string[] = []
-  const byPositionTag = hashes.length > 0 && resolved.kind === 'bundled'
-    ? (resolved.migrations[Math.min(hashes.length, resolved.migrations.length) - 1] as any)?.tag ?? null
-    : null
+    return { kind: "bundled" };
+}
 
-  if (hashes.length > 0) {
-    if (resolved.kind === 'bundled') {
-      const map = new Map<string, string>()
-      for (const m of resolved.migrations) {
-        if (m.hash) map.set(m.hash, (m as any).tag ?? '')
-      }
-      latestTag = latestHash ? map.get(latestHash) ?? byPositionTag ?? latestHash : byPositionTag
-      recentTags = hashes.map((h, idx) => map.get(h) ?? (resolved.migrations[idx] as any)?.tag ?? h)
-    } else {
-      // folder: best-effort map by journal order
-      try {
-        const journalPath = path.join(resolved.path, 'meta', '_journal.json')
-        const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
-        const entries = Array.isArray(journal?.entries) ? journal.entries : []
-        const byIndex = entries.map((e: any) => e?.tag).filter(Boolean)
-        const appliedCount = hashRows.length
-        const lastIdx = appliedCount - 1
-        latestTag = byIndex[lastIdx] ?? null
-        recentTags = byIndex.slice(-appliedCount)
-      } catch (err) {
-        log.debug('migrations', 'failed to map folder hashes to tags', { err })
-        recentTags = hashes
-      }
+function loadFolderMigrations(migrationsRoot: string): PrismaMigrationSpec[] {
+    const entries = readdirSync(migrationsRoot, { withFileTypes: true });
+    const dirs = entries
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort();
+
+    const specs: PrismaMigrationSpec[] = [];
+    for (const dir of dirs) {
+        const sqlPath = path.join(migrationsRoot, dir, "migration.sql");
+        if (!existsSync(sqlPath)) {
+            log.warn("migrations", "migration.sql missing in Prisma folder", {
+                dir,
+                sqlPath,
+            });
+            continue;
+        }
+        const sql = readFileSync(sqlPath, "utf8");
+        const bundled = prismaMigrations.find((m) => m.id === dir);
+        specs.push({
+            id: dir,
+            name: bundled?.name ?? dir,
+            checksum: bundled?.checksum ?? "",
+            sql,
+        });
     }
-  }
 
-  return {
-    count: hashes.length,
-    latestTag: latestTag ?? byPositionTag,
-    latestHash,
-    recentTags,
-    recentHashes: hashes,
-    expectedCount: resolved.kind === 'bundled' ? resolved.migrations.length : undefined,
-  }
+    return specs;
 }
 
-async function bootstrapRuntime(config: ServerConfig, dbResources: DbResources, migrationsDir?: string) {
-  const resolved = await resolveMigrations(config, migrationsDir)
-
-  reconcileMigrations(resolved, dbResources)
-
-  if (resolved.kind === 'folder') {
-    const { count, journalPath } = describeFolderMigrations(resolved.path)
-    log.info('migrations', 'applying folder migrations', {
-      path: resolved.path,
-      journalPath,
-      count,
-    })
-    const { migrate } = await import('drizzle-orm/bun-sqlite/migrator')
-    await migrate(dbResources.db, { migrationsFolder: resolved.path })
-    const applied = describeAppliedMigrations(resolved, dbResources)
-    log.info('migrations', 'folder migrations applied', {
-      path: resolved.path,
-      dbPath: dbResources.path,
-      latestTag: applied.latestTag,
-      latestHash: applied.latestHash,
-      recentTags: applied.recentTags,
-    })
-  } else {
-    log.info('migrations', 'applying bundled migrations', {
-      count: resolved.migrations.length,
-    })
-    await (dbResources.db as any).dialect.migrate(resolved.migrations, (dbResources.db as any).session)
-    const applied = describeAppliedMigrations(resolved, dbResources)
-    log.info('migrations', 'bundled migrations applied', {
-      count: resolved.migrations.length,
-      dbPath: dbResources.path,
-      latestTag: applied.latestTag,
-      latestHash: applied.latestHash,
-      recentTags: applied.recentTags,
-      expectedCount: applied.expectedCount,
-    })
-  }
-
-  registerCoreDbProvider(dbResources.db)
-  try {
-    await settingsService.ensure()
-  } catch (error) {
-    log.warn('settings', 'init failed', { err: error })
-  }
-  return resolved.kind === 'folder' ? resolved.path : '__bundled__'
-}
-
-type ExpectedMigration = { hash: string; tag?: string }
-
-function getExpectedMigrations(resolved: ResolvedMigrations): ExpectedMigration[] {
-  if (resolved.kind === 'bundled') {
-    return resolved.migrations.map((m: any) => ({ hash: m.hash, tag: m.tag }))
-  }
-
-  const journalPath = path.join(resolved.path, 'meta', '_journal.json')
-  if (!existsSync(journalPath)) {
-    log.warn('migrations', 'journal not found for reconciliation', { journalPath })
-    return []
-  }
-
-  try {
-    const journal = JSON.parse(readFileSync(journalPath, 'utf8'))
-    const entries = Array.isArray(journal?.entries) ? journal.entries : []
-
-    const expected: ExpectedMigration[] = []
-    for (const entry of entries) {
-      const filename = `${entry.tag}.sql`
-      const fullPath = path.join(resolved.path, filename)
-      if (!existsSync(fullPath)) {
-        log.warn('migrations', 'migration file missing for reconciliation', { file: fullPath })
-        continue
-      }
-      try {
-        const sql = readFileSync(fullPath, 'utf8')
-        const hash = crypto.createHash('sha256').update(sql).digest('hex')
-        expected.push({ hash, tag: entry.tag })
-      } catch (err) {
-        log.warn('migrations', 'failed to read migration file for reconciliation', { file: fullPath, err })
-      }
-    }
-    return expected
-  } catch (err) {
-    log.warn('migrations', 'failed to parse journal for reconciliation', { journalPath, err })
-    return []
-  }
-}
-
-function readDbMigrations(dbResources: DbResources): { table: string | null; rows: Array<{ id: number; hash: string }> } {
-  const tables = ['__drizzle_migrations', 'drizzle_migrations']
-  for (const table of tables) {
-    try {
-      const rows = dbResources.sqlite
-        .query(`SELECT id, hash FROM ${table} ORDER BY id`)
-        .all() as Array<{ id: number; hash: string }>
-      return { table, rows }
-    } catch (err) {
-      continue
-    }
-  }
-  return { table: null, rows: [] }
-}
-
-function reconcileMigrations(resolved: ResolvedMigrations, dbResources: DbResources) {
-  const expected = getExpectedMigrations(resolved)
-  const expectedHashes = new Set(expected.map((e) => e.hash))
-
-  const { table, rows } = readDbMigrations(dbResources)
-  if (!table || rows.length === 0) return
-
-  if (expected.length === 0) return
-
-  // Only treat hashes beyond the longest matching prefix as removable to avoid re-running altered DDL.
-  let prefix = 0
-  const limit = Math.min(expected.length, rows.length)
-  while (prefix < limit) {
-    const row = rows[prefix]
-    const exp = expected[prefix]
-    if (!row || !exp || row.hash !== exp.hash) break
-    prefix++
-  }
-
-  const tail = rows.slice(prefix)
-  const removable = tail.filter((r) => !expectedHashes.has(r.hash))
-  if (removable.length === 0) return
-
-  const placeholders = removable.map(() => '?').join(', ')
-  try {
+function ensureMigrationsTable(dbResources: DbResources) {
     dbResources.sqlite
-      .query(`DELETE FROM ${table} WHERE hash IN (${placeholders})`)
-      .run(...removable.map((m) => m.hash))
+        .query(
+            `CREATE TABLE IF NOT EXISTS ${PRISMA_MIGRATIONS_TABLE} (
+        id TEXT PRIMARY KEY,
+        checksum TEXT NOT NULL,
+        applied_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+      )`,
+        )
+        .run();
+}
 
-    log.warn('migrations', 'removed mismatched migration hashes', {
-      removed: removable.length,
-      table,
-      removedHashes: removable.map((m) => m.hash),
-    })
-  } catch (err) {
-    log.warn('migrations', 'failed to delete mismatched migration hashes', { err, table })
-  }
+function readAppliedMigrations(
+    dbResources: DbResources,
+): Array<{ id: string; checksum: string }> {
+    try {
+        const rows = dbResources.sqlite
+            .query(
+                `SELECT id, checksum FROM ${PRISMA_MIGRATIONS_TABLE} ORDER BY applied_at`,
+            )
+            .all() as Array<{ id: string; checksum: string }>;
+        return rows;
+    } catch {
+        return [];
+    }
+}
+
+export async function bootstrapRuntime(
+    config: ServerConfig,
+    dbResources: DbResources,
+    migrationsDir?: string,
+) {
+    const resolved = await resolveMigrations(config, migrationsDir);
+    const rootInfo = resolveMigrationsRoot(resolved);
+
+    const source = rootInfo.kind;
+    const migrations: PrismaMigrationSpec[] =
+        rootInfo.kind === "bundled"
+            ? prismaMigrations
+            : loadFolderMigrations(rootInfo.path!);
+
+    if (migrations.length === 0) {
+        const explicit = Boolean(migrationsDir ?? config.migrationsDir);
+        const message =
+            rootInfo.kind === "bundled"
+                ? "no bundled Prisma migrations found; build may be misconfigured"
+                : "no Prisma migrations found in configured migrations folder";
+
+        log.error("migrations", message, {
+            source,
+            migrationsDir: rootInfo.path,
+            explicit,
+        });
+
+        // Fail fast rather than running against an undefined schema.
+        throw new Error(message);
+    }
+
+    ensureMigrationsTable(dbResources);
+    const appliedRows = readAppliedMigrations(dbResources);
+    const appliedIds = new Set(appliedRows.map((r) => r.id));
+
+    // If this is an existing database that was previously managed by Drizzle
+    // (or already has the full schema), baseline the Prisma migrations table
+    // instead of attempting to re-run the initial DDL.
+    if (appliedRows.length === 0) {
+        try {
+            const existingTables = dbResources.sqlite
+                .query(
+                    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('boards', 'app_settings') LIMIT 1",
+                )
+                .all() as Array<{ name: string }>;
+
+            if (existingTables.length > 0) {
+                // Treat the first migration as the baseline schema for
+                // existing Drizzle-managed databases. Later migrations
+                // (e.g. FK refinements) are still allowed to run.
+                const initial = migrations[0];
+                if (initial) {
+                    dbResources.sqlite
+                        .query(
+                            `INSERT OR IGNORE INTO ${PRISMA_MIGRATIONS_TABLE} (id, checksum) VALUES (?1, ?2)`,
+                        )
+                        .run(initial.id, initial.checksum);
+                    appliedIds.add(initial.id);
+                }
+
+                log.info(
+                    "migrations",
+                    "baselined initial Prisma migration for existing schema",
+                    {
+                        source,
+                        id: initial?.id,
+                    },
+                );
+            }
+        } catch (err) {
+            log.warn(
+                "migrations",
+                "failed to inspect existing schema for baseline",
+                { err },
+            );
+        }
+    }
+
+    const pending = migrations.filter((m) => !appliedIds.has(m.id));
+
+    if (pending.length === 0) {
+        log.info("migrations", "no pending Prisma migrations", {
+            source,
+            total: migrations.length,
+        });
+    } else {
+        log.info("migrations", "applying Prisma migrations", {
+            source,
+            count: pending.length,
+            pending: pending.map((m) => m.id),
+        });
+
+        for (const migration of pending) {
+            try {
+                dbResources.sqlite.run("BEGIN");
+                dbResources.sqlite.exec(migration.sql);
+                dbResources.sqlite
+                    .query(
+                        `INSERT INTO ${PRISMA_MIGRATIONS_TABLE} (id, checksum) VALUES (?1, ?2)`,
+                    )
+                    .run(migration.id, migration.checksum);
+                dbResources.sqlite.run("COMMIT");
+                log.info("migrations", "applied Prisma migration", {
+                    id: migration.id,
+                    source,
+                });
+            } catch (err) {
+                try {
+                    dbResources.sqlite.run("ROLLBACK");
+                } catch {
+                    // ignore rollback failures; the database will surface the original error
+                }
+                log.error("migrations", "failed to apply Prisma migration", {
+                    id: migration.id,
+                    source,
+                    err,
+                });
+                throw err;
+            }
+        }
+    }
+
+    registerCoreDbProvider(dbResources.db);
+    try {
+        await settingsService.ensure();
+    } catch (error) {
+        log.warn("settings", "init failed", { err: error });
+    }
+
+    return rootInfo.kind === "bundled" ? "__bundled__" : rootInfo.path!;
 }
 
 export async function startServer(options: StartOptions): Promise<StartResult> {
-  const config = options.config
-  setRuntimeConfig(config)
-  applyLogConfig(config)
-  const dbResources = options.db ?? createDbClient(config)
-  const migrationsDir = await bootstrapRuntime(config, dbResources, options.migrationsDir ?? config.migrationsDir)
+    const config = options.config;
+    setRuntimeConfig(config);
+    applyLogConfig(config);
+    const dbResources = options.db ?? createDbClient(config);
+    const migrationsDir = await bootstrapRuntime(
+        config,
+        dbResources,
+        options.migrationsDir ?? config.migrationsDir,
+    );
 
-  const server = Bun.serve({
-    hostname: config.host,
-    port: config.port,
-    fetch: options.fetch,
-    websocket: options.websocket,
-  })
+    const server = Bun.serve({
+        hostname: config.host,
+        port: config.port,
+        fetch: options.fetch,
+        websocket: options.websocket,
+    });
 
-  const url = `http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${server.port}`
-  const dbFile = dbResources.sqlite.filename ?? dbResources.path
-  markReady()
-  return { server, url, dbFile, migrationsDir }
+    const url = `http://${config.host === "0.0.0.0" ? "localhost" : config.host}:${server.port}`;
+    const dbFile = dbResources.sqlite.filename ?? dbResources.path;
+    markReady();
+    return { server, url, dbFile, migrationsDir };
 }

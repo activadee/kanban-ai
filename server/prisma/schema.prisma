@@ -1,0 +1,283 @@
+// Prisma schema for KanbanAI (SQLite)
+// Generated during migration from Drizzle migrations to Prisma.
+
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model boards {
+  id              String  @id
+  name            String
+  repository_path String
+  repository_url  String?
+  repository_slug String?
+  created_at      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  project_settings project_settings?
+  columns          columns[]
+  cards            cards[]
+  agent_profiles   agent_profiles[]
+  github_issues    github_issues[]
+  attempts         attempts[]
+
+  @@map("boards")
+}
+
+model project_settings {
+  project_id                         String  @id
+  base_branch                        String  @default("main")
+  preferred_remote                   String?
+  setup_script                       String?
+  dev_script                         String?
+  cleanup_script                     String?
+  copy_files                         String?
+  default_agent                      String?
+  default_profile_id                 String?
+  inline_agent                       String?
+  inline_profile_id                  String?
+  auto_commit_on_finish              Int     @default(0)
+  auto_push_on_autocommit            Int     @default(0)
+  ticket_prefix                      String  @default("PRJ")
+  next_ticket_number                 Int     @default(1)
+  github_issue_sync_enabled          Int     @default(0)
+  github_issue_sync_state            String  @default("open")
+  github_issue_sync_interval_minutes Int     @default(15)
+  last_github_issue_sync_at          Int?
+  last_github_issue_sync_status      String  @default("idle")
+  created_at                         Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at                         Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  board boards @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("project_settings")
+}
+
+model columns {
+  id         String @id
+  title      String
+  position   Int
+  board_id   String
+  created_at Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  board boards  @relation(fields: [board_id], references: [id], onDelete: Cascade)
+  cards cards[]
+
+  @@map("columns")
+}
+
+model cards {
+  id          String  @id
+  title       String
+  description String?
+  position    Int
+  column_id   String
+  board_id    String?
+  ticket_key  String?
+  ticket_type String?
+  pr_url      String?
+  created_at  Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at  Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  column columns @relation(fields: [column_id], references: [id], onDelete: Cascade)
+  board  boards? @relation(fields: [board_id], references: [id], onDelete: Cascade)
+
+  dependencies  card_dependencies[] @relation("CardDependencies_Parent")
+  dependents    card_dependencies[] @relation("CardDependencies_Dependency")
+  enhancement   card_enhancements?
+  github_issues github_issues[]
+  attempts      attempts[]
+
+  @@unique([board_id, ticket_key], map: "cards_board_ticket_key_idx")
+  @@map("cards")
+}
+
+model card_dependencies {
+  card_id            String
+  depends_on_card_id String
+  created_at         Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  card            cards @relation("CardDependencies_Parent", fields: [card_id], references: [id], onDelete: Cascade)
+  depends_on_card cards @relation("CardDependencies_Dependency", fields: [depends_on_card_id], references: [id], onDelete: Cascade)
+
+  @@id([card_id, depends_on_card_id])
+  @@unique([card_id, depends_on_card_id], map: "card_deps_unique")
+  @@map("card_dependencies")
+}
+
+model card_enhancements {
+  card_id                String  @id
+  status                 String
+  suggestion_title       String?
+  suggestion_description String?
+  updated_at             Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  card cards @relation(fields: [card_id], references: [id], onDelete: Cascade)
+
+  @@map("card_enhancements")
+}
+
+model app_settings {
+  id                              String  @id @default("singleton")
+  theme                           String  @default("system")
+  language                        String  @default("browser")
+  telemetry_enabled               Int     @default(0)
+  notif_toast_sounds              Int     @default(0)
+  notif_desktop                   Int     @default(0)
+  auto_start_agent_on_in_progress Int     @default(0)
+  editor_type                     String  @default("VS_CODE")
+  editor_command                  String?
+  git_user_name                   String?
+  git_user_email                  String?
+  branch_template                 String  @default("{prefix}/{ticketKey}-{slug}")
+  gh_pr_title_template            String?
+  gh_pr_body_template             String?
+  gh_autolink_tickets             Int     @default(1)
+  created_at                      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at                      Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  @@map("app_settings")
+}
+
+model agent_profiles {
+  id          String @id
+  project_id  String
+  agent       String
+  name        String
+  config_json String
+  created_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  board boards @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  @@map("agent_profiles")
+}
+
+model agent_profiles_global {
+  id          String @id
+  agent       String
+  name        String
+  config_json String
+  created_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at  Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  @@map("agent_profiles_global")
+}
+
+model attempts {
+  id            String  @id
+  board_id      String
+  card_id       String
+  agent         String
+  status        String
+  base_branch   String
+  branch_name   String
+  worktree_path String?
+  session_id    String?
+  created_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  started_at    Int?
+  ended_at      Int?
+
+  board boards @relation(fields: [board_id], references: [id], onDelete: Cascade)
+  card  cards  @relation(fields: [card_id], references: [id], onDelete: Cascade)
+
+  logs          attempt_logs[]
+  todos         attempt_todos?
+  conversations conversation_items[]
+
+  @@map("attempts")
+}
+
+model attempt_logs {
+  id         String @id
+  attempt_id String
+  ts         Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  level      String
+  message    String
+
+  attempt attempts @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+
+  @@map("attempt_logs")
+}
+
+model conversation_items {
+  id         String @id
+  attempt_id String
+  seq        Int
+  ts         Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  item_json  String
+
+  attempt attempts @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+
+  @@map("conversation_items")
+}
+
+model attempt_todos {
+  attempt_id String @id
+  todos_json String
+  updated_at Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  attempt attempts @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+
+  @@map("attempt_todos")
+}
+
+model github_connections {
+  id            String  @id
+  username      String?
+  primary_email String?
+  access_token  String?
+  token_type    String?
+  scope         String?
+  created_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  @@map("github_connections")
+}
+
+model github_issues {
+  id             String @id
+  board_id       String
+  card_id        String
+  owner          String
+  repo           String
+  issue_id       String
+  issue_number   Int
+  title_snapshot String
+  url            String
+  state          String
+  created_at     Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at     Int    @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  board boards @relation(fields: [board_id], references: [id], onDelete: Cascade)
+  card  cards  @relation(fields: [card_id], references: [id], onDelete: Cascade)
+
+  @@map("github_issues")
+}
+
+model onboarding_state {
+  id           String  @id @default("singleton")
+  status       String  @default("pending")
+  last_step    String?
+  completed_at Int?
+  created_at   Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at   Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  @@map("onboarding_state")
+}
+
+model github_app_configs {
+  id            String  @id @default("singleton")
+  client_id     String
+  client_secret String?
+  created_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updated_at    Int     @default(dbgenerated("CURRENT_TIMESTAMP"))
+
+  @@map("github_app_configs")
+}

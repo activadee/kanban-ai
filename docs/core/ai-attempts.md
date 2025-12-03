@@ -10,7 +10,7 @@ Last updated: 2025-11-28
   - Associated project/board/card identifiers.
   - Git worktree path and branch information.
   - Logs and conversation history (stored as structured JSONL).
-- All Attempt data is stored in SQLite via Drizzle, with types exported from the `shared` package.
+- All Attempt data is stored in SQLite via Prisma, with types exported from the `shared` package.
 
 ## Lifecycle and events
 
