@@ -83,7 +83,8 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     capabilities = {resume: true}
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
-    private readonly servers = new Map<string, ServerHandle>()
+    private static localServer: ServerHandle | null = null
+    private static localServerUrl: string | null = null
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
@@ -130,14 +131,27 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             })
         }
 
-        const server = await createOpencodeServer({signal: ctx.signal})
-        this.servers.set(ctx.attemptId, {close: server.close})
-        ctx.emit({
-            type: 'log',
-            level: 'info',
-            message: `[opencode] local server listening at ${server.url}`,
+        if (!OpencodeImpl.localServerUrl) {
+            const server = await createOpencodeServer()
+            OpencodeImpl.localServer = {close: server.close}
+            OpencodeImpl.localServerUrl = server.url
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode] local server listening at ${server.url}`,
+            })
+        } else {
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode] reusing local server at ${OpencodeImpl.localServerUrl}`,
+            })
+        }
+
+        return createOpencodeClient({
+            baseUrl: OpencodeImpl.localServerUrl as string,
+            directory: installation.directory,
         })
-        return createOpencodeClient({baseUrl: server.url, directory: installation.directory})
     }
 
     private buildSystemPrompt(profile: OpencodeProfile): string | undefined {
@@ -508,15 +522,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 }
                 this.groupers.delete(ctx.attemptId)
             }
-            const server = this.servers.get(ctx.attemptId)
-            if (server) {
-                try {
-                    server.close()
-                } catch {
-                    // ignore
-                }
-                this.servers.delete(ctx.attemptId)
-            }
         }
     }
 
@@ -555,15 +560,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     // ignore
                 }
                 this.groupers.delete(ctx.attemptId)
-            }
-            const server = this.servers.get(ctx.attemptId)
-            if (server) {
-                try {
-                    server.close()
-                } catch {
-                    // ignore
-                }
-                this.servers.delete(ctx.attemptId)
             }
         }
     }
