@@ -3,6 +3,13 @@ export type BoardId = string
 
 export type ProjectStatus = 'Active' | 'Paused'
 
+// Inline agents represent logical inline workflows (e.g. ticket
+// enhancement vs PR inline summary) that can each have their own
+// profile mapping.
+export type InlineAgentId = 'ticketEnhance' | 'prSummary' | 'prReview'
+
+export type InlineAgentProfileMapping = Partial<Record<InlineAgentId, string | null>>
+
 export interface ProjectSummary {
     id: ProjectId
     boardId: BoardId
@@ -39,6 +46,12 @@ export interface ProjectSettings {
     defaultProfileId: string | null
     inlineAgent: string | null
     inlineProfileId: string | null
+    /**
+     * Optional per-inline-agent profile overrides. When a mapping entry is null
+     * or absent, the inline pipeline falls back to the project’s inline/default
+     * profile configuration and ultimately the agent’s default profile.
+     */
+    inlineAgentProfileMapping: InlineAgentProfileMapping
     autoCommitOnFinish: boolean
     autoPushOnAutocommit: boolean
     ticketPrefix: string
@@ -63,6 +76,7 @@ export interface UpdateProjectSettingsRequest {
     defaultProfileId?: string | null
     inlineAgent?: string | null
     inlineProfileId?: string | null
+    inlineAgentProfileMapping?: InlineAgentProfileMapping
     autoCommitOnFinish?: boolean
     autoPushOnAutocommit?: boolean
     ticketPrefix?: string

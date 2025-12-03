@@ -42,8 +42,10 @@ async function resolveProfileForAgent<P>(
             // The orchestrator stays side‑effect free apart from the enhance() call.
         }
     } else if (resolved.warning) {
-        // Intentionally avoid logging here to keep orchestration pure.
-        // Callers can decide how to surface warnings in the future.
+        // Log soft failures when a configured profile is missing or invalid so
+        // callers have observability while still falling back to defaults.
+        // eslint-disable-next-line no-console
+        console.warn(resolved.warning)
     }
     return profile
 }
@@ -75,6 +77,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
     }
 
     const settings = await ensureProjectSettings(opts.projectId)
+    const inlineProfileMapping = settings.inlineAgentProfileMapping ?? {}
     const boardId = resolveBoardId(opts, project)
     const inlineAgentRaw =
         typeof settings.inlineAgent === 'string' ? settings.inlineAgent.trim() : ''
@@ -96,6 +99,16 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
 
     if (!agentKey) {
         agentKey = inlineAgentKey || fallbackAgentKey
+    }
+
+    if (!profileId) {
+        const mapped = inlineProfileMapping.ticketEnhance
+        if (typeof mapped === 'string') {
+            const trimmed = mapped.trim()
+            if (trimmed) {
+                profileId = trimmed
+            }
+        }
     }
 
     if (!profileId && inlineProfileId && inlineAgentKey && agentKey === inlineAgentKey) {

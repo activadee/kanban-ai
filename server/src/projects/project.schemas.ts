@@ -1,5 +1,9 @@
 import {z} from "zod";
-import {TICKET_TYPES, type CreateProjectRequest, type UpdateProjectRequest} from "shared";
+import {
+    TICKET_TYPES,
+    type CreateProjectRequest,
+    type UpdateProjectRequest,
+} from "shared";
 
 const ticketTypeSchema = z
     .string()
@@ -33,6 +37,8 @@ export const updateProjectSchema = z
         message: "No updates provided",
     }) satisfies z.ZodType<UpdateProjectRequest>;
 
+const inlineAgentIdSchema = z.enum(["ticketEnhance", "prSummary", "prReview"]);
+
 export const updateProjectSettingsSchema = z
     .object({
         baseBranch: z.string().min(1).optional(),
@@ -45,6 +51,9 @@ export const updateProjectSettingsSchema = z
         defaultProfileId: z.string().optional().nullable(),
         inlineAgent: z.string().optional().nullable(),
         inlineProfileId: z.string().optional().nullable(),
+        inlineAgentProfileMapping: z
+            .record(inlineAgentIdSchema, z.string().nullable())
+            .optional(),
         autoCommitOnFinish: z.boolean().optional(),
         autoPushOnAutocommit: z.boolean().optional(),
         ticketPrefix: z

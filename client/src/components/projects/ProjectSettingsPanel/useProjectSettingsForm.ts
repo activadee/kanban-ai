@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useState} from 'react'
-import type {ProjectSettings} from 'shared'
+import type {InlineAgentProfileMapping, ProjectSettings} from 'shared'
 
 export type ProjectSettingsFormState = {
     baseBranch: string;
@@ -12,6 +12,7 @@ export type ProjectSettingsFormState = {
     defaultProfileId: string;
     inlineAgent: string;
     inlineProfileId: string;
+    inlineAgentProfileMapping: InlineAgentProfileMapping;
     autoCommitOnFinish: boolean;
     autoPushOnAutocommit: boolean;
     ticketPrefix: string;
@@ -33,6 +34,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             defaultProfileId: '',
             inlineAgent: '',
             inlineProfileId: '',
+            inlineAgentProfileMapping: {},
             autoCommitOnFinish: false,
             autoPushOnAutocommit: false,
             ticketPrefix: '',
@@ -53,6 +55,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         defaultProfileId: settings.defaultProfileId ?? '',
         inlineAgent: settings.inlineAgent ?? '',
         inlineProfileId: settings.inlineProfileId ?? '',
+        inlineAgentProfileMapping: settings.inlineAgentProfileMapping ?? {},
         autoCommitOnFinish: settings.autoCommitOnFinish ?? false,
         autoPushOnAutocommit: settings.autoPushOnAutocommit ?? false,
         ticketPrefix: settings.ticketPrefix ?? '',
@@ -95,6 +98,12 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if ((form.inlineProfileId || '') !== (initial.inlineProfileId ?? '')) {
         payload.inlineProfileId = form.inlineProfileId || null
+    }
+    const initialMapping: InlineAgentProfileMapping =
+        initial?.inlineAgentProfileMapping ?? {}
+    const nextMapping = form.inlineAgentProfileMapping ?? {}
+    if (JSON.stringify(initialMapping) !== JSON.stringify(nextMapping)) {
+        payload.inlineAgentProfileMapping = nextMapping
     }
     if (form.autoCommitOnFinish !== (initial.autoCommitOnFinish ?? false)) {
         payload.autoCommitOnFinish = form.autoCommitOnFinish
