@@ -13,12 +13,13 @@ Last updated: 2025-11-29
   - `bindAgentEventBus` publishes the full registry when the event bus becomes available.
 - In the current implementation:
   - The UI focuses on a Codex-based agent backed by the Codex SDK and local Codex CLI.
-  - Experimental agents (e.g. Droid, OpenCode) exist in the codebase but are not exposed in the UI.
+  - OpenCode is now a first-class SDK-backed agent exposed via the API and `/agents` endpoints.
+  - Droid remains experimental and is not exposed in the UI.
 
 ## Coding agents
 
-KanbanAI’s agent registry is designed to host multiple **coding agents**. Today, the primary supported agent is Codex,
-with additional agents under active development.
+KanbanAI’s agent registry is designed to host multiple **coding agents**. Today, the primary supported agents are
+Codex and OpenCode, with additional agents under active development.
 
 - **Codex**
   - Status: **Supported** (primary coding agent).
@@ -41,16 +42,22 @@ with additional agents under active development.
     - Explore alternative planning/execution strategies and sandboxes.
     - Validate multi-agent orchestration patterns before promoting to a supported agent.
 
-- **OpenCode** (WIP)
-  - Status: **Work in progress – not exposed in the UI, not supported for production use.**
+- **OpenCode**
+  - Status: **Supported** (SDK-backed coding agent).
   - Implementation:
-    - Experimental agent behind a feature flag / dev-only registration.
-  - Intended goals:
-    - Experiment with different model backends for code generation and refactoring.
-    - Provide a fallback / alternative to Codex for future releases.
+    - Backed by the official `@opencode-ai/sdk` client.
+    - Uses the OpenCode HTTP API for sessions, messages, and events.
+    - Can talk either to a local `opencode serve` instance (managed via the SDK) or to a remote OpenCode server when
+      `OPENCODE_BASE_URL` / `OPENCODE_API_KEY` are configured.
+  - Capabilities:
+    - Reads and writes files inside attempt worktrees via OpenCode tools.
+    - Streams structured messages, tool invocations, and todos into KanbanAI’s Attempt model.
+  - Configuration:
+    - Tuned via agent profiles (primary model/agent selection, append/inline prompts, optional base URL / API key).
 
-Until the WIP agents are promoted, **only Codex is considered stable**. New features and UI flows should continue to
-target Codex as the default coding agent, with Droid/OpenCode reserved for internal testing and experimentation.
+Until additional WIP agents are promoted, **Codex and OpenCode are considered stable**. New features and UI flows
+should continue to target these as the default coding agents, with Droid reserved for internal testing and
+experimentation.
 
 ### Inline tasks & ticket enhancement
 

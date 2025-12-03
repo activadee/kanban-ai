@@ -69,7 +69,7 @@ export const createApp = ({
     try {
         // Bind the agent event bus; concrete agents are registered
         // in server/src/agents/registry.ts. Experimental agents
-        // (Droid/OpenCode) are intentionally not registered.
+        // (for example, Droid) are intentionally not registered.
         bindAgentEventBus(bus)
     } catch {
     }

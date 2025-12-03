@@ -38,7 +38,7 @@ Most extensions involve:
 4. **Wire profiles (optional)**:
    - If your agent needs custom profile schema, integrate with `core/agents/profiles` and validate configs before use.
 
-For production, keep experimental agents (like Droid/OpenCode) unregistered or behind feature flags until stable.
+For production, keep experimental agents (like Droid) unregistered or behind feature flags until stable.
 
 ## Adding a new event listener
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-- Define the Agent interface and registry for SDK- and command-based agents (Codex via SDK, Shell, etc.).
+- Define the Agent interface and registry for SDK- and command-based agents (Codex via SDK, OpenCode via SDK, Shell, etc.).
 - Provide profile schema handling, profile CRUD, and agent-specific runners.
 - Emit agent lifecycle events so the UI stays in sync with available agents and profiles.
 
@@ -22,7 +22,7 @@
 
 - `types.ts`: Agent interfaces & capabilities.
 - `registry.ts`: registration + event integration.
-- `codex/`, `shell/`, `echo/`: concrete agents.
+- `codex/`, `opencode/`, `shell/`, `echo/`: concrete agents.
 - `core/agents/profiles.ts`: persistence helpers for agent profiles.
 
 ## Open Tasks

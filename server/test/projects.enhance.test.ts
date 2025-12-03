@@ -9,6 +9,7 @@ vi.mock("core", () => {
         getAgent: vi.fn(),
         listAgents: vi.fn(),
         CodexAgent: {},
+        OpencodeAgent: {},
         // Attempts/tasks/projects - only shape needed for imports
         attempts: {},
         attemptsRepo: {},
