@@ -53,6 +53,9 @@ export const updateProjectSettingsSchema = z
             .max(6, "Ticket prefix must be at most 6 characters")
             .regex(/^[A-Za-z0-9]+$/, "Ticket prefix must be alphanumeric")
             .optional(),
+        githubIssueSyncEnabled: z.boolean().optional(),
+        githubIssueSyncState: z.enum(["open", "all", "closed"]).optional(),
+        githubIssueSyncIntervalMinutes: z.number().int().min(5).max(1440).optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "No updates provided",

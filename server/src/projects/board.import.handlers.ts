@@ -7,7 +7,7 @@ export const importGithubIssuesHandler = async (
     c: any,
     ctx: BoardContext,
 ) => {
-    const {boardId} = ctx;
+    const {boardId, project} = ctx;
     const {owner, repo, state} = c.req.valid("json") as {
         owner: string;
         repo: string;
@@ -23,7 +23,17 @@ export const importGithubIssuesHandler = async (
                 repo,
                 state,
             },
-            {bus: events},
+            {
+                bus: events,
+                logContext: {
+                    projectId: project.id,
+                    boardId,
+                    owner,
+                    repo,
+                    state: state ?? "open",
+                    trigger: "manual",
+                },
+            },
         );
         return c.json(result, 200);
     } catch (error) {

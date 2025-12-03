@@ -1,8 +1,11 @@
 import { createApp } from '../app'
 import { createWebSocket, startServer } from '../start'
 import { log, applyLogConfig } from '../log'
-import { loadConfig, setRuntimeConfig } from '../env'
+import { loadConfig, setRuntimeConfig, type AppServices } from '../env'
 import { applyDevDatabaseConfig } from './dev-config'
+import { createEventBus } from '../events/bus'
+import { startGithubIssueSyncScheduler } from '../github/sync'
+import { projectsService, settingsService } from 'core'
 
 if (import.meta.main) {
   const run = async () => {
@@ -34,9 +37,13 @@ if (import.meta.main) {
     setRuntimeConfig(config)
     applyLogConfig(config)
 
+    const services: AppServices = { projects: projectsService, settings: settingsService }
+    const events = createEventBus()
+
     const { upgradeWebSocket, websocket } = await createWebSocket()
-    const app = createApp({ upgradeWebSocket, config })
+    const app = createApp({ upgradeWebSocket, config, services, events })
     const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
+    startGithubIssueSyncScheduler({ events })
     log.info('server', 'listening', { url, dbFile, mode: 'dev' })
   }
   run().catch((error) => {

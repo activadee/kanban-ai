@@ -2,7 +2,10 @@ import { createApp } from '../app'
 import { createWebSocket, startServer, type StartOptions } from '../start'
 import { createStaticHandler } from './utils/spa-handler'
 import { log, applyLogConfig } from '../log'
-import { loadConfig, setRuntimeConfig } from '../env'
+import { loadConfig, setRuntimeConfig, type AppServices } from '../env'
+import { createEventBus } from '../events/bus'
+import { startGithubIssueSyncScheduler } from '../github/sync'
+import { projectsService, settingsService } from 'core'
 
 type ProdFetch = StartOptions['fetch']
 
@@ -66,8 +69,11 @@ const run = async () => {
   setRuntimeConfig(config)
   applyLogConfig(config)
 
+  const services: AppServices = { projects: projectsService, settings: settingsService }
+  const events = createEventBus()
+
   const { upgradeWebSocket, websocket } = await createWebSocket()
-  const apiApp = createApp({ upgradeWebSocket, config })
+  const apiApp = createApp({ upgradeWebSocket, config, services, events })
   const fetch = createComposedFetch(apiApp, config.staticDir)
 
   const { url, dbFile, migrationsDir: resolvedMigrationsDir } = await startServer({
@@ -76,6 +82,8 @@ const run = async () => {
     websocket,
     migrationsDir,
   })
+
+  startGithubIssueSyncScheduler({ events })
 
   log.info('prod', 'listening', { url, dbFile, migrationsDir: resolvedMigrationsDir })
 }

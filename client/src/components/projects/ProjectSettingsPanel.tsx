@@ -23,6 +23,7 @@ import {TicketSettingsSection} from '@/components/projects/ProjectSettingsPanel/
 import {ScriptsSection} from '@/components/projects/ProjectSettingsPanel/sections/ScriptsSection'
 import {AgentDefaultsSection} from '@/components/projects/ProjectSettingsPanel/sections/AgentDefaultsSection'
 import {InlineAgentSection} from '@/components/projects/ProjectSettingsPanel/sections/InlineAgentSection'
+import {GithubIssueSyncSection} from '@/components/projects/ProjectSettingsPanel/sections/GithubIssueSyncSection'
 
 type ProjectSettingsPanelProps = {
     projectId: string;
@@ -223,6 +224,14 @@ export function ProjectSettingsPanel({
                                     inlineProfileId={form.inlineProfileId}
                                     agents={agents}
                                     profiles={profiles}
+                                    onChange={(patch) => updateForm(patch)}
+                                />
+
+                                <GithubIssueSyncSection
+                                    projectId={projectId}
+                                    githubIssueSyncEnabled={form.githubIssueSyncEnabled}
+                                    githubIssueSyncState={form.githubIssueSyncState}
+                                    githubIssueSyncIntervalMinutes={form.githubIssueSyncIntervalMinutes}
                                     onChange={(patch) => updateForm(patch)}
                                 />
                             </div>

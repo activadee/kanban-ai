@@ -4,9 +4,24 @@ import type {ProjectSettingsRow} from '../../db/schema/projects'
 import {getBoardById} from '../repo'
 import {getProjectSettingsRow, insertProjectSettings, updateProjectSettingsRow} from './repo'
 import {deriveDefaultTicketPrefix, sanitizeTicketPrefix} from '../tickets/ticket-keys'
+import {
+    DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
+    normalizeGithubIssueSyncInterval,
+    type GithubIssueSyncStatus,
+} from './github-sync'
 
 function mapRow(row: ProjectSettingsRow): ProjectSettings {
     const toIso = (v: Date | number | string) => (v instanceof Date ? v.toISOString() : new Date(v).toISOString())
+    const normalizeStatus = (status: string | null | undefined): GithubIssueSyncStatus => {
+        if (status === 'running' || status === 'succeeded' || status === 'failed') return status
+        return 'idle'
+    }
+
+    const intervalMinutes =
+        typeof row.githubIssueSyncIntervalMinutes === 'number'
+            ? normalizeGithubIssueSyncInterval(row.githubIssueSyncIntervalMinutes)
+            : DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES
+
     return {
         projectId: row.projectId,
         boardId: row.projectId,
@@ -24,6 +39,11 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         autoPushOnAutocommit: Boolean(row.autoPushOnAutocommit),
         ticketPrefix: row.ticketPrefix,
         nextTicketNumber: row.nextTicketNumber,
+        githubIssueSyncEnabled: Boolean(row.githubIssueSyncEnabled),
+        githubIssueSyncState: (row.githubIssueSyncState as 'open' | 'all' | 'closed') ?? 'open',
+        githubIssueSyncIntervalMinutes: intervalMinutes,
+        lastGithubIssueSyncAt: row.lastGithubIssueSyncAt ? toIso(row.lastGithubIssueSyncAt) : null,
+        lastGithubIssueSyncStatus: normalizeStatus(row.lastGithubIssueSyncStatus),
         createdAt: toIso(row.createdAt),
         updatedAt: toIso(row.updatedAt),
     }
@@ -53,6 +73,11 @@ export async function ensureProjectSettings(projectId: string, executor?: DbExec
             autoPushOnAutocommit: false,
             ticketPrefix,
             nextTicketNumber: 1,
+            githubIssueSyncEnabled: false,
+            githubIssueSyncState: 'open',
+            githubIssueSyncIntervalMinutes: DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
+            lastGithubIssueSyncAt: null,
+            lastGithubIssueSyncStatus: 'idle',
             createdAt: now,
             updatedAt: now,
         },
@@ -84,6 +109,17 @@ export async function updateProjectSettings(projectId: string, updates: UpdatePr
     if (updates.autoCommitOnFinish !== undefined) patch.autoCommitOnFinish = Boolean(updates.autoCommitOnFinish)
     if (updates.autoPushOnAutocommit !== undefined) patch.autoPushOnAutocommit = Boolean(updates.autoPushOnAutocommit)
     if (updates.ticketPrefix !== undefined) patch.ticketPrefix = sanitizeTicketPrefix(updates.ticketPrefix)
+    if (updates.githubIssueSyncEnabled !== undefined) {
+        patch.githubIssueSyncEnabled = Boolean(updates.githubIssueSyncEnabled)
+    }
+    if (updates.githubIssueSyncState !== undefined) {
+        patch.githubIssueSyncState = updates.githubIssueSyncState
+    }
+    if (updates.githubIssueSyncIntervalMinutes !== undefined) {
+        patch.githubIssueSyncIntervalMinutes = normalizeGithubIssueSyncInterval(
+            updates.githubIssueSyncIntervalMinutes,
+        )
+    }
     patch.updatedAt = new Date()
     await updateProjectSettingsRow(projectId, patch as any, executor)
     const row = await ensureProjectSettings(projectId, executor)

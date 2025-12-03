@@ -21,4 +21,3 @@ export async function updateProjectSettingsRow(projectId: string, patch: Project
     const db = resolveDb(executor)
     await db.update(projectSettings).set(patch).where(eq(projectSettings.projectId, projectId)).run()
 }
-

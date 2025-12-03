@@ -113,6 +113,13 @@
       "when": 1764698400000,
       "tag": "0015_card_enhancements",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1764784800000,
+      "tag": "0016_github_issue_sync",
+      "breakpoints": true
     }
   ]
 }
