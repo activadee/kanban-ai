@@ -45,6 +45,9 @@ Last updated: 2025-11-30
   - `title`
   - `description` (optional)
   - `ticketKey` (optional, e.g. `ABC-123`, often derived from GitHub issues)
+  - `githubIssue` metadata when a card is mapped to a GitHub issue via import or background sync.
+    - When present, both the column view and inspector show a `#<issueNumber>` badge that links to the original
+      GitHub issue.
   - `dependsOn` relationships to other cards on the same board
 - On the board itself, cards surface the ticket key (when present) alongside the title and subtle status indicators for blocked/enhancing/PR/agent actions so that key context is visible at a glance, while omitting the full description to keep columns compact.
 - Blocked cards that are still waiting on dependencies wrap the card view in a tooltip listing the blockers so you can see what is pending without opening the inspector.

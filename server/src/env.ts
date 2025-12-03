@@ -1,5 +1,4 @@
-import type { ProjectsService } from 'core'
-import type { settingsService } from 'core'
+import type { ProjectsService, SettingsService } from 'core'
 import type { AppEventBus } from './events/bus'
 
 export type EnvBindings = {
@@ -10,7 +9,7 @@ export type EnvBindings = {
 
 export type AppServices = {
   projects: ProjectsService
-  settings: typeof settingsService
+  settings: SettingsService
 }
 
 export type RuntimeEnv = Record<string, string | undefined>

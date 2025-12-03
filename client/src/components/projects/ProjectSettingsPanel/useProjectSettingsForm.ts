@@ -15,6 +15,9 @@ export type ProjectSettingsFormState = {
     autoCommitOnFinish: boolean;
     autoPushOnAutocommit: boolean;
     ticketPrefix: string;
+    githubIssueSyncEnabled: boolean;
+    githubIssueSyncState: 'open' | 'all' | 'closed';
+    githubIssueSyncIntervalMinutes: number;
 }
 
 export function mapSettingsToForm(settings: ProjectSettings | null | undefined): ProjectSettingsFormState {
@@ -33,6 +36,9 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             autoCommitOnFinish: false,
             autoPushOnAutocommit: false,
             ticketPrefix: '',
+            githubIssueSyncEnabled: false,
+            githubIssueSyncState: 'open',
+            githubIssueSyncIntervalMinutes: 15,
         }
     }
 
@@ -50,6 +56,9 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         autoCommitOnFinish: settings.autoCommitOnFinish ?? false,
         autoPushOnAutocommit: settings.autoPushOnAutocommit ?? false,
         ticketPrefix: settings.ticketPrefix ?? '',
+        githubIssueSyncEnabled: settings.githubIssueSyncEnabled ?? false,
+        githubIssueSyncState: settings.githubIssueSyncState ?? 'open',
+        githubIssueSyncIntervalMinutes: settings.githubIssueSyncIntervalMinutes ?? 15,
     }
 }
 
@@ -95,6 +104,15 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if ((form.ticketPrefix || '') !== (initial.ticketPrefix ?? '')) {
         payload.ticketPrefix = form.ticketPrefix || initial.ticketPrefix
+    }
+    if (form.githubIssueSyncEnabled !== (initial.githubIssueSyncEnabled ?? false)) {
+        payload.githubIssueSyncEnabled = form.githubIssueSyncEnabled
+    }
+    if ((form.githubIssueSyncState || 'open') !== (initial.githubIssueSyncState ?? 'open')) {
+        payload.githubIssueSyncState = form.githubIssueSyncState
+    }
+    if ((form.githubIssueSyncIntervalMinutes || 15) !== (initial.githubIssueSyncIntervalMinutes ?? 15)) {
+        payload.githubIssueSyncIntervalMinutes = form.githubIssueSyncIntervalMinutes
     }
 
     return payload

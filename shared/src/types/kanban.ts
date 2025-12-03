@@ -20,6 +20,10 @@ export interface Card {
     ticketKey?: string | null
     prUrl?: string | null
     ticketType?: TicketType | null
+    githubIssue?: {
+        issueNumber: number
+        url: string
+    }
     title: string
     description?: string
     /**

@@ -19,6 +19,7 @@ export * as projects from './projects/service'
 export * as projectsRepo from './projects/repo'
 export * as projectDeps from './projects/dependencies'
 export * as projectTickets from './projects/tickets/service'
+export * as projectSettingsSync from './projects/settings/github-sync'
 export * as ticketKeys from './projects/tickets/ticket-keys'
 
 export * as tasks from './tasks/service'

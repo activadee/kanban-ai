@@ -65,12 +65,14 @@ export function KanbanCard({
     const isReady = enhancementStatus === 'ready'
     const isCardDisabled = disabled || isEnhancing
     const showType = card.ticketType !== undefined && card.ticketType !== null
+    const hasGithubIssue = Boolean(card.githubIssue)
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
         showType ||
         showAgentComingSoon ||
         Boolean(card.prUrl) ||
+        hasGithubIssue ||
         blocked ||
         isEnhancing ||
         isReady ||
@@ -96,6 +98,19 @@ export function KanbanCard({
                             {card.ticketKey ? (
                                 <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
                                     {card.ticketKey}
+                                </Badge>
+                            ) : null}
+                            {card.githubIssue ? (
+                                <Badge variant="outline" className="text-[10px] font-mono tracking-tight">
+                                    <a
+                                        href={card.githubIssue.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        #{card.githubIssue.issueNumber}
+                                    </a>
                                 </Badge>
                             ) : null}
                             {blocked && !done ? (

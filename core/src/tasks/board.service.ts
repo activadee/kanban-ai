@@ -1,6 +1,8 @@
 import type {BoardState} from 'shared'
-import {withTx, type DbExecutor} from '../db/with-tx'
+import {withTx, resolveDb, type DbExecutor} from '../db/with-tx'
 import {listColumnsForBoard, insertColumn, listCardsForColumns, getBoardById} from '../projects/repo'
+import {githubIssues} from '../db/schema'
+import {eq} from 'drizzle-orm'
 import {listDependenciesForCards} from '../projects/dependencies'
 import {publishTaskEvent} from './events'
 
@@ -61,6 +63,34 @@ export async function getBoardState(boardId: string): Promise<BoardState> {
     const cardRows = await listCardsForColumns(columnIds)
     const depMap = await listDependenciesForCards(cardRows.map((c) => c.id))
 
+    const cardIds = cardRows.map((c) => c.id)
+    const githubIssueMap = new Map<string, {issueNumber: number; url: string}>()
+    if (cardIds.length > 0) {
+        try {
+            const db = resolveDb()
+            const mappings = await (db as any)
+                .select()
+                .from(githubIssues)
+                .where(eq(githubIssues.boardId, boardId))
+            for (const mapping of mappings as Array<{
+                cardId: string
+                issueNumber: number
+                url: string
+                updatedAt: Date | string | number
+            }>) {
+                if (!cardIds.includes(mapping.cardId)) continue
+                if (!githubIssueMap.has(mapping.cardId)) {
+                    githubIssueMap.set(mapping.cardId, {
+                        issueNumber: mapping.issueNumber,
+                        url: mapping.url,
+                    })
+                }
+            }
+        } catch {
+            // DB provider not set; ignore GitHub issue metadata in this context
+        }
+    }
+
     const boardState: BoardState = {
         columns: {},
         columnOrder: [],
@@ -85,6 +115,7 @@ export async function getBoardState(boardId: string): Promise<BoardState> {
             ticketKey: card.ticketKey ?? undefined,
             prUrl: card.prUrl ?? undefined,
             ticketType: card.ticketType ?? null,
+            githubIssue: githubIssueMap.get(card.id),
             title: card.title,
             description: card.description ?? undefined,
             dependsOn: depMap.get(card.id) ?? undefined,

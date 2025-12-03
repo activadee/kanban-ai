@@ -1,6 +1,6 @@
 # GitHub Integration
 
-Last updated: 2025-11-28
+Last updated: 2025-12-03
 
 ## Overview
 
@@ -8,6 +8,7 @@ KanbanAI integrates with GitHub to:
 
 - Authenticate users via the OAuth **Device Authorization Flow**.
 - Import issues into project boards as cards.
+- Automatically sync issues in the background for projects that opt in.
 - Create pull requests from attempt branches, keeping tickets, attempts, and PRs linked.
 
 ## OAuth App & credentials
@@ -41,7 +42,7 @@ Additional configuration endpoints:
 - `GET /auth/github/app` – returns the effective GitHub OAuth App configuration and whether it came from the DB or env.
 - `PUT /auth/github/app` – updates the stored OAuth App config (`clientId`, `clientSecret`).
 
-## Importing issues into boards
+## Importing and syncing issues
 
 - Once GitHub is connected, you can import issues into a project’s board:
   - `POST /projects/:projectId/board/import/github/issues`
@@ -51,6 +52,27 @@ Additional configuration endpoints:
   - Creates or updates cards on the target board.
   - Emits `github.issues.imported` with the number of issues processed.
 - Imported cards retain links back to the originating GitHub issues so you can navigate between the board and GitHub.
+
+### Background Issue Sync
+
+- Each project has optional GitHub Issue Sync settings, exposed via:
+  - `GET /projects/:projectId/settings`
+  - `PATCH /projects/:projectId/settings`
+- Settings live alongside other project settings:
+  - `githubIssueSyncEnabled: boolean` – opt in/out of automatic sync (default `false`).
+  - `githubIssueSyncState: 'open' | 'all' | 'closed'` – which issue states to sync (default `open`).
+  - `githubIssueSyncIntervalMinutes: number` – how often to sync (default `15`, min `5`, max `1440`).
+- When enabled and a valid GitHub connection + origin (`owner/repo`) exist:
+  - A lightweight scheduler in the server periodically selects eligible projects.
+  - For each project, it checks the last sync metadata stored in `project_settings`:
+    - `lastGithubIssueSyncAt: Date | null`
+    - `lastGithubIssueSyncStatus: 'idle' | 'running' | 'succeeded' | 'failed'`
+  - If the interval has elapsed and no sync is currently running, it calls `importGithubIssues` with the configured state.
+- Sync runs are fully logged via the structured server logger using the `github:sync` scope, including:
+  - Start/end of each scheduled sync run with project + repo context.
+  - Counts of new/updated/skipped issues.
+  - Per-issue logging when cards are created or updated.
+- Cards that are mapped in `github_issues` expose a `#<issueNumber>` badge in the board and inspector UI; clicking it opens the GitHub issue in a new tab.
 
 ## Pull requests
 

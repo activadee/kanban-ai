@@ -52,6 +52,9 @@ export const updateProjectSettingsHandler = async (c: any) => {
         autoCommitOnFinish?: boolean;
         autoPushOnAutocommit?: boolean;
         ticketPrefix?: string;
+        githubIssueSyncEnabled?: boolean;
+        githubIssueSyncState?: "open" | "all" | "closed";
+        githubIssueSyncIntervalMinutes?: number;
     };
     let {defaultAgent, defaultProfileId, inlineAgent, inlineProfileId} = body;
 
@@ -176,6 +179,16 @@ export const updateProjectSettingsHandler = async (c: any) => {
         const sanitized = ticketKeys.sanitizeTicketPrefix(body.ticketPrefix);
         ticketKeys.assertValidTicketPrefix(sanitized);
         updates.ticketPrefix = sanitized;
+    }
+
+    if (body.githubIssueSyncEnabled !== undefined) {
+        updates.githubIssueSyncEnabled = body.githubIssueSyncEnabled;
+    }
+    if (body.githubIssueSyncState !== undefined) {
+        updates.githubIssueSyncState = body.githubIssueSyncState;
+    }
+    if (body.githubIssueSyncIntervalMinutes !== undefined) {
+        updates.githubIssueSyncIntervalMinutes = body.githubIssueSyncIntervalMinutes;
     }
 
     try {

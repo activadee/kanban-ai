@@ -37,6 +37,19 @@ export function InspectorHeader({
                         {copied ? <span className="text-xs text-emerald-500">Copied</span> : null}
                     </div>
                 ) : null}
+                {card.githubIssue ? (
+                    <Badge variant="outline" className="text-xs font-mono tracking-tight">
+                        <a
+                            href={card.githubIssue.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            #{card.githubIssue.issueNumber}
+                        </a>
+                    </Badge>
+                ) : null}
                 <Badge
                     variant="outline"
                     className={`text-[11px] font-semibold tracking-tight ${ticketTypeBadgeClass(card.ticketType)}`}

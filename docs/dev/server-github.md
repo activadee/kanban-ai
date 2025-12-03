@@ -13,6 +13,10 @@
     - `/auth/github/logout` revokes stored credentials and emits `github.disconnected`.
 2. **Issue Import (`import.service.ts`)**
     - Fetches issues, creates/updates cards, and emits `github.issues.imported` with the imported count.
+3. **Background Issue Sync (`sync.ts`)**
+    - Lightweight scheduler started from the server entrypoints.
+    - On a fixed tick, enumerates projects with GitHub Issue Sync enabled and a valid GitHub connection, resolves the GitHub origin (`owner/repo`), and invokes `importGithubIssues` with the configured state (`open`/`all`/`closed`).
+    - Stores per-project sync metadata (`lastGithubIssueSyncAt`, `lastGithubIssueSyncStatus`) in `project_settings` to avoid overlapping runs and to respect the configured interval.
 3. **PR Creation (`projects/routes.ts`)**
     - Attempt PR endpoint calls `createPR` and emits `github.pr.created`.
 
@@ -21,13 +25,13 @@
 - `github-client.ts`: low-level GitHub HTTP client (device flow, user info, REST helpers).
 - `auth.service.ts`: device-flow state machine using `github-client` + `githubRepo`.
 - `auth.routes.ts` / `app-config.routes.ts`: Hono endpoints for auth, app config, and repo listing (with event hooks).
-- `import.service.ts`: GitHub issue import and mapping management.
+- `import.service.ts`: GitHub issue import and mapping management (used by both manual imports and scheduled sync).
+- `sync.ts`: background scheduler that drives recurring issue sync for eligible projects.
 - `pr.ts`: PR helpers used by attempts/projects via `github-client`.
 
 ## Open Tasks
 
 - Add listeners for `github.connected/disconnected/issues.imported` to refresh repo metadata caches.
-- Implement background sync to reconcile issue state changes.
 - Add tests for device flow edge cases and import event emission.
 ---
 title: Server: GitHub module

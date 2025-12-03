@@ -43,6 +43,11 @@ export interface ProjectSettings {
     autoPushOnAutocommit: boolean
     ticketPrefix: string
     nextTicketNumber: number
+    githubIssueSyncEnabled: boolean
+    githubIssueSyncState: 'open' | 'all' | 'closed'
+    githubIssueSyncIntervalMinutes: number
+    lastGithubIssueSyncAt: string | null
+    lastGithubIssueSyncStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     createdAt: string
     updatedAt: string
 }
@@ -61,6 +66,9 @@ export interface UpdateProjectSettingsRequest {
     autoCommitOnFinish?: boolean
     autoPushOnAutocommit?: boolean
     ticketPrefix?: string
+    githubIssueSyncEnabled?: boolean
+    githubIssueSyncState?: 'open' | 'all' | 'closed'
+    githubIssueSyncIntervalMinutes?: number
 }
 
 export type ProjectSettingsResponse = {

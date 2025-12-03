@@ -29,6 +29,11 @@ export const projectSettings = sqliteTable('project_settings', {
     autoPushOnAutocommit: integer('auto_push_on_autocommit', {mode: 'boolean'}).notNull().default(false),
     ticketPrefix: text('ticket_prefix').notNull().default('PRJ'),
     nextTicketNumber: integer('next_ticket_number').notNull().default(1),
+    githubIssueSyncEnabled: integer('github_issue_sync_enabled', {mode: 'boolean'}).notNull().default(false),
+    githubIssueSyncState: text('github_issue_sync_state').notNull().default('open'),
+    githubIssueSyncIntervalMinutes: integer('github_issue_sync_interval_minutes').notNull().default(15),
+    lastGithubIssueSyncAt: integer('last_github_issue_sync_at', {mode: 'timestamp'}),
+    lastGithubIssueSyncStatus: text('last_github_issue_sync_status').notNull().default('idle'),
     createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
 })
