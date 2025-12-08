@@ -1,9 +1,17 @@
 import {and, desc, eq, gte, inArray, sql} from 'drizzle-orm'
+import {
+    DASHBOARD_METRIC_KEYS,
+} from 'shared'
 import type {
     DashboardOverview,
     DashboardAttemptSummary,
     DashboardAttemptActivity,
     DashboardProjectSnapshot,
+    DashboardTimeRange,
+    DashboardMetrics,
+    DashboardMetricSeries,
+    DashboardInbox,
+    AgentStatsSummary,
     AttemptStatus,
 } from 'shared'
 import {attempts, boards, cards, columns} from '../db/schema'
@@ -47,7 +55,7 @@ function mapAttemptRow(row: {
         cardId: row.cardId,
         cardTitle: row.cardTitle,
         ticketKey: row.ticketKey,
-        agent: row.agent,
+        agentId: row.agent,
         status: row.status as AttemptStatus,
         startedAt: toIso(row.startedAt ?? null),
         updatedAt: toIso(row.updatedAt ?? null),
@@ -65,6 +73,7 @@ function mapActivityRow(row: {
     status: string
     finishedAt: Date | number | null
 }): DashboardAttemptActivity {
+    const occurredAt = toIso(row.finishedAt) ?? new Date().toISOString()
     return {
         attemptId: row.attemptId,
         projectId: row.projectId,
@@ -72,9 +81,9 @@ function mapActivityRow(row: {
         cardId: row.cardId,
         cardTitle: row.cardTitle,
         ticketKey: row.ticketKey,
-        agent: row.agent,
+        agentId: row.agent,
         status: row.status as AttemptStatus,
-        finishedAt: toIso(row.finishedAt),
+        occurredAt,
     }
 }
 
@@ -88,20 +97,82 @@ function mapProjectSnapshotRow(row: {
     openCards: number
     totalCards: number
 }): DashboardProjectSnapshot {
+    const createdAtIso = toIso(row.createdAt) ?? new Date().toISOString()
     return {
+        projectId: row.id,
         id: row.id,
         name: row.name,
+        status: 'healthy',
         repositorySlug: row.repositorySlug,
         repositoryPath: row.repositoryPath,
-        createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
+        createdAt: createdAtIso,
         activeAttempts: row.activeAttempts,
+        activeAttemptsCount: row.activeAttempts,
         openCards: row.openCards,
         totalCards: row.totalCards,
     }
 }
 
-export async function getDashboardOverview(): Promise<DashboardOverview> {
+function resolveTimeRange(input?: DashboardTimeRange): DashboardTimeRange {
+    const now = new Date()
+
+    if (input?.from && input.to) {
+        return {
+            ...input,
+        }
+    }
+
+    const windowMs = 24 * 60 * 60 * 1000
+    const from = new Date(now.getTime() - windowMs).toISOString()
+    const to = now.toISOString()
+
+    return {
+        preset: input?.preset ?? 'last_24h',
+        from,
+        to,
+    }
+}
+
+function buildSingleBucketSeries(
+    label: string,
+    value: number,
+    timeRange: DashboardTimeRange,
+): DashboardMetricSeries {
+    const {from, to} = timeRange
+
+    if (!from || !to) {
+        return {
+            label,
+            unit: 'count',
+            points: [],
+            total: value,
+        }
+    }
+
+    const fromDate = new Date(from)
+    const toDate = new Date(to)
+    const durationSeconds = Math.max(1, Math.floor((toDate.getTime() - fromDate.getTime()) / 1000))
+
+    return {
+        label,
+        unit: 'count',
+        points: [
+            {
+                timestamp: from,
+                value,
+                bucketSizeSeconds: durationSeconds,
+            },
+        ],
+        total: value,
+    }
+}
+
+export async function getDashboardOverview(timeRange?: DashboardTimeRange): Promise<DashboardOverview> {
     const db = resolveDb()
+
+    const resolvedRange = resolveTimeRange(timeRange)
+    const rangeStart = resolvedRange.from ? new Date(resolvedRange.from) : new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const generatedAt = new Date().toISOString()
 
     const [{count: totalProjectsRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
@@ -112,11 +183,10 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         .from(attempts)
         .where(inArray(attempts.status, ACTIVE_STATUSES))
 
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    const [{count: attemptsLast24hRaw = 0} = {count: 0}] = await db
+    const [{count: attemptsCompletedRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
         .from(attempts)
-        .where(and(inArray(attempts.status, COMPLETED_STATUSES), gte(attempts.endedAt, since)))
+        .where(and(inArray(attempts.status, COMPLETED_STATUSES), gte(attempts.endedAt, rangeStart)))
 
     const openCardRows = await db
         .select({
@@ -219,16 +289,57 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         }),
     )
 
+    const totalProjects = Number(totalProjectsRaw ?? 0)
+    const activeAttemptsCount = Number(activeAttemptsRaw ?? 0)
+    const attemptsCompleted = Number(attemptsCompletedRaw ?? 0)
+
+    const metricsByKey: Record<string, DashboardMetricSeries> = {
+        [DASHBOARD_METRIC_KEYS.projectsTotal]: buildSingleBucketSeries(
+            'Projects',
+            totalProjects,
+            resolvedRange,
+        ),
+        [DASHBOARD_METRIC_KEYS.activeAttempts]: buildSingleBucketSeries(
+            'Active Attempts',
+            activeAttemptsCount,
+            resolvedRange,
+        ),
+        [DASHBOARD_METRIC_KEYS.attemptsCompleted]: buildSingleBucketSeries(
+            'Attempts Completed',
+            attemptsCompleted,
+            resolvedRange,
+        ),
+        [DASHBOARD_METRIC_KEYS.openCards]: buildSingleBucketSeries(
+            'Open Cards',
+            openCardsTotal,
+            resolvedRange,
+        ),
+    }
+
+    const metrics: DashboardMetrics = {
+        byKey: metricsByKey,
+    }
+
+    const inboxItems: DashboardInbox = {
+        review: [],
+        failed: [],
+        stuck: [],
+    }
+
+    const agentStats: AgentStatsSummary[] = []
+
     return {
-        metrics: {
-            totalProjects: Number(totalProjectsRaw ?? 0),
-            activeAttempts: Number(activeAttemptsRaw ?? 0),
-            attemptsLast24h: Number(attemptsLast24hRaw ?? 0),
-            openCards: openCardsTotal,
-        },
+        timeRange: resolvedRange,
+        generatedAt,
+        updatedAt: generatedAt,
+        metrics,
         activeAttempts,
         recentAttemptActivity,
         projectSnapshots,
-        updatedAt: new Date().toISOString(),
+        inboxItems,
+        agentStats,
+        meta: {
+            availableTimeRangePresets: ['last_24h', 'last_7d', 'last_30d', 'last_90d'],
+        },
     }
 }

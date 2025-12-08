@@ -1,4 +1,5 @@
 import {Link} from 'react-router-dom'
+import {DASHBOARD_METRIC_KEYS} from 'shared'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {MetricCards} from './dashboard/MetricCards'
@@ -37,22 +38,22 @@ export function DashboardPage() {
     const metricCards = [
         {
             label: 'Projects',
-            value: metrics?.totalProjects ?? '—',
+            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.projectsTotal]?.total ?? '—',
             description: 'Boards currently tracked by KanbanAI.',
         },
         {
             label: 'Active Attempts',
-            value: metrics?.activeAttempts ?? '—',
+            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.activeAttempts]?.total ?? '—',
             description: 'Agents running or queued across all projects.',
         },
         {
-            label: 'Attempts (24h)',
-            value: metrics?.attemptsLast24h ?? '—',
-            description: 'Completed attempts in the last 24 hours.',
+            label: 'Attempts (range)',
+            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.attemptsCompleted]?.total ?? '—',
+            description: 'Completed attempts in the selected time range.',
         },
         {
             label: 'Open Cards',
-            value: metrics?.openCards ?? '—',
+            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.openCards]?.total ?? '—',
             description: 'Cards not in a Done column.',
         },
     ]
@@ -81,7 +82,11 @@ export function DashboardPage() {
                             <Link to="/agents/CODEX">Manage agents</Link>
                         </Button>
                         <span className="ml-auto text-xs text-muted-foreground">
-              {overview?.updatedAt ? `Updated ${relativeTimeFromNow(overview.updatedAt)}` : dashboardQuery.isFetching ? 'Updating…' : ''}
+              {overview?.generatedAt || overview?.updatedAt
+                  ? `Updated ${relativeTimeFromNow(overview.generatedAt ?? overview.updatedAt)}`
+                  : dashboardQuery.isFetching
+                      ? 'Updating…'
+                      : ''}
             </span>
                     </div>
                 </header>
@@ -121,7 +126,7 @@ export function DashboardPage() {
                                                         className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                                         <span>{attempt.projectName ?? 'Unknown project'}</span>
                                                         <Separator orientation="vertical" className="h-3"/>
-                                                        <span>{attempt.agent}</span>
+                                                        <span>{attempt.agentId}</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right text-xs text-muted-foreground">
@@ -171,11 +176,11 @@ export function DashboardPage() {
                                                         className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                                         <span>{activity.projectName ?? 'Unknown project'}</span>
                                                         <Separator orientation="vertical" className="h-3"/>
-                                                        <span>{activity.agent}</span>
+                                                        <span>{activity.agentId}</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right text-xs text-muted-foreground">
-                                                    <div>{relativeTimeFromNow(activity.finishedAt)}</div>
+                                                    <div>{relativeTimeFromNow(activity.occurredAt)}</div>
                                                     {activity.projectId ? (
                                                         <Button asChild variant="link" size="sm"
                                                                 className="h-auto p-0 text-xs">
