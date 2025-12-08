@@ -25,6 +25,7 @@ type CardAggregationState = {
     hasAnySuccess: boolean
     hasResolvedSuccess: boolean
     hasActionableItem: boolean
+    hasStuckItem: boolean
 }
 
 type InboxCandidateBase = {
@@ -64,7 +65,6 @@ type InboxCandidate = ReviewCandidate | FailedCandidate | StuckCandidate
 
 const INBOX_DEFAULT_LIMIT = 25
 const INBOX_MAX_LIMIT = 100
-const INBOX_LOOKBACK_DAYS = 90
 const INBOX_MAX_SCANNED_ATTEMPTS = 500
 
 const STUCK_QUEUED_THRESHOLD_SECONDS = 10 * 60
@@ -129,8 +129,7 @@ function classifyAttemptRow(
             cardState.hasResolvedSuccess = true
         }
     }
-
-    if (cardState.hasActionableItem) {
+    if (cardState.hasActionableItem && !(isQueued || isRunning)) {
         return null
     }
 
@@ -157,7 +156,7 @@ function classifyAttemptRow(
             createdAtIso,
             finishedAtIso,
             lastUpdatedAtIso: lastUpdatedIso,
-            lastUpdatedAtMs,
+            lastUpdatedAtMs: lastUpdatedMs,
         }
     }
 
@@ -178,7 +177,7 @@ function classifyAttemptRow(
             createdAtIso,
             finishedAtIso,
             lastUpdatedAtIso: lastUpdatedIso,
-            lastUpdatedAtMs,
+            lastUpdatedAtMs: lastUpdatedMs,
         }
     }
 
@@ -193,7 +192,9 @@ function classifyAttemptRow(
                     ? STUCK_QUEUED_THRESHOLD_SECONDS
                     : STUCK_RUNNING_THRESHOLD_SECONDS
                 if (elapsedSeconds >= thresholdSeconds) {
+                    if (cardState.hasStuckItem) return null
                     cardState.hasActionableItem = true
+                    cardState.hasStuckItem = true
                     return {
                         kind: 'stuck',
                         stuckForSeconds: elapsedSeconds,
@@ -210,7 +211,7 @@ function classifyAttemptRow(
                         createdAtIso,
                         finishedAtIso: null,
                         lastUpdatedAtIso: lastUpdatedIso,
-                        lastUpdatedAtMs,
+                        lastUpdatedAtMs: lastUpdatedMs,
                     }
                 }
             }
@@ -233,10 +234,11 @@ async function enrichFailedCandidatesWithErrors(candidates: FailedCandidate[]): 
                 candidate.errorSummary = 'Attempt failed – see logs for details'
                 return
             }
+            const fallbackLog = logs[logs.length - 1]
             const errorLog =
-                [...logs].reverse().find((log) => log.level.toLowerCase() === 'error') ??
-                logs[logs.length - 1]
-            const message = errorLog.message?.toString() ?? 'Attempt failed'
+                [...logs].reverse().find((log) => log.level.toLowerCase() === 'error') ||
+                fallbackLog
+            const message = (errorLog && errorLog.message?.toString()) || 'Attempt failed'
             const normalized = message.replace(/\s+/g, ' ').trim()
             const summary =
                 normalized.length > 0 ? normalized : 'Attempt failed – see logs for details'
@@ -256,12 +258,7 @@ export async function buildDashboardInbox(
     const now = new Date()
     const nowMs = now.getTime()
 
-    const lookbackStart = new Date(nowMs - INBOX_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
-
-    const wherePredicates = [
-        inArray(attempts.status, INBOX_RELEVANT_STATUSES),
-        gte(attempts.createdAt, lookbackStart),
-    ]
+    const wherePredicates = [inArray(attempts.status, INBOX_RELEVANT_STATUSES)]
 
     if (rangeFrom) {
         wherePredicates.push(gte(attempts.createdAt, rangeFrom))
@@ -306,6 +303,7 @@ export async function buildDashboardInbox(
                 hasAnySuccess: false,
                 hasResolvedSuccess: false,
                 hasActionableItem: false,
+                hasStuckItem: false,
             }
 
         const candidate = classifyAttemptRow(row, state, nowMs)

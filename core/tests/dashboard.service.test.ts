@@ -68,6 +68,15 @@ async function createTestDb() {
             FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
             FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE attempt_logs (
+            id TEXT PRIMARY KEY,
+            attempt_id TEXT NOT NULL,
+            ts INTEGER NOT NULL,
+            level TEXT NOT NULL,
+            message TEXT NOT NULL,
+            FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE
+        );
     `);
 
     const { drizzle } = await import("drizzle-orm/better-sqlite3");
@@ -194,6 +203,21 @@ function insertFixtureData(sqlite: any, baseTime: Date) {
         baseTs - 40 * day,
         baseTs - 40 * day + 100,
     );
+
+    // Long-running queued attempt for inbox "stuck".
+    insertAttempt.run(
+        "a-5",
+        "board-1",
+        "card-1",
+        "AGENT",
+        "queued",
+        "main",
+        "branch-a5",
+        baseTs - 2 * day,
+        baseTs - 2 * day,
+        baseTs - 2 * day,
+        null
+    );
 }
 
 async function getOverview(range?: DashboardTimeRange): Promise<DashboardOverview> {
@@ -225,20 +249,52 @@ describe("dashboard/service.getDashboardOverview", () => {
         const timeRange = resolveTimeRange({ preset: "last_7d" }, baseTime);
         const overview = await getOverview(timeRange);
 
-        // Within 7 days we see a-1, a-2, a-3 (3 attempts, 2 successes).
-        expect(overview.attemptsInRange).toBe(3);
+        // Within 7 days we see a-1, a-2, a-3, a-5 (4 attempts, 2 successes).
+        expect(overview.attemptsInRange).toBe(4);
         expect(overview.projectsWithActivityInRange).toBe(2);
-        expect(overview.successRateInRange).toBeCloseTo(2 / 3, 5);
+        expect(overview.successRateInRange).toBeCloseTo(2 / 4, 5);
     });
 
     it("treats all_time as including attempts from all history", async () => {
         const timeRange = resolveTimeRange({ preset: "all_time" }, baseTime);
         const overview = await getOverview(timeRange);
 
-        // All four attempts fall into the all_time window.
-        expect(overview.attemptsInRange).toBe(4);
+        // All attempts fall into the all_time window.
+        expect(overview.attemptsInRange).toBe(5);
         expect(overview.projectsWithActivityInRange).toBe(2);
-        expect(overview.successRateInRange).toBeCloseTo(3 / 4, 5);
+        expect(overview.successRateInRange).toBeCloseTo(3 / 5, 5);
+    });
+
+    it("populates inboxItems with failed and stuck attempts ordered by recency", async () => {
+        const timeRange = resolveTimeRange({ preset: "all_time" }, baseTime);
+        const overview = await getOverview(timeRange);
+
+        // We expect at least one failed and one stuck item drawn from the fixtures:
+        // - a-3 is a succeeded attempt on card-2 that still requires review.
+        // - a-2 is a recent failed attempt on card-1.
+        // - a-5 is a long-running queued attempt considered "stuck".
+        const review = overview.inboxItems.review;
+        const failed = overview.inboxItems.failed;
+        const stuck = overview.inboxItems.stuck;
+
+        expect(review.length).toBeGreaterThanOrEqual(1);
+        expect(failed.length).toBeGreaterThanOrEqual(1);
+        expect(stuck.length).toBeGreaterThanOrEqual(1);
+
+        const reviewIds = review.map((item) => item.attemptId);
+        const failedIds = failed.map((item) => item.attemptId);
+        const stuckIds = stuck.map((item) => item.attemptId);
+
+        expect(reviewIds).toContain("a-3");
+        expect(failedIds).toContain("a-2");
+        expect(stuckIds).toContain("a-5");
+
+        // Ensure items carry basic context needed by the UI.
+        const sample = [...failed, ...stuck][0]!;
+        expect(sample.projectId).toBeDefined();
+        expect(sample.cardId).toBeDefined();
+        expect(sample.agentId).toBeDefined();
+        expect(sample.createdAt).toBeTruthy();
     });
 
     it("returns zero success rate when there are no attempts", async () => {
