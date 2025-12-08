@@ -293,6 +293,91 @@ describe('agents/pr-summary agentSummarizePullRequest', () => {
         })
     })
 
+    it('prefers inline-agent-specific profile mapping for PR summaries', async () => {
+        const {projectsService} = await import('../src/projects/service')
+        const {ensureProjectSettings} = await import('../src/projects/settings/service')
+        const {getAgent} = await import('../src/agents/registry')
+        const {resolveAgentProfile} = await import('../src/agents/profile-resolution')
+        const {runInlineTask} = await import('../src/agents/inline')
+        const {agentSummarizePullRequest} = await import('../src/agents/pr-summary')
+
+        const project = {
+            id: 'proj-1',
+            boardId: 'board-1',
+            name: 'Test Project',
+            status: 'Active' as const,
+            createdAt: new Date().toISOString(),
+            repositoryPath: '/repos/proj-1',
+            repositoryUrl: null,
+            repositorySlug: 'proj-1',
+        }
+
+        projectsService.get.mockResolvedValue(project)
+
+        ensureProjectSettings.mockResolvedValue({
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            baseBranch: 'main',
+            preferredRemote: null,
+            setupScript: null,
+            devScript: null,
+            cleanupScript: null,
+            copyFiles: null,
+            defaultAgent: 'IGNORED',
+            defaultProfileId: 'ap-default',
+            inlineAgent: 'CODEX',
+            inlineProfileId: 'ap-inline',
+            inlineAgentProfileMapping: {
+                prSummary: 'ap-inline-pr-summary',
+            },
+            autoCommitOnFinish: false,
+            autoPushOnAutocommit: false,
+            ticketPrefix: 'PRJ',
+            nextTicketNumber: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        })
+
+        const agent = {
+            key: 'CODEX',
+            label: 'Codex',
+            defaultProfile: {foo: 'bar'},
+            profileSchema: {safeParse: vi.fn()} as any,
+            run: vi.fn(),
+            inline: vi.fn(),
+        }
+
+        const summaryResult = {title: 'Mapped PR', body: 'Mapped PR body'}
+
+        getAgent.mockReturnValue(agent)
+        resolveAgentProfile.mockResolvedValue({
+            profile: {foo: 'bar', inlineProfile: 'inline pr summary'},
+            label: 'PR Summary Profile',
+            warning: undefined,
+        })
+        ;(runInlineTask as any).mockResolvedValue(summaryResult as any)
+
+        const result = await agentSummarizePullRequest({
+            projectId: 'proj-1',
+            headBranch: 'feature/inline-mapped',
+        })
+
+        expect(result).toEqual(summaryResult)
+        expect(getAgent).toHaveBeenCalledWith('CODEX')
+        expect(resolveAgentProfile).toHaveBeenCalledWith(
+            agent,
+            'proj-1',
+            'ap-inline-pr-summary',
+        )
+
+        const [callArg] = (runInlineTask as any).mock.calls[0] as [any]
+        expect(callArg.context).toMatchObject({
+            agentKey: 'CODEX',
+            profileId: 'ap-inline-pr-summary',
+            profileSource: 'inline',
+        })
+    })
+
     it('falls back to default agent when no inline agent is configured and no override is provided', async () => {
         const {projectsService} = await import('../src/projects/service')
         const {ensureProjectSettings} = await import('../src/projects/settings/service')

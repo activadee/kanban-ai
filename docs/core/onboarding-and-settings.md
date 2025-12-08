@@ -44,7 +44,7 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
   - Base branch and preferred remote.
   - Ticket key prefix and repository naming.
   - Default agent and agent profile for Attempts.
-  - Inline agent and inline agent profile for inline actions (e.g. ticket enhancement).
+  - Inline agent, inline agent profile, and optional per-inline-agent profile mappings for inline actions (e.g. ticket enhancement, PR summary).
   - Automation flags:
     - Auto-commit on successful Attempt completion.
     - Auto-push after auto-commit.

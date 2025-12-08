@@ -1,4 +1,8 @@
-import type { ProjectSettings, UpdateProjectSettingsRequest } from "shared";
+import type {
+    InlineAgentProfileMapping,
+    ProjectSettings,
+    UpdateProjectSettingsRequest,
+} from "shared";
 import { withTx, type DbExecutor } from "../../db/with-tx";
 import type { ProjectSettingsRow } from "../../db/schema/projects";
 import { getBoardById } from "../repo";
@@ -45,6 +49,39 @@ function toNullableIso(
     return normalized ? normalized.toISOString() : null;
 }
 
+function parseInlineAgentProfileMapping(
+    value: string | null | undefined,
+): InlineAgentProfileMapping {
+    if (!value) return {};
+    try {
+        const parsed = JSON.parse(value) as unknown;
+        if (!parsed || typeof parsed !== "object") return {};
+        const entries = Object.entries(parsed);
+        const mapping: InlineAgentProfileMapping = {};
+        for (const [key, raw] of entries) {
+            if (
+                key === "ticketEnhance" ||
+                key === "prSummary" ||
+                key === "prReview"
+            ) {
+                if (typeof raw === "string") {
+                    const trimmed = raw.trim();
+                    if (trimmed) {
+                        mapping[key] = trimmed;
+                        continue;
+                    }
+                }
+                if (raw === null) {
+                    mapping[key] = null;
+                }
+            }
+        }
+        return mapping;
+    } catch {
+        return {};
+    }
+}
+
 function mapRow(row: ProjectSettingsRow): ProjectSettings {
     const normalizeStatus = (
         status: string | null | undefined,
@@ -78,6 +115,9 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         defaultProfileId: row.defaultProfileId ?? null,
         inlineAgent: row.inlineAgent ?? null,
         inlineProfileId: row.inlineProfileId ?? null,
+        inlineAgentProfileMapping: parseInlineAgentProfileMapping(
+            row.inlineAgentProfileMappingJson,
+        ),
         autoCommitOnFinish: Boolean(row.autoCommitOnFinish),
         autoPushOnAutocommit: Boolean(row.autoPushOnAutocommit),
         ticketPrefix: row.ticketPrefix,
@@ -118,6 +158,7 @@ export async function ensureProjectSettings(
             defaultProfileId: null,
             inlineAgent: null,
             inlineProfileId: null,
+            inlineAgentProfileMappingJson: JSON.stringify({}),
             autoCommitOnFinish: false,
             autoPushOnAutocommit: false,
             ticketPrefix,
@@ -179,6 +220,10 @@ export async function updateProjectSettings(
         patch.inlineAgent = nn(updates.inlineAgent);
     if (updates.inlineProfileId !== undefined)
         patch.inlineProfileId = nn(updates.inlineProfileId);
+    if (updates.inlineAgentProfileMapping !== undefined) {
+        const mapping = updates.inlineAgentProfileMapping ?? {};
+        patch.inlineAgentProfileMappingJson = JSON.stringify(mapping);
+    }
     if (updates.autoCommitOnFinish !== undefined)
         patch.autoCommitOnFinish = Boolean(updates.autoCommitOnFinish);
     if (updates.autoPushOnAutocommit !== undefined)

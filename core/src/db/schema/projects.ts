@@ -25,6 +25,7 @@ export const projectSettings = sqliteTable('project_settings', {
     defaultProfileId: text('default_profile_id'),
     inlineAgent: text('inline_agent'),
     inlineProfileId: text('inline_profile_id'),
+    inlineAgentProfileMappingJson: text('inline_agent_profile_mapping_json'),
     autoCommitOnFinish: integer('auto_commit_on_finish', {mode: 'boolean'}).notNull().default(false),
     autoPushOnAutocommit: integer('auto_push_on_autocommit', {mode: 'boolean'}).notNull().default(false),
     ticketPrefix: text('ticket_prefix').notNull().default('PRJ'),

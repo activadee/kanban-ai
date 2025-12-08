@@ -37,6 +37,9 @@ async function resolveProfileForAgent<P>(
     const resolved = await resolveAgentProfile(agent, projectId, profileId)
     if (resolved.profile !== null && resolved.profile !== undefined) {
         profile = resolved.profile
+    } else if (resolved.warning) {
+        // eslint-disable-next-line no-console
+        console.warn(resolved.warning)
     }
     return profile
 }
@@ -70,6 +73,7 @@ export async function agentSummarizePullRequest(
     }
 
     const settings = await ensureProjectSettings(opts.projectId)
+    const inlineProfileMapping = settings.inlineAgentProfileMapping ?? {}
     const boardId = resolveBoardId(project)
 
     const inlineAgentRaw =
@@ -91,6 +95,16 @@ export async function agentSummarizePullRequest(
 
     if (!agentKey) {
         agentKey = inlineAgentKey || fallbackAgentKey
+    }
+
+    if (!profileId) {
+        const mapped = inlineProfileMapping.prSummary
+        if (typeof mapped === 'string') {
+            const trimmed = mapped.trim()
+            if (trimmed) {
+                profileId = trimmed
+            }
+        }
     }
 
     if (!profileId && inlineProfileId && inlineAgentKey && agentKey === inlineAgentKey) {

@@ -1,3 +1,9 @@
+## [0.15.0](https://github.com/activadee/kanban-ai/compare/v0.14.1...v0.15.0) (2025-12-03)
+
+### Features
+
+* **server:** migrate migrations from drizzle to prisma ([#211](https://github.com/activadee/kanban-ai/issues/211)) ([08f61bb](https://github.com/activadee/kanban-ai/commit/08f61bbaef89bb4788a927222540ee43855a3f2a))
+
 ## [0.14.1](https://github.com/activadee/kanban-ai/compare/v0.14.0...v0.14.1) (2025-12-03)
 
 ### Bug Fixes

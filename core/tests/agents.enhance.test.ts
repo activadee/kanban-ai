@@ -348,6 +348,97 @@ describe('agents/enhance agentEnhanceTicket', () => {
         })
     })
 
+    it('prefers inline-agent-specific profile mapping over project inline/default profiles', async () => {
+        const {projectsService} = await import('../src/projects/service')
+        const {ensureProjectSettings} = await import('../src/projects/settings/service')
+        const {getAgent} = await import('../src/agents/registry')
+        const {resolveAgentProfile} = await import('../src/agents/profile-resolution')
+        const {runInlineTask} = await import('../src/agents/inline')
+        const {agentEnhanceTicket} = await import('../src/agents/enhance')
+
+        const project = {
+            id: 'proj-1',
+            boardId: 'board-1',
+            name: 'Test Project',
+            status: 'Active' as const,
+            createdAt: new Date().toISOString(),
+            repositoryPath: '/repos/proj-1',
+            repositoryUrl: null,
+            repositorySlug: 'proj-1',
+        }
+
+        projectsService.get.mockResolvedValue(project)
+
+        ensureProjectSettings.mockResolvedValue({
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            baseBranch: 'main',
+            preferredRemote: null,
+            setupScript: null,
+            devScript: null,
+            cleanupScript: null,
+            copyFiles: null,
+            defaultAgent: 'IGNORED',
+            defaultProfileId: 'ap-default',
+            inlineAgent: 'DROID',
+            inlineProfileId: 'ap-inline',
+            inlineAgentProfileMapping: {
+                ticketEnhance: 'ap-inline-ticket',
+            },
+            autoCommitOnFinish: false,
+            autoPushOnAutocommit: false,
+            ticketPrefix: 'PRJ',
+            nextTicketNumber: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        })
+
+        const agent = {
+            key: 'DROID',
+            label: 'Droid',
+            defaultProfile: {foo: 'bar'},
+            profileSchema: {safeParse: vi.fn()} as any,
+            run: vi.fn(),
+            inline: vi.fn(),
+        }
+
+        const enhanceResult = {title: 'Mapped', description: 'Mapped description'}
+
+        getAgent.mockReturnValue(agent)
+        resolveAgentProfile.mockResolvedValue({
+            profile: {foo: 'bar', inlineProfile: 'inline ticket prompt'},
+            label: 'Ticket Enhance Profile',
+            warning: undefined,
+        })
+        ;(runInlineTask as any).mockResolvedValue(enhanceResult as any)
+
+        const result = await agentEnhanceTicket({
+            projectId: 'proj-1',
+            title: 'Title',
+            description: 'Description',
+        })
+
+        expect(result).toEqual(enhanceResult)
+        expect(getAgent).toHaveBeenCalledWith('DROID')
+        expect(resolveAgentProfile).toHaveBeenCalledWith(
+            agent,
+            'proj-1',
+            'ap-inline-ticket',
+        )
+
+        const [callArg] = (runInlineTask as any).mock.calls[0] as [any]
+        expect(callArg.input).toMatchObject({
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            profileId: 'ap-inline-ticket',
+        })
+        expect(callArg.context).toMatchObject({
+            agentKey: 'DROID',
+            profileId: 'ap-inline-ticket',
+            profileSource: 'inline',
+        })
+    })
+
     it('falls back to default agent when no inline agent is configured and no override is provided', async () => {
         const {projectsService} = await import('../src/projects/service')
         const {ensureProjectSettings} = await import('../src/projects/settings/service')
