@@ -1,9 +1,3 @@
-import type {ShareSyncRequest} from "../runtime/share-bridge";
-
-export type ShareSyncEnvelope = ShareSyncRequest & {
-    content: unknown;
-};
-
 export type ShareTextContent = {
     type: "text";
     id: string;
@@ -75,12 +69,6 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null;
 }
 
-export function asShareSyncEnvelope(
-    payload: ShareSyncRequest
-): ShareSyncEnvelope {
-    return payload as ShareSyncEnvelope;
-}
-
 export function isShareTextContent(value: unknown): value is ShareTextContent {
     if (!isRecord(value)) return false;
     return (
@@ -108,4 +96,3 @@ export function isShareMessageMetadata(value: unknown): value is ShareMessageMet
     if (value.role !== undefined && typeof value.role !== "string") return false;
     return true;
 }
-

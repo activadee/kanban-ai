@@ -11,9 +11,6 @@ export const OpencodeProfileSchema = z.object({
     model: z.string().optional(),
     baseUrl: z.string().nullable().optional(),
     apiKey: z.string().nullable().optional(),
-    // Legacy CLI-only fields kept for backwards compatibility.
-    baseCommandOverride: z.string().nullable().optional(),
-    additionalParams: z.array(z.string()).optional(),
     debug: z.boolean().optional(),
 })
 

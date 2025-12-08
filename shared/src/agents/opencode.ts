@@ -30,13 +30,6 @@ export type OpencodeProfile = {
      * disabled and a local server is used instead.
      */
     apiKey?: string | null
-    /**
-     * Deprecated: legacy CLI-only overrides retained for
-     * backward compatibility. They are ignored by the
-     * SDK-backed agent implementation.
-     */
-    baseCommandOverride?: string | null
-    additionalParams?: string[]
     debug?: boolean
 }
 
