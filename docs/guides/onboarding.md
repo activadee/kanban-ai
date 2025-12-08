@@ -49,8 +49,8 @@ GitHub device flow:
 - Progress recorded when step changes; completion marks onboarding state as `completed`.
 
 ## Migration
-- New SQL migration: `server/drizzle/0007_onboarding_and_github_app.sql`
-- Dev server auto-runs migrations; ensure it has executed before testing the flow.
+- The onboarding and GitHub App tables are created via the Drizzle migration chain under `server/drizzle/*.sql`.
+- The dev server and binaries auto-run migrations; ensure they have executed before testing the flow.
 
 ## Developing / testing
 1) Run server & client: `bun run dev` (monorepo) or `bun run dev:server` + `bun run dev:client`.

@@ -10,7 +10,7 @@ existing layering between `core/` and `server/`.
 ## Architecture recap
 
 - `core/`:
-  - Business logic and data access (Prisma schema, services, event types).
+  - Business logic and data access (Drizzle schema, services, event types).
   - No framework or runtime-specific code.
 - `server/`:
   - Hono app, Bun entrypoints, HTTP/WebSocket routes, adapters for core services.

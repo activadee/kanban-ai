@@ -26,6 +26,6 @@
         }
     },
     "references": [{ "path": "../shared" }, { "path": "../core" }],
-    "include": ["src/**/*", "prisma/**/*"],
+    "include": ["src/**/*", "drizzle/**/*"],
     "exclude": ["node_modules", "dist"]
 }
