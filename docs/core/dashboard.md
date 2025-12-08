@@ -17,7 +17,7 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
 
 - `timeRange: DashboardTimeRange`  
   - Canonical window that all metrics and counts are scoped to.  
-  - Either a preset (`"last_24h" | "last_7d" | "last_30d" | "last_90d"`) or a `from`/`to` ISO 8601 range.
+  - Either a preset (`"last_24h" | "last_7d" | "last_30d" | "last_90d" | "all_time"`) or a `from`/`to` ISO 8601 range.
 - `generatedAt: string` / `updatedAt?: string`  
   - ISO 8601 timestamp when the snapshot was computed (UI uses this for “Updated …” badges).
 - `metrics: DashboardMetrics`  
@@ -44,6 +44,12 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
 - `agentStats: AgentStatsSummary[]`  
   - Per-agent stats over `timeRange`:
     - `agentId`, `agentName`, `status`, `attemptsStarted`, `attemptsSucceeded`, `attemptsFailed`, plus optional `successRate`, `avgLatencyMs`, `currentActiveAttempts`, `lastActiveAt`, and `meta`.
+- `attemptsInRange?: number`  
+  - Convenience aggregate for the total number of attempts in the selected `timeRange`.
+- `successRateInRange?: number`  
+  - Convenience aggregate for the success rate (0–1) of attempts in the selected `timeRange` (`0` when there are no attempts).
+- `projectsWithActivityInRange?: number`  
+  - Convenience aggregate for how many distinct projects/boards have any attempt activity in the selected `timeRange`.
 - `meta?: DashboardOverviewMeta`  
   - Optional payload version, available time-range presets, feature flags, and an `extra` extension bag.
 
@@ -60,6 +66,7 @@ Forward-compatibility:
     - Time range selection:
       - `GET /api/v1/dashboard?timeRangePreset=last_24h`
       - `GET /api/v1/dashboard?timeRangePreset=last_7d`
+      - `GET /api/v1/dashboard?timeRangePreset=all_time`
       - `GET /api/v1/dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
     - Query parameters are mapped into `DashboardTimeRange` and echoed back in the response.
 - WebSocket:

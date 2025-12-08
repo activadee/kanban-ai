@@ -63,6 +63,17 @@ describe('GET /dashboard', () => {
         expect(getDashboardOverview).toHaveBeenCalledWith({preset: 'last_7d'})
     })
 
+    it('accepts the all_time preset', async () => {
+        const app = createApp()
+        const res = await app.request('/dashboard?timeRangePreset=all_time')
+
+        expect(res.status).toBe(200)
+
+        const {getDashboardOverview} = await import('core')
+        expect(getDashboardOverview).toHaveBeenCalledTimes(1)
+        expect(getDashboardOverview).toHaveBeenCalledWith({preset: 'all_time'})
+    })
+
     it('passes a custom from/to time range when both are provided', async () => {
         const app = createApp()
         const from = '2025-01-01T00:00:00Z'
@@ -95,4 +106,3 @@ describe('GET /dashboard', () => {
         expect(resMissingFrom.status).toBe(400)
     })
 })
-
