@@ -73,7 +73,7 @@ Forward-compatibility:
 ## UI panels
 
 - **Metric cards**
-  - Show high-level counts for projects, active Attempts, Attempts over the last 24h, and open cards.
+  - Show high-level counts for projects, active Attempts, Attempts in the selected time range, and open cards.
 - **Active Attempts**
   - Lists in-flight Attempts with status badges and links to their boards/cards.
 - **Recent activity**

@@ -76,5 +76,23 @@ describe('GET /dashboard', () => {
         expect(getDashboardOverview).toHaveBeenCalledTimes(1)
         expect(getDashboardOverview).toHaveBeenCalledWith({from, to})
     })
+
+    it('returns 400 when from/to are invalid or incomplete', async () => {
+        const app = createApp()
+
+        // Invalid date strings
+        const resInvalid = await app.request('/dashboard?from=not-a-date&to=also-bad')
+        expect(resInvalid.status).toBe(400)
+        const bodyInvalid = (await resInvalid.json()) as any
+        expect(bodyInvalid.status).toBe(400)
+
+        // Missing `to`
+        const resMissingTo = await app.request('/dashboard?from=2025-01-01T00:00:00Z')
+        expect(resMissingTo.status).toBe(400)
+
+        // Missing `from`
+        const resMissingFrom = await app.request('/dashboard?to=2025-01-02T00:00:00Z')
+        expect(resMissingFrom.status).toBe(400)
+    })
 })
 

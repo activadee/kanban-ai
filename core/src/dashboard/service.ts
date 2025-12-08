@@ -29,6 +29,28 @@ type BoardRow = {
     totalCards: number | null
 }
 
+function isValidIsoDate(value: string): boolean {
+    if (!value) return false
+    const time = Date.parse(value)
+    return Number.isFinite(time)
+}
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+function resolveWindowMsForPreset(preset: DashboardTimeRange['preset']): number {
+    switch (preset) {
+        case 'last_7d':
+            return 7 * ONE_DAY_MS
+        case 'last_30d':
+            return 30 * ONE_DAY_MS
+        case 'last_90d':
+            return 90 * ONE_DAY_MS
+        case 'last_24h':
+        default:
+            return ONE_DAY_MS
+    }
+}
+
 function toIso(value: Date | number | null | undefined): string | null {
     if (value == null) return null
     const date = value instanceof Date ? value : new Date(value)
@@ -116,18 +138,30 @@ function mapProjectSnapshotRow(row: {
 function resolveTimeRange(input?: DashboardTimeRange): DashboardTimeRange {
     const now = new Date()
 
-    if (input?.from && input.to) {
-        return {
-            ...input,
+    const preset = input?.preset ?? 'last_24h'
+
+    if (input?.from || input?.to) {
+        const {from, to} = input
+        const hasBoth = Boolean(from && to)
+        const bothValid = hasBoth && isValidIsoDate(from as string) && isValidIsoDate(to as string)
+
+        if (bothValid) {
+            return {
+                preset: input.preset,
+                from: from as string,
+                to: to as string,
+            }
         }
+        // If custom bounds are incomplete or invalid, ignore them and fall back
+        // to a preset-based window rather than propagating bad dates.
     }
 
-    const windowMs = 24 * 60 * 60 * 1000
-    const from = new Date(now.getTime() - windowMs).toISOString()
+    const windowMs = resolveWindowMsForPreset(preset)
     const to = now.toISOString()
+    const from = new Date(now.getTime() - windowMs).toISOString()
 
     return {
-        preset: input?.preset ?? 'last_24h',
+        preset,
         from,
         to,
     }
