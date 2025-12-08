@@ -23,9 +23,10 @@ projects and Attempts.
 
 - Each agent exposes its own schema (e.g. Codex, Droid, OpenCode) to validate the `config` JSON, so new fields or
   constraints must be registered there before the UI or CLI can persist them.
-- Common settings include prompt customizations such as `appendPrompt` plus the new `inlineProfile` string used only for
-  inline responses (ticket enhancement, future inline kinds). Inline tasks prefer a non-empty `inlineProfile` and
-  otherwise fall back to the primary prompt so existing workflows keep working.
+- Common settings include prompt customizations such as `appendPrompt` plus the new `inlineProfile` string:
+  - For inline tasks (ticket enhancement, PR summaries), a non-empty `inlineProfile` is preferred over `appendPrompt`.
+  - For the OpenCode agent, `inlineProfile` is also used as the primary system prompt for full attempts when set; when
+    empty, it falls back to `appendPrompt`.
 - Prompt fields are capped at 4,000 characters when creating or updating profiles (both project-scoped and global).
   Attempts to save longer prompts return an RFC 7807 error describing the offending field so callers can trim the text.
 

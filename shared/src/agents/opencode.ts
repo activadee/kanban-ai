@@ -24,10 +24,10 @@ export type OpencodeProfile = {
      */
     baseUrl?: string | null
     /**
-     * Optional API key used when talking to a remote
-     * OpenCode server. This mirrors the OPENCODE_API_KEY
-     * environment variable. When unset, remote mode is
-     * disabled and a local server is used instead.
+     * Optional API key mirrored into OPENCODE_API_KEY
+     * when starting a local OpenCode server. Ignored
+     * when connecting to an already-running remote
+     * server via baseUrl.
      */
     apiKey?: string | null
     debug?: boolean

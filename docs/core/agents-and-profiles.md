@@ -111,7 +111,8 @@ experimentation.
   - Constructs a `TicketEnhanceInput` (including a cancellation signal) and `InlineTaskContext`.
   - Resolves the agent profile using the shared profile resolution helpers.
   - Supports specialized inline profiles:
-    - Agent profile configs may define an `inlineProfile` string used only for inline responses (e.g. ticket enhancement).
+    - Agent profile configs may define an `inlineProfile` string used primarily for inline responses (e.g. ticket enhancement),
+      and for OpenCode it also acts as the main system prompt when present.
     - When `inlineProfile` is non-empty, inline prompts prefer it; otherwise they fall back to the primary profile prompt
       (such as `appendPrompt`), preserving existing behavior by default.
   - Annotates the inline context with `profileSource: "inline" | "primary"` so downstream telemetry can see whether the

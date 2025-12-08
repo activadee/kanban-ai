@@ -97,12 +97,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const apiKey = profileApiKey ?? envApiKey
 
         if (baseUrl) {
-            if (!apiKey) {
-                const message =
-                    'OPENCODE_BASE_URL is set but no OpenCode API key was found. Set OPENCODE_API_KEY or profile.apiKey.'
-                ctx.emit({type: 'log', level: 'error', message: `[opencode] ${message}`})
-                throw new Error(message)
-            }
             ctx.emit({
                 type: 'log',
                 level: 'info',
@@ -125,9 +119,22 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<OpencodeClient> {
         if (installation.mode === 'remote' && installation.baseUrl) {
+            // Remote server is responsible for its own authentication; apiKey
+            // is not sent from this client.
             return createOpencodeClient({
                 baseUrl: installation.baseUrl,
                 directory: installation.directory,
+            })
+        }
+
+        // For local servers, mirror apiKey into the environment so the spawned
+        // `opencode` process can pick it up (e.g. OPENCODE_API_KEY).
+        if (installation.apiKey && !process.env.OPENCODE_API_KEY) {
+            process.env.OPENCODE_API_KEY = installation.apiKey
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: '[opencode] applied profile.apiKey to OPENCODE_API_KEY for local server',
             })
         }
 
@@ -233,6 +240,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const session = (await opencode.session.create({
             query: {directory: installation.directory},
             body: {title: ctx.cardTitle},
+            signal,
             responseStyle: 'data',
             throwOnError: true,
         })) as unknown as SessionCreateResponse
@@ -265,6 +273,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 tools: undefined,
                 parts,
             },
+            signal,
             responseStyle: 'data',
             throwOnError: true,
         })
@@ -306,6 +315,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 tools: undefined,
                 parts,
             },
+            signal,
             responseStyle: 'data',
             throwOnError: true,
         })
