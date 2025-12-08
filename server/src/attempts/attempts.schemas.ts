@@ -32,10 +32,10 @@ export const attemptPrSchema = z.object({
 
 // Canonical schema for starting an attempt for a board/card.
 // Only agents that are actually registered on the server should be listed here.
-// For now, Codex is the only supported agent; Droid/OpenCode and any legacy
-// ECHO/SHELL agents are considered WIP/unsupported and are intentionally excluded.
+// Codex and OpenCode are supported; Droid and any legacy
+// ECHO/SHELL agents remain WIP/unsupported and are intentionally excluded.
 export const startAttemptSchema = z.object({
-    agent: z.enum(['CODEX']),
+    agent: z.enum(['CODEX', 'OPENCODE']),
     profileId: z.string().optional(),
     baseBranch: z.string().min(1).optional(),
     branchName: z.string().min(1).optional(),
