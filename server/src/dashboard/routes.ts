@@ -20,7 +20,7 @@ function parseTimeRangeFromQuery(searchParams: URLSearchParams): TimeRangeParseR
     const from = searchParams.get('from')
     const to = searchParams.get('to')
 
-    const allowedPresets = new Set(['last_24h', 'last_7d', 'last_30d', 'last_90d'] as const)
+    const allowedPresets = new Set(['last_24h', 'last_7d', 'last_30d', 'last_90d', 'all_time'] as const)
 
     if (presetParam && allowedPresets.has(presetParam as any)) {
         return {timeRange: {preset: presetParam as any}}

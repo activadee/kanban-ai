@@ -1,7 +1,5 @@
-import {and, desc, eq, gte, inArray, sql} from 'drizzle-orm'
-import {
-    DASHBOARD_METRIC_KEYS,
-} from 'shared'
+import {and, desc, eq, gte, inArray, lt, sql} from 'drizzle-orm'
+import {DASHBOARD_METRIC_KEYS} from 'shared'
 import type {
     DashboardOverview,
     DashboardAttemptSummary,
@@ -16,6 +14,7 @@ import type {
 } from 'shared'
 import {attempts, boards, cards, columns} from '../db/schema'
 import {resolveDb} from '../db/with-tx'
+import {resolveTimeBounds, resolveTimeRange} from './time-range'
 
 const ACTIVE_STATUSES: AttemptStatus[] = ['queued', 'running', 'stopping']
 const COMPLETED_STATUSES: AttemptStatus[] = ['succeeded', 'failed', 'stopped']
@@ -27,28 +26,6 @@ type BoardRow = {
     repositoryPath: string
     createdAt: Date | number
     totalCards: number | null
-}
-
-function isValidIsoDate(value: string): boolean {
-    if (!value) return false
-    const time = Date.parse(value)
-    return Number.isFinite(time)
-}
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000
-
-function resolveWindowMsForPreset(preset: DashboardTimeRange['preset']): number {
-    switch (preset) {
-        case 'last_7d':
-            return 7 * ONE_DAY_MS
-        case 'last_30d':
-            return 30 * ONE_DAY_MS
-        case 'last_90d':
-            return 90 * ONE_DAY_MS
-        case 'last_24h':
-        default:
-            return ONE_DAY_MS
-    }
 }
 
 function toIso(value: Date | number | null | undefined): string | null {
@@ -135,36 +112,13 @@ function mapProjectSnapshotRow(row: {
     }
 }
 
-function resolveTimeRange(input?: DashboardTimeRange): DashboardTimeRange {
-    const now = new Date()
-
-    const preset = input?.preset ?? 'last_24h'
-
-    if (input?.from || input?.to) {
-        const {from, to} = input
-        const hasBoth = Boolean(from && to)
-        const bothValid = hasBoth && isValidIsoDate(from as string) && isValidIsoDate(to as string)
-
-        if (bothValid) {
-            return {
-                preset: input.preset,
-                from: from as string,
-                to: to as string,
-            }
-        }
-        // If custom bounds are incomplete or invalid, ignore them and fall back
-        // to a preset-based window rather than propagating bad dates.
-    }
-
-    const windowMs = resolveWindowMsForPreset(preset)
-    const to = now.toISOString()
-    const from = new Date(now.getTime() - windowMs).toISOString()
-
-    return {
-        preset,
-        from,
-        to,
-    }
+function buildTimeRangePredicate(column: any, rangeFrom: Date | null, rangeTo: Date | null) {
+    const predicates = []
+    if (rangeFrom) predicates.push(gte(column, rangeFrom))
+    if (rangeTo) predicates.push(lt(column, rangeTo))
+    if (predicates.length === 0) return undefined
+    if (predicates.length === 1) return predicates[0]
+    return and(...predicates)
 }
 
 function buildSingleBucketSeries(
@@ -205,22 +159,60 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
     const db = resolveDb()
 
     const resolvedRange = resolveTimeRange(timeRange)
-    const rangeStart = resolvedRange.from ? new Date(resolvedRange.from) : new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const {from: rangeFrom, to: rangeTo} = resolveTimeBounds(resolvedRange)
     const generatedAt = new Date().toISOString()
 
     const [{count: totalProjectsRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
         .from(boards)
 
+    const attemptsTimePredicate = buildTimeRangePredicate(attempts.createdAt, rangeFrom, rangeTo)
+
+    let attemptsRangeQuery = db
+        .select({
+            total: sql<number>`cast(count(*) as integer)`,
+            succeeded: sql<number>`cast(sum(case when ${attempts.status} = 'succeeded' then 1 else 0 end) as integer)`,
+        })
+        .from(attempts)
+
+    if (attemptsTimePredicate) {
+        attemptsRangeQuery = attemptsRangeQuery.where(attemptsTimePredicate)
+    }
+
+    const [
+        {total: attemptsInRangeRaw = 0, succeeded: attemptsSucceededInRangeRaw = 0} = {
+            total: 0,
+            succeeded: 0,
+        },
+    ] = await attemptsRangeQuery
+
+    let projectsWithActivityQuery = db
+        .select({
+            count: sql<number>`cast(count(distinct ${attempts.boardId}) as integer)`,
+        })
+        .from(attempts)
+
+    if (attemptsTimePredicate) {
+        projectsWithActivityQuery = projectsWithActivityQuery.where(attemptsTimePredicate)
+    }
+
+    const [{count: projectsWithActivityInRangeRaw = 0} = {count: 0}] = await projectsWithActivityQuery
+
     const [{count: activeAttemptsRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
         .from(attempts)
         .where(inArray(attempts.status, ACTIVE_STATUSES))
 
+    const attemptsCompletedTimePredicate = buildTimeRangePredicate(attempts.endedAt, rangeFrom, rangeTo)
+
+    const attemptsCompletedWhere = attemptsCompletedTimePredicate
+        ? and(inArray(attempts.status, COMPLETED_STATUSES), attemptsCompletedTimePredicate)
+        : inArray(attempts.status, COMPLETED_STATUSES)
+
     const [{count: attemptsCompletedRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
         .from(attempts)
-        .where(and(inArray(attempts.status, COMPLETED_STATUSES), gte(attempts.endedAt, rangeStart)))
+        .where(attemptsCompletedWhere)
 
     const openCardRows = await db
         .select({
@@ -326,6 +318,12 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
     const totalProjects = Number(totalProjectsRaw ?? 0)
     const activeAttemptsCount = Number(activeAttemptsRaw ?? 0)
     const attemptsCompleted = Number(attemptsCompletedRaw ?? 0)
+    const attemptsInRange = Number(attemptsInRangeRaw ?? 0)
+    const attemptsSucceededInRange = Number(attemptsSucceededInRangeRaw ?? 0)
+    const projectsWithActivityInRange = Number(projectsWithActivityInRangeRaw ?? 0)
+
+    const successRateInRange =
+        attemptsInRange > 0 ? attemptsSucceededInRange / attemptsInRange : 0
 
     const metricsByKey: Record<string, DashboardMetricSeries> = {
         [DASHBOARD_METRIC_KEYS.projectsTotal]: buildSingleBucketSeries(
@@ -372,8 +370,11 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         projectSnapshots,
         inboxItems,
         agentStats,
+        attemptsInRange,
+        successRateInRange,
+        projectsWithActivityInRange,
         meta: {
-            availableTimeRangePresets: ['last_24h', 'last_7d', 'last_30d', 'last_90d'],
+            availableTimeRangePresets: ['last_24h', 'last_7d', 'last_30d', 'last_90d', 'all_time'],
         },
     }
 }

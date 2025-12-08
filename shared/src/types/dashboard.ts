@@ -8,7 +8,18 @@ import type {ProjectId} from './project'
  * bucket sizing. They are intended to be stable over time; new presets can
  * be appended without breaking existing clients.
  */
-export type DashboardTimeRangePreset = 'last_24h' | 'last_7d' | 'last_30d' | 'last_90d'
+export type DashboardTimeRangePreset =
+    | 'last_24h'
+    | 'last_7d'
+    | 'last_30d'
+    | 'last_90d'
+    /**
+     * Special preset representing the full history of available data.
+     *
+     * Implementations SHOULD treat this as unbounded on the lower side while
+     * keeping an upper bound at "now" when resolving concrete query windows.
+     */
+    | 'all_time'
 
 /**
  * Canonical representation of the time window used to compute dashboard
@@ -745,6 +756,25 @@ export interface DashboardOverview {
      * Per-agent summary statistics over the selected time range.
      */
     agentStats: AgentStatsSummary[]
+    /**
+     * Total number of attempts that fall within the selected `timeRange`.
+     *
+     * Implementations SHOULD keep this consistent with the window used for
+     * attempt-related metrics (e.g. success rate, per-project activity).
+     */
+    attemptsInRange?: number
+    /**
+     * Success rate for attempts within the selected `timeRange`.
+     *
+     * Expressed as a fraction between 0–1 unless otherwise documented; when
+     * there are no attempts in the window this should be `0`.
+     */
+    successRateInRange?: number
+    /**
+     * Number of distinct projects/boards that have any attempt activity
+     * within the selected `timeRange`.
+     */
+    projectsWithActivityInRange?: number
     /**
      * Optional metadata and feature flags associated with this overview.
      */
