@@ -1,52 +1,752 @@
-import type {AttemptStatus} from './runner'
+import type {AttemptStatus, AgentKey} from './runner'
+import type {ProjectId} from './project'
 
-export type DashboardMetrics = {
-    totalProjects: number
-    activeAttempts: number
-    attemptsLast24h: number
-    openCards: number
+/**
+ * Preset time ranges supported by the Mission Control dashboard.
+ *
+ * These presets drive both backend aggregation windows and default chart
+ * bucket sizing. They are intended to be stable over time; new presets can
+ * be appended without breaking existing clients.
+ */
+export type DashboardTimeRangePreset = 'last_24h' | 'last_7d' | 'last_30d' | 'last_90d'
+
+/**
+ * Canonical representation of the time window used to compute dashboard
+ * metrics and aggregates.
+ *
+ * Exactly one of:
+ * - `preset` – a named range such as `"last_24h"`.
+ * - `from` + `to` – a custom inclusive-exclusive UTC interval in ISO 8601.
+ *
+ * The backend should always normalize incoming query parameters into this
+ * shape and propagate it through the stack so that both API and UI can
+ * clearly describe what period the metrics refer to.
+ */
+export interface DashboardTimeRange {
+    /**
+     * Named preset applied to this overview, when applicable.
+     *
+     * When set, `from` and `to` MAY be populated as the concrete window but
+     * `preset` remains the canonical description for clients.
+     */
+    preset?: DashboardTimeRangePreset
+    /**
+     * Start of the time window in UTC ISO 8601 (inclusive).
+     *
+     * Present when a custom range is used, or when the backend chooses to
+     * expose the resolved bounds for a preset.
+     */
+    from?: string
+    /**
+     * End of the time window in UTC ISO 8601 (exclusive).
+     *
+     * Present when a custom range is used, or when the backend chooses to
+     * expose the resolved bounds for a preset.
+     */
+    to?: string
 }
 
-export type DashboardAttemptSummary = {
+/**
+ * Query parameter contract for the dashboard overview endpoint.
+ *
+ * The HTTP handler should:
+ * - Accept either `timeRangePreset` OR `from`+`to`.
+ * - Map those query parameters into a `DashboardTimeRange` instance.
+ */
+export interface DashboardTimeRangeQuery {
+    /**
+     * Named preset such as `"last_24h"`.
+     *
+     * Mutually exclusive with `from`/`to` – if present, the backend ignores
+     * any provided `from`/`to` values and resolves the preset instead.
+     */
+    timeRangePreset?: DashboardTimeRangePreset
+    /**
+     * Start of a custom time range in UTC ISO 8601 (inclusive).
+     *
+     * Must be provided together with `to` when `timeRangePreset` is omitted.
+     */
+    from?: string
+    /**
+     * End of a custom time range in UTC ISO 8601 (exclusive).
+     *
+     * Must be provided together with `from` when `timeRangePreset` is omitted.
+     */
+    to?: string
+}
+
+/**
+ * A single bucketed metric value for a given timestamp.
+ *
+ * Each point represents an aggregate over the interval
+ * `[timestamp, timestamp + bucketSizeSeconds)`.
+ */
+export interface DashboardMetricPoint {
+    /**
+     * Start of the bucket in UTC ISO 8601.
+     */
+    timestamp: string
+    /**
+     * Aggregated value for this bucket.
+     *
+     * For counts, this is usually an integer; for rates, this is a value
+     * normalized to the bucket duration (e.g. events per second).
+     */
+    value: number
+    /**
+     * Duration of the bucket in seconds.
+     *
+     * When omitted, clients may infer it from adjacent points or treat the
+     * series as unbucketed.
+     */
+    bucketSizeSeconds?: number
+}
+
+/**
+ * Qualitative trend indicator derived from the metric series within the
+ * selected time range.
+ */
+export type DashboardMetricTrend = 'up' | 'down' | 'flat'
+
+/**
+ * Time-series metric used for dashboard charts and aggregates.
+ *
+ * All values are scoped to a single `DashboardTimeRange` associated with the
+ * parent `DashboardOverview`.
+ */
+export interface DashboardMetricSeries {
+    /**
+     * Human-friendly label for this metric, suitable for chart legends.
+     */
+    label: string
+    /**
+     * Optional unit label (e.g. `"count"`, `"ms"`, `"percentage"`).
+     *
+     * This is used purely for display and does not affect semantics.
+     */
+    unit?: string
+    /**
+     * Bucketed time-series points for this metric.
+     *
+     * The array may be empty when no events were observed in the time range.
+     */
+    points: DashboardMetricPoint[]
+    /**
+     * Aggregate value for the entire time range (e.g. total attempts).
+     *
+     * When omitted, clients should compute their own aggregate from `points`
+     * if needed.
+     */
+    total?: number
+    /**
+     * Qualitative trend over the selected time range.
+     *
+     * This is intentionally coarse to remain stable across implementations.
+     */
+    trend?: DashboardMetricTrend
+    /**
+     * Extension point for metric-specific metadata.
+     *
+     * Use this to attach labels, breakdowns, or additional aggregates without
+     * breaking existing clients; consumers should treat unknown keys as
+     * opaque.
+     */
+    meta?: Record<string, unknown>
+}
+
+/**
+ * Canonical metric keys used by the current dashboard implementation.
+ *
+ * These keys are exposed under `DashboardMetrics.byKey` and may be used by
+ * clients to look up specific headline metrics in a forwards-compatible way.
+ */
+export const DASHBOARD_METRIC_KEYS = {
+    /**
+     * Total number of projects/boards.
+     */
+    projectsTotal: 'projects.total',
+    /**
+     * Count of active attempts across all projects.
+     */
+    activeAttempts: 'attempts.active',
+    /**
+     * Count of attempts completed within the selected time range.
+     */
+    attemptsCompleted: 'attempts.completed',
+    /**
+     * Count of cards that are not in a "Done" column.
+     */
+    openCards: 'cards.open',
+} as const
+
+/**
+ * Union of known dashboard metric keys plus a generic string for future
+ * extension.
+ *
+ * New keys should be added by extending `DASHBOARD_METRIC_KEYS`.
+ */
+export type DashboardMetricKey = (typeof DASHBOARD_METRIC_KEYS)[keyof typeof DASHBOARD_METRIC_KEYS] | string
+
+/**
+ * Collection of metrics displayed on the Mission Control dashboard.
+ *
+ * This type balances:
+ * - Strongly-typed, well-known metrics used heavily by the UI.
+ * - A flexible `byKey` map that allows new metrics to be introduced without
+ *   changing the type definition.
+ *
+ * Forward-compatibility:
+ * - New strongly-typed fields should be added as optional.
+ * - New metric keys should be added only under `byKey`.
+ */
+export interface DashboardMetrics {
+    /**
+     * Canonical registry of metric series keyed by stable identifiers.
+     *
+     * Keys should be lower_snake_case or dot-separated (e.g.
+     * `"attempts.started"`) and remain stable once introduced.
+     */
+    byKey: Record<string, DashboardMetricSeries>
+    /**
+     * Convenience handle for the `"attempts.started"` metric when available.
+     *
+     * Clients SHOULD prefer this field when present, falling back to
+     * `byKey['attempts.started']` otherwise.
+     */
+    attemptsStarted?: DashboardMetricSeries
+    /**
+     * Convenience handle for the `"attempts.succeeded"` metric when available.
+     */
+    attemptsSucceeded?: DashboardMetricSeries
+    /**
+     * Convenience handle for the `"attempts.failed"` metric when available.
+     */
+    attemptsFailed?: DashboardMetricSeries
+    /**
+     * Throughput metric (e.g. attempts per minute) over the selected range.
+     */
+    throughput?: DashboardMetricSeries
+    /**
+     * Latency metric representing end-to-end attempt latency in milliseconds.
+     */
+    latencyMs?: DashboardMetricSeries
+}
+
+/**
+ * Summary of an active attempt currently running or queued.
+ *
+ * These entries are intended for list views and quick navigation, not for
+ * full attempt introspection.
+ */
+export interface ActiveAttemptSummary {
+    /**
+     * Unique identifier of the attempt.
+     */
     attemptId: string
-    projectId: string | null
+    /**
+     * Associated project identifier, when the attempt is scoped to a project.
+     *
+     * Attempts created outside of a project MAY use `null`.
+     */
+    projectId: ProjectId | null
+    /**
+     * Human-friendly project name, when available.
+     */
     projectName: string | null
+    /**
+     * Associated board/card identifier for quick linking from the UI.
+     */
     cardId: string
+    /**
+     * Card title, when available.
+     */
     cardTitle: string | null
+    /**
+     * External ticket key (e.g. JIRA issue key) when linked.
+     */
     ticketKey: string | null
-    agent: string
+    /**
+     * Identifier of the agent executing the attempt.
+     *
+     * Typically corresponds to an `AgentKey` such as `"CODEX"`.
+     */
+    agentId: AgentKey | string
+    /**
+     * Current attempt status.
+     *
+     * For active attempts this will typically be `"queued"`, `"running"`, or
+     * `"stopping"`.
+     */
     status: AttemptStatus
+    /**
+     * UTC ISO 8601 timestamp when the attempt started, if known.
+     */
     startedAt: string | null
+    /**
+     * UTC ISO 8601 timestamp of the latest status update, if known.
+     */
     updatedAt: string | null
+    /**
+     * Elapsed wall-clock time in seconds since `startedAt`.
+     *
+     * This is a derived convenience value; clients MAY recompute it.
+     */
+    elapsedSeconds?: number
+    /**
+     * Relative scheduling priority of the attempt.
+     *
+     * This is reserved for future use; most current attempts will omit it.
+     */
+    priority?: 'low' | 'normal' | 'high'
 }
 
-export type DashboardAttemptActivity = {
+/**
+ * Backwards-compatible alias for historical naming.
+ *
+ * Prefer `ActiveAttemptSummary` for new code.
+ */
+export type DashboardAttemptSummary = ActiveAttemptSummary
+
+/**
+ * Activity entry describing a notable state change for an attempt.
+ *
+ * The dashboard typically shows the most recent items ordered by
+ * `occurredAt` descending.
+ */
+export interface AttemptActivityItem {
+    /**
+     * Unique identifier of the attempt.
+     */
     attemptId: string
-    projectId: string | null
+    /**
+     * Associated project identifier, when the attempt is scoped to a project.
+     */
+    projectId: ProjectId | null
+    /**
+     * Human-friendly project name, when available.
+     */
     projectName: string | null
+    /**
+     * Associated board/card identifier for quick linking from the UI.
+     */
     cardId: string
+    /**
+     * Card title, when available.
+     */
     cardTitle: string | null
+    /**
+     * External ticket key (e.g. JIRA issue key) when linked.
+     */
     ticketKey: string | null
-    agent: string
+    /**
+     * Identifier of the agent that executed the attempt.
+     */
+    agentId: AgentKey | string
+    /**
+     * Outcome status for this activity item.
+     *
+     * Currently aligned with `AttemptStatus`, but may include additional
+     * terminal states in the future (e.g. `"canceled"`).
+     */
     status: AttemptStatus
-    finishedAt: string | null
+    /**
+     * UTC ISO 8601 timestamp when this activity occurred.
+     *
+     * For completion events this is typically the finished time; for
+     * in-progress events this may be the latest update time.
+     */
+    occurredAt: string
+    /**
+     * Total duration of the attempt in seconds, when known.
+     */
+    durationSeconds?: number
+    /**
+     * Short human-readable summary of the error for failed attempts.
+     */
+    errorSummary?: string
+    /**
+     * High-level trigger source for the attempt (API, schedule, manual, etc).
+     *
+     * Additional string values may be added over time; clients should treat
+     * unknown values as opaque.
+     */
+    triggerSource?: 'api' | 'schedule' | 'manual' | string
 }
 
-export type DashboardProjectSnapshot = {
+/**
+ * Backwards-compatible alias for historical naming.
+ *
+ * Prefer `AttemptActivityItem` for new code.
+ */
+export type DashboardAttemptActivity = AttemptActivityItem
+
+/**
+ * Supported inbox item kinds.
+ *
+ * This union is intentionally closed to keep discrimination simple; new
+ * variants can be added by extending the `InboxItem` union.
+ */
+export type InboxItemType = 'review' | 'failed' | 'stuck'
+
+/**
+ * Fields common to all inbox item variants.
+ *
+ * Inbox items represent actionable entities surfaced to human operators,
+ * often derived from attempts but not always 1:1 with them.
+ */
+export interface InboxItemBase {
+    /**
+     * Stable identifier for the inbox item itself.
+     */
     id: string
-    name: string
-    repositorySlug: string | null
-    repositoryPath: string
+    /**
+     * Associated attempt identifier, when the item maps to a specific attempt.
+     */
+    attemptId?: string
+    /**
+     * Associated project identifier, when known.
+     */
+    projectId?: ProjectId
+    /**
+     * Identifier of the relevant agent, when applicable.
+     */
+    agentId?: AgentKey | string
+    /**
+     * UTC ISO 8601 timestamp when the inbox item was created.
+     */
     createdAt: string
-    activeAttempts: number
-    openCards: number
-    totalCards: number
+    /**
+     * UTC ISO 8601 timestamp of the most recent update, when applicable.
+     */
+    updatedAt?: string
 }
 
-export type DashboardOverview = {
+/**
+ * Inbox item representing work that requires human review or approval.
+ */
+export interface ReviewInboxItem extends InboxItemBase {
+    /**
+     * Discriminant for review items.
+     */
+    type: 'review'
+    /**
+     * Optional human-readable reason describing why review is needed.
+     */
+    reason?: string
+}
+
+/**
+ * Inbox item representing a notable failure that should be inspected.
+ */
+export interface FailedInboxItem extends InboxItemBase {
+    /**
+     * Discriminant for failed items.
+     */
+    type: 'failed'
+    /**
+     * Short summary of the failure to display in lists.
+     */
+    errorSummary: string
+}
+
+/**
+ * Inbox item representing a long-running or blocked attempt.
+ */
+export interface StuckInboxItem extends InboxItemBase {
+    /**
+     * Discriminant for stuck items.
+     */
+    type: 'stuck'
+    /**
+     * Duration in seconds that the underlying attempt has been considered
+     * stuck.
+     */
+    stuckForSeconds: number
+}
+
+/**
+ * Discriminated union of all inbox item variants.
+ *
+ * Forward-compatibility:
+ * - New variants should extend `InboxItemBase` and be added to this union.
+ * - Existing consumers must handle unknown `type` values defensively.
+ */
+export type InboxItem = ReviewInboxItem | FailedInboxItem | StuckInboxItem
+
+/**
+ * Aggregated inbox lists for the dashboard.
+ *
+ * Each list is independently filterable and may be empty when there are no
+ * items in that category.
+ */
+export interface DashboardInbox {
+    /**
+     * Items requiring human review (e.g. review requested, needs confirmation).
+     */
+    review: InboxItem[]
+    /**
+     * Notable failures worth surfacing prominently.
+     */
+    failed: InboxItem[]
+    /**
+     * Long-running or blocked items that might require intervention.
+     */
+    stuck: InboxItem[]
+    /**
+     * Extension point for counts, pagination flags, or other metadata.
+     */
+    meta?: Record<string, unknown>
+}
+
+/**
+ * High-level health status for a project.
+ *
+ * This is intentionally coarse and suitable for badges or color coding.
+ */
+export type ProjectHealthStatus = 'healthy' | 'degraded' | 'failing' | 'disabled'
+
+/**
+ * Snapshot of a project's health and workload within the selected time range.
+ *
+ * This shape reflects how the Dashboard UI consumes project data today while
+ * allowing additional health metrics to be added over time.
+ */
+export interface ProjectSnapshot {
+    /**
+     * Canonical project identifier.
+     */
+    projectId: ProjectId
+    /**
+     * Backwards-compatible alias for `projectId` used by existing UI code.
+     */
+    id: ProjectId
+    /**
+     * Human-friendly project name.
+     */
+    name: string
+    /**
+     * High-level health status derived from recent activity and errors.
+     *
+     * Implementations may start by treating all projects as `"healthy"` and
+     * refine logic iteratively.
+     */
+    status: ProjectHealthStatus
+    /**
+     * Repository slug (e.g. `owner/repo`) when known.
+     */
+    repositorySlug?: string | null
+    /**
+     * Local repository path or checkout root when known.
+     */
+    repositoryPath?: string | null
+    /**
+     * UTC ISO 8601 timestamp when the project/board was created, when known.
+     */
+    createdAt?: string
+    /**
+     * Total number of cards on the board.
+     */
+    totalCards?: number
+    /**
+     * Number of cards not in a "Done" column.
+     */
+    openCards?: number
+    /**
+     * Number of active attempts associated with this project.
+     *
+     * This field is preserved for backwards compatibility; prefer
+     * `activeAttemptsCount` for new code.
+     */
+    activeAttempts?: number
+    /**
+     * Number of active attempts associated with this project.
+     */
+    activeAttemptsCount?: number
+    /**
+     * Optional health score (0–100) derived from errors, latency, and
+     * throughput.
+     */
+    healthScore?: number
+    /**
+     * Error rate over the selected time range, either as a fraction (0–1) or
+     * percentage (0–100), depending on implementation.
+     */
+    errorRate?: number
+    /**
+     * Throughput across the selected time range (e.g. attempts per range).
+     */
+    throughput?: number
+    /**
+     * P95 attempt latency in milliseconds over the selected time range.
+     */
+    p95LatencyMs?: number
+    /**
+     * Count of recent failures within the selected time range.
+     */
+    recentFailuresCount?: number
+    /**
+     * Extension point for project-specific annotations, tags, or metrics.
+     */
+    meta?: Record<string, unknown>
+}
+
+/**
+ * Backwards-compatible alias for historical naming.
+ *
+ * Prefer `ProjectSnapshot` for new code.
+ */
+export type DashboardProjectSnapshot = ProjectSnapshot
+
+/**
+ * High-level runtime status for an agent.
+ */
+export type AgentStatus = 'online' | 'offline' | 'degraded'
+
+/**
+ * Summary statistics for an agent over the selected time range.
+ *
+ * This is used to populate per-agent tiles on the dashboard; it is scoped to
+ * the same `DashboardTimeRange` as the rest of the overview.
+ */
+export interface AgentStatsSummary {
+    /**
+     * Stable identifier for the agent (e.g. `"CODEX"`).
+     */
+    agentId: AgentKey | string
+    /**
+     * Human-friendly display name for the agent.
+     */
+    agentName: string
+    /**
+     * High-level runtime status of the agent.
+     */
+    status: AgentStatus
+    /**
+     * Count of attempts started by this agent within the time range.
+     */
+    attemptsStarted: number
+    /**
+     * Count of attempts that completed successfully within the time range.
+     */
+    attemptsSucceeded: number
+    /**
+     * Count of attempts that failed within the time range.
+     */
+    attemptsFailed: number
+    /**
+     * Success rate as a fraction (0–1) or percentage (0–100), depending on
+     * implementation.
+     */
+    successRate?: number
+    /**
+     * Average end-to-end latency in milliseconds for attempts handled by this
+     * agent over the time range.
+     */
+    avgLatencyMs?: number
+    /**
+     * Number of currently active attempts attributed to this agent.
+     */
+    currentActiveAttempts?: number
+    /**
+     * UTC ISO 8601 timestamp when this agent was last observed doing work.
+     */
+    lastActiveAt?: string
+    /**
+     * Extension point for agent-specific metrics or labels.
+     */
+    meta?: Record<string, unknown>
+}
+
+/**
+ * Optional metadata attached to a dashboard overview payload.
+ *
+ * This is the primary place to expose versioning information and feature
+ * flags without changing the core response shape.
+ */
+export interface DashboardOverviewMeta {
+    /**
+     * Optional payload version string.
+     *
+     * When present, this should use a monotonically increasing scheme so
+     * clients can branch on format differences if necessary.
+     */
+    version?: string
+    /**
+     * Time range presets currently supported by the backend.
+     */
+    availableTimeRangePresets?: DashboardTimeRangePreset[]
+    /**
+     * High-level feature flags relevant to the dashboard UI.
+     */
+    featureFlags?: Record<string, boolean>
+    /**
+     * Catch-all for additional metadata that does not justify a dedicated
+     * field. Clients should treat unknown keys as opaque.
+     */
+    extra?: Record<string, unknown>
+}
+
+/**
+ * Root snapshot returned by the Mission Control dashboard overview API.
+ *
+ * All counts, rates, and time-series metrics are scoped to `timeRange`.
+ *
+ * Forward-compatibility guidelines:
+ * - New top-level sections should be added as optional fields.
+ * - New fields within existing sections should be optional.
+ * - New metric series should be introduced under `metrics.byKey` first.
+ */
+export interface DashboardOverview {
+    /**
+     * Time window that all metrics and aggregates in this overview are scoped
+     * to.
+     */
+    timeRange: DashboardTimeRange
+    /**
+     * UTC ISO 8601 timestamp when this overview snapshot was generated.
+     *
+     * Clients should treat this as the authoritative "last updated" time
+     * rather than deriving it from any sub-field.
+     */
+    generatedAt: string
+    /**
+     * Backwards-compatible alias for `generatedAt` used by older clients.
+     *
+     * New code should prefer `generatedAt`.
+     */
+    updatedAt?: string
+    /**
+     * Aggregated metrics and time-series used for charts and headline
+     * numbers.
+     */
     metrics: DashboardMetrics
-    activeAttempts: DashboardAttemptSummary[]
-    recentAttemptActivity: DashboardAttemptActivity[]
-    projectSnapshots: DashboardProjectSnapshot[]
-    updatedAt: string
+    /**
+     * Summary of currently active attempts (running or queued).
+     *
+     * The array is required but may be empty when there is no active work.
+     */
+    activeAttempts: ActiveAttemptSummary[]
+    /**
+     * Recent attempt activity ordered by most recent first.
+     *
+     * The array is required but may be empty when there is no recent
+     * activity.
+     */
+    recentAttemptActivity: AttemptActivityItem[]
+    /**
+     * Actionable inbox items grouped by category.
+     */
+    inboxItems: DashboardInbox
+    /**
+     * Per-project health and workload snapshots visible to the current user.
+     */
+    projectSnapshots: ProjectSnapshot[]
+    /**
+     * Per-agent summary statistics over the selected time range.
+     */
+    agentStats: AgentStatsSummary[]
+    /**
+     * Optional metadata and feature flags associated with this overview.
+     */
+    meta?: DashboardOverviewMeta
 }

@@ -106,7 +106,12 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
 ## Dashboard & metrics
 
 - Dashboard:
-  - `GET /dashboard` – returns `DashboardOverview` (metrics, active attempts, recent activity, project snapshots).
+  - `GET /dashboard` – returns `DashboardOverview` (metrics, active attempts, recent activity, inbox, project snapshots, agent stats).
+    - Supports time-range selection via query:
+      - `GET /dashboard?timeRangePreset=last_24h`
+      - `GET /dashboard?timeRangePreset=last_7d`
+      - `GET /dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
+    - The handler maps these parameters into the shared `DashboardTimeRange` type and echoes it on the response.
   - WebSocket channel: `/ws/dashboard` (see realtime docs).
 - Metrics:
   - `GET /metrics` – minimal Prometheus-style metrics for liveness.

@@ -20,7 +20,7 @@ At the top of the page you’ll see four metric cards:
 
 - **Projects** – number of boards/projects tracked.
 - **Active Attempts** – Attempts currently `queued`, `running`, or `stopping`.
-- **Attempts (24h)** – Attempts that completed (succeeded, failed, or stopped) in the last 24 hours.
+- **Attempts (range)** – Attempts that completed (succeeded, failed, or stopped) within the dashboard’s current time range (defaults to the last 24 hours when using the API without query args).
 - **Open Cards** – cards on boards that are not in a Done column.
 
 Use these to gauge workload and automation at a glance.

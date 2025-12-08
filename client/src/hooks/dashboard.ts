@@ -19,7 +19,7 @@ type Options = Partial<UseQueryOptions<DashboardOverview>>
 export function useDashboardOverview(options?: Options) {
     return useQuery({
         queryKey: dashboardKeys.overview(),
-        queryFn: getDashboardOverview,
+        queryFn: () => getDashboardOverview(),
         refetchInterval: 15_000,
         refetchIntervalInBackground: true,
         ...options,
