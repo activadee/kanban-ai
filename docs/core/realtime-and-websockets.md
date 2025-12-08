@@ -46,7 +46,7 @@ Both use the same WebSocket infrastructure but different handlers and message ty
   - Single global channel at `/api/v1/ws/dashboard`.
   - On connect, the server:
     - Sends `hello`.
-    - Computes and sends the current `DashboardOverview` (metrics, active attempts, recent activity, project snapshots).
+    - Computes and sends the current `DashboardOverview` (metrics, active attempts, inbox items, recent activity, project snapshots, agent stats, and optional meta).
 - Updates:
   - The Dashboard socket is **read-only**:
     - Incoming messages are ignored.
@@ -73,4 +73,3 @@ For details on which events are emitted and how they relate to domain models, se
 - `core/kanban-boards-and-tasks.md`
 - `core/ai-attempts.md`
 - `core/git-integration.md`
-
