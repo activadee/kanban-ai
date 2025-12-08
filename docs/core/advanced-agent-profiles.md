@@ -27,6 +27,9 @@ projects and Attempts.
   - For inline tasks (ticket enhancement, PR summaries), a non-empty `inlineProfile` is preferred over `appendPrompt`.
   - For the OpenCode agent, `inlineProfile` is also used as the primary system prompt for full attempts when set; when
     empty, it falls back to `appendPrompt`.
+- OpenCode profiles can also configure their server targets:
+  - `baseUrl` overrides the bundled `opencode serve` process and can also be supplied via `OPENCODE_BASE_URL`, switching the agent into remote mode.
+  - `apiKey` is mirrored into `OPENCODE_API_KEY` when the SDK launches the local server, letting credentials stay in the profile even without manual environment setup.
 - Prompt fields are capped at 4,000 characters when creating or updating profiles (both project-scoped and global).
   Attempts to save longer prompts return an RFC 7807 error describing the offending field so callers can trim the text.
 

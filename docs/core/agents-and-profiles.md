@@ -47,13 +47,15 @@ Codex and OpenCode, with additional agents under active development.
   - Implementation:
     - Backed by the official `@opencode-ai/sdk` client.
     - Uses the OpenCode HTTP API for sessions, messages, and events.
-    - Can talk either to a local `opencode serve` instance (managed via the SDK) or to a remote OpenCode server when
-      `OPENCODE_BASE_URL` / `OPENCODE_API_KEY` are configured.
+    - Can talk either to a local `opencode serve` instance (managed via the SDK) or to a remote OpenCode server when a
+      base URL is configured (via `baseUrl` in the profile or `OPENCODE_BASE_URL`).
   - Capabilities:
     - Reads and writes files inside attempt worktrees via OpenCode tools.
     - Streams structured messages, tool invocations, and todos into KanbanAI’s Attempt model.
   - Configuration:
     - Tuned via agent profiles (primary model/agent selection, append/inline prompts, optional base URL / API key).
+    - Providing `baseUrl` (or `OPENCODE_BASE_URL`) switches the agent into remote mode while `apiKey` is mirrored into
+      `OPENCODE_API_KEY` when the SDK runs the local server, keeping credentials inside the profile without extra env setup.
 
 Until additional WIP agents are promoted, **Codex and OpenCode are considered stable**. New features and UI flows
 should continue to target these as the default coding agents, with Droid reserved for internal testing and
