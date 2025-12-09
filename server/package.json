@@ -14,14 +14,10 @@
         "build": "tsc -b",
         "test": "vitest run",
         "dev": "bun --watch run src/entry/dev.ts",
-        "prisma:generate": "prisma generate",
-        "prisma:migrate:dev": "prisma migrate dev",
-        "prisma:migrate:deploy": "prisma migrate deploy",
-        "db:migrate": "prisma migrate deploy"
+        "db:migrate": "bun run ../scripts/build-drizzle-migration-bundle.ts && bun run src/entry/migrate.ts"
     },
     "dependencies": {
         "@hono/zod-validator": "^0.7.3",
-        "@prisma/client": "^7.1.0",
         "core": "workspace:*",
         "drizzle-orm": "^0.45.0",
         "hono": "^4.7.11",
@@ -31,8 +27,6 @@
         "zod": "^4.1.11"
     },
     "devDependencies": {
-        "@types/bun": "latest",
-        "better-sqlite3": "^12.2.0",
-        "prisma": "^7.1.0"
+        "@types/bun": "latest"
     }
 }

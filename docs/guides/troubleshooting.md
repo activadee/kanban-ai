@@ -44,8 +44,7 @@ Common issues and how to debug them when running KanbanAI locally or in self-hos
   - To reset the dev database, stop the dev server and delete `kanban-dev.db` (or point `KANBANAI_DEV_DATABASE_URL` / `DATABASE_URL` at a fresh path).
 - Check migrations:
   - Migrations run automatically on start.
-  - If you override `KANBANAI_MIGRATIONS_DIR`, ensure it points at a valid Prisma migrations directory (same format as `server/prisma/migrations`).
-  - When the recorded migration hashes no longer match the embedded or supplied files, the server now removes the mismatched rows before reapplying and logs `migrations: removed mismatched migration hashes`; this warning is normal when you switch migration sources or rebuild the embedded bundle.
+  - If you override `KANBANAI_MIGRATIONS_DIR`, ensure it points at a valid Drizzle migrations directory (for example, a copy of `server/drizzle` containing ordered `.sql` files).
 - Look at logs around startup for `migrations` or `db` errors.
 
 ## Worktrees & disk usage

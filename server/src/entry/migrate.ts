@@ -14,7 +14,7 @@ const run = async () => {
 
   const resolvedDir = await bootstrapRuntime(baseConfig, dbResources, migrationsDir);
 
-  log.info("migrate", "completed Prisma migrations", {
+  log.info("migrate", "completed Drizzle migrations", {
     dbPath: dbResources.path,
     migrationsDir: resolvedDir,
   });

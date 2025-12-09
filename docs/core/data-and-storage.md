@@ -10,7 +10,7 @@ summarizes where data lives and how it is managed.
 ## Database
 
 - Engine:
-  - SQLite via `bun:sqlite`, managed through Prisma migrations.
+  - SQLite via `bun:sqlite`, managed through Drizzle migrations.
 - Location:
   - Production (`bun run prod`, compiled binaries): defaults to `kanban.db` under the OS-specific data directory (e.g.
     `~/.local/share/kanbanai/kanban.db` on Linux).
@@ -21,9 +21,9 @@ summarizes where data lives and how it is managed.
     - `KANBANAI_DEV_DATABASE_URL` – dev-only override used when `DATABASE_URL` is unset; accepts the same formats as
       `DATABASE_URL`.
 - Migrations:
-  - Prisma migrations (defined under `server/prisma/migrations`) are bundled into `server/prisma/migration-data.generated.ts` via `scripts/build-prisma-migration-bundle.ts` and embedded into the server/binary.
+  - Drizzle migrations (defined under `server/drizzle/*.sql`) are bundled into `server/drizzle/migration-data.generated.ts` via `scripts/build-drizzle-migration-bundle.ts` and embedded into the server/binary.
   - On server start, migrations are applied automatically before handling requests.
-  - You can override the migrations directory with `KANBANAI_MIGRATIONS_DIR` when using external migration files.
+  - You can override the migrations directory with `KANBANAI_MIGRATIONS_DIR` when using external migration files; it should point at a directory containing ordered `.sql` files (for example, a copy of `server/drizzle`).
 
 ## Worktrees
 
