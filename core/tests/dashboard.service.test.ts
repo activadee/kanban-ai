@@ -100,7 +100,7 @@ function insertFixtureData(sqlite: any, baseTime: Date) {
     const baseTs = Math.floor(baseTime.getTime() / 1000);
     const day = 24 * 60 * 60;
 
-    // Two projects/boards.
+    // Two projects/boards with attempt activity plus one project with no attempts.
     sqlite
         .prepare(
             `INSERT INTO boards (id, name, repository_path, repository_url, repository_slug, created_at, updated_at)
@@ -113,6 +113,13 @@ function insertFixtureData(sqlite: any, baseTime: Date) {
              VALUES (?, ?, ?, NULL, NULL, ?, ?)`,
         )
         .run("board-2", "Project Two", "/repo/two", baseTs - 20 * day, baseTs - 20 * day);
+
+    sqlite
+        .prepare(
+            `INSERT INTO boards (id, name, repository_path, repository_url, repository_slug, created_at, updated_at)
+             VALUES (?, ?, ?, NULL, NULL, ?, ?)`,
+        )
+        .run("board-3", "Project Three", "/repo/three", baseTs - 5 * day, baseTs - 5 * day);
 
     // Columns and cards.
     sqlite
@@ -130,6 +137,13 @@ function insertFixtureData(sqlite: any, baseTime: Date) {
 
     sqlite
         .prepare(
+            `INSERT INTO columns (id, title, position, board_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run("col-3", "Todo", 1, "board-3", baseTs - 5 * day, baseTs - 5 * day);
+
+    sqlite
+        .prepare(
             `INSERT INTO cards (id, title, description, position, column_id, board_id, ticket_key, ticket_type, pr_url, created_at, updated_at)
              VALUES (?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
         )
@@ -140,6 +154,13 @@ function insertFixtureData(sqlite: any, baseTime: Date) {
              VALUES (?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
         )
         .run("card-2", "Card Two", 1, "col-2", "board-2", baseTs - 20 * day, baseTs - 20 * day);
+
+    sqlite
+        .prepare(
+            `INSERT INTO cards (id, title, description, position, column_id, board_id, ticket_key, ticket_type, pr_url, created_at, updated_at)
+             VALUES (?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+        )
+        .run("card-3", "Card Three", 1, "col-3", "board-3", baseTs - 5 * day, baseTs - 5 * day);
 
     const insertAttempt = sqlite.prepare(
         `INSERT INTO attempts (id, board_id, card_id, agent, status, base_branch, branch_name, worktree_path, session_id, created_at, updated_at, started_at, ended_at)
@@ -225,6 +246,14 @@ async function getOverview(range?: DashboardTimeRange): Promise<DashboardOvervie
     return service.getDashboardOverview(range);
 }
 
+function getProjectSnapshot(overview: DashboardOverview, projectId: string) {
+    const snapshot = overview.projectSnapshots.find((project) => project.projectId === projectId);
+    if (!snapshot) {
+        throw new Error(`Expected project snapshot for ${projectId}`);
+    }
+    return snapshot;
+}
+
 describe("dashboard/service.getDashboardOverview", () => {
     let sqlite: any;
     const baseTime = new Date("2025-01-10T12:00:00Z");
@@ -307,5 +336,116 @@ describe("dashboard/service.getDashboardOverview", () => {
         expect(overview.attemptsInRange).toBe(0);
         expect(overview.projectsWithActivityInRange).toBe(0);
         expect(overview.successRateInRange).toBe(0);
+    });
+
+    it("aggregates card counts, column buckets, and attempt metrics per project", async () => {
+        const timeRange = resolveTimeRange({ preset: "last_7d" }, baseTime);
+        const overview = await getOverview(timeRange);
+
+        const projectOne = getProjectSnapshot(overview, "board-1");
+        const projectTwo = getProjectSnapshot(overview, "board-2");
+        const projectThree = getProjectSnapshot(overview, "board-3");
+
+        // Card counts and per-column buckets.
+        expect(projectOne.totalCards).toBe(1);
+        expect(projectOne.openCards).toBe(1);
+        expect(projectTwo.totalCards).toBe(1);
+        expect(projectTwo.openCards).toBe(1);
+        expect(projectThree.totalCards).toBe(1);
+        expect(projectThree.openCards).toBe(1);
+
+        expect(projectOne.columnCardCounts).toBeDefined();
+        expect(projectTwo.columnCardCounts).toBeDefined();
+        expect(projectThree.columnCardCounts).toBeDefined();
+
+        expect(projectOne.columnCardCounts).toEqual({
+            backlog: 1,
+            inProgress: 0,
+            review: 0,
+            done: 0,
+        });
+        expect(projectTwo.columnCardCounts).toEqual({
+            backlog: 1,
+            inProgress: 0,
+            review: 0,
+            done: 0,
+        });
+        expect(projectThree.columnCardCounts).toEqual({
+            backlog: 1,
+            inProgress: 0,
+            review: 0,
+            done: 0,
+        });
+
+        // Attempt and failure metrics in range.
+        expect(projectOne.activeAttempts).toBe(1);
+        expect(projectOne.activeAttemptsCount).toBe(1);
+        expect(projectOne.attemptsInRange).toBe(3);
+        expect(projectOne.failedAttemptsInRange).toBe(1);
+        expect(projectOne.failureRateInRange).toBeCloseTo(1 / 3, 5);
+
+        expect(projectTwo.activeAttempts).toBe(0);
+        expect(projectTwo.attemptsInRange).toBe(1);
+        expect(projectTwo.failedAttemptsInRange).toBe(0);
+        expect(projectTwo.failureRateInRange).toBe(0);
+
+        // Project three has cards but no attempts in range.
+        expect(projectThree.activeAttempts).toBe(0);
+        expect(projectThree.attemptsInRange).toBe(0);
+        expect(projectThree.failedAttemptsInRange).toBe(0);
+        expect(projectThree.failureRateInRange).toBe(0);
+    });
+
+    it("computes project health flags for high activity and at-risk projects", async () => {
+        const timeRange = resolveTimeRange({ preset: "last_7d" }, baseTime);
+
+        // Baseline: with the default fixtures, board-1 should be high-activity
+        // while none of the projects are at risk.
+        const baselineOverview = await getOverview(timeRange);
+        const baselineProjectOne = getProjectSnapshot(baselineOverview, "board-1");
+        const baselineProjectTwo = getProjectSnapshot(baselineOverview, "board-2");
+        const baselineProjectThree = getProjectSnapshot(baselineOverview, "board-3");
+
+        expect(baselineProjectOne.health?.isHighActivity).toBe(true);
+        expect(baselineProjectOne.health?.isAtRisk).toBe(false);
+        expect(baselineProjectTwo.health?.isHighActivity).toBe(false);
+        expect(baselineProjectTwo.health?.isAtRisk).toBe(false);
+        expect(baselineProjectThree.health?.isHighActivity).toBe(false);
+        expect(baselineProjectThree.health?.isAtRisk).toBe(false);
+
+        // Now insert several failed attempts for board-2 within the same range
+        // so that it becomes at risk (high failure rate with sufficient volume).
+        const baseTs = Math.floor(baseTime.getTime() / 1000);
+        const day = 24 * 60 * 60;
+
+        const insertAttempt = sqlite.prepare(
+            `INSERT INTO attempts (id, board_id, card_id, agent, status, base_branch, branch_name, worktree_path, session_id, created_at, updated_at, started_at, ended_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
+        );
+
+        for (let index = 0; index < 5; index += 1) {
+            const offset = index * 60;
+            insertAttempt.run(
+                `risk-${index}`,
+                "board-2",
+                "card-2",
+                "AGENT",
+                "failed",
+                "main",
+                `branch-risk-${index}`,
+                baseTs - 2 * day + offset,
+                baseTs - 2 * day + offset,
+                baseTs - 2 * day + offset,
+                baseTs - 2 * day + offset,
+            );
+        }
+
+        const updatedOverview = await getOverview(timeRange);
+        const updatedProjectTwo = getProjectSnapshot(updatedOverview, "board-2");
+
+        expect(updatedProjectTwo.attemptsInRange).toBeGreaterThanOrEqual(5);
+        expect(updatedProjectTwo.failedAttemptsInRange).toBeGreaterThanOrEqual(5);
+        expect(updatedProjectTwo.failureRateInRange).toBeGreaterThan(0.5);
+        expect(updatedProjectTwo.health?.isAtRisk).toBe(true);
     });
 });

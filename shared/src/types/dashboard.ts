@@ -581,6 +581,74 @@ export interface DashboardInbox {
 export type ProjectHealthStatus = 'healthy' | 'degraded' | 'failing' | 'disabled'
 
 /**
+ * Canonical per-column card counts used by the dashboard for project
+ * snapshots.
+ *
+ * Implementations should map provider-specific columns into these buckets
+ * and default missing buckets to `0` so that consumers can reliably sort
+ * and filter without additional null checks. Unknown or custom column
+ * titles MAY be treated as "in progress" by the aggregation layer so that
+ * open work is not accidentally dropped from activity metrics.
+ */
+export interface ProjectColumnCardCounts {
+    /**
+     * Cards in "backlog" style columns (e.g. Todo, Backlog, Ready).
+     */
+    backlog: number
+    /**
+     * Cards in active work columns (e.g. In Progress, Doing).
+     */
+    inProgress: number
+    /**
+     * Cards in review-oriented columns (e.g. Review, PR Review).
+     */
+    review: number
+    /**
+     * Cards in a terminal "done" style column.
+     */
+    done: number
+}
+
+/**
+ * Derived health signals for a single project/board within the selected
+ * dashboard time range.
+ *
+ * All fields are designed for direct consumption by the dashboard UI for
+ * sorting, filtering, and highlighting projects by activity and risk.
+ */
+export interface ProjectHealth {
+    /**
+     * Activity score combining open card volume and attempt activity.
+     *
+     * The score is a simple weighted sum and is not normalized to a fixed
+     * range; callers should treat it as a relative measure when comparing
+     * projects within the same snapshot.
+     */
+    activityScore: number
+    /**
+     * Failure rate for attempts within the selected `DashboardOverview.timeRange`.
+     *
+     * Expressed as a fraction between `0` and `1`. When there are no attempts
+     * in range this is `0` to avoid `NaN`.
+     */
+    failureRateInRange: number
+    /**
+     * Heuristic flag indicating that the project is currently high-activity.
+     */
+    isHighActivity: boolean
+    /**
+     * Heuristic flag indicating that the project is at risk due to a
+     * combination of high failure rate and sufficient attempt volume.
+     */
+    isAtRisk: boolean
+    /**
+     * Optional short machine-generated explanation describing why the project
+     * was classified as high-activity or at-risk.
+     */
+    notes?: string
+}
+
+/**
  * Snapshot of a project's health and workload within the selected time range.
  *
  * This shape reflects how the Dashboard UI consumes project data today while
@@ -627,6 +695,13 @@ export interface ProjectSnapshot {
      */
     openCards?: number
     /**
+     * Canonical per-column card counts for this project.
+     *
+     * Implementations SHOULD always populate all buckets with `0` when there
+     * are no cards in a given category.
+     */
+    columnCardCounts?: ProjectColumnCardCounts
+    /**
      * Number of active attempts associated with this project.
      *
      * This field is preserved for backwards compatibility; prefer
@@ -637,6 +712,23 @@ export interface ProjectSnapshot {
      * Number of active attempts associated with this project.
      */
     activeAttemptsCount?: number
+    /**
+     * Number of attempts attributed to this project that fall within the
+     * selected `DashboardOverview.timeRange`.
+     */
+    attemptsInRange?: number
+    /**
+     * Number of attempts within the selected `DashboardOverview.timeRange`
+     * that ended in a failure status.
+     */
+    failedAttemptsInRange?: number
+    /**
+     * Failure rate for attempts within the selected `DashboardOverview.timeRange`.
+     *
+     * Derived as `failedAttemptsInRange / attemptsInRange` when
+     * `attemptsInRange > 0`, otherwise `0`.
+     */
+    failureRateInRange?: number
     /**
      * Optional health score (0–100) derived from errors, latency, and
      * throughput.
@@ -659,6 +751,11 @@ export interface ProjectSnapshot {
      * Count of recent failures within the selected time range.
      */
     recentFailuresCount?: number
+    /**
+     * Derived health signals for this project, combining card counts and
+     * attempt activity into activity and risk heuristics.
+     */
+    health?: ProjectHealth
     /**
      * Extension point for project-specific annotations, tags, or metrics.
      */

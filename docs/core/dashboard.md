@@ -46,7 +46,19 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
   - The backend scans recent attempts within the selected dashboard `timeRange`, derives actionable inbox candidates, then returns at most 25 of the most recent items across all kinds (ordered by `lastUpdatedAt` descending). The `meta` counts on `DashboardInbox` reflect the number of items in this truncated snapshot rather than the total number of actionable attempts in storage.
 - `projectSnapshots: ProjectSnapshot[]`  
   - Per-project snapshot with:
-    - `projectId`/`id`, name, health `status`, repository slug/path, createdAt, card counts (`totalCards`, `openCards`), attempt counts (`activeAttempts`/`activeAttemptsCount`), and optional health metrics (`healthScore`, `errorRate`, `throughput`, `p95LatencyMs`, `recentFailuresCount`).
+    - Identity and metadata: `projectId`/`id`, `name`, health `status`, repository slug/path, `createdAt`.
+    - Card counts:
+      - `totalCards` (all cards on the board).
+      - `openCards` (cards not in a "Done" column).
+      - `columnCardCounts` with canonical buckets `{ backlog, inProgress, review, done }` used by the dashboard for sorting and filtering.
+        - The aggregation layer maps provider-specific column titles into these buckets using simple heuristics (e.g. "Todo" → backlog, "In Progress" → inProgress, "Review" → review, "Done" → done).
+        - Unknown or custom titles are currently treated as `inProgress` so that open work is not silently dropped from activity metrics; this behavior may be refined in future iterations.
+    - Attempt and failure metrics:
+      - `activeAttempts` / `activeAttemptsCount` (currently active attempts).
+      - `attemptsInRange`, `failedAttemptsInRange`, and `failureRateInRange` scoped to the same `timeRange` as the parent overview.
+    - Derived health metrics:
+      - Legacy fields such as `healthScore`, `errorRate`, `throughput`, `p95LatencyMs`, `recentFailuresCount`.
+      - A structured `health` block with `activityScore`, `failureRateInRange`, `isHighActivity`, `isAtRisk`, and optional `notes` for machine-generated explanations.
 - `agentStats: AgentStatsSummary[]`  
   - Per-agent stats over `timeRange`:
     - `agentId`, `agentName`, `status`, `attemptsStarted`, `attemptsSucceeded`, `attemptsFailed`, plus optional `successRate`, `avgLatencyMs`, `currentActiveAttempts`, `lastActiveAt`, and `meta`.

@@ -33,6 +33,7 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "better-sqlite3": "^12.2.0",
     "@types/bun": "latest",
     "typescript": "^5.8.3"
   }
