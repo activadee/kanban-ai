@@ -73,8 +73,10 @@ const STUCK_RUNNING_THRESHOLD_SECONDS = 30 * 60
 const INBOX_RELEVANT_STATUSES: AttemptStatus[] = [
     'queued',
     'running',
+    'stopping',
     'succeeded',
     'failed',
+    'stopped',
 ]
 
 function toIso(value: Date | number | null): string | null {
@@ -105,9 +107,9 @@ function classifyAttemptRow(
 ): InboxCandidate | null {
     const status = row.status as AttemptStatus
     const isSuccess = status === 'succeeded'
-    const isFailed = status === 'failed'
+    const isFailed = status === 'failed' || status === 'stopped'
     const isQueued = status === 'queued'
-    const isRunning = status === 'running'
+    const isRunning = status === 'running' || status === 'stopping'
 
     const createdAtIso = toIso(row.createdAt) ?? new Date(nowMs).toISOString()
     const updatedAtIso = toIso(row.updatedAt) ?? createdAtIso
@@ -255,8 +257,8 @@ export async function buildDashboardInbox(
     rangeTo: Date | null,
 ): Promise<DashboardInbox> {
     const db = resolveDb()
-    const now = new Date()
-    const nowMs = now.getTime()
+    const nowRef = rangeTo ?? new Date()
+    const nowMs = nowRef.getTime()
 
     const wherePredicates = [inArray(attempts.status, INBOX_RELEVANT_STATUSES)]
 

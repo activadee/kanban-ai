@@ -41,8 +41,9 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
   - Common fields per item include:
     - `id`, `attemptId?`, `projectId?`/`projectName?`, `cardId?`/`cardTitle?`, `ticketKey?`, `agentId?`/`agentName?`, `status?`, `cardStatus?`, `createdAt`, `updatedAt?`, `finishedAt?`, `lastUpdatedAt?`, `prUrl?`, `errorSummary?`, and `meta?`.  
   - `review` items represent succeeded attempts that still require human review (for example, PR open or card not in a Done column).  
-  - `failed` items represent failed attempts that have not yet been resolved or superseded by a later success and include a short `errorSummary`.  
-  - `stuck` items represent long-running or queued attempts beyond configured thresholds and include `stuckForSeconds`.
+  - `failed` items represent failed (or stopped) attempts that have not yet been resolved or superseded by a later success and include a short `errorSummary`.  
+  - `stuck` items represent long-running or queued/stopping attempts beyond configured thresholds and include `stuckForSeconds`.  
+  - The backend scans recent attempts within the selected dashboard `timeRange`, derives actionable inbox candidates, then returns at most 25 of the most recent items across all kinds (ordered by `lastUpdatedAt` descending). The `meta` counts on `DashboardInbox` reflect the number of items in this truncated snapshot rather than the total number of actionable attempts in storage.
 - `projectSnapshots: ProjectSnapshot[]`  
   - Per-project snapshot with:
     - `projectId`/`id`, name, health `status`, repository slug/path, createdAt, card counts (`totalCards`, `openCards`), attempt counts (`activeAttempts`/`activeAttemptsCount`), and optional health metrics (`healthScore`, `errorRate`, `throughput`, `p95LatencyMs`, `recentFailuresCount`).
