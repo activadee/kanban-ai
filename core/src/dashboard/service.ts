@@ -16,6 +16,7 @@ import {attempts, boards, cards, columns} from '../db/schema'
 import {resolveDb} from '../db/with-tx'
 import {resolveTimeBounds, resolveTimeRange} from './time-range'
 import {buildDashboardInbox} from './inbox'
+import {buildProjectHealth} from './project-health'
 
 const ACTIVE_STATUSES: AttemptStatus[] = ['queued', 'running', 'stopping']
 const COMPLETED_STATUSES: AttemptStatus[] = ['succeeded', 'failed', 'stopped']
@@ -26,7 +27,13 @@ type BoardRow = {
     repositorySlug: string | null
     repositoryPath: string
     createdAt: Date | number
-    totalCards: number | null
+}
+
+type ColumnCardCounts = {
+    backlog: number
+    inProgress: number
+    review: number
+    done: number
 }
 
 function toIso(value: Date | number | null | undefined): string | null {
@@ -87,6 +94,56 @@ function mapActivityRow(row: {
     }
 }
 
+function createEmptyColumnCardCounts(): ColumnCardCounts {
+    return {
+        backlog: 0,
+        inProgress: 0,
+        review: 0,
+        done: 0,
+    }
+}
+
+function classifyColumnTitleForDashboard(title: string): keyof ColumnCardCounts {
+    const normalized = title.trim().toLowerCase()
+    if (!normalized) return 'backlog'
+
+    if (normalized === 'done') {
+        return 'done'
+    }
+
+    if (
+        normalized.includes('review') ||
+        normalized.includes('pr ') ||
+        normalized.includes('code review')
+    ) {
+        return 'review'
+    }
+
+    if (
+        normalized.includes('progress') ||
+        normalized.includes('doing') ||
+        normalized.includes('active') ||
+        normalized.includes('in dev') ||
+        normalized.includes('in-development')
+    ) {
+        return 'inProgress'
+    }
+
+    if (
+        normalized.includes('backlog') ||
+        normalized.includes('todo') ||
+        normalized.includes('to-do') ||
+        normalized.includes('to do') ||
+        normalized.includes('ready')
+    ) {
+        return 'backlog'
+    }
+
+    // Fallback: treat unknown columns as in-progress so that totals remain
+    // consistent and open work is still reflected in activity scores.
+    return 'inProgress'
+}
+
 function mapProjectSnapshotRow(row: {
     id: string
     name: string
@@ -96,6 +153,11 @@ function mapProjectSnapshotRow(row: {
     activeAttempts: number
     openCards: number
     totalCards: number
+    columnCardCounts: ColumnCardCounts
+    attemptsInRange: number
+    failedAttemptsInRange: number
+    failureRateInRange: number
+    health: ReturnType<typeof buildProjectHealth>
 }): DashboardProjectSnapshot {
     const createdAtIso = toIso(row.createdAt) ?? new Date().toISOString()
     return {
@@ -110,6 +172,11 @@ function mapProjectSnapshotRow(row: {
         activeAttemptsCount: row.activeAttempts,
         openCards: row.openCards,
         totalCards: row.totalCards,
+        columnCardCounts: row.columnCardCounts,
+        attemptsInRange: row.attemptsInRange,
+        failedAttemptsInRange: row.failedAttemptsInRange,
+        failureRateInRange: row.failureRateInRange,
+        health: row.health,
     }
 }
 
@@ -215,22 +282,47 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         .from(attempts)
         .where(attemptsCompletedWhere)
 
-    const openCardRows = await db
+    type ColumnCountRow = {
+        boardId: string
+        columnTitle: string
+        count: number | null
+    }
+
+    const columnCountRows = (await db
         .select({
             boardId: columns.boardId,
+            columnTitle: columns.title,
             count: sql<number>`cast(count(*) as integer)`,
         })
         .from(columns)
         .innerJoin(cards, eq(cards.columnId, columns.id))
-        .where(sql`lower(${columns.title}) <> 'done'`)
-        .groupBy(columns.boardId)
+        .groupBy(columns.boardId, columns.title)) as ColumnCountRow[]
 
+    const columnCardCountsMap = new Map<string, ColumnCardCounts>()
     const openCardsMap = new Map<string, number>()
-    for (const row of openCardRows) {
-        if (!row.boardId) continue
-        openCardsMap.set(row.boardId, Number(row.count ?? 0))
+
+    for (const row of columnCountRows) {
+        const boardId = row.boardId
+        if (!boardId) continue
+
+        let counts = columnCardCountsMap.get(boardId)
+        if (!counts) {
+            counts = createEmptyColumnCardCounts()
+            columnCardCountsMap.set(boardId, counts)
+        }
+
+        const bucket = classifyColumnTitleForDashboard(row.columnTitle)
+        const increment = Number(row.count ?? 0)
+
+        counts[bucket] += increment
     }
-    const openCardsTotal = Array.from(openCardsMap.values()).reduce((sum, value) => sum + value, 0)
+
+    let openCardsTotal = 0
+    for (const [boardId, counts] of columnCardCountsMap.entries()) {
+        const openCards = counts.backlog + counts.inProgress + counts.review
+        openCardsMap.set(boardId, openCards)
+        openCardsTotal += openCards
+    }
 
     const activeCountsRows = await db
         .select({
@@ -245,6 +337,41 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
     for (const row of activeCountsRows) {
         if (!row.boardId) continue
         activeCountsMap.set(row.boardId, Number(row.count ?? 0))
+    }
+
+    type AttemptsPerBoardRow = {
+        boardId: string | null
+        total: number | null
+        failed: number | null
+    }
+
+    let attemptsPerBoardQuery = db
+        .select({
+            boardId: attempts.boardId,
+            total: sql<number>`cast(count(*) as integer)`,
+            failed: sql<number>`cast(sum(case when ${attempts.status} = 'failed' then 1 else 0 end) as integer)`,
+        })
+        .from(attempts)
+
+    if (attemptsTimePredicate) {
+        attemptsPerBoardQuery = attemptsPerBoardQuery.where(attemptsTimePredicate)
+    }
+
+    const attemptsPerBoardRows = (await attemptsPerBoardQuery.groupBy(
+        attempts.boardId,
+    )) as AttemptsPerBoardRow[]
+
+    const attemptsInRangeByBoard = new Map<string, number>()
+    const failedAttemptsInRangeByBoard = new Map<string, number>()
+
+    for (const row of attemptsPerBoardRows) {
+        if (!row.boardId) continue
+        const boardId = row.boardId
+        const total = Number(row.total ?? 0)
+        const failed = Number(row.failed ?? 0)
+
+        attemptsInRangeByBoard.set(boardId, total)
+        failedAttemptsInRangeByBoard.set(boardId, failed)
     }
 
     const activeAttemptsRows = await db
@@ -297,24 +424,48 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             repositorySlug: boards.repositorySlug,
             repositoryPath: boards.repositoryPath,
             createdAt: boards.createdAt,
-            totalCards: sql<number>`(SELECT cast(count(*) as integer) FROM cards WHERE cards.board_id = ${boards.id})`,
         })
         .from(boards)
         .orderBy(desc(boards.createdAt))
         .limit(6)) as BoardRow[]
 
-    const projectSnapshots: DashboardProjectSnapshot[] = boardRows.map((row) =>
-        mapProjectSnapshotRow({
+    const projectSnapshots: DashboardProjectSnapshot[] = boardRows.map((row) => {
+        const columnCardCounts = columnCardCountsMap.get(row.id) ?? createEmptyColumnCardCounts()
+        const totalCards =
+            columnCardCounts.backlog +
+            columnCardCounts.inProgress +
+            columnCardCounts.review +
+            columnCardCounts.done
+        const openCards =
+            openCardsMap.get(row.id) ??
+            columnCardCounts.backlog + columnCardCounts.inProgress + columnCardCounts.review
+        const activeAttemptsForBoard = activeCountsMap.get(row.id) ?? 0
+        const attemptsInRangeForBoard = attemptsInRangeByBoard.get(row.id) ?? 0
+        const failedAttemptsInRangeForBoard = failedAttemptsInRangeByBoard.get(row.id) ?? 0
+
+        const health = buildProjectHealth({
+            openCards,
+            activeAttempts: activeAttemptsForBoard,
+            attemptsInRange: attemptsInRangeForBoard,
+            failedAttemptsInRange: failedAttemptsInRangeForBoard,
+        })
+
+        return mapProjectSnapshotRow({
             id: row.id,
             name: row.name,
             repositorySlug: row.repositorySlug,
             repositoryPath: row.repositoryPath,
             createdAt: row.createdAt,
-            totalCards: Number(row.totalCards ?? 0),
-            activeAttempts: activeCountsMap.get(row.id) ?? 0,
-            openCards: openCardsMap.get(row.id) ?? 0,
-        }),
-    )
+            totalCards,
+            activeAttempts: activeAttemptsForBoard,
+            openCards,
+            columnCardCounts,
+            attemptsInRange: attemptsInRangeForBoard,
+            failedAttemptsInRange: failedAttemptsInRangeForBoard,
+            failureRateInRange: health.failureRateInRange,
+            health,
+        })
+    })
 
     const totalProjects = Number(totalProjectsRaw ?? 0)
     const activeAttemptsCount = Number(activeAttemptsRaw ?? 0)
