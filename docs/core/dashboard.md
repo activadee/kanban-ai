@@ -51,6 +51,8 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
       - `totalCards` (all cards on the board).
       - `openCards` (cards not in a "Done" column).
       - `columnCardCounts` with canonical buckets `{ backlog, inProgress, review, done }` used by the dashboard for sorting and filtering.
+        - The aggregation layer maps provider-specific column titles into these buckets using simple heuristics (e.g. "Todo" → backlog, "In Progress" → inProgress, "Review" → review, "Done" → done).
+        - Unknown or custom titles are currently treated as `inProgress` so that open work is not silently dropped from activity metrics; this behavior may be refined in future iterations.
     - Attempt and failure metrics:
       - `activeAttempts` / `activeAttemptsCount` (currently active attempts).
       - `attemptsInRange`, `failedAttemptsInRange`, and `failureRateInRange` scoped to the same `timeRange` as the parent overview.

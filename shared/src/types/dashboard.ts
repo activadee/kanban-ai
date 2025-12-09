@@ -586,7 +586,9 @@ export type ProjectHealthStatus = 'healthy' | 'degraded' | 'failing' | 'disabled
  *
  * Implementations should map provider-specific columns into these buckets
  * and default missing buckets to `0` so that consumers can reliably sort
- * and filter without additional null checks.
+ * and filter without additional null checks. Unknown or custom column
+ * titles MAY be treated as "in progress" by the aggregation layer so that
+ * open work is not accidentally dropped from activity metrics.
  */
 export interface ProjectColumnCardCounts {
     /**

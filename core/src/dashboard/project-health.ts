@@ -46,8 +46,8 @@ export const PROJECT_HEALTH_HIGH_ACTIVITY_MIN_OPEN_CARDS = 1
 export const PROJECT_HEALTH_HIGH_ACTIVITY_MIN_ATTEMPTS_IN_RANGE = 1
 
 /**
- * Failure rate threshold (0–1) above which a project is considered at risk,
- * provided there is sufficient attempt volume.
+ * Failure rate threshold (0–1) at or above which a project is considered at
+ * risk, provided there is sufficient attempt volume.
  */
 export const PROJECT_HEALTH_AT_RISK_FAILURE_RATE_THRESHOLD = 0.5
 
@@ -65,10 +65,10 @@ export const PROJECT_HEALTH_AT_RISK_MIN_ATTEMPTS = 5
  * - `activityScore = openCards * 1 + activeAttempts * 3 + attemptsInRange * 2`
  * - `failureRateInRange = failedAttemptsInRange / attemptsInRange` when
  *   `attemptsInRange > 0`, otherwise `0`.
- * - `isHighActivity` when `activityScore` exceeds
+ * - `isHighActivity` when `activityScore` is at least
  *   `PROJECT_HEALTH_HIGH_ACTIVITY_SCORE_THRESHOLD` and there is at least one
  *   open card or in-range attempt.
- * - `isAtRisk` when `failureRateInRange` exceeds
+ * - `isAtRisk` when `failureRateInRange` is at least
  *   `PROJECT_HEALTH_AT_RISK_FAILURE_RATE_THRESHOLD` and
  *   `attemptsInRange >= PROJECT_HEALTH_AT_RISK_MIN_ATTEMPTS`.
  */
@@ -119,4 +119,3 @@ export function buildProjectHealth(input: ProjectHealthInput): ProjectHealth {
         notes,
     }
 }
-
