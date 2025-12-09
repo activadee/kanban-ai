@@ -38,7 +38,7 @@ async function main() {
   }[] = [];
 
   for (const file of sqlFiles) {
-    const id = file.replace(/\.sql$/, "");
+    const id = file.replace(/\.sql$/i, "");
     const sqlPath = path.join(drizzleDir, file);
     const sql = await fs.readFile(sqlPath, "utf8");
     const checksum = crypto.createHash("sha256").update(sql).digest("hex");
