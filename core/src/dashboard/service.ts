@@ -15,6 +15,7 @@ import type {
 import {attempts, boards, cards, columns} from '../db/schema'
 import {resolveDb} from '../db/with-tx'
 import {resolveTimeBounds, resolveTimeRange} from './time-range'
+import {buildDashboardInbox} from './inbox'
 
 const ACTIVE_STATUSES: AttemptStatus[] = ['queued', 'running', 'stopping']
 const COMPLETED_STATUSES: AttemptStatus[] = ['succeeded', 'failed', 'stopped']
@@ -352,11 +353,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         byKey: metricsByKey,
     }
 
-    const inboxItems: DashboardInbox = {
-        review: [],
-        failed: [],
-        stuck: [],
-    }
+    const inboxItems: DashboardInbox = await buildDashboardInbox(rangeFrom, rangeTo)
 
     const agentStats: AgentStatsSummary[] = []
 

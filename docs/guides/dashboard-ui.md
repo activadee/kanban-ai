@@ -70,6 +70,16 @@ Use this to identify overloaded projects or boards with too many open cards or A
 
 This panel helps you quickly see whether core integrations (GitHub, agents) are ready before starting work.
 
+## Inbox panel
+
+- Surfaces actionable items coming from the shared `DashboardInbox` payload.
+- Divided into three lists:
+  - **Review** – succeeded Attempts that still require human verification (e.g. a PR is still open or the card is not in a Done column). Each entry shows the `reason`, linked PR (if any), and the most recent update timestamp.
+  - **Failed** – Attempts that ended in failure without a later resolved success. These items surface a short `errorSummary` harvested from the latest log entries so you can triage what went wrong.
+  - **Stuck** – Queued or running Attempts that exceeded the backend thresholds (roughly 10 minutes for queued work, 30 minutes for running). Each stuck item reports how long it has been stuck (`stuckForSeconds`) and links to the associated board/card for intervention.
+- Items are sorted by recency (`lastUpdatedAt`) so the most urgent work appears at the top.
+- Tapping an inbox entry opens the corresponding project/card view so you can inspect logs, PRs, or agent output before taking action.
+
 ## Version indicator
 
 - A small inline indicator beside the Dashboard title shows the current server version (`vX.Y.Z`), or `Version unavailable`/`Checking version…` when the UI is still polling `GET /version`.

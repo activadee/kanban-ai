@@ -37,7 +37,13 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
     - Attempt ID, project id/name, card id/title/ticket key, `agentId`, `status`, `occurredAt`, optional `durationSeconds`, `errorSummary`, and `triggerSource`.
 - `inboxItems: DashboardInbox`  
   - Actionable items grouped into `review`, `failed`, and `stuck` lists.  
-  - Each item is a discriminated `InboxItem` union (`type: "review" | "failed" | "stuck"`).
+  - Each item is a discriminated `InboxItem` union (`type: "review" | "failed" | "stuck"`, with a matching `kind` field).  
+  - Common fields per item include:
+    - `id`, `attemptId?`, `projectId?`/`projectName?`, `cardId?`/`cardTitle?`, `ticketKey?`, `agentId?`/`agentName?`, `status?`, `cardStatus?`, `createdAt`, `updatedAt?`, `finishedAt?`, `lastUpdatedAt?`, `prUrl?`, `errorSummary?`, and `meta?`.  
+  - `review` items represent succeeded attempts that still require human review (for example, PR open or card not in a Done column).  
+  - `failed` items represent failed (or stopped) attempts that have not yet been resolved or superseded by a later success and include a short `errorSummary`.  
+  - `stuck` items represent long-running or queued/stopping attempts beyond configured thresholds and include `stuckForSeconds`.  
+  - The backend scans recent attempts within the selected dashboard `timeRange`, derives actionable inbox candidates, then returns at most 25 of the most recent items across all kinds (ordered by `lastUpdatedAt` descending). The `meta` counts on `DashboardInbox` reflect the number of items in this truncated snapshot rather than the total number of actionable attempts in storage.
 - `projectSnapshots: ProjectSnapshot[]`  
   - Per-project snapshot with:
     - `projectId`/`id`, name, health `status`, repository slug/path, createdAt, card counts (`totalCards`, `openCards`), attempt counts (`activeAttempts`/`activeAttemptsCount`), and optional health metrics (`healthScore`, `errorRate`, `throughput`, `p95LatencyMs`, `recentFailuresCount`).

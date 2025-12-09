@@ -411,6 +411,13 @@ export interface InboxItemBase {
      */
     id: string
     /**
+     * Optional kind alias for the inbox item, mirroring the discriminant.
+     *
+     * This is provided to align with UI/UX terminology where items are
+     * grouped by kind (review, failed, stuck).
+     */
+    kind?: InboxItemType
+    /**
      * Associated attempt identifier, when the item maps to a specific attempt.
      */
     attemptId?: string
@@ -419,9 +426,40 @@ export interface InboxItemBase {
      */
     projectId?: ProjectId
     /**
+     * Human-friendly project name, when available.
+     */
+    projectName?: string | null
+    /**
      * Identifier of the relevant agent, when applicable.
      */
     agentId?: AgentKey | string
+    /**
+     * Display name for the agent; when omitted, clients SHOULD fall back to
+     * `agentId` or a generic label.
+     */
+    agentName?: string | null
+    /**
+     * Associated card identifier, when known.
+     */
+    cardId?: string
+    /**
+     * Human-friendly card title, when available.
+     */
+    cardTitle?: string | null
+    /**
+     * External ticket key or slug (e.g. JIRA issue key), when linked.
+     */
+    ticketKey?: string | null
+    /**
+     * Status of the underlying attempt or entity.
+     *
+     * When derived from attempts this typically mirrors `AttemptStatus`.
+     */
+    status?: AttemptStatus | string
+    /**
+     * Display status of the card (for example the column title).
+     */
+    cardStatus?: string | null
     /**
      * UTC ISO 8601 timestamp when the inbox item was created.
      */
@@ -430,6 +468,32 @@ export interface InboxItemBase {
      * UTC ISO 8601 timestamp of the most recent update, when applicable.
      */
     updatedAt?: string
+    /**
+     * UTC ISO 8601 timestamp when the underlying attempt finished, for
+     * terminal states, or `null` when not applicable.
+     */
+    finishedAt?: string | null
+    /**
+     * Timestamp used for ordering within the inbox.
+     *
+     * For attempt-derived items this typically mirrors `finishedAt` for
+     * terminal states or the latest update time for active ones.
+     */
+    lastUpdatedAt?: string | null
+    /**
+     * URL of the related pull request, when available.
+     */
+    prUrl?: string | null
+    /**
+     * Short human-readable summary of an error, when applicable.
+     *
+     * For failed inbox items this will always be populated.
+     */
+    errorSummary?: string
+    /**
+     * Small structured extension bag for future UI needs.
+     */
+    meta?: Record<string, unknown>
 }
 
 /**
