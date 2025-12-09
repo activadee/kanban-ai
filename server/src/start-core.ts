@@ -169,9 +169,13 @@ export async function bootstrapRuntime(
 
   if (drizzleAppliedIds.size === 0) {
     if (legacyRows.length > 0) {
+      const unmatchedLegacyIds: string[] = []
       for (const row of legacyRows) {
         const spec = migrations.find((m) => m.id === row.id)
-        if (!spec) continue
+        if (!spec) {
+          unmatchedLegacyIds.push(row.id)
+          continue
+        }
         dbResources.sqlite
           .query(
             `INSERT OR IGNORE INTO ${DRIZZLE_MIGRATIONS_TABLE} (id, hash) VALUES (?1, ?2)`,
@@ -184,6 +188,12 @@ export async function bootstrapRuntime(
         source,
         count: drizzleAppliedIds.size,
       })
+      if (unmatchedLegacyIds.length > 0) {
+        log.warn('migrations', 'legacy Prisma migrations missing from Drizzle specs', {
+          source,
+          missingIds: unmatchedLegacyIds,
+        })
+      }
     } else {
       try {
         const existingTables = dbResources.sqlite

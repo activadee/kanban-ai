@@ -24,7 +24,9 @@ async function main() {
 
   const files = await fs.readdir(drizzleDir, { withFileTypes: true });
   const sqlFiles = files
-    .filter((e) => e.isFile() && e.name.endsWith(".sql"))
+    .filter(
+      (e) => e.isFile() && e.name.toLowerCase().endsWith(".sql"),
+    )
     .map((e) => e.name)
     .sort();
 
@@ -86,4 +88,3 @@ main().catch((error) => {
   console.error("[build-drizzle-migration-bundle] failed", error);
   process.exit(1);
 });
-
