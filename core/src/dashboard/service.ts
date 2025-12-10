@@ -477,7 +477,6 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
 
     const successRateInRange =
         attemptsInRange > 0 ? attemptsSucceededInRange / attemptsInRange : 0
-
     const metricsByKey: Record<string, DashboardMetricSeries> = {
         [DASHBOARD_METRIC_KEYS.projectsTotal]: buildSingleBucketSeries(
             'Projects',
@@ -500,12 +499,20 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             resolvedRange,
         ),
     }
+    const inboxItems: DashboardInbox = await buildDashboardInbox(rangeFrom, rangeTo)
+    const inboxMeta = inboxItems.meta as {totalReview?: unknown} | undefined
+    const reviewItemsCountFromMeta =
+        typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined
+    const reviewItemsCount = reviewItemsCountFromMeta ?? inboxItems.review.length
 
     const metrics: DashboardMetrics = {
         byKey: metricsByKey,
+        activeAttempts: activeAttemptsCount,
+        attemptsInRange,
+        successRateInRange,
+        reviewItemsCount,
+        projectsWithActivity: projectsWithActivityInRange,
     }
-
-    const inboxItems: DashboardInbox = await buildDashboardInbox(rangeFrom, rangeTo)
 
     const registeredAgents = listAgents()
 

@@ -55,6 +55,82 @@ export function useDashboardOverview(options?: DashboardOverviewOptions) {
     })
 }
 
+export interface DashboardKpiMetrics {
+    /**
+     * Number of currently active attempts in the dashboard snapshot.
+     */
+    activeAttempts?: number
+    /**
+     * Number of attempts whose `createdAt` falls within the selected time range.
+     */
+    attemptsInRange?: number
+    /**
+     * Success rate for attempts within the selected time range, expressed as a
+     * fraction between `0` and `1`.
+     */
+    successRateInRange?: number
+    /**
+     * Number of inbox items that require review.
+     */
+    reviewItemsCount?: number
+    /**
+     * Number of projects/boards with any attempt activity in range.
+     */
+    projectsWithActivity?: number
+}
+
+export function useDashboardMetrics(options?: DashboardOverviewOptions): {
+    data?: DashboardKpiMetrics
+    isLoading: boolean
+    isError: boolean
+    error: unknown
+} {
+    const overviewQuery = useDashboardOverview(options)
+
+    const data = useMemo<DashboardKpiMetrics | undefined>(() => {
+        const overview = overviewQuery.data
+        if (!overview) return undefined
+
+        const metrics = overview.metrics
+        const inbox = overview.inboxItems
+
+        const activeAttempts =
+            metrics.activeAttempts ?? overview.activeAttempts.length ?? undefined
+
+        const attemptsInRange =
+            metrics.attemptsInRange ?? overview.attemptsInRange ?? undefined
+
+        const successRateInRange =
+            metrics.successRateInRange ?? overview.successRateInRange ?? undefined
+
+        const inboxMeta = inbox.meta as {totalReview?: unknown} | undefined
+        const reviewItemsCountFromMeta =
+            typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined
+        const reviewItemsCount =
+            metrics.reviewItemsCount ??
+            reviewItemsCountFromMeta ??
+            (Array.isArray(inbox.review) ? inbox.review.length : undefined)
+
+        const projectsWithActivity =
+            metrics.projectsWithActivity ?? overview.projectsWithActivityInRange ?? undefined
+
+        return {
+            activeAttempts,
+            attemptsInRange,
+            successRateInRange,
+            reviewItemsCount,
+            projectsWithActivity,
+        }
+    }, [overviewQuery.data])
+
+    return {
+        data,
+        isLoading: overviewQuery.isLoading,
+        isError: overviewQuery.isError ?? false,
+        error: overviewQuery.error,
+    }
+}
+
 export function useDashboardStream(enabled = true) {
     const queryClient = useQueryClient()
     const url = useMemo(() => resolveDashboardWsUrl(), [])

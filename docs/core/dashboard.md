@@ -27,6 +27,12 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
     - `attempts.active` – active Attempts (`queued`/`running`/`stopping`).
     - `attempts.completed` – Attempts completed within `timeRange`.
     - `cards.open` – cards not in a **Done** column.
+  - Strongly-typed headline aggregates:
+    - `activeAttempts?` – total active attempts across all projects.
+    - `attemptsInRange?` – total attempts whose `createdAt` falls within `timeRange`.
+    - `successRateInRange?` – success rate (0–1) for attempts in `timeRange`.
+    - `reviewItemsCount?` – number of inbox items that require review.
+    - `projectsWithActivity?` – number of projects/boards with any attempt activity in `timeRange`.
   - Each `DashboardMetricSeries` contains:
     - `label`, `unit?`, `points: DashboardMetricPoint[]`, `total?`, `trend?`, and `meta?`.
 - `activeAttempts: ActiveAttemptSummary[]`  

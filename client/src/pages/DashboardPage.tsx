@@ -77,28 +77,59 @@ export function DashboardPage() {
 
     const timeRangeLabel = getTimeRangeLabel(effectiveTimeRangePreset)
 
+    const activeAttemptsCount =
+        metrics?.activeAttempts ??
+        metrics?.byKey[DASHBOARD_METRIC_KEYS.activeAttempts]?.total ??
+        activeAttempts.length
+    const attemptsInRangeValue = metrics?.attemptsInRange ?? overview?.attemptsInRange
+    const successRateInRangeValue =
+        metrics?.successRateInRange ?? overview?.successRateInRange ?? undefined
+
+    const inboxMeta = inbox?.meta as {totalReview?: unknown} | undefined
+    const reviewItemsCountFromMeta =
+        typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined
+    const reviewItemsCount =
+        metrics?.reviewItemsCount ?? reviewItemsCountFromMeta ?? inboxReview.length
+
+    const projectsWithActivityValue =
+        metrics?.projectsWithActivity ?? overview?.projectsWithActivityInRange
+
     const metricCards = [
         {
-            label: 'Projects',
-            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.projectsTotal]?.total ?? '—',
-            description: 'Boards currently tracked by KanbanAI.',
+            label: 'Active attempts',
+            value: dashboardQuery.isLoading ? '—' : activeAttemptsCount ?? '—',
+            helperText: 'Currently in progress',
         },
         {
-            label: 'Active Attempts',
-            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.activeAttempts]?.total ?? '—',
-            description: 'Agents running or queued across all projects.',
+            label: 'Attempts in range',
+            value: dashboardQuery.isLoading ? '—' : attemptsInRangeValue ?? '—',
+            helperText: 'Within selected period',
         },
         {
-            label: `Attempts (${timeRangeLabel})`,
-            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.attemptsCompleted]?.total ?? '—',
-            description: 'Completed attempts in the selected time range.',
+            label: 'Success rate',
+            value: dashboardQuery.isLoading ? '—' : formatSuccessRate(successRateInRangeValue),
+            helperText: timeRangeLabel,
         },
         {
-            label: 'Open Cards',
-            value: metrics?.byKey[DASHBOARD_METRIC_KEYS.openCards]?.total ?? '—',
-            description: 'Cards not in a Done column.',
+            label: 'Items to review',
+            value: dashboardQuery.isLoading ? '—' : reviewItemsCount ?? '—',
+            helperText: 'From review inbox',
         },
     ]
+
+    if (dashboardQuery.isLoading) {
+        metricCards.push({
+            label: 'Active projects',
+            value: '—',
+            helperText: 'With activity in range',
+        })
+    } else if (projectsWithActivityValue != null) {
+        metricCards.push({
+            label: 'Active projects',
+            value: projectsWithActivityValue,
+            helperText: 'With activity in range',
+        })
+    }
 
     return (
         <div className="flex h-full flex-col overflow-auto bg-background px-8 py-6">
@@ -153,7 +184,13 @@ export function DashboardPage() {
                     </div>
                 </header>
 
-                <MetricCards items={metricCards}/>
+                {dashboardQuery.isError ? (
+                    <div className="mb-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                        Unable to load KPIs. Showing last known values when available.
+                    </div>
+                ) : null}
+
+                <MetricCards items={metricCards} isLoading={dashboardQuery.isLoading}/>
 
                 <section className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-6">
