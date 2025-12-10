@@ -90,16 +90,33 @@ Forward-compatibility:
 
 - HTTP:
   - `GET /api/v1/dashboard` – returns the current `DashboardOverview` snapshot.
-    - Time range selection:
-      - `GET /api/v1/dashboard?timeRangePreset=last_24h`
-      - `GET /api/v1/dashboard?timeRangePreset=last_7d`
-      - `GET /api/v1/dashboard?timeRangePreset=all_time`
-      - `GET /api/v1/dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
-    - Query parameters are mapped into `DashboardTimeRange` and echoed back in the response.
+    - Canonical time range parameters:
+      - Preset:  
+        - `GET /api/v1/dashboard?timeRangePreset=last_24h`  
+        - `GET /api/v1/dashboard?timeRangePreset=last_7d`  
+        - `GET /api/v1/dashboard?timeRangePreset=last_30d`  
+        - `GET /api/v1/dashboard?timeRangePreset=last_90d`  
+        - `GET /api/v1/dashboard?timeRangePreset=all_time`
+      - Custom range (ISO 8601, inclusive `from`, exclusive `to`):  
+        - `GET /api/v1/dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
+      - Convenience alias (mapped to presets, additive to the canonical API):  
+        - `GET /api/v1/dashboard?range=24h` → `timeRangePreset=last_24h`  
+        - `GET /api/v1/dashboard?range=7d` → `timeRangePreset=last_7d`  
+        - `GET /api/v1/dashboard?range=30d` → `timeRangePreset=last_30d`  
+        - `GET /api/v1/dashboard?range=90d` → `timeRangePreset=last_90d`  
+        - `GET /api/v1/dashboard?range=all` → `timeRangePreset=all_time`
+    - Precedence rules:
+      - If `from` or `to` is provided, the handler requires both to be valid ISO 8601 values and ignores any `timeRangePreset` or `range`.
+      - Otherwise, a valid `timeRangePreset` is used when present and the `range` alias is ignored.
+      - When only `range` is present, it must be one of `24h | 7d | 30d | 90d | all`; unknown values return HTTP 400.
+    - All query parameters are normalized into `DashboardTimeRange`, which is echoed back as `DashboardOverview.timeRange`. The response also includes `meta.availableTimeRangePresets` and a payload `meta.version` string for forwards-compatible evolution.
 - WebSocket:
   - The Dashboard channel uses a fixed `dashboard` ID.
-  - On connect, it sends a `hello` message and the latest overview.
-  - Subsequent updates are pushed periodically or when related events occur.
+  - On connect:
+    - Sends a `hello` envelope: `{"type":"hello","payload":{"serverTime": "<ISO 8601>"}}`.
+    - Then sends the latest overview: `{"type":"dashboard_overview","payload": <DashboardOverview>}`.
+    - The HTTP and WebSocket surfaces share the same `DashboardOverview` shape, including `timeRange` and `meta` (e.g. `meta.version`, `meta.availableTimeRangePresets`).
+  - Subsequent `dashboard_overview` updates are pushed when relevant events occur (projects, cards, attempts), using the same time-range semantics as the HTTP endpoint.
 - Client hooks:
   - `useDashboardOverview` – fetches the snapshot over HTTP and caches it using React Query.
   - `useDashboardStream` – opens a WebSocket connection to receive live updates.

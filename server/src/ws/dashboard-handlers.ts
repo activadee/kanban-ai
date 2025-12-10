@@ -1,12 +1,13 @@
 import type {WSContext} from 'hono/ws'
+import type {WsMsg} from 'shared'
 import {getDashboardOverview} from 'core'
 import {log} from '../log'
 import {addSocket, removeSocket} from './bus'
 
 const CHANNEL_ID = 'dashboard'
 
-function serialize(payload: unknown) {
-    return JSON.stringify(payload)
+function serialize(msg: WsMsg) {
+    return JSON.stringify(msg)
 }
 
 export function dashboardWebsocketHandlers() {
@@ -14,8 +15,12 @@ export function dashboardWebsocketHandlers() {
         async onOpen(_evt: Event, ws: WSContext) {
             addSocket(CHANNEL_ID, ws)
             try {
+                const hello: WsMsg = {type: 'hello', payload: {serverTime: new Date().toISOString()}}
+                ws.send(serialize(hello))
+
                 const overview = await getDashboardOverview()
-                ws.send(serialize({type: 'dashboard_overview', payload: overview}))
+                const snapshot: WsMsg = {type: 'dashboard_overview', payload: overview}
+                ws.send(serialize(snapshot))
             } catch (error) {
                 log.error('ws:dashboard', 'failed to load overview', {err: error})
             }
