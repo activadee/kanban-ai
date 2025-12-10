@@ -105,4 +105,62 @@ describe('GET /dashboard', () => {
         const resMissingFrom = await app.request('/dashboard?to=2025-01-02T00:00:00Z')
         expect(resMissingFrom.status).toBe(400)
     })
+
+    it('accepts the range alias and maps to presets', async () => {
+        const app = createApp()
+
+        const cases: Array<{alias: string; preset: string}> = [
+            {alias: '24h', preset: 'last_24h'},
+            {alias: '7d', preset: 'last_7d'},
+            {alias: '30d', preset: 'last_30d'},
+            {alias: '90d', preset: 'last_90d'},
+            {alias: 'all', preset: 'all_time'},
+        ]
+
+        for (const {alias, preset} of cases) {
+            const res = await app.request(`/dashboard?range=${alias}`)
+            expect(res.status).toBe(200)
+            const {getDashboardOverview} = await import('core')
+            expect(getDashboardOverview).toHaveBeenCalledWith({preset})
+            vi.clearAllMocks()
+        }
+    })
+
+    it('gives precedence to from/to over timeRangePreset and range', async () => {
+        const app = createApp()
+        const from = '2025-01-01T00:00:00Z'
+        const to = '2025-01-02T00:00:00Z'
+
+        const res = await app.request(
+            `/dashboard?from=${encodeURIComponent(from)}&to=${encodeURIComponent(
+                to,
+            )}&timeRangePreset=last_7d&range=24h`,
+        )
+
+        expect(res.status).toBe(200)
+
+        const {getDashboardOverview} = await import('core')
+        expect(getDashboardOverview).toHaveBeenCalledTimes(1)
+        expect(getDashboardOverview).toHaveBeenCalledWith({from, to})
+    })
+
+    it('gives precedence to timeRangePreset over range when both are valid', async () => {
+        const app = createApp()
+        const res = await app.request('/dashboard?timeRangePreset=last_7d&range=24h')
+
+        expect(res.status).toBe(200)
+
+        const {getDashboardOverview} = await import('core')
+        expect(getDashboardOverview).toHaveBeenCalledTimes(1)
+        expect(getDashboardOverview).toHaveBeenCalledWith({preset: 'last_7d'})
+    })
+
+    it('returns 400 when range alias is unknown', async () => {
+        const app = createApp()
+        const res = await app.request('/dashboard?range=2weeks')
+
+        expect(res.status).toBe(400)
+        const body = (await res.json()) as any
+        expect(body.status).toBe(400)
+    })
 })

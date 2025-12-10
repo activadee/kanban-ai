@@ -1,5 +1,5 @@
 import {Hono} from 'hono'
-import type {DashboardTimeRange} from 'shared'
+import type {DashboardTimeRange, DashboardTimeRangePreset} from 'shared'
 import type {AppEnv} from '../env'
 import {getDashboardOverview} from 'core'
 import {problemJson} from '../http/problem'
@@ -17,14 +17,24 @@ function isValidIsoDate(value: string | null): boolean {
 }
 
 function parseTimeRangeFromQuery(searchParams: URLSearchParams): TimeRangeParseResult {
-    const presetParam = searchParams.get('timeRangePreset')
     const from = searchParams.get('from')
     const to = searchParams.get('to')
+    const presetParam = searchParams.get('timeRangePreset')
+    const rangeAlias = searchParams.get('range')
 
-    const allowedPresets = new Set(['last_24h', 'last_7d', 'last_30d', 'last_90d', 'all_time'] as const)
-
-    if (presetParam && allowedPresets.has(presetParam as any)) {
-        return {timeRange: {preset: presetParam as any}}
+    const allowedPresets = new Set<DashboardTimeRangePreset>([
+        'last_24h',
+        'last_7d',
+        'last_30d',
+        'last_90d',
+        'all_time',
+    ])
+    const rangeAliasToPreset: Record<string, DashboardTimeRangePreset> = {
+        '24h': 'last_24h',
+        '7d': 'last_7d',
+        '30d': 'last_30d',
+        '90d': 'last_90d',
+        all: 'all_time',
     }
 
     if (from || to) {
@@ -33,6 +43,18 @@ function parseTimeRangeFromQuery(searchParams: URLSearchParams): TimeRangeParseR
             return {invalid: true}
         }
         return {timeRange: {from, to}}
+    }
+
+    if (presetParam && allowedPresets.has(presetParam as any)) {
+        return {timeRange: {preset: presetParam as any}}
+    }
+
+    if (rangeAlias) {
+        const mapped = rangeAliasToPreset[rangeAlias]
+        if (!mapped) {
+            return {invalid: true}
+        }
+        return {timeRange: {preset: mapped}}
     }
 
     return {}
@@ -48,7 +70,8 @@ export function createDashboardRouter() {
         if (invalid) {
             return problemJson(c, {
                 status: 400,
-                detail: 'Invalid time range; use ISO 8601 from/to or a supported timeRangePreset',
+                detail:
+                    'Invalid time range; use ISO 8601 from/to, a supported timeRangePreset, or a supported range alias',
             })
         }
         const startedAt = Date.now()

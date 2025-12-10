@@ -647,6 +647,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         successRateInRange,
         projectsWithActivityInRange,
         meta: {
+            version: 'v1',
             availableTimeRangePresets: ['last_24h', 'last_7d', 'last_30d', 'last_90d', 'all_time'],
         },
     }
