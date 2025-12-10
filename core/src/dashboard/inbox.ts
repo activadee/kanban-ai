@@ -438,3 +438,12 @@ export async function buildDashboardInbox(
         },
     }
 }
+
+// Test-only exports to make the inbox classification logic easier to exercise
+// in isolation without coupling tests to the database layer.
+export {
+    classifyAttemptRow,
+    isDoneColumn,
+    STUCK_QUEUED_THRESHOLD_SECONDS,
+    STUCK_RUNNING_THRESHOLD_SECONDS,
+}
