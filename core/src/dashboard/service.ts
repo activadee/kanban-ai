@@ -516,7 +516,13 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             agent: string | null
             attemptsInRange: number | null
             succeededInRange: number | null
+            failedInRange: number | null
             lastActivityAt: Date | null
+        }
+
+        type AgentLifetimeRow = {
+            agent: string | null
+            lastActiveAt: Date | null
         }
 
         const agentKeys = registeredAgents.map((agent) => agent.key)
@@ -527,24 +533,37 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         }
 
         const agentWhere =
-            agentPredicates.length === 1
-                ? agentPredicates[0]
-                : and(...agentPredicates)
+            agentPredicates.length === 1 ? agentPredicates[0] : and(...agentPredicates)
 
         const agentAggregateRows = (await db
             .select({
                 agent: attempts.agent,
                 attemptsInRange: sql<number>`cast(count(*) as integer)`,
                 succeededInRange: sql<number>`cast(sum(case when ${attempts.status} = 'succeeded' then 1 else 0 end) as integer)`,
+                failedInRange: sql<number>`cast(sum(case when ${attempts.status} = 'failed' then 1 else 0 end) as integer)`,
                 lastActivityAt: sql<Date | null>`max(${attempts.createdAt})`,
             })
             .from(attempts)
             .where(agentWhere)
             .groupBy(attempts.agent)) as AgentAggregateRow[]
 
+        const agentLifetimeRows = (await db
+            .select({
+                agent: attempts.agent,
+                lastActiveAt: sql<Date | null>`max(${attempts.createdAt})`,
+            })
+            .from(attempts)
+            .where(inArray(attempts.agent, agentKeys))
+            .groupBy(attempts.agent)) as AgentLifetimeRow[]
+
         const aggregatesByAgent = new Map<
             string,
-            {attemptsInRange: number; succeededInRange: number; lastActivityAt: Date | null}
+            {
+                attemptsInRange: number
+                succeededInRange: number
+                failedInRange: number
+                lastActivityAt: Date | null
+            }
         >()
 
         for (const row of agentAggregateRows) {
@@ -552,13 +571,21 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             const key = row.agent
             const attemptsForAgent = Number(row.attemptsInRange ?? 0)
             const succeededForAgent = Number(row.succeededInRange ?? 0)
+            const failedForAgent = Number(row.failedInRange ?? 0)
             const lastActivity = row.lastActivityAt ?? null
 
             aggregatesByAgent.set(key, {
                 attemptsInRange: attemptsForAgent,
                 succeededInRange: succeededForAgent,
+                failedInRange: failedForAgent,
                 lastActivityAt: lastActivity,
             })
+        }
+
+        const lifetimeByAgent = new Map<string, Date | null>()
+        for (const row of agentLifetimeRows) {
+            if (!row.agent) continue
+            lifetimeByAgent.set(row.agent, row.lastActiveAt ?? null)
         }
 
         agentStats = registeredAgents
@@ -568,6 +595,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
                 const aggregate = aggregatesByAgent.get(agent.key)
                 const attemptsInRangeForAgent = aggregate?.attemptsInRange ?? 0
                 const succeededInRangeForAgent = aggregate?.succeededInRange ?? 0
+                 const failedInRangeForAgent = aggregate?.failedInRange ?? 0
 
                 const successRateInRangeForAgent =
                     attemptsInRangeForAgent > 0
@@ -581,8 +609,9 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
 
                 const hasActivityInRangeForAgent = attemptsInRangeForAgent > 0
 
-                const failedInRangeForAgent =
-                    attemptsInRangeForAgent - succeededInRangeForAgent
+                const lifetimeLastActive = lifetimeByAgent.get(agent.key) ?? null
+                const lastActiveAtIso =
+                    lifetimeLastActive != null ? toIso(lifetimeLastActive) : null
 
                 return {
                     agentId: agent.key,
@@ -595,7 +624,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
                     attemptsInRange: attemptsInRangeForAgent,
                     successRateInRange: successRateInRangeForAgent,
                     currentActiveAttempts: undefined,
-                    lastActiveAt: lastActivityAtForAgent ?? undefined,
+                    lastActiveAt: lastActiveAtIso ?? undefined,
                     lastActivityAt: lastActivityAtForAgent,
                     hasActivityInRange: hasActivityInRangeForAgent,
                     avgLatencyMs: undefined,

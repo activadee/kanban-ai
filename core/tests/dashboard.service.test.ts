@@ -5,7 +5,7 @@ import type { DashboardOverview, DashboardTimeRange } from "shared";
 import { resolveTimeRange } from "../src/dashboard/time-range";
 import { setDbProvider } from "../src/db/provider";
 import type { Agent } from "../src/agents/types";
-import { registerAgent } from "../src/agents/registry";
+import { registerAgent, __resetAgentRegistryForTests } from "../src/agents/registry";
 
 async function createTestDb() {
     const betterSqlite = await import("better-sqlite3");
@@ -272,6 +272,7 @@ describe("dashboard/service.getDashboardOverview", () => {
     const baseTime = new Date("2025-01-10T12:00:00Z");
 
     beforeEach(async () => {
+        __resetAgentRegistryForTests();
         const dbResources = await createTestDb();
         sqlite = dbResources.sqlite;
         insertFixtureData(sqlite, baseTime);
@@ -488,11 +489,13 @@ describe("dashboard/service.getDashboardOverview", () => {
         expect(activeAgent?.hasActivityInRange).toBe(true);
         expect(activeAgent?.successRateInRange).toBeCloseTo(2 / 4, 5);
         expect(activeAgent?.lastActivityAt).not.toBeNull();
+        expect(activeAgent?.attemptsFailed).toBe(1);
 
         // The idle agent has no attempts in range but is still returned.
         expect(idleAgent?.attemptsInRange).toBe(0);
         expect(idleAgent?.hasActivityInRange).toBe(false);
         expect(idleAgent?.successRateInRange).toBeNull();
         expect(idleAgent?.lastActivityAt).toBeNull();
+        expect(idleAgent?.attemptsFailed).toBe(0);
     });
 });
