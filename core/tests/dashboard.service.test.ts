@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { DashboardOverview, DashboardTimeRange } from "shared";
+import { DASHBOARD_METRIC_KEYS } from "shared";
 
 import { resolveTimeRange } from "../src/dashboard/time-range";
 import { setDbProvider } from "../src/db/provider";
@@ -497,5 +498,206 @@ describe("dashboard/service.getDashboardOverview", () => {
         expect(idleAgent?.successRateInRange).toBeNull();
         expect(idleAgent?.lastActivityAt).toBeNull();
         expect(idleAgent?.attemptsFailed).toBe(0);
+    });
+
+    it("exposes headline dashboard metrics via metrics.byKey with correct totals", async () => {
+        const timeRange = resolveTimeRange({ preset: "last_7d" }, baseTime);
+        const overview = await getOverview(timeRange);
+
+        const metrics = overview.metrics.byKey;
+
+        const projectsTotal = metrics[DASHBOARD_METRIC_KEYS.projectsTotal];
+        const activeAttempts = metrics[DASHBOARD_METRIC_KEYS.activeAttempts];
+        const attemptsCompleted = metrics[DASHBOARD_METRIC_KEYS.attemptsCompleted];
+        const openCards = metrics[DASHBOARD_METRIC_KEYS.openCards];
+
+        expect(projectsTotal.total).toBe(3);
+        expect(activeAttempts.total).toBe(1);
+        expect(attemptsCompleted.total).toBe(3);
+        expect(openCards.total).toBe(3);
+
+        expect(projectsTotal.points).toHaveLength(1);
+        expect(projectsTotal.points[0]?.value).toBe(3);
+    });
+
+    it("excludes attempts outside the selected time range from in-range metrics", async () => {
+        const dayMs = 24 * 60 * 60 * 1000;
+        const hourMs = 60 * 60 * 1000;
+
+        const from = new Date(baseTime.getTime() - 3 * dayMs - hourMs).toISOString();
+        const to = new Date(baseTime.getTime() - 3 * dayMs + hourMs).toISOString();
+
+        const overview = await getOverview({ from, to });
+
+        expect(overview.timeRange.from).toBe(from);
+        expect(overview.timeRange.to).toBe(to);
+
+        expect(overview.attemptsInRange).toBe(1);
+        expect(overview.projectsWithActivityInRange).toBe(1);
+        expect(overview.successRateInRange).toBe(1);
+    });
+
+    it("returns 0% success rate when only failed attempts fall within the selected range", async () => {
+        const baseMs = baseTime.getTime();
+        const dayMs = 24 * 60 * 60 * 1000;
+
+        const from = new Date(baseMs - 1 * dayMs + 250 * 1000).toISOString();
+        const to = new Date(baseMs - 1 * dayMs + 350 * 1000).toISOString();
+
+        const overview = await getOverview({ from, to });
+
+        expect(overview.attemptsInRange).toBe(1);
+        expect(overview.successRateInRange).toBe(0);
+    });
+
+    it("returns 100% success rate when only succeeded attempts fall within the selected range", async () => {
+        const baseMs = baseTime.getTime();
+        const dayMs = 24 * 60 * 60 * 1000;
+
+        const from = new Date(baseMs - 40 * dayMs - 2 * dayMs).toISOString();
+        const to = new Date(baseMs - 40 * dayMs + 2 * dayMs).toISOString();
+
+        const overview = await getOverview({ from, to });
+
+        expect(overview.attemptsInRange).toBe(1);
+        expect(overview.successRateInRange).toBe(1);
+    });
+
+    it("returns zeroed in-range metrics when only out-of-range attempts exist", async () => {
+        const halfDayMs = 12 * 60 * 60 * 1000;
+
+        const from = new Date(baseTime.getTime() - halfDayMs).toISOString();
+        const to = baseTime.toISOString();
+
+        const overview = await getOverview({ from, to });
+
+        expect(overview.attemptsInRange).toBe(0);
+        expect(overview.projectsWithActivityInRange).toBe(0);
+        expect(overview.successRateInRange).toBe(0);
+    });
+
+    it("aggregates per-agent stats for agents with only successes, only failures, and no attempts", async () => {
+        const dbResources = await createTestDb();
+        sqlite = dbResources.sqlite;
+
+        const baseTs = Math.floor(baseTime.getTime() / 1000);
+        const day = 24 * 60 * 60;
+
+        sqlite
+            .prepare(
+                `INSERT INTO boards (id, name, repository_path, repository_url, repository_slug, created_at, updated_at)
+                 VALUES (?, ?, ?, NULL, NULL, ?, ?)`,
+            )
+            .run("board-agents", "Agents Project", "/repo/agents", baseTs - day, baseTs - day);
+
+        sqlite
+            .prepare(
+                `INSERT INTO columns (id, title, position, board_id, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+            )
+            .run("col-agents", "Todo", 1, "board-agents", baseTs - day, baseTs - day);
+
+        sqlite
+            .prepare(
+                `INSERT INTO cards (id, title, description, position, column_id, board_id, ticket_key, ticket_type, pr_url, created_at, updated_at)
+                 VALUES (?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+            )
+            .run(
+                "card-agents",
+                "Agent Card",
+                1,
+                "col-agents",
+                "board-agents",
+                baseTs - day,
+                baseTs - day,
+            );
+
+        const insertAttempt = sqlite.prepare(
+            `INSERT INTO attempts (id, board_id, card_id, agent, status, base_branch, branch_name, worktree_path, session_id, created_at, updated_at, started_at, ended_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
+        );
+
+        insertAttempt.run(
+            "success-1",
+            "board-agents",
+            "card-agents",
+            "ONLY_SUCCESS",
+            "succeeded",
+            "main",
+            "branch-success-1",
+            baseTs - day + 10,
+            baseTs - day + 20,
+            baseTs - day + 10,
+            baseTs - day + 20,
+        );
+        insertAttempt.run(
+            "success-2",
+            "board-agents",
+            "card-agents",
+            "ONLY_SUCCESS",
+            "succeeded",
+            "main",
+            "branch-success-2",
+            baseTs - day + 30,
+            baseTs - day + 40,
+            baseTs - day + 30,
+            baseTs - day + 40,
+        );
+
+        insertAttempt.run(
+            "failed-1",
+            "board-agents",
+            "card-agents",
+            "ONLY_FAILED",
+            "failed",
+            "main",
+            "branch-failed-1",
+            baseTs - day + 50,
+            baseTs - day + 60,
+            baseTs - day + 50,
+            baseTs - day + 60,
+        );
+        insertAttempt.run(
+            "failed-2",
+            "board-agents",
+            "card-agents",
+            "ONLY_FAILED",
+            "failed",
+            "main",
+            "branch-failed-2",
+            baseTs - day + 70,
+            baseTs - day + 80,
+            baseTs - day + 70,
+            baseTs - day + 80,
+        );
+
+        __resetAgentRegistryForTests();
+        registerAgent(createTestAgent("ONLY_SUCCESS", "Always Successful"));
+        registerAgent(createTestAgent("ONLY_FAILED", "Always Failing"));
+        registerAgent(createTestAgent("NO_ATTEMPTS", "No Attempts"));
+
+        const timeRange = resolveTimeRange({ preset: "last_7d" }, baseTime);
+        const overview = await getOverview(timeRange);
+
+        const byId = new Map(overview.agentStats.map((stat) => [stat.agentId, stat]));
+
+        const successAgent = byId.get("ONLY_SUCCESS");
+        const failedAgent = byId.get("ONLY_FAILED");
+        const idleAgent = byId.get("NO_ATTEMPTS");
+
+        expect(successAgent?.attemptsInRange).toBe(2);
+        expect(successAgent?.attemptsFailed).toBe(0);
+        expect(successAgent?.successRateInRange).toBe(1);
+
+        expect(failedAgent?.attemptsInRange).toBe(2);
+        expect(failedAgent?.attemptsFailed).toBe(2);
+        expect(failedAgent?.successRateInRange).toBe(0);
+
+        expect(idleAgent?.attemptsInRange).toBe(0);
+        expect(idleAgent?.attemptsFailed).toBe(0);
+        expect(idleAgent?.successRateInRange).toBeNull();
+
+        const labels = overview.agentStats.map((stat) => stat.agentName);
+        expect(labels).toEqual([...labels].sort());
     });
 });
