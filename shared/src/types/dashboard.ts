@@ -795,6 +795,9 @@ export interface AgentStatsSummary {
     status: AgentStatus
     /**
      * Count of attempts started by this agent within the time range.
+     *
+     * Implementations SHOULD keep this consistent with `attemptsInRange`
+     * so that clients can treat them as aliases.
      */
     attemptsStarted: number
     /**
@@ -811,6 +814,23 @@ export interface AgentStatsSummary {
      */
     successRate?: number
     /**
+     * Count of attempts where `createdAt` falls within the parent
+     * `DashboardOverview.timeRange`.
+     *
+     * This is kept explicit (even though it currently matches
+     * `attemptsStarted`) to simplify UI code that needs to reason about
+     * "attempts in range" semantics.
+     */
+    attemptsInRange?: number
+    /**
+     * Success rate for attempts within the selected time range.
+     *
+     * Expressed as a fraction between `0` and `1`. When there are no
+     * attempts in range this should be `null` so that consumers can
+     * distinguish "no data" from "0%".
+     */
+    successRateInRange?: number | null
+    /**
      * Average end-to-end latency in milliseconds for attempts handled by this
      * agent over the time range.
      */
@@ -821,8 +841,26 @@ export interface AgentStatsSummary {
     currentActiveAttempts?: number
     /**
      * UTC ISO 8601 timestamp when this agent was last observed doing work.
+     *
+     * When the agent has never been observed in the selected time range this
+     * MAY be omitted or `null`; prefer `lastActivityAt` and
+     * `hasActivityInRange` for range-scoped dashboards.
      */
     lastActiveAt?: string
+    /**
+     * UTC ISO 8601 timestamp of the most recent attempt for this agent that
+     * falls within the selected `DashboardOverview.timeRange`.
+     *
+     * When there are no attempts in range this should be `null`.
+     */
+    lastActivityAt?: string | null
+    /**
+     * Convenience flag indicating whether the agent has any attempt activity
+     * within the selected `DashboardOverview.timeRange`.
+     *
+     * Derived as `attemptsInRange > 0`.
+     */
+    hasActivityInRange?: boolean
     /**
      * Extension point for agent-specific metrics or labels.
      */

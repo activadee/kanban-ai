@@ -65,8 +65,11 @@ Use this to identify overloaded projects or boards with too many open cards or A
     - Suggests opening onboarding or Settings → GitHub to connect.
 - **Agents**:
   - Shows the number of registered agents.
-  - If none are registered:
-    - Prompts you to add an agent under Agents settings.
+  - Lists each agent with:
+    - Attempts in the current Dashboard time range.
+    - Success rate (as a percentage) for those attempts.
+    - Last activity time derived from the latest attempt in range.
+  - Agents that have no attempts within the selected time range are still shown, with a muted “inactive in this range” state so you can distinguish idle agents from those doing work.
 
 This panel helps you quickly see whether core integrations (GitHub, agents) are ready before starting work.
 

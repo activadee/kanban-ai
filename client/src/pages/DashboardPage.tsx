@@ -11,6 +11,13 @@ import {VersionIndicator} from '@/components/system/VersionIndicator'
 
 const relativeTimeFromNow = (value: string | null | undefined) => formatRelativeTime(value) ?? '—'
 
+const formatSuccessRate = (value: number | null | undefined): string => {
+    if (value == null || Number.isNaN(value)) return '—'
+    const percentage = value * 100
+    if (!Number.isFinite(percentage)) return '—'
+    return `${percentage.toFixed(1)}%`
+}
+
 // Status label and classes handled by StatusBadge
 
 function formatTicket(title: string | null, ticketKey: string | null): string {
@@ -30,6 +37,7 @@ export function DashboardPage() {
     const activeAttempts = overview?.activeAttempts ?? []
     const recentActivity = overview?.recentAttemptActivity ?? []
     const projectSnapshots = overview?.projectSnapshots ?? []
+    const agentStats = overview?.agentStats ?? []
 
     const githubConnected = githubStatus.data?.status === 'valid'
     const githubAccount = githubStatus.data && githubStatus.data.status === 'valid' ? githubStatus.data.account : null
@@ -265,6 +273,65 @@ export function DashboardPage() {
                                                 ? 'No agents registered. Add one under Agents settings.'
                                                 : `${agentCount} agent${agentCount === 1 ? '' : 's'} available.`}
                                     </p>
+                                    <div className="mt-3 space-y-2">
+                                        {dashboardQuery.isLoading ? (
+                                            <div className="space-y-2">
+                                                {Array.from({length: 2}).map((_, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="h-8 animate-pulse rounded-md bg-muted/60"
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : agentStats.length === 0 ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                {agentCount === 0
+                                                    ? 'Register an agent to start collecting activity.'
+                                                    : 'No attempts in the selected time range yet.'}
+                                            </p>
+                                        ) : (
+                                            <ul className="space-y-2">
+                                                {agentStats.map((stat) => {
+                                                    const attemptsInRange = stat.attemptsInRange ?? 0
+                                                    const hasActivity =
+                                                        stat.hasActivityInRange ?? attemptsInRange > 0
+                                                    return (
+                                                        <li
+                                                            key={stat.agentId}
+                                                            className={`flex items-center justify-between rounded-md border px-2 py-1 text-xs ${
+                                                                hasActivity
+                                                                    ? 'border-border/70 bg-background/40'
+                                                                    : 'border-dashed border-border/60 bg-muted/40'
+                                                            }`}
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-foreground">
+                                                                    {stat.agentName || stat.agentId}
+                                                                </span>
+                                                                <span className="text-[11px] text-muted-foreground">
+                                                                    {hasActivity
+                                                                        ? `${attemptsInRange} attempt${attemptsInRange === 1 ? '' : 's'} in range · ${formatSuccessRate(stat.successRateInRange)}`
+                                                                        : 'No attempts in selected time range'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-right text-[11px] text-muted-foreground">
+                                                                {hasActivity ? (
+                                                                    <div>
+                                                                        Last activity{' '}
+                                                                        {relativeTimeFromNow(
+                                                                            stat.lastActivityAt ?? null,
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div>Inactive in this range</div>
+                                                                )}
+                                                            </div>
+                                                        </li>
+                                                    )
+                                                })}
+                                            </ul>
+                                        )}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

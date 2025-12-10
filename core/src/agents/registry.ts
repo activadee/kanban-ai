@@ -25,3 +25,8 @@ export function getAgent(key: string): Agent<any> | undefined {
 export function listAgents(): Agent<any>[] {
     return Array.from(registry.values())
 }
+
+export function __resetAgentRegistryForTests() {
+    registry.clear()
+    agentEvents = null
+}

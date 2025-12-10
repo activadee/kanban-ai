@@ -61,7 +61,16 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
       - A structured `health` block with `activityScore`, `failureRateInRange`, `isHighActivity`, `isAtRisk`, and optional `notes` for machine-generated explanations.
 - `agentStats: AgentStatsSummary[]`  
   - Per-agent stats over `timeRange`:
-    - `agentId`, `agentName`, `status`, `attemptsStarted`, `attemptsSucceeded`, `attemptsFailed`, plus optional `successRate`, `avgLatencyMs`, `currentActiveAttempts`, `lastActiveAt`, and `meta`.
+    - Identity: `agentId`, `agentName`, `status`.
+    - Volume and outcomes:
+      - `attemptsStarted` / `attemptsInRange` – attempts whose `createdAt` falls within the selected `timeRange`.
+      - `attemptsSucceeded`, `attemptsFailed`.
+      - `successRateInRange` – success rate as a fraction between `0` and `1` (`null` when there are no attempts in range), with `successRate` kept as a legacy alias.
+    - Activity:
+      - `lastActivityAt` – most recent attempt for the agent within `timeRange` (or `null` when there is no activity in range).
+      - `hasActivityInRange` – convenience flag derived from `attemptsInRange > 0`.
+      - `currentActiveAttempts?` – number of currently active attempts attributed to the agent.
+    - Optional extras: `avgLatencyMs?`, `lastActiveAt?` (unbounded activity timestamp), and `meta` for future extensions.
 - `attemptsInRange?: number`  
   - Convenience aggregate for the total number of attempts in the selected `timeRange`.
 - `successRateInRange?: number`  
@@ -110,3 +119,5 @@ Forward-compatibility:
     - Uses the GitHub auth status API to report whether you are connected and which account is active.
   - Agents:
     - Uses the Agents registry to show how many agents are available and whether any are registered.
+    - Renders per-agent stats from `DashboardOverview.agentStats`, including attempts in the selected time range, success rate, and last activity timestamp.
+    - Agents with no attempts in the current `timeRange` are still listed and visually marked as inactive in this range so that the UI can highlight inactivity.

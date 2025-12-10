@@ -4,6 +4,8 @@ import type { DashboardOverview, DashboardTimeRange } from "shared";
 
 import { resolveTimeRange } from "../src/dashboard/time-range";
 import { setDbProvider } from "../src/db/provider";
+import type { Agent } from "../src/agents/types";
+import { registerAgent, __resetAgentRegistryForTests } from "../src/agents/registry";
 
 async function createTestDb() {
     const betterSqlite = await import("better-sqlite3");
@@ -254,11 +256,23 @@ function getProjectSnapshot(overview: DashboardOverview, projectId: string) {
     return snapshot;
 }
 
+function createTestAgent(key: string, label: string): Agent<unknown> {
+    const agentLike = {
+        key,
+        label,
+        defaultProfile: {},
+        profileSchema: {},
+        run: async () => 0,
+    };
+    return agentLike as Agent<unknown>;
+}
+
 describe("dashboard/service.getDashboardOverview", () => {
     let sqlite: any;
     const baseTime = new Date("2025-01-10T12:00:00Z");
 
     beforeEach(async () => {
+        __resetAgentRegistryForTests();
         const dbResources = await createTestDb();
         sqlite = dbResources.sqlite;
         insertFixtureData(sqlite, baseTime);
@@ -447,5 +461,41 @@ describe("dashboard/service.getDashboardOverview", () => {
         expect(updatedProjectTwo.failedAttemptsInRange).toBeGreaterThanOrEqual(5);
         expect(updatedProjectTwo.failureRateInRange).toBeGreaterThan(0.5);
         expect(updatedProjectTwo.health?.isAtRisk).toBe(true);
+    });
+
+    it("aggregates per-agent stats over the selected time range", async () => {
+        // Register two agents: one with activity (matching the fixtures)
+        // and one with no attempts at all to verify inclusion.
+        registerAgent(createTestAgent("AGENT", "Fixture Agent"));
+        registerAgent(createTestAgent("IDLE", "Idle Agent"));
+
+        const timeRange = resolveTimeRange({ preset: "last_7d" }, baseTime);
+        const overview = await getOverview(timeRange);
+
+        // Both registered agents should be present in the agentStats list.
+        const ids = overview.agentStats.map((stat) => stat.agentId);
+        expect(ids).toContain("AGENT");
+        expect(ids).toContain("IDLE");
+
+        const activeAgent = overview.agentStats.find((stat) => stat.agentId === "AGENT");
+        const idleAgent = overview.agentStats.find((stat) => stat.agentId === "IDLE");
+
+        expect(activeAgent).toBeDefined();
+        expect(idleAgent).toBeDefined();
+
+        // From the fixtures within last_7d we see:
+        // - a-1 (succeeded), a-2 (failed), a-3 (succeeded), a-5 (queued) for agent "AGENT".
+        expect(activeAgent?.attemptsInRange).toBe(4);
+        expect(activeAgent?.hasActivityInRange).toBe(true);
+        expect(activeAgent?.successRateInRange).toBeCloseTo(2 / 4, 5);
+        expect(activeAgent?.lastActivityAt).not.toBeNull();
+        expect(activeAgent?.attemptsFailed).toBe(1);
+
+        // The idle agent has no attempts in range but is still returned.
+        expect(idleAgent?.attemptsInRange).toBe(0);
+        expect(idleAgent?.hasActivityInRange).toBe(false);
+        expect(idleAgent?.successRateInRange).toBeNull();
+        expect(idleAgent?.lastActivityAt).toBeNull();
+        expect(idleAgent?.attemptsFailed).toBe(0);
     });
 });
