@@ -3,7 +3,11 @@ import {describe, it, expect, beforeEach, vi} from "vitest";
 import {render, cleanup, screen, fireEvent} from "@testing-library/react";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {MemoryRouter} from "react-router-dom";
-import type {DashboardOverview} from "shared";
+import {
+    DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    type DashboardOverview,
+    type DashboardTimeRangePreset,
+} from "shared";
 import {DashboardPage} from "@/pages/DashboardPage";
 
 const dashboardMocks = vi.hoisted(() => ({
@@ -79,10 +83,10 @@ vi.mock("@/components/ui/select", () => {
     return {Select, SelectTrigger, SelectValue, SelectContent, SelectItem};
 });
 
-function createOverview(): DashboardOverview {
+function createOverview(preset: DashboardTimeRangePreset = DEFAULT_DASHBOARD_TIME_RANGE_PRESET): DashboardOverview {
     const now = new Date().toISOString();
     return {
-        timeRange: {preset: "last_7d"},
+        timeRange: {preset},
         generatedAt: now,
         metrics: {
             byKey: {},
@@ -127,11 +131,13 @@ describe("Mission Control dashboard layout", () => {
         cleanup();
         vi.clearAllMocks();
 
-        dashboardMocks.useDashboardOverview.mockReturnValue({
-            data: createOverview(),
-            isLoading: false,
-            isFetching: false,
-        });
+        dashboardMocks.useDashboardOverview.mockImplementation(
+            (options?: { timeRangePreset?: DashboardTimeRangePreset }) => ({
+                data: createOverview(options?.timeRangePreset ?? DEFAULT_DASHBOARD_TIME_RANGE_PRESET),
+                isLoading: false,
+                isFetching: false,
+            }),
+        );
     });
 
     it("renders Mission Control header and main sections", () => {
@@ -147,10 +153,10 @@ describe("Mission Control dashboard layout", () => {
     it("updates time range preset and KPI label when selection changes", () => {
         renderDashboard();
 
-        // Initial hook call uses the default preset (last_7d).
+        // Initial hook call uses the default preset.
         expect(dashboardMocks.useDashboardOverview).toHaveBeenCalled();
         const firstCallOptions = dashboardMocks.useDashboardOverview.mock.calls[0][0];
-        expect(firstCallOptions?.timeRangePreset).toBe("last_7d");
+        expect(firstCallOptions?.timeRangePreset).toBe(DEFAULT_DASHBOARD_TIME_RANGE_PRESET);
 
         // Initial KPI label reflects the default time range.
         expect(screen.getByText(/Attempts \(Last 7 days\)/i)).toBeTruthy();

@@ -1,6 +1,10 @@
 import {useState} from 'react'
 import {Link} from 'react-router-dom'
-import {DASHBOARD_METRIC_KEYS, type DashboardTimeRangePreset} from 'shared'
+import {
+    DASHBOARD_METRIC_KEYS,
+    DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    type DashboardTimeRangePreset,
+} from 'shared'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {MetricCards} from './dashboard/MetricCards'
@@ -19,8 +23,6 @@ const formatSuccessRate = (value: number | null | undefined): string => {
     if (!Number.isFinite(percentage)) return '—'
     return `${percentage.toFixed(1)}%`
 }
-
-const DEFAULT_TIME_RANGE_PRESET: DashboardTimeRangePreset = 'last_7d'
 
 const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = [
     {preset: 'last_24h', label: 'Last 24 hours'},
@@ -42,10 +44,12 @@ function formatTicket(title: string | null, ticketKey: string | null): string {
 }
 
 export function DashboardPage() {
-    const [timeRangePreset, setTimeRangePreset] = useState<DashboardTimeRangePreset>(DEFAULT_TIME_RANGE_PRESET)
+    const [timeRangePreset, setTimeRangePreset] = useState<DashboardTimeRangePreset>(
+        DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    )
 
     const dashboardQuery = useDashboardOverview({timeRangePreset})
-    useDashboardStream(timeRangePreset === DEFAULT_TIME_RANGE_PRESET)
+    useDashboardStream(timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET)
     const githubStatus = useGithubAuthStatus({staleTime: 60_000})
     const agentsQuery = useAgents({staleTime: 60_000})
 
@@ -56,7 +60,12 @@ export function DashboardPage() {
     const projectSnapshots = overview?.projectSnapshots ?? []
     const agentStats = overview?.agentStats ?? []
     const inbox = overview?.inboxItems
-    const effectiveTimeRangePreset: DashboardTimeRangePreset = timeRangePreset
+    const availablePresets = overview?.meta?.availableTimeRangePresets
+    const timeRangeOptions = availablePresets
+        ? TIME_RANGE_OPTIONS.filter((option) => availablePresets.includes(option.preset))
+        : TIME_RANGE_OPTIONS
+    const effectiveTimeRangePreset: DashboardTimeRangePreset =
+        overview?.timeRange.preset ?? timeRangePreset
     const inboxReview = inbox?.review ?? []
     const inboxFailed = inbox?.failed ?? []
     const inboxStuck = inbox?.stuck ?? []
@@ -125,7 +134,7 @@ export function DashboardPage() {
                                         <SelectValue placeholder="Select range"/>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {TIME_RANGE_OPTIONS.map((option) => (
+                                        {timeRangeOptions.map((option) => (
                                             <SelectItem key={option.preset} value={option.preset}>
                                                 {option.label}
                                             </SelectItem>

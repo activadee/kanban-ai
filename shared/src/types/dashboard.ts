@@ -22,6 +22,15 @@ export type DashboardTimeRangePreset =
     | 'all_time'
 
 /**
+ * Default dashboard time-range preset used when callers omit explicit
+ * time-range parameters.
+ *
+ * Keep server/router defaults, documentation, and client behaviour aligned
+ * with this constant to avoid drift.
+ */
+export const DEFAULT_DASHBOARD_TIME_RANGE_PRESET: DashboardTimeRangePreset = 'last_7d'
+
+/**
  * Canonical representation of the time window used to compute dashboard
  * metrics and aggregates.
  *

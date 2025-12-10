@@ -105,6 +105,11 @@ Forward-compatibility:
         - `GET /api/v1/dashboard?range=30d` → `timeRangePreset=last_30d`  
         - `GET /api/v1/dashboard?range=90d` → `timeRangePreset=last_90d`  
         - `GET /api/v1/dashboard?range=all` → `timeRangePreset=all_time`
+    - Default when no range is provided:
+      - When callers omit both `timeRangePreset` and `from`/`to`, the server uses
+        `DEFAULT_DASHBOARD_TIME_RANGE_PRESET` from `shared` (currently `last_7d`)
+        as the default window. Client code should import and reuse this constant
+        instead of hard-coding the preset string.
     - Precedence rules:
       - If `from` or `to` is provided, the handler requires both to be valid ISO 8601 values and ignores any `timeRangePreset` or `range`.
       - Otherwise, a valid `timeRangePreset` is used when present and the `range` alias is ignored.
@@ -117,6 +122,13 @@ Forward-compatibility:
     - Then sends the latest overview: `{"type":"dashboard_overview","payload": <DashboardOverview>}`.
     - The HTTP and WebSocket surfaces share the same `DashboardOverview` shape, including `timeRange` and `meta` (e.g. `meta.version`, `meta.availableTimeRangePresets`).
   - Subsequent `dashboard_overview` updates are pushed when relevant events occur (projects, cards, attempts), using the same time-range semantics as the HTTP endpoint.
+  - Client behaviour:
+    - The current Mission Control UI opens a WebSocket stream for the default
+      preset only (`DEFAULT_DASHBOARD_TIME_RANGE_PRESET`) and relies on the
+      periodic HTTP refresh for non-default ranges to keep cache semantics
+      simple. If future iterations introduce streaming for additional presets,
+      the cache key strategy in the client should be revisited alongside this
+      documentation.
 - Client hooks:
   - `useDashboardOverview` – fetches the snapshot over HTTP and caches it using React Query.
   - `useDashboardStream` – opens a WebSocket connection to receive live updates.
