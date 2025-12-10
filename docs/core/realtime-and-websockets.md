@@ -45,8 +45,9 @@ Both use the same WebSocket infrastructure but different handlers and message ty
 - Connection:
   - Single global channel at `/api/v1/ws/dashboard`.
   - On connect, the server:
-    - Sends `hello`.
-    - Computes and sends the current `DashboardOverview` (metrics, active attempts, inbox items, recent activity, project snapshots, agent stats, and optional meta).
+    - Sends a `hello` envelope (e.g. `{"type":"hello","payload":{"serverTime":"<ISO 8601>"}}`).
+    - Immediately follows with the current `dashboard_overview` envelope (`{"type":"dashboard_overview","payload": ... }`) that mirrors the HTTP `DashboardOverview` (metrics, active attempts, inbox items, recent activity, project snapshots, and agent stats).
+    - The `dashboard_overview.payload` includes normalized `timeRange` and `meta` (the same metadata object with `version` and `availableTimeRangePresets`) so both HTTP and WS clients share the same shape.
 - Updates:
   - The Dashboard socket is **read-only**:
     - Incoming messages are ignored.

@@ -111,6 +111,10 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
       - `GET /dashboard?timeRangePreset=last_24h`
       - `GET /dashboard?timeRangePreset=last_7d`
       - `GET /dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
+      - Convenience alias: `range=<value>` (supports `24h`, `7d`, `30d`, `90d`, `all`; each maps to the matching `timeRangePreset`).
+        - `GET /dashboard?range=24h` → shorthand for `timeRangePreset=last_24h`; unknown values return HTTP `400`.
+      - Precedence: explicit `from`/`to` wins, otherwise a provided `timeRangePreset` is used before `range`.
+    - The `DashboardOverview.meta` object includes `availableTimeRangePresets` (allowed presets) and `version` (forward-compatible version string).
     - The handler maps these parameters into the shared `DashboardTimeRange` type and echoes it on the response.
   - WebSocket channel: `/ws/dashboard` (see realtime docs).
 - Metrics:
