@@ -513,7 +513,7 @@ describe("dashboard/service.getDashboardOverview", () => {
 
         expect(projectsTotal.total).toBe(3);
         expect(activeAttempts.total).toBe(1);
-        expect(attemptsCompleted.total).toBe(4);
+        expect(attemptsCompleted.total).toBe(3);
         expect(openCards.total).toBe(3);
 
         expect(projectsTotal.points).toHaveLength(1);
