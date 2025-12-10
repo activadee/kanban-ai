@@ -3,6 +3,7 @@ import type {DashboardTimeRange} from 'shared'
 import type {AppEnv} from '../env'
 import {getDashboardOverview} from 'core'
 import {problemJson} from '../http/problem'
+import {log} from '../log'
 
 type TimeRangeParseResult = {
     timeRange?: DashboardTimeRange
@@ -50,8 +51,14 @@ export function createDashboardRouter() {
                 detail: 'Invalid time range; use ISO 8601 from/to or a supported timeRangePreset',
             })
         }
-
+        const startedAt = Date.now()
         const overview = await getDashboardOverview(timeRange)
+        const elapsedMs = Date.now() - startedAt
+        log.debug('dashboard', 'overview computed', {
+            elapsedMs,
+            preset: timeRange?.preset,
+            hasCustomRange: Boolean(timeRange?.from || timeRange?.to),
+        })
         return c.json(overview)
     })
 

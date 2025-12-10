@@ -17,6 +17,7 @@ import {resolveDb} from '../db/with-tx'
 import {resolveTimeBounds, resolveTimeRange} from './time-range'
 import {buildDashboardInbox} from './inbox'
 import {buildProjectHealth} from './project-health'
+import {listAgents} from '../agents/registry'
 
 const ACTIVE_STATUSES: AttemptStatus[] = ['queued', 'running', 'stopping']
 const COMPLETED_STATUSES: AttemptStatus[] = ['succeeded', 'failed', 'stopped']
@@ -506,7 +507,102 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
 
     const inboxItems: DashboardInbox = await buildDashboardInbox(rangeFrom, rangeTo)
 
-    const agentStats: AgentStatsSummary[] = []
+    const registeredAgents = listAgents()
+
+    let agentStats: AgentStatsSummary[] = []
+
+    if (registeredAgents.length > 0) {
+        type AgentAggregateRow = {
+            agent: string | null
+            attemptsInRange: number | null
+            succeededInRange: number | null
+            lastActivityAt: Date | null
+        }
+
+        const agentKeys = registeredAgents.map((agent) => agent.key)
+
+        const agentPredicates = [inArray(attempts.agent, agentKeys)]
+        if (attemptsTimePredicate) {
+            agentPredicates.push(attemptsTimePredicate)
+        }
+
+        const agentWhere =
+            agentPredicates.length === 1
+                ? agentPredicates[0]
+                : and(...agentPredicates)
+
+        const agentAggregateRows = (await db
+            .select({
+                agent: attempts.agent,
+                attemptsInRange: sql<number>`cast(count(*) as integer)`,
+                succeededInRange: sql<number>`cast(sum(case when ${attempts.status} = 'succeeded' then 1 else 0 end) as integer)`,
+                lastActivityAt: sql<Date | null>`max(${attempts.createdAt})`,
+            })
+            .from(attempts)
+            .where(agentWhere)
+            .groupBy(attempts.agent)) as AgentAggregateRow[]
+
+        const aggregatesByAgent = new Map<
+            string,
+            {attemptsInRange: number; succeededInRange: number; lastActivityAt: Date | null}
+        >()
+
+        for (const row of agentAggregateRows) {
+            if (!row.agent) continue
+            const key = row.agent
+            const attemptsForAgent = Number(row.attemptsInRange ?? 0)
+            const succeededForAgent = Number(row.succeededInRange ?? 0)
+            const lastActivity = row.lastActivityAt ?? null
+
+            aggregatesByAgent.set(key, {
+                attemptsInRange: attemptsForAgent,
+                succeededInRange: succeededForAgent,
+                lastActivityAt: lastActivity,
+            })
+        }
+
+        agentStats = registeredAgents
+            .slice()
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map<AgentStatsSummary>((agent) => {
+                const aggregate = aggregatesByAgent.get(agent.key)
+                const attemptsInRangeForAgent = aggregate?.attemptsInRange ?? 0
+                const succeededInRangeForAgent = aggregate?.succeededInRange ?? 0
+
+                const successRateInRangeForAgent =
+                    attemptsInRangeForAgent > 0
+                        ? succeededInRangeForAgent / attemptsInRangeForAgent
+                        : null
+
+                const lastActivityAtForAgent =
+                    aggregate?.lastActivityAt != null
+                        ? toIso(aggregate.lastActivityAt)
+                        : null
+
+                const hasActivityInRangeForAgent = attemptsInRangeForAgent > 0
+
+                const failedInRangeForAgent =
+                    attemptsInRangeForAgent - succeededInRangeForAgent
+
+                return {
+                    agentId: agent.key,
+                    agentName: agent.label,
+                    status: 'online',
+                    attemptsStarted: attemptsInRangeForAgent,
+                    attemptsSucceeded: succeededInRangeForAgent,
+                    attemptsFailed: failedInRangeForAgent,
+                    successRate: successRateInRangeForAgent ?? undefined,
+                    attemptsInRange: attemptsInRangeForAgent,
+                    successRateInRange: successRateInRangeForAgent,
+                    currentActiveAttempts: undefined,
+                    lastActiveAt: lastActivityAtForAgent ?? undefined,
+                    lastActivityAt: lastActivityAtForAgent,
+                    hasActivityInRange: hasActivityInRangeForAgent,
+                    avgLatencyMs: undefined,
+                    meta: undefined,
+                }
+            })
+    }
 
     return {
         timeRange: resolvedRange,
