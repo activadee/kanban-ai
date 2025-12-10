@@ -1,4 +1,5 @@
 import {QueryClient} from '@tanstack/react-query'
+import type {DashboardTimeRangePreset} from 'shared'
 
 export const queryClient = new QueryClient({
     defaultOptions: {
@@ -55,7 +56,15 @@ export const filesystemKeys = {
 
 export const dashboardKeys = {
     all: ['dashboard'] as const,
-    overview: () => [...dashboardKeys.all, 'overview'] as const,
+    /**
+     * Overview cache key scoped by an optional time-range preset.
+     *
+     * When no preset is provided (or when using the default preset),
+     * callers should pass `undefined` so that the key remains backwards-
+     * compatible with existing subscribers such as `useDashboardStream`.
+     */
+    overview: (preset?: DashboardTimeRangePreset) =>
+        preset ? ([...dashboardKeys.all, 'overview', preset] as const) : ([...dashboardKeys.all, 'overview'] as const),
 }
 
 export const onboardingKeys = {
