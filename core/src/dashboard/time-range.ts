@@ -1,4 +1,4 @@
-import type {DashboardTimeRange, DashboardTimeRangePreset} from 'shared'
+import {DEFAULT_DASHBOARD_TIME_RANGE_PRESET, type DashboardTimeRange, type DashboardTimeRangePreset} from 'shared'
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
@@ -40,7 +40,7 @@ export function resolveTimeRange(input?: DashboardTimeRange, now: Date = new Dat
         // to a preset-based window rather than propagating bad dates.
     }
 
-    const preset = input?.preset ?? 'last_24h'
+    const preset = input?.preset ?? DEFAULT_DASHBOARD_TIME_RANGE_PRESET
 
     // Special-case "all_time" as unbounded on the lower side.
     if (preset === 'all_time') {
@@ -81,4 +81,3 @@ export function resolveTimeBounds(range: DashboardTimeRange, now: Date = new Dat
 
     return {from, to}
 }
-
