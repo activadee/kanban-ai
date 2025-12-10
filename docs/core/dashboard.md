@@ -105,6 +105,11 @@ Forward-compatibility:
         - `GET /api/v1/dashboard?range=30d` → `timeRangePreset=last_30d`  
         - `GET /api/v1/dashboard?range=90d` → `timeRangePreset=last_90d`  
         - `GET /api/v1/dashboard?range=all` → `timeRangePreset=all_time`
+    - Default when no range is provided:
+      - When callers omit both `timeRangePreset` and `from`/`to`, the server uses
+        `DEFAULT_DASHBOARD_TIME_RANGE_PRESET` from `shared` (currently `last_7d`)
+        as the default window. Client code should import and reuse this constant
+        instead of hard-coding the preset string.
     - Precedence rules:
       - If `from` or `to` is provided, the handler requires both to be valid ISO 8601 values and ignores any `timeRangePreset` or `range`.
       - Otherwise, a valid `timeRangePreset` is used when present and the `range` alias is ignored.
@@ -117,6 +122,13 @@ Forward-compatibility:
     - Then sends the latest overview: `{"type":"dashboard_overview","payload": <DashboardOverview>}`.
     - The HTTP and WebSocket surfaces share the same `DashboardOverview` shape, including `timeRange` and `meta` (e.g. `meta.version`, `meta.availableTimeRangePresets`).
   - Subsequent `dashboard_overview` updates are pushed when relevant events occur (projects, cards, attempts), using the same time-range semantics as the HTTP endpoint.
+  - Client behaviour:
+    - The current Mission Control UI opens a WebSocket stream for the default
+      preset only (`DEFAULT_DASHBOARD_TIME_RANGE_PRESET`) and relies on the
+      periodic HTTP refresh for non-default ranges to keep cache semantics
+      simple. If future iterations introduce streaming for additional presets,
+      the cache key strategy in the client should be revisited alongside this
+      documentation.
 - Client hooks:
   - `useDashboardOverview` – fetches the snapshot over HTTP and caches it using React Query.
   - `useDashboardStream` – opens a WebSocket connection to receive live updates.
@@ -124,17 +136,12 @@ Forward-compatibility:
 ## UI panels
 
 - **Metric cards**
-  - Show high-level counts for projects, active Attempts, Attempts in the selected time range, and open cards.
-- **Active Attempts**
-  - Lists in-flight Attempts with status badges and links to their boards/cards.
-- **Recent activity**
-  - Shows recently completed Attempts (success, failure, stopped) with relative timestamps.
-- **Project snapshot**
-  - Per-project card totals, open card counts, and active Attempts; each entry links to the project board.
-- **System status**
-  - GitHub:
-    - Uses the GitHub auth status API to report whether you are connected and which account is active.
-  - Agents:
-    - Uses the Agents registry to show how many agents are available and whether any are registered.
-    - Renders per-agent stats from `DashboardOverview.agentStats`, including attempts in the selected time range, success rate, and last activity timestamp.
-    - Agents with no attempts in the current `timeRange` are still listed and visually marked as inactive in this range so that the UI can highlight inactivity.
+  - Show high-level counts for projects, active Attempts, Attempts in the selected time range, and open cards. The “Attempts (range)” label matches the preset so you can correlate totals with the chosen window.
+- **Live Agent Activity**
+  - One card that merges live `Active attempts` (status badges, project/agent metadata, relative update timestamps, and board links) with `Recent activity` (completed/stopped attempts in the same time range). Empty states explain when no data is available for the current preset.
+- **Inbox**
+  - Renders actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox`. Each item shows card/ticket context, project/agent metadata, and the most recent timestamp (`lastUpdatedAt`/`finishedAt`/`createdAt`), with groups sorted by recency so urgent work surfaces first.
+- **Project Health**
+  - Replaces the legacy project snapshot card with rows that surface each project’s repository, total cards, open cards, and active attempts for the selected range, plus links to the board so you can jump straight to overloaded workspaces.
+- **Agents & System**
+  - Successor to the System status card. GitHub blocks display connection health and the authenticated username (or next steps when disconnected). The agent list still reflects the current preset with attempts in range, success rate, and last activity; agents with no recent runs show a muted “inactive in this range” hint so they remain visible even when idle.

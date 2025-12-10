@@ -1,10 +1,16 @@
+import {useState} from 'react'
 import {Link} from 'react-router-dom'
-import {DASHBOARD_METRIC_KEYS} from 'shared'
+import {
+    DASHBOARD_METRIC_KEYS,
+    DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    type DashboardTimeRangePreset,
+} from 'shared'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {MetricCards} from './dashboard/MetricCards'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Separator} from '@/components/ui/separator'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {useDashboardOverview, useDashboardStream, useGithubAuthStatus, useAgents} from '@/hooks'
 import {formatRelativeTime} from '@/lib/time'
 import {VersionIndicator} from '@/components/system/VersionIndicator'
@@ -18,6 +24,17 @@ const formatSuccessRate = (value: number | null | undefined): string => {
     return `${percentage.toFixed(1)}%`
 }
 
+const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = [
+    {preset: 'last_24h', label: 'Last 24 hours'},
+    {preset: 'last_7d', label: 'Last 7 days'},
+    {preset: 'last_30d', label: 'Last 30 days'},
+]
+
+const getTimeRangeLabel = (preset: DashboardTimeRangePreset | undefined): string => {
+    const option = TIME_RANGE_OPTIONS.find((item) => item.preset === preset)
+    return option?.label ?? 'Selected range'
+}
+
 // Status label and classes handled by StatusBadge
 
 function formatTicket(title: string | null, ticketKey: string | null): string {
@@ -27,8 +44,12 @@ function formatTicket(title: string | null, ticketKey: string | null): string {
 }
 
 export function DashboardPage() {
-    const dashboardQuery = useDashboardOverview()
-    useDashboardStream(true)
+    const [timeRangePreset, setTimeRangePreset] = useState<DashboardTimeRangePreset>(
+        DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    )
+
+    const dashboardQuery = useDashboardOverview({timeRangePreset})
+    useDashboardStream(timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET)
     const githubStatus = useGithubAuthStatus({staleTime: 60_000})
     const agentsQuery = useAgents({staleTime: 60_000})
 
@@ -38,10 +59,23 @@ export function DashboardPage() {
     const recentActivity = overview?.recentAttemptActivity ?? []
     const projectSnapshots = overview?.projectSnapshots ?? []
     const agentStats = overview?.agentStats ?? []
+    const inbox = overview?.inboxItems
+    const availablePresets = overview?.meta?.availableTimeRangePresets
+    const timeRangeOptions = availablePresets
+        ? TIME_RANGE_OPTIONS.filter((option) => availablePresets.includes(option.preset))
+        : TIME_RANGE_OPTIONS
+    const effectiveTimeRangePreset: DashboardTimeRangePreset =
+        overview?.timeRange.preset ?? timeRangePreset
+    const inboxReview = inbox?.review ?? []
+    const inboxFailed = inbox?.failed ?? []
+    const inboxStuck = inbox?.stuck ?? []
+    const inboxTotal = inboxReview.length + inboxFailed.length + inboxStuck.length
 
     const githubConnected = githubStatus.data?.status === 'valid'
     const githubAccount = githubStatus.data && githubStatus.data.status === 'valid' ? githubStatus.data.account : null
     const agentCount = agentsQuery.data?.agents.length ?? 0
+
+    const timeRangeLabel = getTimeRangeLabel(effectiveTimeRangePreset)
 
     const metricCards = [
         {
@@ -55,7 +89,7 @@ export function DashboardPage() {
             description: 'Agents running or queued across all projects.',
         },
         {
-            label: 'Attempts (range)',
+            label: `Attempts (${timeRangeLabel})`,
             value: metrics?.byKey[DASHBOARD_METRIC_KEYS.attemptsCompleted]?.total ?? '—',
             description: 'Completed attempts in the selected time range.',
         },
@@ -72,11 +106,11 @@ export function DashboardPage() {
                 <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-3">
-                            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
+                            <h1 className="text-2xl font-semibold text-foreground">Mission Control</h1>
                             <VersionIndicator/>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
-                            Monitor agent activity, recent automation results, and project health at a glance.
+                            Centralize agent activity, project health, and system status in one dashboard.
                         </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -89,75 +123,169 @@ export function DashboardPage() {
                         <Button asChild size="sm" variant="outline">
                             <Link to="/agents/CODEX">Manage agents</Link>
                         </Button>
-                        <span className="ml-auto text-xs text-muted-foreground">
-              {overview?.generatedAt || overview?.updatedAt
-                  ? `Updated ${relativeTimeFromNow(overview.generatedAt ?? overview.updatedAt)}`
-                  : dashboardQuery.isFetching
-                      ? 'Updating…'
-                      : ''}
-            </span>
+                        <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                                <span>Time range</span>
+                                <Select
+                                    value={effectiveTimeRangePreset}
+                                    onValueChange={(value) => setTimeRangePreset(value as DashboardTimeRangePreset)}
+                                >
+                                    <SelectTrigger size="sm">
+                                        <SelectValue placeholder="Select range"/>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {timeRangeOptions.map((option) => (
+                                            <SelectItem key={option.preset} value={option.preset}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <span>
+                                {overview?.generatedAt || overview?.updatedAt
+                                    ? `Updated ${relativeTimeFromNow(overview.generatedAt ?? overview.updatedAt)}`
+                                    : dashboardQuery.isFetching
+                                        ? 'Updating…'
+                                        : ''}
+                            </span>
+                        </div>
                     </div>
                 </header>
 
                 <MetricCards items={metricCards}/>
 
-                <section className="grid gap-6 lg:grid-cols-3">
-                    <div className="space-y-6 lg:col-span-2">
+                <section className="grid gap-6 lg:grid-cols-2">
+                    <div className="space-y-6">
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
-                                <CardTitle>Active Attempts</CardTitle>
-                                <CardDescription>Live work that agents are currently processing or queued to
-                                    run.</CardDescription>
+                                <CardTitle>Live Agent Activity</CardTitle>
+                                <CardDescription>
+                                    Live attempts and recent outcomes across your projects.
+                                </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                {dashboardQuery.isLoading ? (
-                                    <div className="space-y-3">
-                                        {Array.from({length: 3}).map((_, index) => (
-                                            <div key={index} className="h-14 animate-pulse rounded-md bg-muted/60"/>
-                                        ))}
+                            <CardContent className="space-y-6">
+                                <div>
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <h2 className="text-sm font-medium text-foreground">Active attempts</h2>
                                     </div>
-                                ) : activeAttempts.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">No active attempts right now. Kick off
-                                        work from any card to see it here.</p>
-                                ) : (
-                                    <ul className="space-y-4">
-                                        {activeAttempts.map((attempt) => (
-                                            <li key={attempt.attemptId}
-                                                className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3">
-                                                <div className="space-y-1">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <StatusBadge status={attempt.status}/>
-                                                        <span
-                                                            className="text-sm font-medium text-foreground">{formatTicket(attempt.cardTitle, attempt.ticketKey)}</span>
+                                    {dashboardQuery.isLoading ? (
+                                        <div className="space-y-3">
+                                            {Array.from({length: 3}).map((_, index) => (
+                                                <div key={index} className="h-14 animate-pulse rounded-md bg-muted/60"/>
+                                            ))}
+                                        </div>
+                                    ) : activeAttempts.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No active attempts right now. Kick off work from any card to see it here.
+                                        </p>
+                                    ) : (
+                                        <ul className="space-y-4">
+                                            {activeAttempts.map((attempt) => (
+                                                <li
+                                                    key={attempt.attemptId}
+                                                    className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3"
+                                                >
+                                                    <div className="space-y-1">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <StatusBadge status={attempt.status}/>
+                                                            <span className="text-sm font-medium text-foreground">
+                                                                {formatTicket(attempt.cardTitle, attempt.ticketKey)}
+                                                            </span>
+                                                        </div>
+                                                        <div
+                                                            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                            <span>{attempt.projectName ?? 'Unknown project'}</span>
+                                                            <Separator orientation="vertical" className="h-3"/>
+                                                            <span>{attempt.agentId}</span>
+                                                        </div>
                                                     </div>
-                                                    <div
-                                                        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                        <span>{attempt.projectName ?? 'Unknown project'}</span>
-                                                        <Separator orientation="vertical" className="h-3"/>
-                                                        <span>{attempt.agentId}</span>
+                                                    <div className="text-right text-xs text-muted-foreground">
+                                                        <div>{relativeTimeFromNow(attempt.updatedAt)}</div>
+                                                        {attempt.projectId ? (
+                                                            <Button
+                                                                asChild
+                                                                variant="link"
+                                                                size="sm"
+                                                                className="h-auto p-0 text-xs"
+                                                            >
+                                                                <Link to={`/projects/${attempt.projectId}`}>
+                                                                    Open project
+                                                                </Link>
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
-                                                </div>
-                                                <div className="text-right text-xs text-muted-foreground">
-                                                    <div>{relativeTimeFromNow(attempt.updatedAt)}</div>
-                                                    {attempt.projectId ? (
-                                                        <Button asChild variant="link" size="sm"
-                                                                className="h-auto p-0 text-xs">
-                                                            <Link to={`/projects/${attempt.projectId}`}>Open
-                                                                project</Link>
-                                                        </Button>
-                                                    ) : null}
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <h2 className="text-sm font-medium text-foreground">Recent activity</h2>
+                                        <span className="text-xs text-muted-foreground">{timeRangeLabel}</span>
+                                    </div>
+                                    {dashboardQuery.isLoading ? (
+                                        <div className="space-y-3">
+                                            {Array.from({length: 4}).map((_, index) => (
+                                                <div key={index} className="h-12 animate-pulse rounded-md bg-muted/60"/>
+                                            ))}
+                                        </div>
+                                    ) : recentActivity.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No attempt history yet. Launch an agent attempt to populate this feed.
+                                        </p>
+                                    ) : (
+                                        <ul className="space-y-3">
+                                            {recentActivity.map((activity) => (
+                                                <li
+                                                    key={activity.attemptId}
+                                                    className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3"
+                                                >
+                                                    <div className="space-y-1">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <StatusBadge status={activity.status}/>
+                                                            <span className="text-sm font-medium text-foreground">
+                                                                {formatTicket(activity.cardTitle, activity.ticketKey)}
+                                                            </span>
+                                                        </div>
+                                                        <div
+                                                            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                            <span>{activity.projectName ?? 'Unknown project'}</span>
+                                                            <Separator orientation="vertical" className="h-3"/>
+                                                            <span>{activity.agentId}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right text-xs text-muted-foreground">
+                                                        <div>{relativeTimeFromNow(activity.occurredAt)}</div>
+                                                        {activity.projectId ? (
+                                                            <Button
+                                                                asChild
+                                                                variant="link"
+                                                                size="sm"
+                                                                className="h-auto p-0 text-xs"
+                                                            >
+                                                                <Link to={`/projects/${activity.projectId}`}>
+                                                                    View board
+                                                                </Link>
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             </CardContent>
                         </Card>
 
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
-                                <CardTitle>Recent Activity</CardTitle>
-                                <CardDescription>Latest attempt outcomes across your projects.</CardDescription>
+                                <CardTitle>Inbox</CardTitle>
+                                <CardDescription>
+                                    Actionable items that may need review or intervention.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {dashboardQuery.isLoading ? (
@@ -166,40 +294,85 @@ export function DashboardPage() {
                                             <div key={index} className="h-12 animate-pulse rounded-md bg-muted/60"/>
                                         ))}
                                     </div>
-                                ) : recentActivity.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">No attempt history yet. Launch an agent
-                                        attempt to populate this feed.</p>
+                                ) : inboxTotal === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        No inbox items in the selected time range.
+                                    </p>
                                 ) : (
-                                    <ul className="space-y-3">
-                                        {recentActivity.map((activity) => (
-                                            <li key={activity.attemptId}
-                                                className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3">
-                                                <div className="space-y-1">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <StatusBadge status={activity.status}/>
-                                                        <span
-                                                            className="text-sm font-medium text-foreground">{formatTicket(activity.cardTitle, activity.ticketKey)}</span>
-                                                    </div>
+                                    <div className="space-y-4">
+                                        {(['review', 'failed', 'stuck'] as const).map((kind) => {
+                                            const items =
+                                                kind === 'review'
+                                                    ? inboxReview
+                                                    : kind === 'failed'
+                                                        ? inboxFailed
+                                                        : inboxStuck
+                                            if (!items.length) return null
+                                            const label =
+                                                kind === 'review' ? 'Review' : kind === 'failed' ? 'Failed' : 'Stuck'
+                                            return (
+                                                <div key={kind} className="space-y-2">
                                                     <div
-                                                        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                        <span>{activity.projectName ?? 'Unknown project'}</span>
-                                                        <Separator orientation="vertical" className="h-3"/>
-                                                        <span>{activity.agentId}</span>
+                                                        className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                                        {label}
                                                     </div>
+                                                    <ul className="space-y-2">
+                                                        {items.map((item) => (
+                                                            <li
+                                                                key={item.id}
+                                                                className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3 text-xs"
+                                                            >
+                                                                <div className="space-y-1">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <span
+                                                                            className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                                                                        >
+                                                                            {label}
+                                                                        </span>
+                                                                        <span
+                                                                            className="text-sm font-medium text-foreground">
+                                                                            {formatTicket(
+                                                                                item.cardTitle ?? null,
+                                                                                item.ticketKey ?? null,
+                                                                            )}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div
+                                                                        className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                                                                        <span>
+                                                                            {item.projectName ?? 'Unknown project'}
+                                                                        </span>
+                                                                        {(item.agentName || item.agentId) && (
+                                                                            <>
+                                                                                <Separator
+                                                                                    orientation="vertical"
+                                                                                    className="h-3"
+                                                                                />
+                                                                                <span>
+                                                                                    {item.agentName ?? item.agentId}
+                                                                                </span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    className="text-right text-[11px] text-muted-foreground">
+                                                                    <div>
+                                                                        {relativeTimeFromNow(
+                                                                            item.lastUpdatedAt ??
+                                                                            item.finishedAt ??
+                                                                            item.updatedAt ??
+                                                                            item.createdAt,
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 </div>
-                                                <div className="text-right text-xs text-muted-foreground">
-                                                    <div>{relativeTimeFromNow(activity.occurredAt)}</div>
-                                                    {activity.projectId ? (
-                                                        <Button asChild variant="link" size="sm"
-                                                                className="h-auto p-0 text-xs">
-                                                            <Link to={`/projects/${activity.projectId}`}>View
-                                                                board</Link>
-                                                        </Button>
-                                                    ) : null}
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                            )
+                                        })}
+                                    </div>
                                 )}
                             </CardContent>
                         </Card>
@@ -208,8 +381,10 @@ export function DashboardPage() {
                     <div className="space-y-6">
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
-                                <CardTitle>Project Snapshot</CardTitle>
-                                <CardDescription>Projects with card and attempt counts.</CardDescription>
+                                <CardTitle>Project Health</CardTitle>
+                                <CardDescription>
+                                    Project workload and card counts in the selected time range.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {dashboardQuery.isLoading ? (
@@ -219,24 +394,29 @@ export function DashboardPage() {
                                         ))}
                                     </div>
                                 ) : projectSnapshots.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">Create a project to populate this
-                                        list.</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Create a project to populate this list.
+                                    </p>
                                 ) : (
                                     <ul className="space-y-3">
                                         {projectSnapshots.map((project) => (
                                             <li key={project.id} className="rounded-md border border-border/60 p-3">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div>
-                                                        <Link to={`/projects/${project.id}`}
-                                                              className="text-sm font-medium text-foreground hover:underline">
+                                                        <Link
+                                                            to={`/projects/${project.id}`}
+                                                            className="text-sm font-medium text-foreground hover:underline"
+                                                        >
                                                             {project.name}
                                                         </Link>
-                                                        <div
-                                                            className="text-xs text-muted-foreground">{project.repositorySlug ?? project.repositoryPath}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {project.repositorySlug ?? project.repositoryPath}
+                                                        </div>
                                                     </div>
                                                     <div className="text-right text-xs text-muted-foreground">
                                                         <div>{project.totalCards} cards</div>
-                                                        <div>{project.openCards} open · {project.activeAttempts} active
+                                                        <div>
+                                                            {project.openCards} open · {project.activeAttempts} active
                                                             attempts
                                                         </div>
                                                     </div>
@@ -250,8 +430,10 @@ export function DashboardPage() {
 
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
-                                <CardTitle>System Status</CardTitle>
-                                <CardDescription>Connection health and available agents.</CardDescription>
+                                <CardTitle>Agents &amp; System</CardTitle>
+                                <CardDescription>
+                                    GitHub connection and per-agent activity for this time range.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4 text-sm">
                                 <div className="rounded-md border border-border/60 p-3">

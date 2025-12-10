@@ -1,0 +1,177 @@
+import React from "react";
+import {describe, it, expect, beforeEach, vi} from "vitest";
+import {render, cleanup, screen, fireEvent} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {MemoryRouter} from "react-router-dom";
+import {
+    DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    type DashboardOverview,
+    type DashboardTimeRangePreset,
+} from "shared";
+import {DashboardPage} from "@/pages/DashboardPage";
+
+const dashboardMocks = vi.hoisted(() => ({
+    useDashboardOverview: vi.fn(),
+    useDashboardStream: vi.fn(),
+}));
+
+const githubMocks = vi.hoisted(() => ({
+    useGithubAuthStatus: vi.fn(() => ({
+        data: {status: "valid", account: {username: "dev"}},
+        isLoading: false,
+    })),
+}));
+
+const agentsMocks = vi.hoisted(() => ({
+    useAgents: vi.fn(() => ({
+        data: {agents: []},
+        isLoading: false,
+    })),
+}));
+
+vi.mock("@/hooks", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/hooks")>();
+    return {
+        ...actual,
+        useDashboardOverview: dashboardMocks.useDashboardOverview,
+        useDashboardStream: dashboardMocks.useDashboardStream,
+        useGithubAuthStatus: githubMocks.useGithubAuthStatus,
+        useAgents: agentsMocks.useAgents,
+    };
+});
+
+// Simplified Select implementation for predictable testing.
+vi.mock("@/components/ui/select", () => {
+    const SelectContext = React.createContext<{
+        value?: string;
+        onChange?: (value: string) => void;
+    }>({});
+
+    const Select = ({value, onValueChange, children}: any) => (
+        <SelectContext.Provider value={{value, onChange: onValueChange}}>
+            <div data-slot="select">{children}</div>
+        </SelectContext.Provider>
+    );
+
+    const SelectTrigger = ({children, ...props}: any) => (
+        <button type="button" data-slot="select-trigger" {...props}>
+            {children}
+        </button>
+    );
+
+    const SelectValue = ({placeholder}: any) => <span>{placeholder}</span>;
+
+    const SelectContent = ({children}: any) => (
+        <div data-slot="select-content">{children}</div>
+    );
+
+    const SelectItem = ({value, children}: any) => {
+        const ctx = React.useContext(SelectContext);
+        const selected = ctx.value === value;
+        return (
+            <button
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => ctx.onChange?.(value)}
+            >
+                {children}
+            </button>
+        );
+    };
+
+    return {Select, SelectTrigger, SelectValue, SelectContent, SelectItem};
+});
+
+function createOverview(preset: DashboardTimeRangePreset = DEFAULT_DASHBOARD_TIME_RANGE_PRESET): DashboardOverview {
+    const now = new Date().toISOString();
+    return {
+        timeRange: {preset},
+        generatedAt: now,
+        metrics: {
+            byKey: {},
+        },
+        activeAttempts: [],
+        recentAttemptActivity: [],
+        inboxItems: {
+            review: [],
+            failed: [],
+            stuck: [],
+        },
+        projectSnapshots: [],
+        agentStats: [],
+        attemptsInRange: 0,
+        successRateInRange: 0,
+        projectsWithActivityInRange: 0,
+    };
+}
+
+function renderDashboard() {
+    const client = new QueryClient({
+        defaultOptions: {
+            queries: {
+                retry: false,
+                gcTime: 0,
+                staleTime: 0,
+            },
+        },
+    });
+
+    render(
+        <QueryClientProvider client={client}>
+            <MemoryRouter>
+                <DashboardPage/>
+            </MemoryRouter>
+        </QueryClientProvider>,
+    );
+}
+
+describe("Mission Control dashboard layout", () => {
+    beforeEach(() => {
+        cleanup();
+        vi.clearAllMocks();
+
+        dashboardMocks.useDashboardOverview.mockImplementation(
+            (options?: { timeRangePreset?: DashboardTimeRangePreset }) => ({
+                data: createOverview(options?.timeRangePreset ?? DEFAULT_DASHBOARD_TIME_RANGE_PRESET),
+                isLoading: false,
+                isFetching: false,
+            }),
+        );
+    });
+
+    it("renders Mission Control header and main sections", () => {
+        renderDashboard();
+
+        expect(screen.getByText("Mission Control")).toBeTruthy();
+        expect(screen.getByText("Live Agent Activity")).toBeTruthy();
+        expect(screen.getByText("Inbox")).toBeTruthy();
+        expect(screen.getByText("Project Health")).toBeTruthy();
+        expect(screen.getByText("Agents & System")).toBeTruthy();
+    });
+
+    it("updates time range preset and KPI label when selection changes", () => {
+        renderDashboard();
+
+        // Initial hook call uses the default preset.
+        expect(dashboardMocks.useDashboardOverview).toHaveBeenCalled();
+        const firstCallOptions = dashboardMocks.useDashboardOverview.mock.calls[0][0];
+        expect(firstCallOptions?.timeRangePreset).toBe(DEFAULT_DASHBOARD_TIME_RANGE_PRESET);
+
+        // Initial KPI label reflects the default time range.
+        expect(screen.getByText(/Attempts \(Last 7 days\)/i)).toBeTruthy();
+
+        // Change the time range to "Last 24 hours".
+        const last24hOption = screen.getByRole("option", {name: /Last 24 hours/i});
+        fireEvent.click(last24hOption);
+
+        const lastCallOptions =
+            dashboardMocks.useDashboardOverview.mock.calls[
+                dashboardMocks.useDashboardOverview.mock.calls.length - 1
+                ][0];
+        expect(lastCallOptions?.timeRangePreset).toBe("last_24h");
+
+        // KPI label reflects the newly selected range.
+        expect(screen.getByText(/Attempts \(Last 24 hours\)/i)).toBeTruthy();
+    });
+});

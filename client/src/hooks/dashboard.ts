@@ -1,6 +1,12 @@
 import {useEffect, useMemo} from 'react'
 import {useQuery, useQueryClient, type UseQueryOptions} from '@tanstack/react-query'
-import type {DashboardOverview, WsMsg} from 'shared'
+import {
+    DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    type DashboardOverview,
+    type DashboardTimeRangePreset,
+    type DashboardTimeRangeQuery,
+    type WsMsg,
+} from 'shared'
 import {getDashboardOverview} from '@/api/dashboard'
 import {dashboardKeys} from '@/lib/queryClient'
 import {resolveApiBase} from '@/lib/env'
@@ -16,13 +22,36 @@ function resolveDashboardWsUrl() {
 
 type Options = Partial<UseQueryOptions<DashboardOverview>>
 
-export function useDashboardOverview(options?: Options) {
+type DashboardOverviewOptions = Options & {
+    /**
+     * Optional preset controlling the dashboard time window.
+     *
+     * When omitted, the backend falls back to its default range. The hook
+     * keeps the default preset on the legacy cache key so that WebSocket
+     * updates wired via `useDashboardStream` continue to work without
+     * changes.
+     */
+    timeRangePreset?: DashboardTimeRangePreset
+}
+
+export function useDashboardOverview(options?: DashboardOverviewOptions) {
+    const {timeRangePreset, ...queryOptions} = options ?? {}
+
+    const queryKey =
+        !timeRangePreset || timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET
+            ? dashboardKeys.overview()
+            : dashboardKeys.overview(timeRangePreset)
+
+    const timeRangeParams: DashboardTimeRangeQuery | undefined = timeRangePreset
+        ? {timeRangePreset}
+        : undefined
+
     return useQuery({
-        queryKey: dashboardKeys.overview(),
-        queryFn: () => getDashboardOverview(),
+        queryKey,
+        queryFn: () => getDashboardOverview(timeRangeParams),
         refetchInterval: 15_000,
         refetchIntervalInBackground: true,
-        ...options,
+        ...queryOptions,
     })
 }
 

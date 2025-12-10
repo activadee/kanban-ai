@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { DashboardTimeRange } from "shared";
+import { DEFAULT_DASHBOARD_TIME_RANGE_PRESET, type DashboardTimeRange } from "shared";
 import { resolveTimeRange } from "../src/dashboard/time-range";
 
 describe("dashboard/time-range", () => {
@@ -25,9 +25,17 @@ describe("dashboard/time-range", () => {
         expect(diffMs).toBe(expectedStartOffsetDays * msInDay);
     }
 
-    it("resolves last_24h preset when no input is provided", () => {
+    it("uses the shared default preset when no input is provided", () => {
         const range = resolveTimeRange(undefined, fixedNow);
-        assertWindow(range, 1, "last_24h");
+        const expectedDays =
+            DEFAULT_DASHBOARD_TIME_RANGE_PRESET === "last_24h"
+                ? 1
+                : DEFAULT_DASHBOARD_TIME_RANGE_PRESET === "last_7d"
+                    ? 7
+                    : DEFAULT_DASHBOARD_TIME_RANGE_PRESET === "last_30d"
+                        ? 30
+                        : 90;
+        assertWindow(range, expectedDays, DEFAULT_DASHBOARD_TIME_RANGE_PRESET);
     });
 
     it("resolves last_7d preset to a 7 day window", () => {
@@ -60,13 +68,12 @@ describe("dashboard/time-range", () => {
         expect(range.to).toBe(to);
     });
 
-    it("falls back to presets when custom from/to are invalid or incomplete", () => {
+    it("falls back to the default preset when custom from/to are invalid or incomplete", () => {
         const invalid: DashboardTimeRange = { from: "not-a-date" as any, to: undefined };
         const range = resolveTimeRange(invalid, fixedNow);
-        // Default preset is last_24h when none is provided.
-        expect(range.preset).toBe("last_24h");
+        // Default preset is the shared constant when none is provided.
+        expect(range.preset).toBe(DEFAULT_DASHBOARD_TIME_RANGE_PRESET);
         expect(range.from).toBeDefined();
         expect(range.to).toBeDefined();
     });
 });
-
