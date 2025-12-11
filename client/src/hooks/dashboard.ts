@@ -1,4 +1,4 @@
-import {useEffect, useMemo} from 'react'
+import {useEffect, useMemo, useRef, useState} from 'react'
 import {useQuery, useQueryClient, type UseQueryOptions} from '@tanstack/react-query'
 import {
     DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
@@ -133,17 +133,54 @@ export function useDashboardMetrics(options?: DashboardOverviewOptions): {
     }
 }
 
-export function useDashboardStream(enabled = true) {
+export type DashboardStreamStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'error'
+
+export function useDashboardStream(enabled = true): {
+    status: DashboardStreamStatus
+} {
     const queryClient = useQueryClient()
     const url = useMemo(() => resolveDashboardWsUrl(), [])
 
-    useEffect(() => {
-        if (!enabled) return
-        const ws = new WebSocket(url)
+    const reconnectTimerRef = useRef<number | null>(null)
+    const reconnectAttemptsRef = useRef(0)
+    const shouldReconnectRef = useRef(false)
 
-        ws.addEventListener('message', (event) => {
+    const [status, setStatus] = useState<DashboardStreamStatus>('idle')
+
+    useEffect(() => {
+        let disposed = false
+        let ws: WebSocket | null = null
+
+        const clearReconnectTimer = () => {
+            if (reconnectTimerRef.current !== null) {
+                window.clearTimeout(reconnectTimerRef.current)
+                reconnectTimerRef.current = null
+            }
+        }
+
+        const scheduleReconnect = () => {
+            if (!shouldReconnectRef.current || disposed) return
+            if (reconnectTimerRef.current !== null) return
+
+            const attempt = reconnectAttemptsRef.current
+            const baseDelay = 1_500
+            const maxDelay = 12_000
+            const delay = Math.min(baseDelay * 2 ** attempt, maxDelay)
+
+            reconnectTimerRef.current = window.setTimeout(() => {
+                reconnectTimerRef.current = null
+                if (!shouldReconnectRef.current || disposed) return
+                reconnectAttemptsRef.current = Math.min(attempt + 1, 8)
+                connect()
+            }, delay)
+        }
+
+        const handleMessage = (event: MessageEvent) => {
             try {
-                const raw = typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data as ArrayBuffer)
+                const raw =
+                    typeof event.data === 'string'
+                        ? event.data
+                        : new TextDecoder().decode(event.data as ArrayBuffer)
                 const msg = JSON.parse(raw) as WsMsg
                 if (msg.type === 'dashboard_overview') {
                     queryClient.setQueryData(dashboardKeys.overview(), msg.payload)
@@ -151,10 +188,57 @@ export function useDashboardStream(enabled = true) {
             } catch (error) {
                 console.warn('[dashboard] ignored malformed websocket payload', error)
             }
-        })
+        }
+
+        const handleCloseOrError = () => {
+            if (disposed) return
+            setStatus((current) => (current === 'open' ? 'reconnecting' : 'error'))
+            scheduleReconnect()
+        }
+
+        function connect() {
+            if (!enabled || disposed) {
+                return
+            }
+
+            clearReconnectTimer()
+            setStatus((current) => (current === 'idle' ? 'connecting' : 'reconnecting'))
+
+            const socket = new WebSocket(url)
+            ws = socket
+
+            socket.addEventListener('open', () => {
+                if (disposed || ws !== socket) return
+                reconnectAttemptsRef.current = 0
+                setStatus('open')
+            })
+
+            socket.addEventListener('message', handleMessage)
+            socket.addEventListener('close', handleCloseOrError)
+            socket.addEventListener('error', handleCloseOrError)
+        }
+
+        shouldReconnectRef.current = enabled
+
+        if (enabled) {
+            connect()
+        } else {
+            setStatus('idle')
+        }
 
         return () => {
-            ws.close()
+            disposed = true
+            shouldReconnectRef.current = false
+            clearReconnectTimer()
+            if (ws) {
+                try {
+                    ws.close()
+                } catch {
+                }
+                ws = null
+            }
         }
     }, [enabled, queryClient, url])
+
+    return {status}
 }

@@ -6,6 +6,7 @@ import {AgentSettingsPage} from '@/pages/AgentSettingsPage'
 import {DashboardPage} from '@/pages/DashboardPage'
 import {AppSettingsPage} from '@/pages/AppSettingsPage'
 import {OnboardingPage} from '@/pages/OnboardingPage'
+import {AttemptDetailPage} from '@/pages/AttemptDetailPage'
 import {AppLayout} from '@/components/layout/AppLayout'
 import {QueryClientProvider} from '@tanstack/react-query'
 import {ReactQueryDevtools} from '@tanstack/react-query-devtools'
@@ -70,6 +71,7 @@ function App() {
                             <Route path="dashboard" element={<DashboardPage/>}/>
                             <Route path="projects" element={<ProjectsPage/>}/>
                             <Route path="projects/:projectId" element={<ProjectBoardPage/>}/>
+                            <Route path="attempts/:attemptId" element={<AttemptDetailPage/>}/>
                             <Route path="agents/:agentKey" element={<AgentSettingsPage/>}/>
                             <Route path="settings" element={<AppSettingsPage/>}/>
                             <Route path="*" element={<Navigate to="/" replace/>}/>

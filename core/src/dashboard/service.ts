@@ -393,7 +393,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         .leftJoin(boards, eq(attempts.boardId, boards.id))
         .where(inArray(attempts.status, ACTIVE_STATUSES))
         .orderBy(desc(sql`coalesce(${attempts.updatedAt}, ${attempts.createdAt})`))
-        .limit(6)
+        .limit(200)
 
     const activeAttempts = activeAttemptsRows.map(mapAttemptRow)
 
