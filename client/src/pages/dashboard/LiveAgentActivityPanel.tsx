@@ -2,23 +2,19 @@ import {useMemo, useState} from 'react'
 import type {
     ActiveAttemptSummary,
     AgentSummary,
-    AttemptActivityItem,
 } from 'shared'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {Button} from '@/components/ui/button'
 import {Badge} from '@/components/ui/badge'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {ActiveAttemptsList} from './ActiveAttemptsList'
-import {RecentActivityList} from './RecentActivityList'
 import type {DashboardStreamStatus} from '@/hooks'
 import {SectionErrorBanner} from '@/pages/dashboard/SectionState'
 
 type Props = {
     activeAttempts: ActiveAttemptSummary[]
-    recentActivity: AttemptActivityItem[]
     agents?: AgentSummary[]
     isLoading: boolean
-    timeRangeLabel: string
     updatedLabel: (value: string | null | undefined) => string
     streamStatus: DashboardStreamStatus
     hasError: boolean
@@ -46,10 +42,8 @@ function resolveAgentLabel(agentId: string, agents?: AgentSummary[]): string {
 
 export function LiveAgentActivityPanel({
                                            activeAttempts,
-                                           recentActivity,
                                            agents,
                                            isLoading,
-                                           timeRangeLabel,
                                            updatedLabel,
                                            streamStatus,
                                            hasError,
@@ -131,18 +125,6 @@ export function LiveAgentActivityPanel({
         agent: resolveAgentLabel(attempt.agentId, agents),
     }))
 
-    const recentRows = recentActivity.map((activity) => ({
-        attemptId: activity.attemptId,
-        status: activity.status,
-        cardTitle: activity.cardTitle,
-        ticketKey: activity.ticketKey,
-        projectName: activity.projectName,
-        projectId: activity.projectId,
-        cardId: activity.cardId,
-        finishedAt: activity.occurredAt,
-        agent: resolveAgentLabel(activity.agentId, agents),
-    }))
-
     const handleClearFilters = () => {
         setAgentFilter('all')
         setStatusFilter('all')
@@ -154,7 +136,7 @@ export function LiveAgentActivityPanel({
             <CardHeader>
                 <CardTitle>Live Agent Activity</CardTitle>
                 <CardDescription>
-                    Live attempts and recent outcomes across your projects.
+                    Live attempts across your projects.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -282,18 +264,6 @@ export function LiveAgentActivityPanel({
                             No active attempts right now. Kick off work from any card to see it here.
                         </p>
                     )}
-                </div>
-
-                <div>
-                    <div className="mb-2 flex items-center justify-between">
-                        <h2 className="text-sm font-medium text-foreground">Recent activity</h2>
-                        <span className="text-xs text-muted-foreground">{timeRangeLabel}</span>
-                    </div>
-                    <RecentActivityList
-                        items={recentRows}
-                        isLoading={isLoading || (hasError && !hasAttempts)}
-                        finishedLabel={updatedLabel}
-                    />
                 </div>
             </CardContent>
         </Card>

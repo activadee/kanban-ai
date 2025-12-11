@@ -34,18 +34,17 @@ Mission Control is the main operational dashboard for KanbanAI. It gives you a h
 
 - The dashboard uses a full‑width responsive container with `px-4 py-4` on small screens, growing to `px-8 py-6` at desktop widths so content fills the available page width without feeling cramped.
 - Below the KPI row, Mission Control uses a 12‑column grid from the `lg` breakpoint (`lg:grid-cols-12` with `gap-6`):
-  - **Main column (7–8 cols)**: **Live Agent Activity**, then **Project Health**.
-  - **Sidebar (4–5 cols)**: **Inbox**, then **Agents & System**.
-  - **Bottom row**: **Recent Attempt History** spans all columns so the list can stretch horizontally.
+  - **Main column (7–8 cols)**: **Live Agent Activity**, then **Recent Attempt History**.
+  - **Sidebar (4–5 cols)**: **Inbox**, **Project Health**, then **Agents & System**.
 - On smaller screens, panels stack vertically in this order:
   1. KPI cards
   2. Live Agent Activity
-  3. Inbox
-  4. Project Health
-  5. Agents & System
-  6. Recent Attempt History
+  3. Recent Attempt History
+  4. Inbox
+  5. Project Health
+  6. Agents & System
 
-Lists inside each panel are height‑capped with internal scrolling (Active attempts, Recent activity, Inbox, Project Health, Recent Attempt History) so the dashboard stays usable even with large datasets.
+Lists inside each panel are height‑capped with internal scrolling (Active attempts, Inbox, Project Health, Recent Attempt History, Agents & System) so the dashboard stays usable even with large datasets.
 
 This order keeps live activity and actionable items near the top on both mobile and desktop.
 
@@ -121,7 +120,7 @@ Skeleton placeholders run while KPIs are loading; a compact error banner appears
 
 ## Live Agent Activity
 
-The Live Agent Activity card surfaces what agents are doing right now and what they’ve done recently.
+The Live Agent Activity card surfaces what agents are doing right now.
 
 - **Active attempts**
   - Lists in‑flight Attempts with:
@@ -139,14 +138,6 @@ The Live Agent Activity card surfaces what agents are doing right now and what t
     - Click a row or press Enter/Space to open `/attempts/:attemptId` (Attempt detail).
   - Empty state:
     - When there are no active Attempts, the panel shows “No active attempts right now.” regardless of the chosen historical range.
-- **Recent activity**
-  - Compact feed of recently completed or stopped Attempts scoped to the selected time range.
-  - Each row shows:
-    - Status badge.
-    - Card title/ticket key and project name.
-    - Agent label.
-    - Relative “Finished …” timestamp.
-  - Dedicated **View attempt** and **View board** links jump into deeper views without losing your place on the dashboard.
 - **Error handling**
   - When the underlying query fails and there is no cached data, the card shows a small retryable error banner.
   - WebSocket disruptions (errors/reconnects) are reflected via a short note (“Live updates temporarily unavailable. Showing latest known data.”) while the UI continues to show the most recent snapshot.

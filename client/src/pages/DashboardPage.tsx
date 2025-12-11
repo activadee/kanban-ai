@@ -250,13 +250,11 @@ export function DashboardPage() {
                     className="grid gap-6 lg:grid-cols-12"
                     data-testid="mission-control-grid"
                 >
-                    <div className="space-y-6 lg:col-span-7 xl:col-span-8">
+                    <div className="flex h-full min-h-0 flex-col gap-6 lg:col-span-7 xl:col-span-8">
                         <LiveAgentActivityPanel
                             activeAttempts={activeAttempts}
-                            recentActivity={recentActivity}
                             agents={undefined}
                             isLoading={dashboardQuery.isLoading}
-                            timeRangeLabel={timeRangeLabel}
                             updatedLabel={relativeTimeFromNow}
                             streamStatus={dashboardStream?.status ?? 'idle'}
                             hasError={activityLoadError}
@@ -265,9 +263,23 @@ export function DashboardPage() {
                                 navigate(getAttemptPath(attemptId))
                             }}
                         />
+
+                        <div className="flex-1 min-h-0">
+                            <RecentAttemptHistoryPanel
+                                attempts={recentActivity}
+                                isLoading={dashboardQuery.isLoading && !hasOverview}
+                                hasError={activityLoadError}
+                                timeRangeLabel={timeRangeLabel}
+                                formatRelativeTime={relativeTimeFromNow}
+                                onRetry={dashboardQuery.refetch}
+                                onAttemptNavigate={(attemptId) => {
+                                    navigate(getAttemptPath(attemptId))
+                                }}
+                            />
+                        </div>
                     </div>
 
-                    <div className="lg:col-span-5 xl:col-span-4">
+                    <div className="flex h-full min-h-0 flex-col gap-6 lg:col-span-5 xl:col-span-4">
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
                                 <CardTitle>Inbox</CardTitle>
@@ -288,9 +300,7 @@ export function DashboardPage() {
                                 />
                             </CardContent>
                         </Card>
-                    </div>
 
-                    <div className="lg:col-span-7 xl:col-span-8">
                         <ProjectHealthPanel
                             snapshots={projectSnapshots}
                             isLoading={dashboardQuery.isLoading}
@@ -300,41 +310,27 @@ export function DashboardPage() {
                                 navigate(getProjectPath(projectId))
                             }}
                         />
-                    </div>
 
-                    <div className="lg:col-span-5 xl:col-span-4">
-                        <Card className="border-border/70 bg-card/60">
-                            <CardHeader>
-                                <CardTitle>Agents &amp; System</CardTitle>
-                                <CardDescription>
-                                    GitHub connection and per-agent activity for this time range.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <AgentsSystemStatusPanel
-                                    agentStats={agentStats}
-                                    isDashboardLoading={dashboardQuery.isLoading}
-                                    hasDashboardError={dashboardQuery.isError && !hasOverview}
-                                    timeRangeLabel={timeRangeLabel}
-                                    formatRelativeTime={relativeTimeFromNow}
-                                    onRetryDashboard={dashboardQuery.refetch}
-                                />
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    <div className="space-y-6 lg:col-span-12">
-                        <RecentAttemptHistoryPanel
-                            attempts={recentActivity}
-                            isLoading={dashboardQuery.isLoading && !hasOverview}
-                            hasError={activityLoadError}
-                            timeRangeLabel={timeRangeLabel}
-                            formatRelativeTime={relativeTimeFromNow}
-                            onRetry={dashboardQuery.refetch}
-                            onAttemptNavigate={(attemptId) => {
-                                navigate(getAttemptPath(attemptId))
-                            }}
-                        />
+                        <div className="flex-1 min-h-0">
+                            <Card className="flex h-full flex-col border-border/70 bg-card/60">
+                                <CardHeader>
+                                    <CardTitle>Agents &amp; System</CardTitle>
+                                    <CardDescription>
+                                        GitHub connection and per-agent activity for this time range.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex min-h-0 flex-col overflow-y-auto pr-1">
+                                    <AgentsSystemStatusPanel
+                                        agentStats={agentStats}
+                                        isDashboardLoading={dashboardQuery.isLoading}
+                                        hasDashboardError={dashboardQuery.isError && !hasOverview}
+                                        timeRangeLabel={timeRangeLabel}
+                                        formatRelativeTime={relativeTimeFromNow}
+                                        onRetryDashboard={dashboardQuery.refetch}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 </section>
             </div>

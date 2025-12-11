@@ -5,7 +5,6 @@ import {MemoryRouter} from "react-router-dom";
 import type {
     ActiveAttemptSummary,
     AgentSummary,
-    AttemptActivityItem,
 } from "shared";
 import {LiveAgentActivityPanel} from "@/pages/dashboard/LiveAgentActivityPanel";
 
@@ -89,22 +88,6 @@ function createActiveAttempt(overrides: Partial<ActiveAttemptSummary> = {}): Act
     };
 }
 
-function createActivity(overrides: Partial<AttemptActivityItem> = {}): AttemptActivityItem {
-    const now = new Date().toISOString();
-    return {
-        attemptId: "attempt-activity-1",
-        projectId: "project-1",
-        projectName: "Project One",
-        cardId: "card-1",
-        cardTitle: "Implement feature",
-        ticketKey: "ABC-1",
-        agentId: "AGENT",
-        status: "succeeded",
-        occurredAt: now,
-        ...overrides,
-    };
-}
-
 const agents: AgentSummary[] = [
     {key: "AGENT", label: "Fixture Agent"},
     {key: "IDLE", label: "Idle Agent"},
@@ -146,10 +129,8 @@ describe("LiveAgentActivityPanel – filtering", () => {
             <MemoryRouter>
                 <LiveAgentActivityPanel
                     activeAttempts={attempts}
-                    recentActivity={[]}
                     agents={agents}
                     isLoading={false}
-                    timeRangeLabel="Last 7 days"
                     updatedLabel={noopTimeLabel}
                     streamStatus="open"
                     hasError={false}
@@ -206,10 +187,8 @@ describe("LiveAgentActivityPanel – filtering", () => {
             <MemoryRouter>
                 <LiveAgentActivityPanel
                     activeAttempts={initialAttempts}
-                    recentActivity={[]}
                     agents={agents}
                     isLoading={false}
-                    timeRangeLabel="Last 7 days"
                     updatedLabel={noopTimeLabel}
                     streamStatus="open"
                     hasError={false}
@@ -227,10 +206,8 @@ describe("LiveAgentActivityPanel – filtering", () => {
             <MemoryRouter>
                 <LiveAgentActivityPanel
                     activeAttempts={updatedAttempts}
-                    recentActivity={[]}
                     agents={agents}
                     isLoading={false}
-                    timeRangeLabel="Last 7 days"
                     updatedLabel={noopTimeLabel}
                     streamStatus="open"
                     hasError={false}
@@ -261,10 +238,8 @@ describe("LiveAgentActivityPanel – navigation and websocket states", () => {
             <MemoryRouter>
                 <LiveAgentActivityPanel
                     activeAttempts={attempts}
-                    recentActivity={[]}
                     agents={agents}
                     isLoading={false}
-                    timeRangeLabel="Last 7 days"
                     updatedLabel={noopTimeLabel}
                     streamStatus="open"
                     hasError={false}
@@ -291,10 +266,8 @@ describe("LiveAgentActivityPanel – navigation and websocket states", () => {
             <MemoryRouter>
                 <LiveAgentActivityPanel
                     activeAttempts={attempts}
-                    recentActivity={[createActivity()]}
                     agents={agents}
                     isLoading={false}
-                    timeRangeLabel="Last 7 days"
                     updatedLabel={noopTimeLabel}
                     streamStatus="error"
                     hasError={false}
@@ -306,50 +279,6 @@ describe("LiveAgentActivityPanel – navigation and websocket states", () => {
         expect(
             screen.getByText(/Live updates temporarily unavailable\. Showing latest known data\./i),
         ).toBeTruthy();
-
-        const recentList = screen.getByTestId("recent-activity-list");
-        expect(within(recentList).getAllByRole("listitem").length).toBe(1);
-    });
-
-    it("renders deep links for recent activity items", () => {
-        const activity = createActivity({
-            attemptId: "attempt-activity-42",
-            projectId: "project-42",
-            cardId: "card-42",
-        });
-
-        render(
-            <MemoryRouter>
-                <LiveAgentActivityPanel
-                    activeAttempts={[]}
-                    recentActivity={[activity]}
-                    agents={agents}
-                    isLoading={false}
-                    timeRangeLabel="Last 7 days"
-                    updatedLabel={noopTimeLabel}
-                    streamStatus="open"
-                    hasError={false}
-                    onRetry={() => undefined}
-                />
-            </MemoryRouter>,
-        );
-
-        const list = screen.getByTestId("recent-activity-list");
-        const viewAttemptLink = within(list)
-            .getByText("View attempt")
-            .closest("a");
-        expect(viewAttemptLink).not.toBeNull();
-        expect(viewAttemptLink?.getAttribute("href")).toBe(
-            "/attempts/attempt-activity-42",
-        );
-
-        const viewBoardLink = within(list)
-            .getByText("View board")
-            .closest("a");
-        expect(viewBoardLink).not.toBeNull();
-        expect(viewBoardLink?.getAttribute("href")).toBe(
-            "/projects/project-42?cardId=card-42",
-        );
     });
 
     it("renders a non-blocking error banner with retry when loading fails", () => {
@@ -359,10 +288,8 @@ describe("LiveAgentActivityPanel – navigation and websocket states", () => {
             <MemoryRouter>
                 <LiveAgentActivityPanel
                     activeAttempts={[]}
-                    recentActivity={[]}
                     agents={agents}
                     isLoading={false}
-                    timeRangeLabel="Last 7 days"
                     updatedLabel={noopTimeLabel}
                     streamStatus="open"
                     hasError

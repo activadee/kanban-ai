@@ -65,7 +65,7 @@ export function RecentAttemptHistoryPanel({
     const isEmpty = !isLoading && !hasError && sortedAttempts.length === 0
 
     return (
-        <Card className="border-border/70 bg-card/60">
+        <Card className="flex h-full flex-col border-border/70 bg-card/60">
             <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                     <div>
@@ -79,7 +79,7 @@ export function RecentAttemptHistoryPanel({
                     </span>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="flex min-h-0 flex-col gap-3">
                 {hasError ? (
                     <SectionErrorBanner
                         title="Unable to load recent attempt history."
@@ -103,7 +103,7 @@ export function RecentAttemptHistoryPanel({
                 ) : (
                     <>
                         <ul
-                            className="max-h-[520px] space-y-3 overflow-y-auto pr-1"
+                            className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1"
                             data-testid="recent-attempt-history-list"
                         >
                             {visibleAttempts.map((item) => {

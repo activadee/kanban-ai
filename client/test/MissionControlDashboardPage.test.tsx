@@ -167,18 +167,18 @@ describe("Mission Control dashboard layout", () => {
             (a.compareDocumentPosition(b) & DOCUMENT_POSITION_FOLLOWING) !== 0;
 
         expect(isBefore(kpiRow, liveActivityHeading)).toBe(true);
-        expect(isBefore(liveActivityHeading, inboxHeading)).toBe(true);
+        expect(isBefore(liveActivityHeading, historyHeading)).toBe(true);
+        expect(isBefore(historyHeading, inboxHeading)).toBe(true);
         expect(isBefore(inboxHeading, projectsHeading)).toBe(true);
         expect(isBefore(projectsHeading, agentsHeading)).toBe(true);
-        expect(isBefore(agentsHeading, historyHeading)).toBe(true);
     });
 
-    it("uses a responsive two-column grid for main sections at large widths", () => {
+    it("uses a responsive multi-column grid for main sections at large widths", () => {
         renderDashboard();
 
         const gridSection = screen.getByTestId("mission-control-grid");
         expect(gridSection).toBeTruthy();
-        expect(gridSection.className).toContain("xl:grid-cols-2");
+        expect(gridSection.className).toContain("lg:grid-cols-12");
     });
 
     it("renders KPI cards with expected labels", () => {
