@@ -146,6 +146,7 @@ describe("Mission Control dashboard layout", () => {
 
         expect(screen.getByText("Mission Control")).toBeTruthy();
         expect(screen.getByText("Live Agent Activity")).toBeTruthy();
+        expect(screen.getByText("Recent Attempt History")).toBeTruthy();
         expect(screen.getByText("Inbox")).toBeTruthy();
         expect(screen.getByText("Project Health")).toBeTruthy();
         expect(screen.getByText("Agents & System")).toBeTruthy();

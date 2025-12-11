@@ -81,7 +81,23 @@ function mapActivityRow(row: {
     status: string
     finishedAt: Date | number | null
 }): DashboardAttemptActivity {
+    const startedAt: Date | number | null = (row as any).startedAt ?? null
+    const createdAt: Date | number | null = (row as any).createdAt ?? null
+
     const occurredAt = toIso(row.finishedAt) ?? new Date().toISOString()
+
+    let durationSeconds: number | undefined
+
+    const startSource = startedAt ?? createdAt
+    if (row.finishedAt && startSource) {
+        const startDate = startSource instanceof Date ? startSource : new Date(startSource)
+        const endDate = row.finishedAt instanceof Date ? row.finishedAt : new Date(row.finishedAt)
+        const diffSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000)
+        if (Number.isFinite(diffSeconds) && diffSeconds > 0) {
+            durationSeconds = diffSeconds
+        }
+    }
+
     return {
         attemptId: row.attemptId,
         projectId: row.projectId,
@@ -92,6 +108,7 @@ function mapActivityRow(row: {
         agentId: row.agent,
         status: row.status as AttemptStatus,
         occurredAt,
+        durationSeconds,
     }
 }
 
@@ -267,16 +284,16 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
 
     const [{count: projectsWithActivityInRangeRaw = 0} = {count: 0}] = await projectsWithActivityQuery
 
-    const [{count: activeAttemptsRaw = 0} = {count: 0}] = await db
-        .select({count: sql<number>`cast(count(*) as integer)`})
-        .from(attempts)
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
-
     const attemptsCompletedTimePredicate = buildTimeRangePredicate(attempts.endedAt, rangeFrom, rangeTo)
 
     const attemptsCompletedWhere = attemptsCompletedTimePredicate
         ? and(inArray(attempts.status, COMPLETED_STATUSES), attemptsCompletedTimePredicate)
         : inArray(attempts.status, COMPLETED_STATUSES)
+
+    const [{count: activeAttemptsRaw = 0} = {count: 0}] = await db
+        .select({count: sql<number>`cast(count(*) as integer)`})
+        .from(attempts)
+        .where(inArray(attempts.status, ACTIVE_STATUSES))
 
     const [{count: attemptsCompletedRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
@@ -408,13 +425,15 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             agent: attempts.agent,
             status: attempts.status,
             finishedAt: sql<Date | null>`coalesce(${attempts.endedAt}, ${attempts.updatedAt}, ${attempts.createdAt})`,
+            startedAt: attempts.startedAt,
+            createdAt: attempts.createdAt,
         })
         .from(attempts)
         .leftJoin(cards, eq(attempts.cardId, cards.id))
         .leftJoin(boards, eq(attempts.boardId, boards.id))
-        .where(inArray(attempts.status, COMPLETED_STATUSES))
+        .where(attemptsCompletedWhere)
         .orderBy(desc(sql`coalesce(${attempts.endedAt}, ${attempts.updatedAt}, ${attempts.createdAt})`))
-        .limit(8)
+        .limit(40)
 
     const recentAttemptActivity = recentActivityRows.map(mapActivityRow)
 
