@@ -595,6 +595,7 @@ export interface StuckInboxItem extends InboxItemBase {
  * - Existing consumers must handle unknown `type` values defensively.
  */
 export type InboxItem = ReviewInboxItem | FailedInboxItem | StuckInboxItem
+export type DashboardInboxItem = InboxItem
 
 /**
  * Aggregated inbox lists for the dashboard.
