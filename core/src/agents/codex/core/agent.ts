@@ -87,12 +87,13 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     }
 
     private threadOptions(profile: CodexProfile, ctx: AgentContext): ThreadOptions {
+        const reasoningEffort = profile.modelReasoningEffort
         return {
             model: profile.model,
             sandboxMode: profile.sandbox && profile.sandbox !== 'auto' ? profile.sandbox : undefined,
             workingDirectory: ctx.worktreePath,
             skipGitRepoCheck: profile.skipGitRepoCheck ?? true,
-            modelReasoningEffort: profile.modelReasoningEffort,
+            modelReasoningEffort: reasoningEffort as ThreadOptions['modelReasoningEffort'],
             networkAccessEnabled: profile.networkAccessEnabled,
             webSearchEnabled: profile.webSearchEnabled,
             approvalPolicy: profile.approvalPolicy,

@@ -10,7 +10,7 @@ export type CodexProfile = {
     inlineProfile?: string | null
     sandbox?: AgentSandbox
     model?: string
-    modelReasoningEffort?: 'minimal' | 'low' | 'medium' | 'high'
+    modelReasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
     skipGitRepoCheck?: boolean
     networkAccessEnabled?: boolean
     webSearchEnabled?: boolean

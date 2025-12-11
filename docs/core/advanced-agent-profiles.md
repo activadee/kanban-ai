@@ -33,6 +33,30 @@ projects and Attempts.
 - Prompt fields are capped at 4,000 characters when creating or updating profiles (both project-scoped and global).
   Attempts to save longer prompts return an RFC 7807 error describing the offending field so callers can trim the text.
 
+### Reasoning effort levels
+
+Codex and Droid agents both expose a reasoning-effort setting in their profiles:
+
+- Codex: `modelReasoningEffort` – one of `minimal`, `low`, `medium`, `high`, or `xhigh`.
+- Droid: `reasoningEffort` – one of `off`, `low`, `medium`, `high`, or `xhigh`.
+
+Use higher levels for more complex or ambiguous tasks. In particular, `xhigh` enables the most intensive reasoning
+mode and typically trades additional latency and token usage for deeper analysis.
+
+Example Codex profile JSON using `xhigh`:
+
+```json
+{
+  "agent": "CODEX",
+  "name": "Deep reasoning profile",
+  "config": {
+    "model": "gpt-4.1",
+    "modelReasoningEffort": "xhigh",
+    "appendPrompt": "You are a senior engineer who explains tradeoffs clearly before making changes."
+  }
+}
+```
+
 ## Scope and IDs
 
 - Profiles can be:

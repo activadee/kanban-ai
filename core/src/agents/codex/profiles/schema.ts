@@ -8,7 +8,7 @@ export const CodexProfileSchema = z.object({
         .enum(['read-only', 'workspace-write', 'danger-full-access', 'auto'])
         .optional(),
     model: z.string().optional(),
-    modelReasoningEffort: z.enum(['minimal', 'low', 'medium', 'high']).optional(),
+    modelReasoningEffort: z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']).optional(),
     skipGitRepoCheck: z.boolean().optional(),
     networkAccessEnabled: z.boolean().optional(),
     webSearchEnabled: z.boolean().optional(),
