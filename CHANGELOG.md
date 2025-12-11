@@ -1,3 +1,14 @@
+## [0.16.1](https://github.com/activadee/kanban-ai/compare/v0.16.0...v0.16.1) (2025-12-11)
+
+### Bug Fixes
+
+* profile issues & docs ([0091628](https://github.com/activadee/kanban-ai/commit/0091628c0021812bdfc7aee3c4dc6383af56cf36))
+
+### Refactors
+
+* dashboard reformat ([61994d2](https://github.com/activadee/kanban-ai/commit/61994d2122e91250b3b5739d0608ad285854dcda))
+* Make dashboard lists scrollable and improve InboxPanel layout ([7649b4b](https://github.com/activadee/kanban-ai/commit/7649b4b1f5b30125953c3d20b307118c42a53b6d))
+
 ## [0.16.0](https://github.com/activadee/kanban-ai/compare/v0.15.0...v0.16.0) (2025-12-11)
 
 ### Features
