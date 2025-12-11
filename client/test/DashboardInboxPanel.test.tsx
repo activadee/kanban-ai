@@ -65,6 +65,7 @@ vi.mock("@/components/ui/tabs", () => {
 });
 
 import {InboxPanel} from "@/pages/dashboard/InboxPanel";
+import {toast} from "@/components/ui/toast";
 
 function createInbox(): DashboardInbox {
     const now = new Date().toISOString();
@@ -266,5 +267,33 @@ describe("Dashboard InboxPanel", () => {
             agent: "AGENT_FAILED",
         });
         expect(onReload).toHaveBeenCalled();
+    });
+
+    it("does not show success toast or reload when retry metadata is missing", async () => {
+        const onReload = vi.fn();
+        const inbox = createInbox();
+        const brokenInbox: DashboardInbox = {
+            ...inbox,
+            failed: [
+                {
+                    ...inbox.failed[0],
+                    projectId: undefined,
+                },
+            ],
+        };
+
+        renderInboxPanel({inbox: brokenInbox, onReload});
+
+        const failedTab = screen.getByRole("tab", {name: /Failed/i});
+        fireEvent.click(failedTab);
+
+        const retryButton = screen.getByLabelText("Retry failed attempt");
+        fireEvent.click(retryButton);
+
+        await waitFor(() => {
+            expect(attemptsMocks.startAttemptRequest).not.toHaveBeenCalled();
+        });
+        expect(onReload).not.toHaveBeenCalled();
+        expect(toast).toHaveBeenCalled();
     });
 });

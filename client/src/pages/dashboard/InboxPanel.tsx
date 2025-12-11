@@ -82,7 +82,7 @@ function sortByLastActivity(items: InboxItem[]): InboxItem[] {
         })
 }
 
-async function retryFailedInboxItem(item: InboxItem): Promise<void> {
+async function retryFailedInboxItem(item: InboxItem): Promise<boolean> {
     const projectId = item.projectId
     const cardId = item.cardId
     const agentId = item.agentId
@@ -93,7 +93,7 @@ async function retryFailedInboxItem(item: InboxItem): Promise<void> {
             description: 'Missing project, card, or agent information for this item.',
             variant: 'destructive',
         })
-        return
+        return false
     }
 
     await startAttemptRequest({
@@ -101,6 +101,7 @@ async function retryFailedInboxItem(item: InboxItem): Promise<void> {
         cardId,
         agent: agentId,
     })
+    return true
 }
 
 export function InboxPanel({
@@ -152,7 +153,10 @@ export function InboxPanel({
     const handleRetryClick = async (item: InboxItem) => {
         setRetryingId(item.id)
         try {
-            await retryFailedInboxItem(item)
+            const started = await retryFailedInboxItem(item)
+            if (!started) {
+                return
+            }
             toast({
                 title: 'Retry started',
                 description: 'A new attempt has been queued from this failed item.',
