@@ -6,7 +6,7 @@ export const DroidProfileSchema = z.object({
     inlineProfile: z.string().nullable().optional(),
     autonomy: z.enum(['read-only', 'low', 'medium', 'high']).optional(),
     model: z.string().optional(),
-    reasoningEffort: z.enum(['off', 'low', 'medium', 'high']).optional(),
+    reasoningEffort: z.enum(['off', 'low', 'medium', 'high', 'xhigh']).optional(),
     baseCommandOverride: z.string().nullable().optional(),
     additionalParams: z.array(z.string()).optional(),
     debug: z.boolean().optional(),

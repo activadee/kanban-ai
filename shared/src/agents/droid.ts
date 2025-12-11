@@ -7,7 +7,7 @@ export type DroidProfile = {
     inlineProfile?: string | null
     autonomy?: 'read-only' | 'low' | 'medium' | 'high'
     model?: string
-    reasoningEffort?: 'off' | 'low' | 'medium' | 'high'
+    reasoningEffort?: 'off' | 'low' | 'medium' | 'high' | 'xhigh'
     baseCommandOverride?: string | null
     additionalParams?: string[]
     debug?: boolean
