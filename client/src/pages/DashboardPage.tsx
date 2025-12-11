@@ -16,6 +16,7 @@ import {InboxPanel} from '@/pages/dashboard/InboxPanel'
 import {useRelativeTimeFormatter} from '@/hooks'
 import {ProjectHealthPanel} from '@/pages/dashboard/ProjectHealthPanel'
 import {AgentsSystemStatusPanel} from '@/pages/dashboard/AgentsSystemStatusPanel'
+import {RecentAttemptHistoryPanel} from '@/pages/dashboard/RecentAttemptHistoryPanel'
 import {formatSuccessRate} from '@/pages/dashboard/formatters'
 
 const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = [
@@ -217,6 +218,18 @@ export function DashboardPage() {
                             updatedLabel={relativeTimeFromNow}
                             streamStatus={dashboardStream?.status ?? 'idle'}
                             hasError={activityLoadError}
+                            onRetry={dashboardQuery.refetch}
+                            onAttemptNavigate={(attemptId) => {
+                                navigate(`/attempts/${attemptId}`)
+                            }}
+                        />
+
+                        <RecentAttemptHistoryPanel
+                            attempts={recentActivity}
+                            isLoading={dashboardQuery.isLoading && !hasOverview}
+                            hasError={activityLoadError}
+                            timeRangeLabel={timeRangeLabel}
+                            formatRelativeTime={relativeTimeFromNow}
                             onRetry={dashboardQuery.refetch}
                             onAttemptNavigate={(attemptId) => {
                                 navigate(`/attempts/${attemptId}`)

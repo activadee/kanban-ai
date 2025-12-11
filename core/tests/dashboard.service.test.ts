@@ -307,6 +307,11 @@ describe("dashboard/service.getDashboardOverview", () => {
         expect(overview.attemptsInRange).toBe(5);
         expect(overview.projectsWithActivityInRange).toBe(2);
         expect(overview.successRateInRange).toBeCloseTo(3 / 5, 5);
+
+        // Recent attempt activity should surface completed attempts ordered by
+        // most recent completion time first.
+        const activityIds = overview.recentAttemptActivity.map((item) => item.attemptId);
+        expect(activityIds).toEqual(["a-2", "a-1", "a-3", "a-4"]);
     });
 
     it("populates inboxItems with failed and stuck attempts ordered by recency", async () => {
