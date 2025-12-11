@@ -156,6 +156,8 @@ Forward-compatibility:
   - A refresh button beside the tabs triggers a manual reload; the panel renders skeleton placeholders during the initial load and surfaces a retryable error banner if the dashboard query fails.
   - Each row is keyboard accessible and exposes inline actions: clicking the row or the attempt icon opens `/attempts/:attemptId`, a PR icon opens `prUrl` (if present) in a new tab, and failed items include a retry button that re-queues the agent and refreshes the inbox.
 - **Project Health**
-  - Replaces the legacy project snapshot card with rows that surface each project’s repository, total cards, open cards, and active attempts for the selected range, plus links to the board so you can jump straight to overloaded workspaces.
+-  - Replaces the legacy project snapshot card with rows that surface each project’s repository, total cards, open cards, active attempts, and column breakdowns (backlog, in-progress, review, done) for the selected range.
+-  - Includes a **Sort by** control so you can order projects by open cards or failed attempts in range, and each row can be activated (click/keyboard) to jump straight to the board to keep investigating.
+-  - Rows surface activity/failure badges derived from the project health metadata, plus attempt/failure counts and tooltips that explain when a project is marked “High Activity” or “High Failure Rate.”
 - **Agents & System**
   - Successor to the System status card. GitHub blocks display connection health and the authenticated username (or next steps when disconnected). The agent list still reflects the current preset with attempts in range, success rate, and last activity; agents with no recent runs show a muted “inactive in this range” hint so they remain visible even when idle.
