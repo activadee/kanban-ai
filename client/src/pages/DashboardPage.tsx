@@ -23,6 +23,13 @@ import {
     SectionErrorBanner,
     type SectionState,
 } from '@/pages/dashboard/SectionState'
+import {
+    getAgentSettingsPath,
+    getAttemptPath,
+    getProjectPath,
+    getProjectsPath,
+    getSettingsPath,
+} from '@/lib/routes'
 
 const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = [
     {preset: 'last_24h', label: 'Last 24 hours'},
@@ -182,13 +189,13 @@ export function DashboardPage() {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         <Button asChild size="sm">
-                            <Link to="/projects">View projects</Link>
+                            <Link to={getProjectsPath()}>View projects</Link>
                         </Button>
                         <Button asChild size="sm" variant="outline">
-                            <Link to="/settings">App settings</Link>
+                            <Link to={getSettingsPath()}>App settings</Link>
                         </Button>
                         <Button asChild size="sm" variant="outline">
-                            <Link to="/agents/CODEX">Manage agents</Link>
+                            <Link to={getAgentSettingsPath('CODEX')}>Manage agents</Link>
                         </Button>
                         <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
@@ -255,7 +262,7 @@ export function DashboardPage() {
                             hasError={activityLoadError}
                             onRetry={dashboardQuery.refetch}
                             onAttemptNavigate={(attemptId) => {
-                                navigate(`/attempts/${attemptId}`)
+                                navigate(getAttemptPath(attemptId))
                             }}
                         />
                     </div>
@@ -275,7 +282,7 @@ export function DashboardPage() {
                                 onReload={dashboardQuery.refetch}
                                 formatTime={relativeTimeFromNow}
                                 onAttemptNavigate={(attemptId) => {
-                                    navigate(`/attempts/${attemptId}`)
+                                    navigate(getAttemptPath(attemptId))
                                 }}
                             />
                         </CardContent>
@@ -287,7 +294,7 @@ export function DashboardPage() {
                         hasError={dashboardQuery.isError && !hasOverview}
                         onRetry={dashboardQuery.refetch}
                         onProjectNavigate={(projectId) => {
-                            navigate(`/projects/${projectId}`)
+                            navigate(getProjectPath(projectId))
                         }}
                     />
 
@@ -319,7 +326,7 @@ export function DashboardPage() {
                             formatRelativeTime={relativeTimeFromNow}
                             onRetry={dashboardQuery.refetch}
                             onAttemptNavigate={(attemptId) => {
-                                navigate(`/attempts/${attemptId}`)
+                                navigate(getAttemptPath(attemptId))
                             }}
                         />
                     </div>

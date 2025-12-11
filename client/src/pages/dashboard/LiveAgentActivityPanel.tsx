@@ -121,6 +121,7 @@ export function LiveAgentActivityPanel({
     const attemptRows = filteredAttempts.map((attempt) => ({
         attemptId: attempt.attemptId,
         status: attempt.status,
+        cardId: attempt.cardId,
         cardTitle: attempt.cardTitle,
         ticketKey: attempt.ticketKey,
         projectName: attempt.projectName,
@@ -137,6 +138,7 @@ export function LiveAgentActivityPanel({
         ticketKey: activity.ticketKey,
         projectName: activity.projectName,
         projectId: activity.projectId,
+        cardId: activity.cardId,
         finishedAt: activity.occurredAt,
         agent: resolveAgentLabel(activity.agentId, agents),
     }))

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import { Loader2 } from "lucide-react";
 export function ProjectBoardPage() {
     const { projectId } = useParams<{ projectId: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
 
     const {
@@ -46,6 +47,7 @@ export function ProjectBoardPage() {
         enabled: Boolean(boardId),
     });
     const boardState = boardQuery.data;
+    const initialSelectedCardId = searchParams.get("cardId");
 
     const {
         connected,
@@ -222,6 +224,7 @@ export function ProjectBoardPage() {
                 <Board
                     projectId={project.id}
                     state={boardState}
+                    initialSelectedCardId={initialSelectedCardId}
                     enhancementStatusByCardId={enhancementStatusByCardId}
                     onCardEnhancementClick={(cardId) =>
                         setEnhancementDialogCardId(cardId)

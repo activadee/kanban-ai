@@ -2,6 +2,8 @@ import {Button} from '@/components/ui/button'
 import {Separator} from '@/components/ui/separator'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Link} from 'react-router-dom'
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
+import {getAttemptPath, getProjectCardPath} from '@/lib/routes'
 
 type Activity = {
     attemptId: string
@@ -10,6 +12,7 @@ type Activity = {
     ticketKey: string | null
     projectName: string | null
     projectId: string | null
+    cardId: string | null
     finishedAt: string | null
     agent: string
 }
@@ -48,8 +51,30 @@ export function RecentActivityList({
                             <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <StatusBadge status={activity.status}/>
-                                    <span
-                                        className="text-sm font-medium text-foreground">{formatTicket(activity.cardTitle, activity.ticketKey)}</span>
+                                    <TooltipProvider delayDuration={200}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                {activity.projectId ? (
+                                                    <Link
+                                                        to={getProjectCardPath(
+                                                            activity.projectId,
+                                                            activity.cardId ?? undefined,
+                                                        )}
+                                                        className="text-sm font-medium text-foreground hover:underline"
+                                                    >
+                                                        {formatTicket(activity.cardTitle, activity.ticketKey)}
+                                                    </Link>
+                                                ) : (
+                                                    <span className="text-sm font-medium text-foreground">
+                                                        {formatTicket(activity.cardTitle, activity.ticketKey)}
+                                                    </span>
+                                                )}
+                                            </TooltipTrigger>
+                                            <TooltipContent align="start" className="max-w-xs">
+                                                Open board for this attempt
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                     <span>{activity.projectName ?? 'Unknown project'}</span>
@@ -59,11 +84,38 @@ export function RecentActivityList({
                             </div>
                             <div className="text-right text-xs text-muted-foreground">
                                 <div>{finishedLabel(activity.finishedAt)}</div>
-                                {activity.projectId ? (
-                                    <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
-                                        <Link to={`/projects/${activity.projectId}`}>View board</Link>
+                                <div className="mt-0.5 flex flex-col items-end gap-0.5">
+                                    <Button
+                                        asChild
+                                        variant="link"
+                                        size="sm"
+                                        className="h-auto p-0 text-xs"
+                                    >
+                                        <Link
+                                            to={getAttemptPath(activity.attemptId)}
+                                            aria-label="Open attempt details"
+                                        >
+                                            View attempt
+                                        </Link>
                                     </Button>
-                                ) : null}
+                                    {activity.projectId ? (
+                                        <Button
+                                            asChild
+                                            variant="link"
+                                            size="sm"
+                                            className="h-auto p-0 text-xs"
+                                        >
+                                            <Link
+                                                to={getProjectCardPath(
+                                                    activity.projectId,
+                                                    activity.cardId ?? undefined,
+                                                )}
+                                            >
+                                                View board
+                                            </Link>
+                                        </Button>
+                                    ) : null}
+                                </div>
                             </div>
                         </li>
                     ))}

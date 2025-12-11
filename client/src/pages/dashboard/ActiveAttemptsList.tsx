@@ -3,10 +3,12 @@ import {Separator} from '@/components/ui/separator'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Link} from 'react-router-dom'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
+import {getAttemptPath, getProjectCardPath} from '@/lib/routes'
 
 type Attempt = {
     attemptId: string
     status: import('shared').AttemptStatus
+    cardId: string
     cardTitle: string | null
     ticketKey: string | null
     projectName: string | null
@@ -70,7 +72,14 @@ export function ActiveAttemptsList({
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Link
-                                                    to={attempt.projectId ? `/projects/${attempt.projectId}` : '#'}
+                                                    to={
+                                                        attempt.projectId
+                                                            ? getProjectCardPath(
+                                                                  attempt.projectId,
+                                                                  attempt.cardId,
+                                                              )
+                                                            : '#'
+                                                    }
                                                     onClick={(event) => {
                                                         event.stopPropagation()
                                                         if (!attempt.projectId) {
@@ -83,7 +92,7 @@ export function ActiveAttemptsList({
                                                 </Link>
                                             </TooltipTrigger>
                                             <TooltipContent align="start" className="max-w-xs">
-                                                {formatTicket(attempt.cardTitle, attempt.ticketKey)}
+                                                Open board for this attempt
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>
@@ -111,6 +120,22 @@ export function ActiveAttemptsList({
                                         ? `Started ${updatedLabel(attempt.startedAt)}`
                                         : `Updated ${updatedLabel(attempt.updatedAt)}`}
                                 </div>
+                                <div>
+                                    <Button
+                                        asChild
+                                        variant="link"
+                                        size="sm"
+                                        className="h-auto p-0 text-xs"
+                                    >
+                                        <Link
+                                            to={getAttemptPath(attempt.attemptId)}
+                                            onClick={(event) => event.stopPropagation()}
+                                            aria-label="Open attempt details"
+                                        >
+                                            View attempt
+                                        </Link>
+                                    </Button>
+                                </div>
                                 {attempt.projectId ? (
                                     <Button
                                         asChild
@@ -119,10 +144,10 @@ export function ActiveAttemptsList({
                                         className="h-auto p-0 text-xs"
                                     >
                                         <Link
-                                            to={`/projects/${attempt.projectId}`}
+                                            to={getProjectCardPath(attempt.projectId, attempt.cardId)}
                                             onClick={(event) => event.stopPropagation()}
                                         >
-                                            Open project
+                                            Open board
                                         </Link>
                                     </Button>
                                 ) : null}
