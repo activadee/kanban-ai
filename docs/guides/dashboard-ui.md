@@ -43,19 +43,21 @@ When the KPI snapshot succeeds but reports zero counts across the supported metr
 
 ## Live Agent Activity panel
 
-- The **Live Agent Activity** card now focuses exclusively on live attempts that are queued, running, or stopping.
-  - The **Active attempts** subsection lists those in-flight attempts with status badges, project/agent metadata, relative update timestamps, and quick links back to the board.
-  - Dropdown filters let you scope the list by agent, attempt status (`queued`, `running`, `stopping`), and project, with a “Clear filters” button and a badge showing how many filters are active. Filters persist across live updates so you can keep a narrowed view even as new data streams in.
-  - Click or press Enter/Space on any row to open the attempt detail page (`/attempts/:attemptId`) that contains the attempt summary, metadata, and streaming log chronicle alongside the board link that already existed.
-  - When the dashboard WebSocket temporarily drops or reconnects, a helper note informs you that live updates are paused and the panel will resume with the latest cached snapshot once the socket returns.
+  - The **Live Agent Activity** card now focuses exclusively on live attempts that are queued, running, or stopping.
+    - The **Active attempts** subsection lists those in-flight attempts with status badges, project/agent metadata, relative update timestamps, and quick links back to the board.
+    - Dropdown filters let you scope the list by agent, attempt status (`queued`, `running`, `stopping`), and project, with a “Clear filters” button and a badge showing how many filters are active. Filters persist across live updates so you can keep a narrowed view even as new data streams in.
+    - Click or press Enter/Space on any row to open the attempt detail page (`/attempts/:attemptId`) that contains the attempt summary, metadata, and streaming log chronicle alongside the board link that already existed.
+    - Each row now surfaces dedicated **View attempt** and **View board** links; the board link passes the `cardId` query parameter so the target board opens with the inspector pre-selected on that card.
+    - When the dashboard WebSocket temporarily drops or reconnects, a helper note informs you that live updates are paused and the panel will resume with the latest cached snapshot once the socket returns.
   - Empty states explain when no live attempts match the current preset so you know why the list is blank.
   - When the live activity query fails and there are no cached attempts, a compact retryable error banner appears inside the card so you can refresh without blocking the rest of Mission Control; the empty-state messaging is suppressed until the list succeeds again.
 
 ## Recent Attempt History panel
 
-- A new **Recent Attempt History** card surfaces completed and stopped attempts from across boards, ordered by most recent completion time within the selected timeframe.
-  - Each row shows the attempt status badge, ticket title/key, project name, agent label (or `Unknown agent` fallback), formatted duration, and both absolute and relative timestamps, so you can quickly understand what ran and how long it took.
-  - Rows are keyboard and mouse accessible: clicking (or pressing Enter/Space) navigates to the attempt detail, while project links jump straight to the associated board without losing focus.
+  - A new **Recent Attempt History** card surfaces completed and stopped attempts from across boards, ordered by most recent completion time within the selected timeframe.
+    - Each row shows the attempt status badge, ticket title/key, project name, agent label (or `Unknown agent` fallback), formatted duration, and both absolute and relative timestamps, so you can quickly understand what ran and how long it took.
+    - Rows are keyboard and mouse accessible: clicking (or pressing Enter/Space) navigates to the attempt detail, while project links jump straight to the associated board without losing focus.
+    - Inline action links have been added as well so you can tap **View attempt** to land on the detail page or **View board** (with `cardId`) to open the inspector for the recorded card.
   - The header mirrors the dashboard time range label for context, and a **Show more / Show less** footer lets you page through large histories while keeping the default viewport limited for readability.
   - Skeletons render while the history data is loading, an inline error banner with a retry button appears when the fetch fails, and a friendly empty-state message explains that no attempts have completed yet when the list is blank.
 
@@ -85,7 +87,8 @@ When the KPI snapshot succeeds but reports zero counts across the supported metr
   - **Review** – succeeded attempts that still require human verification (e.g. a PR is still open or the card is not in a Done column).
   - **Failed** – attempts that ended in failure without a later resolved success.
   - **Stuck** – queued or running attempts that exceeded the backend thresholds (roughly 10 minutes for queued work, 30 minutes for running).
-- Items are sorted by recency (`lastUpdatedAt`) so the most urgent work appears at the top, and each row surfaces the related card, project, agent (or agent ID fallback), relative last activity timestamp, and the attempt’s status badge.
+  - Items are sorted by recency (`lastUpdatedAt`) so the most urgent work appears at the top, and each row surfaces the related card, project, agent (or agent ID fallback), relative last activity timestamp, and the attempt’s status badge.
+  - Card titles link to `/projects/:projectId?cardId=:cardId` so tapping them opens the board with the inspector already highlighting the referenced task.
 - Tabs at the top of the panel let you toggle between **All**, **Review**, **Failed**, or **Stuck** items while showing counts for each category. The selected filter is remembered for the current browser session so you can keep focused on one bucket while you flip between attempts or revisit Mission Control.
 - A refresh button is exposed beside the tabs in case you need an on-demand reload, while the panel renders skeleton placeholders during the initial load and surfaces a retryable error banner if the dashboard fetch fails.
 - Tapping an inbox entry opens the corresponding attempt detail page so you can inspect logs, PRs, or agent output before taking action.
