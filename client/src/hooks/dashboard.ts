@@ -2,6 +2,7 @@ import {useEffect, useMemo} from 'react'
 import {useQuery, useQueryClient, type UseQueryOptions} from '@tanstack/react-query'
 import {
     DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
+    DASHBOARD_METRIC_KEYS,
     type DashboardOverview,
     type DashboardTimeRangePreset,
     type DashboardTimeRangeQuery,
@@ -59,24 +60,54 @@ export interface DashboardKpiMetrics {
     /**
      * Number of currently active attempts in the dashboard snapshot.
      */
-    activeAttempts?: number
+    activeAttempts: number
     /**
      * Number of attempts whose `createdAt` falls within the selected time range.
      */
-    attemptsInRange?: number
+    attemptsInRange: number
     /**
      * Success rate for attempts within the selected time range, expressed as a
      * fraction between `0` and `1`.
      */
-    successRateInRange?: number
+    successRateInRange: number
     /**
      * Number of inbox items that require review.
      */
-    reviewItemsCount?: number
+    reviewItemsCount: number
     /**
      * Number of projects/boards with any attempt activity in range.
      */
-    projectsWithActivity?: number
+    projectsWithActivity: number
+}
+
+export function deriveDashboardKpiMetrics(overview: DashboardOverview): DashboardKpiMetrics {
+    const {metrics, inboxItems, activeAttempts, attemptsInRange, successRateInRange, projectsWithActivityInRange} =
+        overview
+
+    const activeAttemptsFromMetrics =
+        metrics.activeAttempts ?? metrics.byKey[DASHBOARD_METRIC_KEYS.activeAttempts]?.total
+    const activeAttemptsCount = activeAttemptsFromMetrics ?? activeAttempts.length
+
+    const attemptsInRangeValue = metrics.attemptsInRange ?? attemptsInRange ?? 0
+
+    const successRateInRangeValue = metrics.successRateInRange ?? successRateInRange ?? 0
+
+    const inboxMeta = inboxItems.meta as {totalReview?: unknown} | undefined
+    const reviewItemsCountFromMeta =
+        typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined
+    const reviewItemsCount =
+        metrics.reviewItemsCount ?? reviewItemsCountFromMeta ?? inboxItems.review.length
+
+    const projectsWithActivityValue =
+        metrics.projectsWithActivity ?? projectsWithActivityInRange ?? 0
+
+    return {
+        activeAttempts: activeAttemptsCount,
+        attemptsInRange: attemptsInRangeValue,
+        successRateInRange: successRateInRangeValue,
+        reviewItemsCount,
+        projectsWithActivity: projectsWithActivityValue,
+    }
 }
 
 export function useDashboardMetrics(options?: DashboardOverviewOptions): {
@@ -91,36 +122,7 @@ export function useDashboardMetrics(options?: DashboardOverviewOptions): {
         const overview = overviewQuery.data
         if (!overview) return undefined
 
-        const metrics = overview.metrics
-        const inbox = overview.inboxItems
-
-        const activeAttempts =
-            metrics.activeAttempts ?? overview.activeAttempts.length ?? undefined
-
-        const attemptsInRange =
-            metrics.attemptsInRange ?? overview.attemptsInRange ?? undefined
-
-        const successRateInRange =
-            metrics.successRateInRange ?? overview.successRateInRange ?? undefined
-
-        const inboxMeta = inbox.meta as {totalReview?: unknown} | undefined
-        const reviewItemsCountFromMeta =
-            typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined
-        const reviewItemsCount =
-            metrics.reviewItemsCount ??
-            reviewItemsCountFromMeta ??
-            (Array.isArray(inbox.review) ? inbox.review.length : undefined)
-
-        const projectsWithActivity =
-            metrics.projectsWithActivity ?? overview.projectsWithActivityInRange ?? undefined
-
-        return {
-            activeAttempts,
-            attemptsInRange,
-            successRateInRange,
-            reviewItemsCount,
-            projectsWithActivity,
-        }
+        return deriveDashboardKpiMetrics(overview)
     }, [overviewQuery.data])
 
     return {

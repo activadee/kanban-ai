@@ -19,17 +19,10 @@ export function MetricCards({items, isLoading}: MetricCardsProps) {
             {items.map((item) => {
                 const displayValue = item.value
                 const helper = item.helperText
-                const ariaLabel =
-                    helper && !isLoading
-                        ? `${item.label}: ${displayValue} (${helper})`
-                        : `${item.label}: ${displayValue}`
-
                 return (
                     <div
                         key={item.label}
                         className="rounded-md border border-border/60 bg-card/60 p-4"
-                        role="group"
-                        aria-label={ariaLabel}
                     >
                         {isLoading ? (
                             <div className="space-y-2">

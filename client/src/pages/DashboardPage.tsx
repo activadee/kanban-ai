@@ -1,17 +1,19 @@
 import {useState} from 'react'
 import {Link} from 'react-router-dom'
-import {
-    DASHBOARD_METRIC_KEYS,
-    DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
-    type DashboardTimeRangePreset,
-} from 'shared'
+import {DEFAULT_DASHBOARD_TIME_RANGE_PRESET, type DashboardTimeRangePreset} from 'shared'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {MetricCards} from './dashboard/MetricCards'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Separator} from '@/components/ui/separator'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
-import {useDashboardOverview, useDashboardStream, useGithubAuthStatus, useAgents} from '@/hooks'
+import {
+    useDashboardOverview,
+    useDashboardStream,
+    useGithubAuthStatus,
+    useAgents,
+} from '@/hooks'
+import {deriveDashboardKpiMetrics} from '@/hooks'
 import {formatRelativeTime} from '@/lib/time'
 import {VersionIndicator} from '@/components/system/VersionIndicator'
 
@@ -54,7 +56,6 @@ export function DashboardPage() {
     const agentsQuery = useAgents({staleTime: 60_000})
 
     const overview = dashboardQuery.data
-    const metrics = overview?.metrics
     const activeAttempts = overview?.activeAttempts ?? []
     const recentActivity = overview?.recentAttemptActivity ?? []
     const projectSnapshots = overview?.projectSnapshots ?? []
@@ -77,42 +78,47 @@ export function DashboardPage() {
 
     const timeRangeLabel = getTimeRangeLabel(effectiveTimeRangePreset)
 
-    const activeAttemptsCount =
-        metrics?.activeAttempts ??
-        metrics?.byKey[DASHBOARD_METRIC_KEYS.activeAttempts]?.total ??
-        activeAttempts.length
-    const attemptsInRangeValue = metrics?.attemptsInRange ?? overview?.attemptsInRange
-    const successRateInRangeValue =
-        metrics?.successRateInRange ?? overview?.successRateInRange ?? undefined
+    const kpiMetrics = overview ? deriveDashboardKpiMetrics(overview) : undefined
+    const activeAttemptsCount = kpiMetrics?.activeAttempts
+    const attemptsInRangeValue = kpiMetrics?.attemptsInRange
+    const successRateInRangeValue = kpiMetrics?.successRateInRange
+    const reviewItemsCount = kpiMetrics?.reviewItemsCount
+    const projectsWithActivityValue = kpiMetrics?.projectsWithActivity
 
-    const inboxMeta = inbox?.meta as {totalReview?: unknown} | undefined
-    const reviewItemsCountFromMeta =
-        typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined
-    const reviewItemsCount =
-        metrics?.reviewItemsCount ?? reviewItemsCountFromMeta ?? inboxReview.length
-
-    const projectsWithActivityValue =
-        metrics?.projectsWithActivity ?? overview?.projectsWithActivityInRange
+    const hasOverview = overview != null
+    const kpiDataUnavailable = dashboardQuery.isError && !hasOverview
 
     const metricCards = [
         {
             label: 'Active attempts',
-            value: dashboardQuery.isLoading ? '—' : activeAttemptsCount ?? '—',
+            value:
+                dashboardQuery.isLoading || kpiDataUnavailable
+                    ? '—'
+                    : activeAttemptsCount ?? '—',
             helperText: 'Currently in progress',
         },
         {
             label: 'Attempts in range',
-            value: dashboardQuery.isLoading ? '—' : attemptsInRangeValue ?? '—',
+            value:
+                dashboardQuery.isLoading || kpiDataUnavailable
+                    ? '—'
+                    : attemptsInRangeValue ?? '—',
             helperText: 'Within selected period',
         },
         {
             label: 'Success rate',
-            value: dashboardQuery.isLoading ? '—' : formatSuccessRate(successRateInRangeValue),
+            value:
+                dashboardQuery.isLoading || kpiDataUnavailable
+                    ? '—'
+                    : formatSuccessRate(successRateInRangeValue),
             helperText: timeRangeLabel,
         },
         {
             label: 'Items to review',
-            value: dashboardQuery.isLoading ? '—' : reviewItemsCount ?? '—',
+            value:
+                dashboardQuery.isLoading || kpiDataUnavailable
+                    ? '—'
+                    : reviewItemsCount ?? '—',
             helperText: 'From review inbox',
         },
     ]

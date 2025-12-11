@@ -142,7 +142,12 @@ Forward-compatibility:
 ## UI panels
 
 - **Metric cards**
-  - Show high-level counts for projects, active Attempts, Attempts in the selected time range, and open cards. The “Attempts (range)” label matches the preset so you can correlate totals with the chosen window.
+  - Show high-level KPIs for the current dashboard snapshot:
+    - Active attempts currently in progress.
+    - Attempts in the selected time range.
+    - Success rate for attempts in the selected time range.
+    - Items to review from the inbox.
+    - Active projects with any attempt activity in the selected range (when available).
 - **Live Agent Activity**
   - One card that merges live `Active attempts` (status badges, project/agent metadata, relative update timestamps, and board links) with `Recent activity` (completed/stopped attempts in the same time range). Empty states explain when no data is available for the current preset.
 - **Inbox**
