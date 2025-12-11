@@ -1,6 +1,6 @@
 import React from "react";
 import {describe, it, expect, beforeEach, vi} from "vitest";
-import {render, cleanup, screen, fireEvent, waitFor} from "@testing-library/react";
+import {render, cleanup, screen, fireEvent, waitFor, within} from "@testing-library/react";
 import {MemoryRouter} from "react-router-dom";
 import type {DashboardInbox} from "shared";
 
@@ -298,12 +298,12 @@ describe("Dashboard InboxPanel", () => {
     });
 
     it("wraps the inbox grid in a horizontally scrollable container", () => {
-        const {container} = renderInboxPanel();
+        renderInboxPanel();
 
-        const scrollContainer = container.querySelector("div.overflow-x-auto");
-        expect(scrollContainer).not.toBeNull();
+        const scrollContainer = screen.getByTestId("inbox-scroll-container");
+        expect(scrollContainer).toBeTruthy();
 
-        const inboxList = scrollContainer?.querySelector("[data-testid='inbox-list']");
-        expect(inboxList).not.toBeNull();
+        const inboxList = within(scrollContainer).getByTestId("inbox-list");
+        expect(inboxList).toBeTruthy();
     });
 });

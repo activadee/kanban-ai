@@ -162,8 +162,9 @@ describe("Mission Control dashboard layout", () => {
         const agentsHeading = screen.getByText("Agents & System");
         const historyHeading = screen.getByText("Recent Attempt History");
 
+        const DOCUMENT_POSITION_FOLLOWING = 4;
         const isBefore = (a: HTMLElement, b: HTMLElement) =>
-            (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+            (a.compareDocumentPosition(b) & DOCUMENT_POSITION_FOLLOWING) !== 0;
 
         expect(isBefore(kpiRow, liveActivityHeading)).toBe(true);
         expect(isBefore(liveActivityHeading, inboxHeading)).toBe(true);
@@ -173,11 +174,11 @@ describe("Mission Control dashboard layout", () => {
     });
 
     it("uses a responsive two-column grid for main sections at large widths", () => {
-        const {container} = renderDashboard();
+        renderDashboard();
 
-        const gridSection = container.querySelector("section.grid");
+        const gridSection = screen.getByTestId("mission-control-grid");
         expect(gridSection).toBeTruthy();
-        expect(gridSection?.className).toContain("xl:grid-cols-2");
+        expect(gridSection.className).toContain("xl:grid-cols-2");
     });
 
     it("renders KPI cards with expected labels", () => {

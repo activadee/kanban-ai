@@ -239,7 +239,10 @@ export function DashboardPage() {
                     />
                 ) : null}
 
-                <section className="grid gap-6 xl:grid-cols-2">
+                <section
+                    className="grid gap-6 xl:grid-cols-2"
+                    data-testid="mission-control-grid"
+                >
                     <div className="space-y-6">
                         <LiveAgentActivityPanel
                             activeAttempts={activeAttempts}
