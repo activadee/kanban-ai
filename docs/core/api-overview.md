@@ -16,7 +16,7 @@ shim). This page gives a high-level map of the main resources and how they fit t
   - Board channel: `ws://localhost:3000/api/v1/ws?boardId=<boardId>`
   - Dashboard channel: `ws://localhost:3000/api/v1/ws/dashboard`
 
-All examples below omit the `/api/v1` prefix for brevity.
+All endpoints below are rooted at `/api/v1`; paths are shown with the full prefix for clarity.
 
 ## Projects & boards
 
@@ -106,20 +106,20 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
 ## Dashboard & metrics
 
 - Dashboard:
-  - `GET /dashboard` – returns `DashboardOverview` (metrics, active attempts, recent activity, inbox, project snapshots, agent stats).
+  - `GET /api/v1/dashboard` – returns `DashboardOverview` (metrics, active attempts, recent activity, inbox, project snapshots, agent stats).
     - Supports time-range selection via query:
-      - `GET /dashboard?timeRangePreset=last_24h`
-      - `GET /dashboard?timeRangePreset=last_7d`
-      - `GET /dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
+      - `GET /api/v1/dashboard?timeRangePreset=last_24h`
+      - `GET /api/v1/dashboard?timeRangePreset=last_7d`
+      - `GET /api/v1/dashboard?from=2025-01-01T00:00:00Z&to=2025-01-02T00:00:00Z`
       - Convenience alias: `range=<value>` (supports `24h`, `7d`, `30d`, `90d`, `all`; each maps to the matching `timeRangePreset`).
-        - `GET /dashboard?range=24h` → shorthand for `timeRangePreset=last_24h`; unknown values return HTTP `400`.
+        - `GET /api/v1/dashboard?range=24h` → shorthand for `timeRangePreset=last_24h`; unknown values return HTTP `400`.
       - Precedence: explicit `from`/`to` wins, otherwise a provided `timeRangePreset` is used before `range`.
     - The `DashboardOverview.meta` object includes `availableTimeRangePresets` (allowed presets) and `version` (forward-compatible version string).
     - The handler maps these parameters into the shared `DashboardTimeRange` type and echoes it on the response.
-  - WebSocket channel: `/ws/dashboard` (see realtime docs).
+  - WebSocket channel: `GET /api/v1/ws/dashboard` (see realtime docs).
 - Metrics:
-  - `GET /metrics` – minimal Prometheus-style metrics for liveness.
-  - `GET /healthz`, `GET /readyz` – health probes.
+  - `GET /api/v1/metrics` – minimal Prometheus-style metrics for liveness.
+  - `GET /api/v1/healthz`, `GET /api/v1/readyz` – health probes.
 
 ## Server metadata
 

@@ -16,7 +16,6 @@ To generate these locally:
 
 1. Start the app in dev mode from the repository root:
    - `bun run dev`
-2. Open the UI at the printed URL (typically `http://localhost:3000`) and navigate to `/dashboard`.
+2. When Vite starts the client, open the UI at the dev URL it prints in the terminal (for example `http://localhost:5173`) and navigate to `/dashboard`.
 3. Capture the views above using your preferred screenshot tool.
 4. Save the images in this folder with the suggested filenames so the docs can embed them.
-
