@@ -2,6 +2,7 @@ import {Button} from '@/components/ui/button'
 import {Separator} from '@/components/ui/separator'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Link} from 'react-router-dom'
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 
 type Attempt = {
     attemptId: string
@@ -10,6 +11,7 @@ type Attempt = {
     ticketKey: string | null
     projectName: string | null
     projectId: string | null
+    startedAt: string | null
     updatedAt: string | null
     agent: string
 }
@@ -24,10 +26,12 @@ export function ActiveAttemptsList({
                                        attempts,
                                        isLoading,
                                        updatedLabel,
+                                       onSelectAttempt,
                                    }: {
     attempts: Attempt[]
     isLoading: boolean
     updatedLabel: (ts: string | null | undefined) => string
+    onSelectAttempt?: (attemptId: string) => void
 }) {
     return (
         <>
@@ -40,27 +44,86 @@ export function ActiveAttemptsList({
             ) : attempts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No active attempts right now.</p>
             ) : (
-                <ul className="space-y-3">
+                <ul className="space-y-3" data-testid="active-attempts-list">
                     {attempts.map((attempt) => (
-                        <li key={attempt.attemptId}
-                            className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3">
+                        <li
+                            key={attempt.attemptId}
+                            data-testid="active-attempt-row"
+                            className="flex cursor-pointer items-start justify-between gap-4 rounded-md border border-border/60 p-3 hover:bg-muted/40"
+                            role={onSelectAttempt ? 'button' : undefined}
+                            tabIndex={onSelectAttempt ? 0 : undefined}
+                            onClick={() => {
+                                if (onSelectAttempt) onSelectAttempt(attempt.attemptId)
+                            }}
+                            onKeyDown={(event) => {
+                                if (!onSelectAttempt) return
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    onSelectAttempt(attempt.attemptId)
+                                }
+                            }}
+                        >
                             <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <StatusBadge status={attempt.status}/>
-                                    <span
-                                        className="text-sm font-medium text-foreground">{formatTicket(attempt.cardTitle, attempt.ticketKey)}</span>
+                                    <TooltipProvider delayDuration={200}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link
+                                                    to={attempt.projectId ? `/projects/${attempt.projectId}` : '#'}
+                                                    onClick={(event) => {
+                                                        event.stopPropagation()
+                                                        if (!attempt.projectId) {
+                                                            event.preventDefault()
+                                                        }
+                                                    }}
+                                                    className="max-w-xs truncate text-sm font-medium text-foreground hover:underline"
+                                                >
+                                                    {formatTicket(attempt.cardTitle, attempt.ticketKey)}
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent align="start" className="max-w-xs">
+                                                {formatTicket(attempt.cardTitle, attempt.ticketKey)}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                    <span>{attempt.projectName ?? 'Unknown project'}</span>
+                                    <TooltipProvider delayDuration={200}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="max-w-[180px] truncate">
+                                                    {attempt.projectName ?? 'Unknown project'}
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent align="start">
+                                                {attempt.projectName ?? 'Unknown project'}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <Separator orientation="vertical" className="h-3"/>
-                                    <span>{attempt.agent}</span>
+                                    <span className="max-w-[140px] truncate">{attempt.agent}</span>
                                 </div>
                             </div>
                             <div className="text-right text-xs text-muted-foreground">
-                                <div>{updatedLabel(attempt.updatedAt)}</div>
+                                <div>
+                                    {attempt.startedAt
+                                        ? `Started ${updatedLabel(attempt.startedAt)}`
+                                        : `Updated ${updatedLabel(attempt.updatedAt)}`}
+                                </div>
                                 {attempt.projectId ? (
-                                    <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
-                                        <Link to={`/projects/${attempt.projectId}`}>Open project</Link>
+                                    <Button
+                                        asChild
+                                        variant="link"
+                                        size="sm"
+                                        className="h-auto p-0 text-xs"
+                                    >
+                                        <Link
+                                            to={`/projects/${attempt.projectId}`}
+                                            onClick={(event) => event.stopPropagation()}
+                                        >
+                                            Open project
+                                        </Link>
                                     </Button>
                                 ) : null}
                             </div>

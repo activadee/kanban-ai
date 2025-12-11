@@ -1,10 +1,9 @@
 import {useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link, useNavigate} from 'react-router-dom'
 import {DEFAULT_DASHBOARD_TIME_RANGE_PRESET, type DashboardTimeRangePreset} from 'shared'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {MetricCards} from './dashboard/MetricCards'
-import {StatusBadge} from '@/components/common/StatusBadge'
 import {Separator} from '@/components/ui/separator'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {
@@ -14,10 +13,9 @@ import {
     useAgents,
 } from '@/hooks'
 import {deriveDashboardKpiMetrics} from '@/hooks'
-import {formatRelativeTime} from '@/lib/time'
 import {VersionIndicator} from '@/components/system/VersionIndicator'
-
-const relativeTimeFromNow = (value: string | null | undefined) => formatRelativeTime(value) ?? '—'
+import {LiveAgentActivityPanel} from '@/pages/dashboard/LiveAgentActivityPanel'
+import {useRelativeTimeFormatter} from '@/hooks'
 
 const formatSuccessRate = (value: number | null | undefined): string => {
     if (value == null || Number.isNaN(value)) return '—'
@@ -46,14 +44,17 @@ function formatTicket(title: string | null, ticketKey: string | null): string {
 }
 
 export function DashboardPage() {
+    const navigate = useNavigate()
     const [timeRangePreset, setTimeRangePreset] = useState<DashboardTimeRangePreset>(
         DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
     )
 
     const dashboardQuery = useDashboardOverview({timeRangePreset})
-    useDashboardStream(timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET)
+    const dashboardStream = useDashboardStream(timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET)
     const githubStatus = useGithubAuthStatus({staleTime: 60_000})
     const agentsQuery = useAgents({staleTime: 60_000})
+
+    const relativeTimeFromNow = useRelativeTimeFormatter(30_000)
 
     const overview = dashboardQuery.data
     const activeAttempts = overview?.activeAttempts ?? []
@@ -87,6 +88,7 @@ export function DashboardPage() {
 
     const hasOverview = overview != null
     const kpiDataUnavailable = dashboardQuery.isError && !hasOverview
+    const activityLoadError = dashboardQuery.isError && !hasOverview
 
     const metricCards = [
         {
@@ -200,128 +202,20 @@ export function DashboardPage() {
 
                 <section className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-6">
-                        <Card className="border-border/70 bg-card/60">
-                            <CardHeader>
-                                <CardTitle>Live Agent Activity</CardTitle>
-                                <CardDescription>
-                                    Live attempts and recent outcomes across your projects.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                <div>
-                                    <div className="mb-2 flex items-center justify-between">
-                                        <h2 className="text-sm font-medium text-foreground">Active attempts</h2>
-                                    </div>
-                                    {dashboardQuery.isLoading ? (
-                                        <div className="space-y-3">
-                                            {Array.from({length: 3}).map((_, index) => (
-                                                <div key={index} className="h-14 animate-pulse rounded-md bg-muted/60"/>
-                                            ))}
-                                        </div>
-                                    ) : activeAttempts.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">
-                                            No active attempts right now. Kick off work from any card to see it here.
-                                        </p>
-                                    ) : (
-                                        <ul className="space-y-4">
-                                            {activeAttempts.map((attempt) => (
-                                                <li
-                                                    key={attempt.attemptId}
-                                                    className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3"
-                                                >
-                                                    <div className="space-y-1">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <StatusBadge status={attempt.status}/>
-                                                            <span className="text-sm font-medium text-foreground">
-                                                                {formatTicket(attempt.cardTitle, attempt.ticketKey)}
-                                                            </span>
-                                                        </div>
-                                                        <div
-                                                            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                            <span>{attempt.projectName ?? 'Unknown project'}</span>
-                                                            <Separator orientation="vertical" className="h-3"/>
-                                                            <span>{attempt.agentId}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right text-xs text-muted-foreground">
-                                                        <div>{relativeTimeFromNow(attempt.updatedAt)}</div>
-                                                        {attempt.projectId ? (
-                                                            <Button
-                                                                asChild
-                                                                variant="link"
-                                                                size="sm"
-                                                                className="h-auto p-0 text-xs"
-                                                            >
-                                                                <Link to={`/projects/${attempt.projectId}`}>
-                                                                    Open project
-                                                                </Link>
-                                                            </Button>
-                                                        ) : null}
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <div className="mb-2 flex items-center justify-between">
-                                        <h2 className="text-sm font-medium text-foreground">Recent activity</h2>
-                                        <span className="text-xs text-muted-foreground">{timeRangeLabel}</span>
-                                    </div>
-                                    {dashboardQuery.isLoading ? (
-                                        <div className="space-y-3">
-                                            {Array.from({length: 4}).map((_, index) => (
-                                                <div key={index} className="h-12 animate-pulse rounded-md bg-muted/60"/>
-                                            ))}
-                                        </div>
-                                    ) : recentActivity.length === 0 ? (
-                                        <p className="text-sm text-muted-foreground">
-                                            No attempt history yet. Launch an agent attempt to populate this feed.
-                                        </p>
-                                    ) : (
-                                        <ul className="space-y-3">
-                                            {recentActivity.map((activity) => (
-                                                <li
-                                                    key={activity.attemptId}
-                                                    className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3"
-                                                >
-                                                    <div className="space-y-1">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <StatusBadge status={activity.status}/>
-                                                            <span className="text-sm font-medium text-foreground">
-                                                                {formatTicket(activity.cardTitle, activity.ticketKey)}
-                                                            </span>
-                                                        </div>
-                                                        <div
-                                                            className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                            <span>{activity.projectName ?? 'Unknown project'}</span>
-                                                            <Separator orientation="vertical" className="h-3"/>
-                                                            <span>{activity.agentId}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right text-xs text-muted-foreground">
-                                                        <div>{relativeTimeFromNow(activity.occurredAt)}</div>
-                                                        {activity.projectId ? (
-                                                            <Button
-                                                                asChild
-                                                                variant="link"
-                                                                size="sm"
-                                                                className="h-auto p-0 text-xs"
-                                                            >
-                                                                <Link to={`/projects/${activity.projectId}`}>
-                                                                    View board
-                                                                </Link>
-                                                            </Button>
-                                                        ) : null}
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <LiveAgentActivityPanel
+                            activeAttempts={activeAttempts}
+                            recentActivity={recentActivity}
+                            agents={agentsQuery.data?.agents}
+                            isLoading={dashboardQuery.isLoading}
+                            timeRangeLabel={timeRangeLabel}
+                            updatedLabel={relativeTimeFromNow}
+                            streamStatus={dashboardStream?.status ?? 'idle'}
+                            hasError={activityLoadError}
+                            onRetry={dashboardQuery.refetch}
+                            onAttemptNavigate={(attemptId) => {
+                                navigate(`/attempts/${attemptId}`)
+                            }}
+                        />
 
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
