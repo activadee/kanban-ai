@@ -11,7 +11,7 @@ Last updated: 2025-12-08
   - System status (GitHub connection and agents).
 - The Dashboard is powered by the `getDashboardOverview` service in `core`, surfaced over HTTP and WebSockets.
 
-For a user-facing walkthrough of Mission Control panels and workflows, see the [Mission Control dashboard guide](guides/dashboard-ui).
+For a user-facing walkthrough of Mission Control panels and workflows, see the [Mission Control dashboard guide](../guides/dashboard-ui).
 
 ## Data model
 

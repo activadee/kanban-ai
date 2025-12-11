@@ -164,7 +164,7 @@ The Inbox panel surfaces actionable items from the shared `DashboardInbox` paylo
   - Each row shows card title/ticket key, project name, agent label (or agent ID fallback), relative last activity, and an Attempt status badge.
   - Card titles link to `/projects/:projectId?cardId=:cardId`, opening the board with the inspector focused on that card.
 - **Filtering and refresh**
-  - Tabs at the top toggle between **All**, **Review**, **Failed**, and **Stuck`, displaying counts for each bucket.
+  - Tabs at the top toggle between **All**, **Review**, **Failed**, and **Stuck**, displaying counts for each bucket.
   - The selected tab is stored in session storage so you stay focused on one bucket as you navigate away and back.
   - A refresh button beside the tabs triggers a manual reload.
 - **Interactions**
@@ -286,7 +286,7 @@ This section is for contributors who want to extend or debug the Mission Control
     - `from?: string`, `to?: string` – ISO 8601 UTC bounds; both must be present when `timeRangePreset` is omitted.
     - `range?: "24h" | "7d" | "30d" | "90d" | "all"` – friendly alias mapped to presets; unknown values return HTTP 400.
   - Semantics:
-    - Valid `from`/`to` win over presets; invalid or partial custom bounds are ignored in favor of a preset.
+    - Valid `from`/`to` win over presets; invalid or partial custom bounds result in HTTP 400, so clients should only send well‑formed ISO ranges or rely on presets/range aliases.
     - `"all_time"` is treated as unbounded on the lower side and bounded at “now” on the upper side.
     - The resolved `DashboardTimeRange` is echoed back as `overview.timeRange` and used consistently by all range‑scoped metrics.
 - **WebSocket**
@@ -348,4 +348,3 @@ Mission Control is covered by tests in all three workspaces. Commands below assu
   - There are currently no Playwright/Cypress‑style end‑to‑end tests for Mission Control. When such tests are added, they should be documented here with their exact commands and any required fixtures.
 
 The core dashboard service tests use an in‑memory SQLite database, server tests stub `getDashboardOverview`, and client tests run under jsdom, so no external databases or mock servers are needed to run the Mission Control suite locally.
-
