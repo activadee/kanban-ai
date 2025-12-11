@@ -4,7 +4,6 @@ import {DEFAULT_DASHBOARD_TIME_RANGE_PRESET, type DashboardTimeRangePreset} from
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card'
 import {MetricCards} from './dashboard/MetricCards'
-import {Separator} from '@/components/ui/separator'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {
     useDashboardOverview,
@@ -15,6 +14,7 @@ import {
 import {deriveDashboardKpiMetrics} from '@/hooks'
 import {VersionIndicator} from '@/components/system/VersionIndicator'
 import {LiveAgentActivityPanel} from '@/pages/dashboard/LiveAgentActivityPanel'
+import {InboxPanel} from '@/pages/dashboard/InboxPanel'
 import {useRelativeTimeFormatter} from '@/hooks'
 
 const formatSuccessRate = (value: number | null | undefined): string => {
@@ -33,14 +33,6 @@ const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = 
 const getTimeRangeLabel = (preset: DashboardTimeRangePreset | undefined): string => {
     const option = TIME_RANGE_OPTIONS.find((item) => item.preset === preset)
     return option?.label ?? 'Selected range'
-}
-
-// Status label and classes handled by StatusBadge
-
-function formatTicket(title: string | null, ticketKey: string | null): string {
-    if (ticketKey && title) return `${ticketKey} · ${title}`
-    if (ticketKey) return ticketKey
-    return title ?? 'Untitled card'
 }
 
 export function DashboardPage() {
@@ -68,10 +60,6 @@ export function DashboardPage() {
         : TIME_RANGE_OPTIONS
     const effectiveTimeRangePreset: DashboardTimeRangePreset =
         overview?.timeRange.preset ?? timeRangePreset
-    const inboxReview = inbox?.review ?? []
-    const inboxFailed = inbox?.failed ?? []
-    const inboxStuck = inbox?.stuck ?? []
-    const inboxTotal = inboxReview.length + inboxFailed.length + inboxStuck.length
 
     const githubConnected = githubStatus.data?.status === 'valid'
     const githubAccount = githubStatus.data && githubStatus.data.status === 'valid' ? githubStatus.data.account : null
@@ -89,6 +77,7 @@ export function DashboardPage() {
     const hasOverview = overview != null
     const kpiDataUnavailable = dashboardQuery.isError && !hasOverview
     const activityLoadError = dashboardQuery.isError && !hasOverview
+    const inboxLoadError = dashboardQuery.isError && !hasOverview
 
     const metricCards = [
         {
@@ -225,92 +214,16 @@ export function DashboardPage() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {dashboardQuery.isLoading ? (
-                                    <div className="space-y-3">
-                                        {Array.from({length: 4}).map((_, index) => (
-                                            <div key={index} className="h-12 animate-pulse rounded-md bg-muted/60"/>
-                                        ))}
-                                    </div>
-                                ) : inboxTotal === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        No inbox items in the selected time range.
-                                    </p>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {(['review', 'failed', 'stuck'] as const).map((kind) => {
-                                            const items =
-                                                kind === 'review'
-                                                    ? inboxReview
-                                                    : kind === 'failed'
-                                                        ? inboxFailed
-                                                        : inboxStuck
-                                            if (!items.length) return null
-                                            const label =
-                                                kind === 'review' ? 'Review' : kind === 'failed' ? 'Failed' : 'Stuck'
-                                            return (
-                                                <div key={kind} className="space-y-2">
-                                                    <div
-                                                        className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                                        {label}
-                                                    </div>
-                                                    <ul className="space-y-2">
-                                                        {items.map((item) => (
-                                                            <li
-                                                                key={item.id}
-                                                                className="flex items-start justify-between gap-3 rounded-md border border-border/60 p-3 text-xs"
-                                                            >
-                                                                <div className="space-y-1">
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <span
-                                                                            className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-                                                                        >
-                                                                            {label}
-                                                                        </span>
-                                                                        <span
-                                                                            className="text-sm font-medium text-foreground">
-                                                                            {formatTicket(
-                                                                                item.cardTitle ?? null,
-                                                                                item.ticketKey ?? null,
-                                                                            )}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div
-                                                                        className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                                                                        <span>
-                                                                            {item.projectName ?? 'Unknown project'}
-                                                                        </span>
-                                                                        {(item.agentName || item.agentId) && (
-                                                                            <>
-                                                                                <Separator
-                                                                                    orientation="vertical"
-                                                                                    className="h-3"
-                                                                                />
-                                                                                <span>
-                                                                                    {item.agentName ?? item.agentId}
-                                                                                </span>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                                <div
-                                                                    className="text-right text-[11px] text-muted-foreground">
-                                                                    <div>
-                                                                        {relativeTimeFromNow(
-                                                                            item.lastUpdatedAt ??
-                                                                            item.finishedAt ??
-                                                                            item.updatedAt ??
-                                                                            item.createdAt,
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                )}
+                                <InboxPanel
+                                    inbox={inbox}
+                                    isLoading={dashboardQuery.isLoading}
+                                    hasError={inboxLoadError}
+                                    onReload={dashboardQuery.refetch}
+                                    formatTime={relativeTimeFromNow}
+                                    onAttemptNavigate={(attemptId) => {
+                                        navigate(`/attempts/${attemptId}`)
+                                    }}
+                                />
                             </CardContent>
                         </Card>
                     </div>

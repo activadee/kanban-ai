@@ -64,11 +64,14 @@ The cards show a skeleton on first load, surface a small error banner when the K
 
 - Surfaces actionable items coming from the shared `DashboardInbox` payload.
 - Divided into three lists:
-  - **Review** – succeeded attempts that still require human verification (e.g. a PR is still open or the card is not in a Done column). Each entry shows the `reason`, linked PR (if any), and the most recent update timestamp.
-  - **Failed** – attempts that ended in failure without a later resolved success. These items surface a short `errorSummary` harvested from the latest log entries so you can triage what went wrong.
-  - **Stuck** – queued or running attempts that exceeded the backend thresholds (roughly 10 minutes for queued work, 30 minutes for running). Each stuck item reports how long it has been stuck (`stuckForSeconds`) and links to the associated board/card for intervention.
-- Items are sorted by recency (`lastUpdatedAt`) so the most urgent work appears at the top.
-- Tapping an inbox entry opens the corresponding project/card view so you can inspect logs, PRs, or agent output before taking action.
+  - **Review** – succeeded attempts that still require human verification (e.g. a PR is still open or the card is not in a Done column).
+  - **Failed** – attempts that ended in failure without a later resolved success.
+  - **Stuck** – queued or running attempts that exceeded the backend thresholds (roughly 10 minutes for queued work, 30 minutes for running).
+- Items are sorted by recency (`lastUpdatedAt`) so the most urgent work appears at the top, and each row surfaces the related card, project, agent (or agent ID fallback), relative last activity timestamp, and the attempt’s status badge.
+- Tabs at the top of the panel let you toggle between **All**, **Review**, **Failed**, or **Stuck** items while showing counts for each category. The selected filter is remembered for the current browser session so you can keep focused on one bucket while you flip between attempts or revisit Mission Control.
+- A refresh button is exposed beside the tabs in case you need an on-demand reload, while the panel renders skeleton placeholders during the initial load and surfaces a retryable error banner if the dashboard fetch fails.
+- Tapping an inbox entry opens the corresponding attempt detail page so you can inspect logs, PRs, or agent output before taking action.
+- Each row is keyboard accessible and exposes inline actions: click the attempt icon to land on the attempt detail page, open the PR in a new tab when a `prUrl` is available, or retry a failed item directly from the panel (the retry action re-queues the agent and refreshes the inbox).
 
 ## Version indicator
 
