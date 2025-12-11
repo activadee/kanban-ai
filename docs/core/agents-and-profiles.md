@@ -52,6 +52,9 @@ Codex and OpenCode, with additional agents under active development.
   - Capabilities:
     - Reads and writes files inside attempt worktrees via OpenCode tools.
     - Streams structured messages, tool invocations, and todos into KanbanAI’s Attempt model.
+    - Implements the unified inline interface for:
+      - `kind = "ticketEnhance"` – inline ticket enhancement.
+      - `kind = "prSummary"` – PR inline summary/title+body drafting.
   - Configuration:
     - Tuned via agent profiles (primary model/agent selection, append/inline prompts, optional base URL / API key).
     - Providing `baseUrl` (or `OPENCODE_BASE_URL`) switches the agent into remote mode while `apiKey` is mirrored into

@@ -136,6 +136,11 @@ inline task with `kind = "ticketEnhance"`:
   - Annotates the inline context with `profileSource: "inline" | "primary"` so telemetry can distinguish which prompt was used.
   - Invokes `runInlineTask({agentKey, kind: "ticketEnhance", input, profile, context, signal})`.
   - Returns the `TicketEnhanceResult` (rewritten title + description) to the caller.
+  - Today, the following built-in agents implement inline ticket enhancement:
+    - `CODEX` via the Codex SDK.
+    - `DROID` via the Droid CLI.
+    - `OPENCODE` via the `@opencode-ai/sdk` client, reusing the same `buildTicketEnhancePrompt`/`splitTicketMarkdown`
+      contract and honoring `inlineProfile` as the primary prompt for inline flows.
 
 ## When to use ticket enhancement
 

@@ -74,6 +74,11 @@ PR summarization reuses the same inline infrastructure as ticket enhancement:
   - Builds an `InlineTaskContext` annotated with `profileSource: "inline" | "primary"`.
   - Invokes `runInlineTask({agentKey, kind: "prSummary", input, profile, context, signal})`.
   - Returns `PrSummaryInlineResult` `{title, body}`.
+  - Built-in agents that currently implement PR inline summary are:
+    - `CODEX` via the Codex SDK.
+    - `DROID` via the Droid CLI.
+    - `OPENCODE` via the `@opencode-ai/sdk` client, which builds the same `buildPrSummaryPrompt` prompt, parses the
+      Markdown with `splitTicketMarkdown`, and prefers `inlineProfile` over `appendPrompt` when present.
 
 ## When to use PR inline summary
 
