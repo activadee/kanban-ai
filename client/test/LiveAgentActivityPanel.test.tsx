@@ -310,4 +310,37 @@ describe("LiveAgentActivityPanel – navigation and websocket states", () => {
         const recentList = screen.getByTestId("recent-activity-list");
         expect(within(recentList).getAllByRole("listitem").length).toBe(1);
     });
+
+    it("renders a non-blocking error banner with retry when loading fails", () => {
+        const onRetry = vi.fn();
+
+        render(
+            <MemoryRouter>
+                <LiveAgentActivityPanel
+                    activeAttempts={[]}
+                    recentActivity={[]}
+                    agents={agents}
+                    isLoading={false}
+                    timeRangeLabel="Last 7 days"
+                    updatedLabel={noopTimeLabel}
+                    streamStatus="open"
+                    hasError
+                    onRetry={onRetry}
+                />
+            </MemoryRouter>,
+        );
+
+        expect(
+            screen.getByText(/Unable to load live agent activity/i),
+        ).toBeTruthy();
+
+        const retryButton = screen.getByRole("button", {name: /Retry/i});
+        fireEvent.click(retryButton);
+        expect(onRetry).toHaveBeenCalledTimes(1);
+
+        // When in an error state, we avoid showing the generic "no active attempts" empty copy.
+        expect(
+            screen.queryByText(/No active attempts right now/i),
+        ).toBeNull();
+    });
 });

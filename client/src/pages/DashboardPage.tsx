@@ -18,6 +18,11 @@ import {ProjectHealthPanel} from '@/pages/dashboard/ProjectHealthPanel'
 import {AgentsSystemStatusPanel} from '@/pages/dashboard/AgentsSystemStatusPanel'
 import {RecentAttemptHistoryPanel} from '@/pages/dashboard/RecentAttemptHistoryPanel'
 import {formatSuccessRate} from '@/pages/dashboard/formatters'
+import {
+    SectionEmptyState,
+    SectionErrorBanner,
+    type SectionState,
+} from '@/pages/dashboard/SectionState'
 
 const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = [
     {preset: 'last_24h', label: 'Last 24 hours'},
@@ -96,6 +101,22 @@ export function DashboardPage() {
     const kpiDataUnavailable = dashboardQuery.isError && !hasOverview
     const activityLoadError = dashboardQuery.isError && !hasOverview
     const inboxLoadError = dashboardQuery.isError && !hasOverview
+
+    const hasAnyKpiData =
+        (activeAttemptsCount ?? 0) > 0 ||
+        (attemptsInRangeValue ?? 0) > 0 ||
+        (successRateInRangeValue ?? 0) > 0 ||
+        (reviewItemsCount ?? 0) > 0 ||
+        (projectsWithActivityValue ?? 0) > 0
+
+    const kpiSectionState: SectionState =
+        dashboardQuery.isLoading
+            ? 'loading'
+            : kpiDataUnavailable
+                ? 'error'
+                : hasAnyKpiData
+                    ? 'success'
+                    : 'empty'
 
     const metricCards = [
         {
@@ -200,12 +221,23 @@ export function DashboardPage() {
                 </header>
 
                 {dashboardQuery.isError ? (
-                    <div className="mb-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                        Unable to load KPIs. Showing last known values when available.
-                    </div>
+                    <SectionErrorBanner
+                        className="mb-2"
+                        title="Unable to load KPIs."
+                        description="Showing last known values when available. Retry to refresh the dashboard snapshot."
+                        onRetry={dashboardQuery.refetch}
+                    />
                 ) : null}
 
                 <MetricCards items={metricCards} isLoading={dashboardQuery.isLoading}/>
+
+                {kpiSectionState === 'empty' && !dashboardQuery.isError && !dashboardQuery.isLoading ? (
+                    <SectionEmptyState
+                        data-testid="kpi-empty-state"
+                        title="No dashboard activity yet."
+                        description="Once agents start running attempts, key metrics for this time range will appear here."
+                    />
+                ) : null}
 
                 <section className="grid gap-6 lg:grid-cols-2">
                     <div className="space-y-6">
@@ -262,6 +294,8 @@ export function DashboardPage() {
                         <ProjectHealthPanel
                             snapshots={projectSnapshots}
                             isLoading={dashboardQuery.isLoading}
+                            hasError={dashboardQuery.isError && !hasOverview}
+                            onRetry={dashboardQuery.refetch}
                             onProjectNavigate={(projectId) => {
                                 navigate(`/projects/${projectId}`)
                             }}

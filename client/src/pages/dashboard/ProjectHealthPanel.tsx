@@ -11,11 +11,14 @@ import {
     resolveProjectMetrics,
     sortProjectSnapshots,
 } from './projectHealthHelpers'
+import {SectionEmptyState, SectionErrorBanner} from '@/pages/dashboard/SectionState'
 
 type Props = {
     snapshots: ProjectSnapshot[]
     isLoading: boolean
+    hasError?: boolean
     onProjectNavigate?: (projectId: string) => void
+    onRetry?: () => void
 }
 
 function formatFailureRatePercentage(value: number | null): string {
@@ -25,7 +28,7 @@ function formatFailureRatePercentage(value: number | null): string {
     return `${percentage.toFixed(0)}%`
 }
 
-export function ProjectHealthPanel({snapshots, isLoading, onProjectNavigate}: Props) {
+export function ProjectHealthPanel({snapshots, isLoading, hasError, onProjectNavigate, onRetry}: Props) {
     const [sortKey, setSortKey] = useState<ProjectHealthSortKey>('openCards')
 
     const sortedSnapshots = useMemo(
@@ -68,6 +71,15 @@ export function ProjectHealthPanel({snapshots, isLoading, onProjectNavigate}: Pr
                 </div>
             </CardHeader>
             <CardContent className="space-y-3">
+                {hasError ? (
+                    <SectionErrorBanner
+                        data-testid="project-health-error"
+                        title="Unable to load project health."
+                        description="Check your connection and retry the dashboard snapshot."
+                        onRetry={onRetry}
+                    />
+                ) : null}
+
                 {isLoading ? (
                     <div className="space-y-3" data-testid="project-health-loading">
                         {Array.from({length: 4}).map((_, index) => (
@@ -77,11 +89,12 @@ export function ProjectHealthPanel({snapshots, isLoading, onProjectNavigate}: Pr
                             />
                         ))}
                     </div>
-                ) : !hasProjects ? (
-                    <p className="text-sm text-muted-foreground">
-                        Create a project to populate this list.
-                    </p>
-                ) : (
+                ) : !hasProjects && !hasError ? (
+                    <SectionEmptyState
+                        title="No projects yet"
+                        description="Create a project to populate this list."
+                    />
+                ) : hasProjects ? (
                     <ul className="space-y-3" data-testid="project-health-list">
                         {sortedSnapshots.map((snapshot) => (
                             <ProjectHealthRow
@@ -91,7 +104,7 @@ export function ProjectHealthPanel({snapshots, isLoading, onProjectNavigate}: Pr
                             />
                         ))}
                     </ul>
-                )}
+                ) : null}
             </CardContent>
         </Card>
     )
@@ -224,4 +237,3 @@ function ProjectHealthRow({snapshot, onProjectNavigate}: RowProps) {
         </li>
     )
 }
-

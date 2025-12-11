@@ -203,4 +203,36 @@ describe("Mission Control dashboard layout", () => {
         const firstCallOptions = dashboardMocks.useDashboardOverview.mock.calls[0][0];
         expect(firstCallOptions?.timeRangePreset).toBe("last_24h");
     });
+
+    it("shows a contextual KPI empty state when there is no dashboard activity", () => {
+        renderDashboard();
+
+        expect(
+            screen.getByTestId("kpi-empty-state"),
+        ).toBeTruthy();
+    });
+
+    it("keeps other sections responsive when KPI loading reports an error", () => {
+        dashboardMocks.useDashboardOverview.mockImplementationOnce(
+            (options?: { timeRangePreset?: DashboardTimeRangePreset }) => ({
+                data: createOverview(options?.timeRangePreset ?? DEFAULT_DASHBOARD_TIME_RANGE_PRESET),
+                isLoading: false,
+                isFetching: false,
+                isError: true,
+                refetch: vi.fn(),
+            }),
+        );
+
+        renderDashboard();
+
+        expect(
+            screen.getByText(/Unable to load KPIs/i),
+        ).toBeTruthy();
+
+        // Other dashboard sections still render their headers.
+        expect(screen.getByText("Live Agent Activity")).toBeTruthy();
+        expect(screen.getByText("Inbox")).toBeTruthy();
+        expect(screen.getByText("Project Health")).toBeTruthy();
+        expect(screen.getByText("Agents & System")).toBeTruthy();
+    });
 });
