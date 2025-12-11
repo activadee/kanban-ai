@@ -39,6 +39,15 @@ export const updateProjectSchema = z
 
 const inlineAgentIdSchema = z.enum(["ticketEnhance", "prSummary", "prReview"]);
 
+const inlineAgentProfileMappingSchema = z
+    .object({
+        ticketEnhance: z.string().nullable(),
+        prSummary: z.string().nullable(),
+        prReview: z.string().nullable(),
+    })
+    .partial()
+    .strict();
+
 export const updateProjectSettingsSchema = z
     .object({
         baseBranch: z.string().min(1).optional(),
@@ -51,9 +60,7 @@ export const updateProjectSettingsSchema = z
         defaultProfileId: z.string().optional().nullable(),
         inlineAgent: z.string().optional().nullable(),
         inlineProfileId: z.string().optional().nullable(),
-        inlineAgentProfileMapping: z
-            .record(inlineAgentIdSchema, z.string().nullable())
-            .optional(),
+        inlineAgentProfileMapping: inlineAgentProfileMappingSchema.optional(),
         autoCommitOnFinish: z.boolean().optional(),
         autoPushOnAutocommit: z.boolean().optional(),
         ticketPrefix: z

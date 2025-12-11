@@ -32,11 +32,11 @@ Mission Control is the main operational dashboard for KanbanAI. It gives you a h
 
 ## Layout and panel ordering
 
-- The dashboard wraps KPI cards and all panels in a responsive container with `px-4 py-4` on small screens, growing to `px-8 py-6` at desktop widths so content stays centered and readable.
-- Below the KPI row, Mission Control uses a two‑column grid from the `xl` breakpoint (`xl:grid-cols-2` with `gap-6`):
-  - **Row 1**: **Live Agent Activity** and **Inbox**.
-  - **Row 2**: **Project Health** and **Agents & System**.
-  - **Row 3**: **Recent Attempt History** spanning both columns (`xl:col-span-2`) so the list can stretch horizontally.
+- The dashboard uses a full‑width responsive container with `px-4 py-4` on small screens, growing to `px-8 py-6` at desktop widths so content fills the available page width without feeling cramped.
+- Below the KPI row, Mission Control uses a 12‑column grid from the `lg` breakpoint (`lg:grid-cols-12` with `gap-6`):
+  - **Main column (7–8 cols)**: **Live Agent Activity**, then **Project Health**.
+  - **Sidebar (4–5 cols)**: **Inbox**, then **Agents & System**.
+  - **Bottom row**: **Recent Attempt History** spans all columns so the list can stretch horizontally.
 - On smaller screens, panels stack vertically in this order:
   1. KPI cards
   2. Live Agent Activity
@@ -44,6 +44,8 @@ Mission Control is the main operational dashboard for KanbanAI. It gives you a h
   4. Project Health
   5. Agents & System
   6. Recent Attempt History
+
+Lists inside each panel are height‑capped with internal scrolling (Active attempts, Recent activity, Inbox, Project Health, Recent Attempt History) so the dashboard stays usable even with large datasets.
 
 This order keeps live activity and actionable items near the top on both mobile and desktop.
 
@@ -161,7 +163,7 @@ The Inbox panel surfaces actionable items from the shared `DashboardInbox` paylo
   - **Stuck** – queued or running Attempts that exceeded backend thresholds (roughly 10 minutes queued, 30 minutes running).
 - **Sorting and layout**
   - Items are ordered by `lastUpdatedAt` so the most urgent work appears first.
-  - Each row shows card title/ticket key, project name, agent label (or agent ID fallback), relative last activity, and an Attempt status badge.
+  - Each row uses a compact stacked layout showing Kind + status badges, card title/ticket key, project + agent labels, and last activity, with quick actions aligned to the right.
   - Card titles link to `/projects/:projectId?cardId=:cardId`, opening the board with the inspector focused on that card.
 - **Filtering and refresh**
   - Tabs at the top toggle between **All**, **Review**, **Failed**, and **Stuck**, displaying counts for each bucket.
