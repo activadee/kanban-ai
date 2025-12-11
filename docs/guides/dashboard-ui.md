@@ -19,6 +19,7 @@ Presented as **Mission Control** in the app header, this page gives you a high-l
 
 - The drop-down beside the primary actions lets you scope Mission Control to one of the supported presets (`Last 24 hours`, `Last 7 days`, `Last 30 days`).
 - The default preset is **Last 7 days**; changing it refetches the HTTP snapshot, keeps a dedicated query key, and rerenders the metric cards, inbox items, project snapshots, and agent stats for that window.
+- The selected preset is remembered in browser session storage, so navigating away from and back to Mission Control (or soft reloading the page) keeps the last chosen time range for the current session.
 - When the default preset is selected the live WebSocket stream stays connected; choosing a different preset keeps the stream untouched by using a separate cache entry for each range so you still see live updates when you switch back to **Last 7 days**.
 
 ## Metric cards

@@ -130,6 +130,7 @@ describe("Mission Control dashboard layout", () => {
     beforeEach(() => {
         cleanup();
         vi.clearAllMocks();
+        window.sessionStorage.clear();
 
         dashboardMocks.useDashboardOverview.mockImplementation(
             (options?: { timeRangePreset?: DashboardTimeRangePreset }) => ({
@@ -187,5 +188,18 @@ describe("Mission Control dashboard layout", () => {
         // KPI helper text reflects the newly selected range.
         const updatedKpiRow = screen.getByRole("group", {name: /Key performance indicators/i});
         expect(within(updatedKpiRow).getByText(/Last 24 hours/i)).toBeTruthy();
+
+        // Selection is persisted for the current session.
+        expect(window.sessionStorage.getItem("dashboard.timeRangePreset")).toBe("last_24h");
+    });
+
+    it("initializes the time range from session storage when available", () => {
+        window.sessionStorage.setItem("dashboard.timeRangePreset", "last_24h");
+
+        renderDashboard();
+
+        expect(dashboardMocks.useDashboardOverview).toHaveBeenCalled();
+        const firstCallOptions = dashboardMocks.useDashboardOverview.mock.calls[0][0];
+        expect(firstCallOptions?.timeRangePreset).toBe("last_24h");
     });
 });
