@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {Link, useNavigate} from 'react-router-dom'
 import {DEFAULT_DASHBOARD_TIME_RANGE_PRESET, type DashboardTimeRangePreset} from 'shared'
 import {Button} from '@/components/ui/button'
@@ -24,6 +24,30 @@ const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = 
     {preset: 'last_30d', label: 'Last 30 days'},
 ]
 
+const DASHBOARD_TIME_RANGE_STORAGE_KEY = 'dashboard.timeRangePreset'
+
+function resolveTimeRangePresetFromStorage(): DashboardTimeRangePreset | undefined {
+    if (typeof window === 'undefined') return undefined
+    try {
+        const raw = window.sessionStorage.getItem(DASHBOARD_TIME_RANGE_STORAGE_KEY)
+        if (raw === 'last_24h' || raw === 'last_7d' || raw === 'last_30d') {
+            return raw
+        }
+    } catch {
+        // Best-effort persistence; ignore storage errors.
+    }
+    return undefined
+}
+
+function storeTimeRangePreset(value: DashboardTimeRangePreset) {
+    if (typeof window === 'undefined') return
+    try {
+        window.sessionStorage.setItem(DASHBOARD_TIME_RANGE_STORAGE_KEY, value)
+    } catch {
+        // Best-effort persistence; ignore storage errors.
+    }
+}
+
 const getTimeRangeLabel = (preset: DashboardTimeRangePreset | undefined): string => {
     const option = TIME_RANGE_OPTIONS.find((item) => item.preset === preset)
     return option?.label ?? 'Selected range'
@@ -31,9 +55,14 @@ const getTimeRangeLabel = (preset: DashboardTimeRangePreset | undefined): string
 
 export function DashboardPage() {
     const navigate = useNavigate()
-    const [timeRangePreset, setTimeRangePreset] = useState<DashboardTimeRangePreset>(
-        DEFAULT_DASHBOARD_TIME_RANGE_PRESET,
-    )
+    const [timeRangePreset, setTimeRangePreset] = useState<DashboardTimeRangePreset>(() => {
+        const stored = resolveTimeRangePresetFromStorage()
+        return stored ?? DEFAULT_DASHBOARD_TIME_RANGE_PRESET
+    })
+
+    useEffect(() => {
+        storeTimeRangePreset(timeRangePreset)
+    }, [timeRangePreset])
 
     const dashboardQuery = useDashboardOverview({timeRangePreset})
     const dashboardStream = useDashboardStream(timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET)
