@@ -41,6 +41,7 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
 - `recentAttemptActivity: AttemptActivityItem[]`  
   - Recently completed/changed Attempts with:
     - Attempt ID, project id/name, card id/title/ticket key, `agentId`, `status`, `occurredAt`, optional `durationSeconds`, `errorSummary`, and `triggerSource`.
+    - When present, `durationSeconds` is computed from the best available start (e.g. `startedAt`, falling back to `createdAt`) and the finish timestamp so UIs can show how long the attempt ran.
 - `inboxItems: DashboardInbox`  
   - Actionable items grouped into `review`, `failed`, and `stuck` lists.  
   - Each item is a discriminated `InboxItem` union (`type: "review" | "failed" | "stuck"`, with a matching `kind` field).  
@@ -149,7 +150,9 @@ Forward-compatibility:
     - Items to review from the inbox.
     - Active projects with any attempt activity in the selected range (when available).
 - **Live Agent Activity**
-  - One card that merges live `Active attempts` (status badges, project/agent metadata, relative update timestamps, and board links) with `Recent activity` (completed/stopped attempts in the same time range). Empty states explain when no data is available for the current preset.
+  - Renders the live `Active attempts` list (status badges, project/agent metadata, relative timestamps, board links) for the chosen time range. Filters and keyboard access remain the same, and the helper text calls out when live updates pause or the stream reconnects.
+- **Recent Attempt History**
+  - New card that surfaces recently completed/stopped attempts scoped to the same time range. Each row exposes the status badge, ticket title/key, project/board link, agent (or fallback), formatted duration, absolute/relative timestamps, and a quick “View attempt” link. Keyboard/mouse activation opens `/attempts/:attemptId`, and a show more/show less footer lets you page through larger histories. Skeletons, retryable error banners, and empty-state messaging match the other dashboard cards for consistent UX.
 - **Inbox**
   - Renders actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox`. Each item shows card/ticket context, project/agent metadata, and the most recent timestamp (`lastUpdatedAt`/`finishedAt`/`createdAt`), with groups sorted by recency so urgent work surfaces first.
   - Tabs for **All**, **Review**, **Failed**, or **Stuck** items live above the list, display counts for each kind, and persist the selected filter in session storage to keep the same bucket focused while navigating the dashboard.
