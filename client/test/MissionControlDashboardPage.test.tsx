@@ -162,7 +162,7 @@ describe("Mission Control dashboard layout", () => {
         const agentsHeading = screen.getByText("Agents & System");
         const historyHeading = screen.getByText("Recent Attempt History");
 
-        const DOCUMENT_POSITION_FOLLOWING = 4;
+        const DOCUMENT_POSITION_FOLLOWING = 4; // Node.DOCUMENT_POSITION_FOLLOWING
         const isBefore = (a: HTMLElement, b: HTMLElement) =>
             (a.compareDocumentPosition(b) & DOCUMENT_POSITION_FOLLOWING) !== 0;
 
