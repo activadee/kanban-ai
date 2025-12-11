@@ -327,13 +327,13 @@ Mission Control is covered by tests in all three workspaces. Commands below assu
 - **Core service**
   - Key tests: `core/tests/dashboard.service.test.ts`.
   - Run only the dashboard service tests:  
-    - `cd core && bun run test -- --runTestsByPath core/tests/dashboard.service.test.ts`
+    - `cd core && bun run test -- --runTestsByPath tests/dashboard.service.test.ts`
 - **Server / API**
   - Key tests:
     - `server/test/dashboard.routes.test.ts` – HTTP routing, parameter parsing, and error codes for `/api/v1/dashboard`.
     - `server/test/dashboard.ws.test.ts` – WebSocket handshake, hello message, and `dashboard_overview` broadcasting.
   - Run only the dashboard server tests:  
-    - `cd server && bun run test -- --runTestsByPath server/test/dashboard.routes.test.ts server/test/dashboard.ws.test.ts`
+    - `cd server && bun run test -- --runTestsByPath test/dashboard.routes.test.ts test/dashboard.ws.test.ts`
 - **Client / UI**
   - Key tests:
     - `client/test/MissionControlDashboardPage.test.tsx` – overall layout, KPI labels, and time range selector behavior.
@@ -343,7 +343,7 @@ Mission Control is covered by tests in all three workspaces. Commands below assu
     - `client/test/DashboardInboxPanel.test.tsx` and `client/test/DashboardAgentsPanel.test.tsx` – inbox and Agents & System panels.
     - `client/test/dashboardApi.test.ts` – REST wrapper for the DashboardOverview API.
   - Run only the dashboard‑related client tests (example):  
-    - `cd client && bun run test -- client/test/MissionControlDashboardPage.test.tsx client/test/LiveAgentActivityPanel.test.tsx client/test/ProjectHealthPanel.test.tsx client/test/RecentAttemptHistoryPanel.test.tsx client/test/DashboardInboxPanel.test.tsx client/test/DashboardAgentsPanel.test.tsx client/test/dashboardApi.test.ts`
+    - `cd client && bun run test -- test/MissionControlDashboardPage.test.tsx test/LiveAgentActivityPanel.test.tsx test/ProjectHealthPanel.test.tsx test/RecentAttemptHistoryPanel.test.tsx test/DashboardInboxPanel.test.tsx test/DashboardAgentsPanel.test.tsx test/dashboardApi.test.ts`
 - **E2E**
   - There are currently no Playwright/Cypress‑style end‑to‑end tests for Mission Control. When such tests are added, they should be documented here with their exact commands and any required fixtures.
 

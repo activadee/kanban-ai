@@ -123,7 +123,7 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
 
 ## Server metadata
 
-- `GET /version` – returns `{currentVersion, latestVersion, updateAvailable, checkedAt}`.
+- `GET /api/v1/version` – returns `{currentVersion, latestVersion, updateAvailable, checkedAt}`.
   - `currentVersion` is derived from `KANBANAI_VERSION` or the nearest `kanban-ai` `package.json`.
   - `latestVersion` is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`), cached for ~15 minutes, and falls back to `currentVersion` when the lookup fails.
   - `updateAvailable` lets clients know when a newer release exists so UI can prompt for restart.
