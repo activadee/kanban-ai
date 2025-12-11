@@ -47,10 +47,12 @@ The cards show a skeleton on first load, surface a small error banner when the K
 ## Project Health panel
 
 - The **Project Health** card summarizes each project’s workload for the selected time range.
-  - Rows include the project name, repository slug/path, total cards, open cards, and active attempts.
-  - Each project name links straight to the board.
+  - Rows include the project name, repository slug/path, total cards, open cards, column breakdowns, and active attempts.
+  - A **Sort by** control lets you order projects by open cards or failed attempts within the current range so you can focus on either volume or risk.
+  - Badge indicators surface high activity or high failure rates with tooltips that explain what triggered the highlight, and each row shows open/total card counts plus recent attempts/failures for the chosen preset.
+  - Clicking (or pressing Enter/Space on) a row jumps straight to that board so you can investigate the project quickly.
   - Empty state encourages creating a project to populate the list.
-- Use this to identify overloaded boards or projects with too much open work or queued attempts during the chosen window.
+- Use this to identify overloaded boards or projects with too much open work, failed attempts, or queued attempts during the chosen window.
 
 ## Agents & System panel
 

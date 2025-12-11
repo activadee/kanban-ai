@@ -16,6 +16,7 @@ import {VersionIndicator} from '@/components/system/VersionIndicator'
 import {LiveAgentActivityPanel} from '@/pages/dashboard/LiveAgentActivityPanel'
 import {InboxPanel} from '@/pages/dashboard/InboxPanel'
 import {useRelativeTimeFormatter} from '@/hooks'
+import {ProjectHealthPanel} from '@/pages/dashboard/ProjectHealthPanel'
 
 const formatSuccessRate = (value: number | null | undefined): string => {
     if (value == null || Number.isNaN(value)) return '—'
@@ -229,54 +230,13 @@ export function DashboardPage() {
                     </div>
 
                     <div className="space-y-6">
-                        <Card className="border-border/70 bg-card/60">
-                            <CardHeader>
-                                <CardTitle>Project Health</CardTitle>
-                                <CardDescription>
-                                    Project workload and card counts in the selected time range.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {dashboardQuery.isLoading ? (
-                                    <div className="space-y-3">
-                                        {Array.from({length: 4}).map((_, index) => (
-                                            <div key={index} className="h-12 animate-pulse rounded-md bg-muted/60"/>
-                                        ))}
-                                    </div>
-                                ) : projectSnapshots.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        Create a project to populate this list.
-                                    </p>
-                                ) : (
-                                    <ul className="space-y-3">
-                                        {projectSnapshots.map((project) => (
-                                            <li key={project.id} className="rounded-md border border-border/60 p-3">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div>
-                                                        <Link
-                                                            to={`/projects/${project.id}`}
-                                                            className="text-sm font-medium text-foreground hover:underline"
-                                                        >
-                                                            {project.name}
-                                                        </Link>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            {project.repositorySlug ?? project.repositoryPath}
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right text-xs text-muted-foreground">
-                                                        <div>{project.totalCards} cards</div>
-                                                        <div>
-                                                            {project.openCards} open · {project.activeAttempts} active
-                                                            attempts
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <ProjectHealthPanel
+                            snapshots={projectSnapshots}
+                            isLoading={dashboardQuery.isLoading}
+                            onProjectNavigate={(projectId) => {
+                                navigate(`/projects/${projectId}`)
+                            }}
+                        />
 
                         <Card className="border-border/70 bg-card/60">
                             <CardHeader>
