@@ -8,8 +8,6 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/c
 import {
     useDashboardOverview,
     useDashboardStream,
-    useGithubAuthStatus,
-    useAgents,
 } from '@/hooks'
 import {deriveDashboardKpiMetrics} from '@/hooks'
 import {VersionIndicator} from '@/components/system/VersionIndicator'
@@ -17,13 +15,8 @@ import {LiveAgentActivityPanel} from '@/pages/dashboard/LiveAgentActivityPanel'
 import {InboxPanel} from '@/pages/dashboard/InboxPanel'
 import {useRelativeTimeFormatter} from '@/hooks'
 import {ProjectHealthPanel} from '@/pages/dashboard/ProjectHealthPanel'
-
-const formatSuccessRate = (value: number | null | undefined): string => {
-    if (value == null || Number.isNaN(value)) return '—'
-    const percentage = value * 100
-    if (!Number.isFinite(percentage)) return '—'
-    return `${percentage.toFixed(1)}%`
-}
+import {AgentsSystemStatusPanel} from '@/pages/dashboard/AgentsSystemStatusPanel'
+import {formatSuccessRate} from '@/pages/dashboard/formatters'
 
 const TIME_RANGE_OPTIONS: {preset: DashboardTimeRangePreset; label: string}[] = [
     {preset: 'last_24h', label: 'Last 24 hours'},
@@ -44,8 +37,6 @@ export function DashboardPage() {
 
     const dashboardQuery = useDashboardOverview({timeRangePreset})
     const dashboardStream = useDashboardStream(timeRangePreset === DEFAULT_DASHBOARD_TIME_RANGE_PRESET)
-    const githubStatus = useGithubAuthStatus({staleTime: 60_000})
-    const agentsQuery = useAgents({staleTime: 60_000})
 
     const relativeTimeFromNow = useRelativeTimeFormatter(30_000)
 
@@ -61,10 +52,6 @@ export function DashboardPage() {
         : TIME_RANGE_OPTIONS
     const effectiveTimeRangePreset: DashboardTimeRangePreset =
         overview?.timeRange.preset ?? timeRangePreset
-
-    const githubConnected = githubStatus.data?.status === 'valid'
-    const githubAccount = githubStatus.data && githubStatus.data.status === 'valid' ? githubStatus.data.account : null
-    const agentCount = agentsQuery.data?.agents.length ?? 0
 
     const timeRangeLabel = getTimeRangeLabel(effectiveTimeRangePreset)
 
@@ -195,7 +182,7 @@ export function DashboardPage() {
                         <LiveAgentActivityPanel
                             activeAttempts={activeAttempts}
                             recentActivity={recentActivity}
-                            agents={agentsQuery.data?.agents}
+                            agents={undefined}
                             isLoading={dashboardQuery.isLoading}
                             timeRangeLabel={timeRangeLabel}
                             updatedLabel={relativeTimeFromNow}
@@ -245,86 +232,15 @@ export function DashboardPage() {
                                     GitHub connection and per-agent activity for this time range.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-sm">
-                                <div className="rounded-md border border-border/60 p-3">
-                                    <div className="font-medium text-foreground">GitHub</div>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {githubStatus.isLoading
-                                            ? 'Checking status…'
-                                            : githubConnected
-                                                ? `Connected as ${githubAccount?.username}`
-                                                : 'Not connected. Open onboarding or Settings → GitHub to connect.'}
-                                    </p>
-                                </div>
-                                <div className="rounded-md border border-border/60 p-3">
-                                    <div className="font-medium text-foreground">Agents</div>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {agentsQuery.isLoading
-                                            ? 'Loading agents…'
-                                            : agentCount === 0
-                                                ? 'No agents registered. Add one under Agents settings.'
-                                                : `${agentCount} agent${agentCount === 1 ? '' : 's'} available.`}
-                                    </p>
-                                    <div className="mt-3 space-y-2">
-                                        {dashboardQuery.isLoading ? (
-                                            <div className="space-y-2">
-                                                {Array.from({length: 2}).map((_, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="h-8 animate-pulse rounded-md bg-muted/60"
-                                                    />
-                                                ))}
-                                            </div>
-                                        ) : agentStats.length === 0 ? (
-                                            <p className="text-xs text-muted-foreground">
-                                                {agentCount === 0
-                                                    ? 'Register an agent to start collecting activity.'
-                                                    : 'No attempts in the selected time range yet.'}
-                                            </p>
-                                        ) : (
-                                            <ul className="space-y-2">
-                                                {agentStats.map((stat) => {
-                                                    const attemptsInRange = stat.attemptsInRange ?? 0
-                                                    const hasActivity =
-                                                        stat.hasActivityInRange ?? attemptsInRange > 0
-                                                    return (
-                                                        <li
-                                                            key={stat.agentId}
-                                                            className={`flex items-center justify-between rounded-md border px-2 py-1 text-xs ${
-                                                                hasActivity
-                                                                    ? 'border-border/70 bg-background/40'
-                                                                    : 'border-dashed border-border/60 bg-muted/40'
-                                                            }`}
-                                                        >
-                                                            <div className="flex flex-col">
-                                                                <span className="font-medium text-foreground">
-                                                                    {stat.agentName || stat.agentId}
-                                                                </span>
-                                                                <span className="text-[11px] text-muted-foreground">
-                                                                    {hasActivity
-                                                                        ? `${attemptsInRange} attempt${attemptsInRange === 1 ? '' : 's'} in range · ${formatSuccessRate(stat.successRateInRange)}`
-                                                                        : 'No attempts in selected time range'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-right text-[11px] text-muted-foreground">
-                                                                {hasActivity ? (
-                                                                    <div>
-                                                                        Last activity{' '}
-                                                                        {relativeTimeFromNow(
-                                                                            stat.lastActivityAt ?? null,
-                                                                        )}
-                                                                    </div>
-                                                                ) : (
-                                                                    <div>Inactive in this range</div>
-                                                                )}
-                                                            </div>
-                                                        </li>
-                                                    )
-                                                })}
-                                            </ul>
-                                        )}
-                                    </div>
-                                </div>
+                            <CardContent>
+                                <AgentsSystemStatusPanel
+                                    agentStats={agentStats}
+                                    isDashboardLoading={dashboardQuery.isLoading}
+                                    hasDashboardError={dashboardQuery.isError && !hasOverview}
+                                    timeRangeLabel={timeRangeLabel}
+                                    formatRelativeTime={relativeTimeFromNow}
+                                    onRetryDashboard={dashboardQuery.refetch}
+                                />
                             </CardContent>
                         </Card>
                     </div>

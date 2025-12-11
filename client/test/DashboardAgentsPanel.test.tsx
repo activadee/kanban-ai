@@ -101,7 +101,7 @@ describe("DashboardPage – Agents panel", () => {
         });
     });
 
-    it("renders per-agent stats with activity and inactivity states", () => {
+    function createClient() {
         const client = new QueryClient({
             defaultOptions: {
                 queries: {
@@ -111,6 +111,11 @@ describe("DashboardPage – Agents panel", () => {
                 },
             },
         });
+        return client;
+    }
+
+    it("renders per-agent stats with activity and inactivity states", () => {
+        const client = createClient();
 
         render(
             <QueryClientProvider client={client}>
@@ -138,20 +143,15 @@ describe("DashboardPage – Agents panel", () => {
             data: {
                 ...createOverview(),
                 agentStats: [],
+                attemptsInRange: 0,
+                successRateInRange: 0,
+                projectsWithActivityInRange: 0,
             },
             isLoading: false,
             isFetching: false,
         });
 
-        const client = new QueryClient({
-            defaultOptions: {
-                queries: {
-                    retry: false,
-                    gcTime: 0,
-                    staleTime: 0,
-                },
-            },
-        });
+        const client = createClient();
 
         render(
             <QueryClientProvider client={client}>
@@ -164,5 +164,114 @@ describe("DashboardPage – Agents panel", () => {
         expect(
             screen.getByText(/No attempts in the selected time range yet\./i),
         ).toBeTruthy();
+    });
+
+    it("shows GitHub connected state and a ready-to-work readiness indicator", () => {
+        const client = createClient();
+
+        githubMocks.useGithubAuthStatus.mockReturnValueOnce({
+            data: {status: "valid", account: {username: "dev"}},
+            isLoading: false,
+            isError: false,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <QueryClientProvider client={client}>
+                <MemoryRouter>
+                    <DashboardPage/>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        expect(screen.getByText(/System readiness/i)).toBeTruthy();
+        expect(screen.getByText(/Ready to work/i)).toBeTruthy();
+        expect(screen.getByText(/Connected as dev/i)).toBeTruthy();
+        expect(screen.getByLabelText(/GitHub integration status: Connected/i)).toBeTruthy();
+    });
+
+    it("surfaces clear guidance when GitHub is disconnected and no agents are configured", () => {
+        const client = createClient();
+
+        githubMocks.useGithubAuthStatus.mockReturnValueOnce({
+            data: {status: "invalid"},
+            isLoading: false,
+            isError: false,
+            refetch: vi.fn(),
+        });
+
+        agentsMocks.useAgents.mockReturnValueOnce({
+            data: {agents: []},
+            isLoading: false,
+            isError: false,
+            refetch: vi.fn(),
+        });
+
+        dashboardMocks.useDashboardOverview.mockReturnValueOnce({
+            data: {
+                ...createOverview(),
+                agentStats: [],
+                attemptsInRange: 0,
+                successRateInRange: 0,
+                projectsWithActivityInRange: 0,
+            },
+            isLoading: false,
+            isFetching: false,
+            isError: false,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <QueryClientProvider client={client}>
+                <MemoryRouter>
+                    <DashboardPage/>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        expect(screen.getByText(/Action required/i)).toBeTruthy();
+        expect(
+            screen.getByText(/Connect GitHub to enable code-aware agents/i),
+        ).toBeTruthy();
+        expect(
+            screen.getByRole("link", {name: /Connect GitHub/i}),
+        ).toBeTruthy();
+        expect(
+            screen.getByText(/No agents are active yet/i),
+        ).toBeTruthy();
+    });
+
+    it("shows non-blocking error messaging when agent stats fail to load", () => {
+        const client = createClient();
+
+        dashboardMocks.useDashboardOverview.mockReturnValueOnce({
+            data: undefined,
+            isLoading: false,
+            isFetching: false,
+            isError: true,
+            refetch: vi.fn(),
+        });
+
+        agentsMocks.useAgents.mockReturnValueOnce({
+            data: {agents: []},
+            isLoading: false,
+            isError: false,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <QueryClientProvider client={client}>
+                <MemoryRouter>
+                    <DashboardPage/>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        expect(
+            screen.getByText(/Unable to load agent stats\./i),
+        ).toBeTruthy();
+        expect(
+            screen.getAllByRole("button", {name: /Retry/i}).length,
+        ).toBeGreaterThanOrEqual(1);
     });
 });
