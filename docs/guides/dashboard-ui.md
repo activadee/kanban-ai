@@ -38,7 +38,7 @@ The cards show a skeleton on first load, surface a small error banner when the K
 - The **Live Agent Activity** card merges in-flight work and recent outcomes.
   - The **Active attempts** subsection lists running/queued attempts with status badges, project/agent metadata, relative update timestamps, and quick links back to the project.
   - The **Recent activity** subsection shows completed/stopped attempts in the same time range, with relative timestamps and links to the originating boards.
-- Both subsections honor the selected preset so you can match the timeline with the corresponding “Attempts (range)” total.
+- Both subsections honor the selected preset so you can match the timeline with the corresponding “Attempts in range” total.
 - Empty-state copy appears for each subsection when no data is available in the chosen window.
 
 ## Project Health panel
