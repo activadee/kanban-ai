@@ -103,7 +103,7 @@ export function RecentAttemptHistoryPanel({
                 ) : (
                     <>
                         <ul
-                            className="space-y-3"
+                            className="max-h-[520px] space-y-3 overflow-y-auto pr-1"
                             data-testid="recent-attempt-history-list"
                         >
                             {visibleAttempts.map((item) => {

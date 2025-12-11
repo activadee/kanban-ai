@@ -176,7 +176,7 @@ export function DashboardPage() {
 
     return (
         <div className="flex h-full flex-col overflow-auto bg-background px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
-            <div className="mx-auto w-full max-w-6xl space-y-6">
+            <div className="w-full space-y-6">
                 <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
                     <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-3">
@@ -247,10 +247,10 @@ export function DashboardPage() {
                 ) : null}
 
                 <section
-                    className="grid gap-6 xl:grid-cols-2"
+                    className="grid gap-6 lg:grid-cols-12"
                     data-testid="mission-control-grid"
                 >
-                    <div className="space-y-6">
+                    <div className="space-y-6 lg:col-span-7 xl:col-span-8">
                         <LiveAgentActivityPanel
                             activeAttempts={activeAttempts}
                             recentActivity={recentActivity}
@@ -267,57 +267,63 @@ export function DashboardPage() {
                         />
                     </div>
 
-                    <Card className="border-border/70 bg-card/60">
-                        <CardHeader>
-                            <CardTitle>Inbox</CardTitle>
-                            <CardDescription>
-                                Actionable items that may need review or intervention.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <InboxPanel
-                                inbox={inbox}
-                                isLoading={dashboardQuery.isLoading}
-                                hasError={inboxLoadError}
-                                onReload={dashboardQuery.refetch}
-                                formatTime={relativeTimeFromNow}
-                                onAttemptNavigate={(attemptId) => {
-                                    navigate(getAttemptPath(attemptId))
-                                }}
-                            />
-                        </CardContent>
-                    </Card>
+                    <div className="lg:col-span-5 xl:col-span-4">
+                        <Card className="border-border/70 bg-card/60">
+                            <CardHeader>
+                                <CardTitle>Inbox</CardTitle>
+                                <CardDescription>
+                                    Actionable items that may need review or intervention.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <InboxPanel
+                                    inbox={inbox}
+                                    isLoading={dashboardQuery.isLoading}
+                                    hasError={inboxLoadError}
+                                    onReload={dashboardQuery.refetch}
+                                    formatTime={relativeTimeFromNow}
+                                    onAttemptNavigate={(attemptId) => {
+                                        navigate(getAttemptPath(attemptId))
+                                    }}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                    <ProjectHealthPanel
-                        snapshots={projectSnapshots}
-                        isLoading={dashboardQuery.isLoading}
-                        hasError={dashboardQuery.isError && !hasOverview}
-                        onRetry={dashboardQuery.refetch}
-                        onProjectNavigate={(projectId) => {
-                            navigate(getProjectPath(projectId))
-                        }}
-                    />
+                    <div className="lg:col-span-7 xl:col-span-8">
+                        <ProjectHealthPanel
+                            snapshots={projectSnapshots}
+                            isLoading={dashboardQuery.isLoading}
+                            hasError={dashboardQuery.isError && !hasOverview}
+                            onRetry={dashboardQuery.refetch}
+                            onProjectNavigate={(projectId) => {
+                                navigate(getProjectPath(projectId))
+                            }}
+                        />
+                    </div>
 
-                    <Card className="border-border/70 bg-card/60">
-                        <CardHeader>
-                            <CardTitle>Agents &amp; System</CardTitle>
-                            <CardDescription>
-                                GitHub connection and per-agent activity for this time range.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AgentsSystemStatusPanel
-                                agentStats={agentStats}
-                                isDashboardLoading={dashboardQuery.isLoading}
-                                hasDashboardError={dashboardQuery.isError && !hasOverview}
-                                timeRangeLabel={timeRangeLabel}
-                                formatRelativeTime={relativeTimeFromNow}
-                                onRetryDashboard={dashboardQuery.refetch}
-                            />
-                        </CardContent>
-                    </Card>
+                    <div className="lg:col-span-5 xl:col-span-4">
+                        <Card className="border-border/70 bg-card/60">
+                            <CardHeader>
+                                <CardTitle>Agents &amp; System</CardTitle>
+                                <CardDescription>
+                                    GitHub connection and per-agent activity for this time range.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <AgentsSystemStatusPanel
+                                    agentStats={agentStats}
+                                    isDashboardLoading={dashboardQuery.isLoading}
+                                    hasDashboardError={dashboardQuery.isError && !hasOverview}
+                                    timeRangeLabel={timeRangeLabel}
+                                    formatRelativeTime={relativeTimeFromNow}
+                                    onRetryDashboard={dashboardQuery.refetch}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                    <div className="space-y-6 xl:col-span-2">
+                    <div className="space-y-6 lg:col-span-12">
                         <RecentAttemptHistoryPanel
                             attempts={recentActivity}
                             isLoading={dashboardQuery.isLoading && !hasOverview}

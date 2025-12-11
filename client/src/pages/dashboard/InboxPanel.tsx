@@ -268,93 +268,93 @@ export function InboxPanel({
                         </p>
                     ) : null}
 
-                    <div className="overflow-x-auto" data-testid="inbox-scroll-container">
-                        <div className="min-w-[720px] space-y-1" data-testid="inbox-list">
-                            <div className="grid grid-cols-[0.9fr,2fr,1.5fr,1.3fr,1.3fr,auto] gap-3 px-2 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                <div>Kind</div>
-                                <div>Card</div>
-                                <div>Project</div>
-                                <div>Agent</div>
-                                <div>Last activity</div>
-                                <div className="text-right">Actions</div>
-                            </div>
+                    <div
+                        className="max-h-80 overflow-auto rounded-md border border-border/60 bg-background/20"
+                        data-testid="inbox-scroll-container"
+                    >
+                        <TooltipProvider delayDuration={150}>
+                            <ul className="space-y-1 p-1" data-testid="inbox-list">
+                                {filteredItems.map((item) => {
+                                    const kind = item.type
+                                    const kindLabel = getKindLabel(kind)
+                                    const lastActivityTs = getLastActivityTimestamp(item)
+                                    const lastActivityLabel = formatTime(lastActivityTs)
+                                    const hasAttempt = Boolean(item.attemptId)
+                                    const hasProject = Boolean(item.projectId)
+                                    const isRetrying = retryingId === item.id
+                                    const agentLabel =
+                                        item.agentName ?? item.agentId ?? 'Unknown agent'
 
-                            <TooltipProvider delayDuration={150}>
-                                <ul className="space-y-1">
-                                    {filteredItems.map((item) => {
-                                        const kind = item.type
-                                        const kindLabel = getKindLabel(kind)
-                                        const lastActivityTs = getLastActivityTimestamp(item)
-                                        const lastActivityLabel = formatTime(lastActivityTs)
-                                        const hasAttempt = Boolean(item.attemptId)
-                                        const hasProject = Boolean(item.projectId)
-                                        const isRetrying = retryingId === item.id
+                                    return (
+                                        <li
+                                            key={item.id}
+                                            className="group flex cursor-pointer items-start gap-3 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs hover:bg-muted/40"
+                                            role={hasAttempt && onAttemptNavigate ? 'button' : undefined}
+                                            tabIndex={hasAttempt && onAttemptNavigate ? 0 : undefined}
+                                            onClick={() => {
+                                                if (hasAttempt && onAttemptNavigate && item.attemptId) {
+                                                    onAttemptNavigate(item.attemptId)
+                                                }
+                                            }}
+                                            onKeyDown={(event) => {
+                                                if (!hasAttempt || !onAttemptNavigate || !item.attemptId) return
+                                                if (event.key === 'Enter' || event.key === ' ') {
+                                                    event.preventDefault()
+                                                    onAttemptNavigate(item.attemptId)
+                                                }
+                                            }}
+                                            data-testid="inbox-row"
+                                        >
+                                            <div className="flex shrink-0 flex-col items-start gap-1 pt-0.5">
+                                                <Badge
+                                                    variant={getKindVariant(kind)}
+                                                    className="h-6 px-2 text-[11px]"
+                                                >
+                                                    {kindLabel}
+                                                </Badge>
+                                                {item.status ? (
+                                                    <StatusBadge
+                                                        status={(item.status as AttemptStatus | 'idle') ?? 'idle'}
+                                                        className="h-5 text-[10px]"
+                                                    />
+                                                ) : null}
+                                            </div>
 
-                                        return (
-                                            <li
-                                                key={item.id}
-                                                className="group grid cursor-pointer grid-cols-[0.9fr,2fr,1.5fr,1.3fr,1.3fr,auto] items-center gap-3 rounded-md border border-border/60 bg-background/40 px-2 py-2 text-xs hover:bg-muted/40"
-                                                role={hasAttempt && onAttemptNavigate ? 'button' : undefined}
-                                                tabIndex={hasAttempt && onAttemptNavigate ? 0 : undefined}
-                                                onClick={() => {
-                                                    if (hasAttempt && onAttemptNavigate && item.attemptId) {
-                                                        onAttemptNavigate(item.attemptId)
-                                                    }
-                                                }}
-                                                onKeyDown={(event) => {
-                                                    if (!hasAttempt || !onAttemptNavigate || !item.attemptId) return
-                                                    if (event.key === 'Enter' || event.key === ' ') {
-                                                        event.preventDefault()
-                                                        onAttemptNavigate(item.attemptId)
-                                                    }
-                                                }}
-                                                data-testid="inbox-row"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Badge
-                                                        variant={getKindVariant(kind)}
-                                                        className="h-6 px-2 text-[11px]"
-                                                    >
-                                                        {kindLabel}
-                                                    </Badge>
-                                                </div>
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        {hasProject ? (
+                                                            <Link
+                                                                to={getProjectCardPath(
+                                                                    item.projectId!,
+                                                                    item.cardId ?? undefined,
+                                                                )}
+                                                                className="block max-w-full truncate text-[13px] font-medium text-foreground hover:underline"
+                                                                onClick={(event) => event.stopPropagation()}
+                                                            >
+                                                                {formatTicket(item.cardTitle, item.ticketKey)}
+                                                            </Link>
+                                                        ) : (
+                                                            <span className="block max-w-full truncate text-[13px] font-medium text-foreground">
+                                                                {formatTicket(item.cardTitle, item.ticketKey)}
+                                                            </span>
+                                                        )}
+                                                    </TooltipTrigger>
+                                                    <TooltipContent align="start" className="max-w-xs">
+                                                        {formatTicket(item.cardTitle, item.ticketKey)}
+                                                    </TooltipContent>
+                                                </Tooltip>
 
-                                                <div className="flex min-w-0 flex-col gap-0.5">
+                                                {item.cardStatus ? (
+                                                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                                        {item.cardStatus}
+                                                    </span>
+                                                ) : null}
+
+                                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            {hasProject ? (
-                                                                <Link
-                                                                    to={getProjectCardPath(
-                                                                        item.projectId!,
-                                                                        item.cardId ?? undefined,
-                                                                    )}
-                                                                    className="max-w-full truncate text-[13px] font-medium text-foreground hover:underline"
-                                                                    onClick={(event) => event.stopPropagation()}
-                                                                >
-                                                                    {formatTicket(item.cardTitle, item.ticketKey)}
-                                                                </Link>
-                                                            ) : (
-                                                                <span className="max-w-full truncate text-[13px] font-medium text-foreground">
-                                                                    {formatTicket(item.cardTitle, item.ticketKey)}
-                                                                </span>
-                                                            )}
-                                                        </TooltipTrigger>
-                                                        <TooltipContent align="start" className="max-w-xs">
-                                                            {formatTicket(item.cardTitle, item.ticketKey)}
-                                                        </TooltipContent>
-                                                    </Tooltip>
-
-                                                    {item.cardStatus ? (
-                                                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                                            {item.cardStatus}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-
-                                                <div className="flex min-w-0 items-center text-[11px] text-muted-foreground">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <span className="max-w-full truncate">
+                                                            <span className="max-w-[160px] truncate">
                                                                 {item.projectName ?? 'Unknown project'}
                                                             </span>
                                                         </TooltipTrigger>
@@ -362,111 +362,95 @@ export function InboxPanel({
                                                             {item.projectName ?? 'Unknown project'}
                                                         </TooltipContent>
                                                     </Tooltip>
+                                                    <Separator orientation="vertical" className="h-3"/>
+                                                    <span className="max-w-[160px] truncate">
+                                                        {agentLabel}
+                                                    </span>
+                                                    <Separator orientation="vertical" className="h-3"/>
+                                                    <span className="whitespace-nowrap">
+                                                        Last activity {lastActivityLabel}
+                                                    </span>
                                                 </div>
+                                            </div>
 
-                                                <div className="flex min-w-0 items-center text-[11px] text-muted-foreground">
-                                                    {item.agentName || item.agentId ? (
-                                                        <span className="max-w-full truncate">
-                                                            {item.agentName ?? item.agentId}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground/70">Unknown agent</span>
-                                                    )}
-                                                </div>
+                                            <div className="flex shrink-0 items-center gap-1 pt-0.5 text-[11px]">
+                                                {hasAttempt && onAttemptNavigate ? (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="size-7 text-muted-foreground hover:text-foreground"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation()
+                                                                    if (item.attemptId) {
+                                                                        onAttemptNavigate(item.attemptId)
+                                                                    }
+                                                                }}
+                                                                aria-label="View attempt details"
+                                                            >
+                                                                <ArrowUpRight className="size-3.5"/>
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Open attempt details</TooltipContent>
+                                                    </Tooltip>
+                                                ) : null}
 
-                                                <div className="flex flex-col items-start text-[11px] text-muted-foreground">
-                                                    <div>{lastActivityLabel}</div>
-                                                    {item.status ? (
-                                                        <div className="mt-0.5">
-                                                            <StatusBadge
-                                                                status={
-                                                                    (item.status as AttemptStatus | 'idle') ?? 'idle'
-                                                                }
-                                                                className="h-5 text-[10px]"
-                                                            />
-                                                        </div>
-                                                    ) : null}
-                                                </div>
-
-                                                <div className="flex items-center justify-end gap-1 text-[11px]">
-                                                    {hasAttempt && onAttemptNavigate ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="size-7 text-muted-foreground hover:text-foreground"
-                                                                    onClick={(event) => {
-                                                                        event.stopPropagation()
-                                                                        if (item.attemptId) {
-                                                                            onAttemptNavigate(item.attemptId)
-                                                                        }
-                                                                    }}
-                                                                    aria-label="View attempt details"
-                                                                >
-                                                                    <ArrowUpRight className="size-3.5"/>
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>Open attempt details</TooltipContent>
-                                                        </Tooltip>
-                                                    ) : null}
-
-                                                    {item.prUrl ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="size-7 text-muted-foreground hover:text-foreground"
-                                                                    asChild
+                                                {item.prUrl ? (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="size-7 text-muted-foreground hover:text-foreground"
+                                                                asChild
+                                                                aria-label="Open pull request"
+                                                            >
+                                                                <a
+                                                                    href={item.prUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    onClick={(event) => event.stopPropagation()}
                                                                     aria-label="Open pull request"
                                                                 >
-                                                                    <a
-                                                                        href={item.prUrl}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        onClick={(event) => event.stopPropagation()}
-                                                                        aria-label="Open pull request"
-                                                                    >
-                                                                        <GitPullRequest className="size-3.5"/>
-                                                                    </a>
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>View PR</TooltipContent>
-                                                        </Tooltip>
-                                                    ) : null}
+                                                                    <GitPullRequest className="size-3.5"/>
+                                                                </a>
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>View PR</TooltipContent>
+                                                    </Tooltip>
+                                                ) : null}
 
-                                                    {item.type === 'failed' ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="size-7 text-muted-foreground hover:text-foreground"
-                                                                    disabled={isRetrying}
-                                                                    onClick={(event) => {
-                                                                        event.stopPropagation()
-                                                                        void handleRetryClick(item)
-                                                                    }}
-                                                                    aria-label="Retry failed attempt"
-                                                                >
-                                                                    <RotateCcw
-                                                                        className={`size-3.5 ${isRetrying ? 'animate-spin' : ''}`}
-                                                                    />
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                {isRetrying ? 'Retrying…' : 'Retry attempt'}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    ) : null}
-                                                </div>
-                                            </li>
-                                        )
-                                    })}
-                                </ul>
-                            </TooltipProvider>
-                        </div>
+                                                {item.type === 'failed' ? (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="size-7 text-muted-foreground hover:text-foreground"
+                                                                disabled={isRetrying}
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation()
+                                                                    void handleRetryClick(item)
+                                                                }}
+                                                                aria-label="Retry failed attempt"
+                                                            >
+                                                                <RotateCcw
+                                                                    className={`size-3.5 ${isRetrying ? 'animate-spin' : ''}`}
+                                                                />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            {isRetrying ? 'Retrying…' : 'Retry attempt'}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ) : null}
+                                            </div>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+                        </TooltipProvider>
                     </div>
                 </>
             )}

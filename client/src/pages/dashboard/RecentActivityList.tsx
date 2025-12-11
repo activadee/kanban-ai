@@ -44,7 +44,7 @@ export function RecentActivityList({
                 <p className="text-sm text-muted-foreground">No attempt history yet. Launch an agent attempt to populate
                     this feed.</p>
             ) : (
-                <ul className="space-y-3" data-testid="recent-activity-list">
+                <ul className="max-h-64 space-y-3 overflow-y-auto pr-1" data-testid="recent-activity-list">
                     {items.map((activity) => (
                         <li key={activity.attemptId}
                             className="flex items-start justify-between gap-4 rounded-md border border-border/60 p-3">

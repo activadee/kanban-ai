@@ -46,7 +46,7 @@ export function ActiveAttemptsList({
             ) : attempts.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No active attempts right now.</p>
             ) : (
-                <ul className="space-y-3" data-testid="active-attempts-list">
+                <ul className="max-h-72 space-y-3 overflow-y-auto pr-1" data-testid="active-attempts-list">
                     {attempts.map((attempt) => (
                         <li
                             key={attempt.attemptId}

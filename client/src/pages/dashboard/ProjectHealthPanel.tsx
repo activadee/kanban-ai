@@ -95,7 +95,7 @@ export function ProjectHealthPanel({snapshots, isLoading, hasError, onProjectNav
                         description="Create a project to populate this list."
                     />
                 ) : hasProjects ? (
-                    <ul className="space-y-3" data-testid="project-health-list">
+                    <ul className="max-h-80 space-y-3 overflow-y-auto pr-1" data-testid="project-health-list">
                         {sortedSnapshots.map((snapshot) => (
                             <ProjectHealthRow
                                 key={snapshot.id}
