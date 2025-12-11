@@ -56,11 +56,11 @@ The cards show a skeleton on first load, surface a small error banner when the K
 
 ## Agents & System panel
 
-- Updated from the legacy System status card, **Agents & System** highlights GitHub connectivity and agent activity in the selected range.
-  - GitHub status blocks show whether you’re connected and which account is active, or direct you to onboarding/settings when disconnected.
-  - Agent stats reflect the current preset: attempts started in range, success rate, and last activity timestamp.
-  - Agents with no attempts in range still appear with a muted “inactive in this range” label so you can tell idle agents apart from active ones.
-- This panel gives you confidence that your integrations and agents are ready before launching new work in the chosen timeframe.
+- The panel now renders the new **AgentsSystemStatusPanel**, which blends a readiness indicator, GitHub integration state, and an agent fleet snapshot for the selected time range.
+  - The **System readiness** subsection exposes a tone-aware badge plus helper text that explains whether GitHub and agents are configured, active, or degraded, and it surfaces quick links to **View agents** and **Integration settings** so you can act without leaving Mission Control.
+  - The **GitHub integration** subsection reports the current connection status (connected, disconnected, error, or unknown), highlights the connected account when available, and shows either a **Manage GitHub** or **Connect GitHub** button depending on the state. Errors and loading states display inline guidance plus a retry link so you can refresh the status on demand.
+  - The **Agent fleet** subsection summarizes how many agents are registered, whether any handled attempts during the selected window, and whether additional retries are needed when the dashboard or agent queries fail. When agent stats are available, the panel lists up to eight agents ordered by last activity, surfaces the formatted success rate, and shows relative last-activity timestamps with tooltips containing the exact time. Idle or inactive agents remain visible with muted styling so you can still compare who is online versus who needs work.
+- Error handling is non-blocking: GitHub or agent fetch failures render contextual banners with retry buttons, while empty states remind you to register agents or wait for attempts to appear in the chosen timeframe.
 
 ## Inbox panel
 
