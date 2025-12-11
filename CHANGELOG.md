@@ -1,3 +1,56 @@
+## [0.16.0](https://github.com/activadee/kanban-ai/compare/v0.15.0...v0.16.0) (2025-12-11)
+
+### Features
+
+*  Expose dashboard overview via REST and WebSocket ([#249](https://github.com/activadee/kanban-ai/issues/249)) ([bfd5064](https://github.com/activadee/kanban-ai/commit/bfd5064717c4b4eeb22b9d959c3a0e9a77f36b41))
+* Add dashboard deep links to attempts and project boards ([#267](https://github.com/activadee/kanban-ai/issues/267)) ([c674ecc](https://github.com/activadee/kanban-ai/commit/c674ecc2604796a4c9ab90811b67eff4d8956975))
+* Add loading, empty, and error states for Mission Control dashboard ([#265](https://github.com/activadee/kanban-ai/issues/265)) ([34578c9](https://github.com/activadee/kanban-ai/commit/34578c90fd146cbd98e2d368b71e74ecc9a69cfe))
+* Agent Profile Splitting for Inline Tasks ([#233](https://github.com/activadee/kanban-ai/issues/233)) ([72b930a](https://github.com/activadee/kanban-ai/commit/72b930a40b425920aab3a1f54e435fce3d9fef62))
+* **client:** implement Mission Control dashboard layout skeleton ([#251](https://github.com/activadee/kanban-ai/issues/251)) ([d249fcb](https://github.com/activadee/kanban-ai/commit/d249fcbfd481b1fd7474150a27a57c4fe9a36acf))
+* **dashboard:** add agents & system status panel ([#262](https://github.com/activadee/kanban-ai/issues/262)) ([4d85da8](https://github.com/activadee/kanban-ai/commit/4d85da80e3be1a89693ad3efb9d30440843cb373))
+* **dashboard:** add project health panel to overview ([#261](https://github.com/activadee/kanban-ai/issues/261)) ([b1921d3](https://github.com/activadee/kanban-ai/commit/b1921d3197bbfdcfc533e1d8ae1b6c4be1550813))
+* **dashboard:** add recent attempt history panel ([#264](https://github.com/activadee/kanban-ai/issues/264)) ([83ed132](https://github.com/activadee/kanban-ai/commit/83ed132e9b54ce546ac1eeb7269ed11673a3c7ca))
+* **dashboard:** aggregate per-agent statistics for the system status panel ([#248](https://github.com/activadee/kanban-ai/issues/248)) ([6735727](https://github.com/activadee/kanban-ai/commit/67357270410a2abe49266bc0695bba2fe8e0bfcd))
+* **dashboard:** bind KPI cards to dashboard metrics ([#252](https://github.com/activadee/kanban-ai/issues/252)) ([9a9f6e5](https://github.com/activadee/kanban-ai/commit/9a9f6e5bc6a44ee6f3992e7822961b0f3f01654d))
+* **dashboard:** extend project snapshots with project health metrics ([#247](https://github.com/activadee/kanban-ai/issues/247)) ([f713b8c](https://github.com/activadee/kanban-ai/commit/f713b8c8c4aca9a42d84e1be31c5424bde4f10e7))
+* Implement Dashboard Inbox Panel UI for Review and Failed Attempts ([#260](https://github.com/activadee/kanban-ai/issues/260)) ([d92e218](https://github.com/activadee/kanban-ai/commit/d92e2189f609b3e880c481ad9489a663130eee67))
+* Implement live agent activity panel with real-time updates ([#259](https://github.com/activadee/kanban-ai/issues/259)) ([c1f604d](https://github.com/activadee/kanban-ai/commit/c1f604dc2f0e882374030f2cc2a71ac194eea34c))
+* Implement time-range aware dashboard overview service ([#243](https://github.com/activadee/kanban-ai/issues/243)) ([2550ba2](https://github.com/activadee/kanban-ai/commit/2550ba2bc39ee826fb08819c0332bf3bbee342f9))
+* Make Mission Control dashboard responsive for small screens ([#266](https://github.com/activadee/kanban-ai/issues/266)) ([cc089c0](https://github.com/activadee/kanban-ai/commit/cc089c0054437ee4832713b11948a0e4cc945800))
+* re-enable opencode adn rewrite to use sdk ([#241](https://github.com/activadee/kanban-ai/issues/241)) ([67510ab](https://github.com/activadee/kanban-ai/commit/67510ab4fe5e11fe69ba76cbd314712c0509bf60))
+* Wire dashboard time range filter to API and persist selection ([#263](https://github.com/activadee/kanban-ai/issues/263)) ([f6cef8f](https://github.com/activadee/kanban-ai/commit/f6cef8f345d828cc85f0cd82fbe16ec2805519f7))
+
+### Chores
+
+* Define Mission Control dashboard API data model and wire through server + client ([#242](https://github.com/activadee/kanban-ai/issues/242)) ([2730fba](https://github.com/activadee/kanban-ai/commit/2730fba60bac6d169743e98985eabbbc4713c8c0))
+* Implement inbox aggregation for review and failed attempts ([#246](https://github.com/activadee/kanban-ai/issues/246)) ([7a6ed05](https://github.com/activadee/kanban-ai/commit/7a6ed05d63347f6dff81e3725b20a58420d9504f))
+
+### Docs
+
+* document Mission Control dashboard for users and contributors ([#268](https://github.com/activadee/kanban-ai/issues/268)) ([b9b9d25](https://github.com/activadee/kanban-ai/commit/b9b9d25d1d5cced370f7964738870957abff4419))
+
+### Refactors
+
+* **server:** remove Prisma and standardize on Drizzle ([#245](https://github.com/activadee/kanban-ai/issues/245)) ([f3c9c2e](https://github.com/activadee/kanban-ai/commit/f3c9c2e2a8e9abd6151b0b687648b7f549f54f2d))
+
+### Tests
+
+* Add comprehensive dashboard overview and inbox tests ([#250](https://github.com/activadee/kanban-ai/issues/250)) ([86b6641](https://github.com/activadee/kanban-ai/commit/86b6641918a63830ccea088eaf568983649818e9))
+
+### Build
+
+* **deps-dev:** bump @types/node from 24.10.3 to 25.0.0 ([#256](https://github.com/activadee/kanban-ai/issues/256)) ([8f48657](https://github.com/activadee/kanban-ai/commit/8f48657cb0635351220d1e0343518c84410196a6))
+* **deps-dev:** bump @types/node from 24.10.3 to 25.0.0 in /client ([#253](https://github.com/activadee/kanban-ai/issues/253)) ([473632a](https://github.com/activadee/kanban-ai/commit/473632ab98b735b391b57ac78d60a1e643d56db1))
+* **deps:** bump @openai/codex-sdk from 0.64.0 to 0.65.0 in /core ([#237](https://github.com/activadee/kanban-ai/issues/237)) ([5727215](https://github.com/activadee/kanban-ai/commit/57272153d5c8ab30ee5f0c529fccca125f6164a0))
+* **deps:** bump @openai/codex-sdk from 0.65.0 to 0.66.0 in /core ([#244](https://github.com/activadee/kanban-ai/issues/244)) ([03caaba](https://github.com/activadee/kanban-ai/commit/03caaba36c6d7e7261ce226f5ab367165172b494))
+* **deps:** bump @openai/codex-sdk from 0.66.0 to 0.69.0 ([#257](https://github.com/activadee/kanban-ai/issues/257)) ([afd76b9](https://github.com/activadee/kanban-ai/commit/afd76b96221779d07ffe625b4005c16c49e499d5))
+* **deps:** bump @openai/codex-sdk from 0.66.0 to 0.69.0 in /core ([#258](https://github.com/activadee/kanban-ai/issues/258)) ([6827d21](https://github.com/activadee/kanban-ai/commit/6827d215062b3f282a910a0e3415539a94614cb2))
+* **deps:** bump drizzle-orm from 0.44.7 to 0.45.0 in /core ([#238](https://github.com/activadee/kanban-ai/issues/238)) ([8fbdbc7](https://github.com/activadee/kanban-ai/commit/8fbdbc7a5ecc4943af6b7e913b3a34fdad5b97b9))
+* **deps:** bump drizzle-orm from 0.44.7 to 0.45.0 in /server ([#236](https://github.com/activadee/kanban-ai/issues/236)) ([30c5fab](https://github.com/activadee/kanban-ai/commit/30c5fab6263fa0a8792e979a0c992149b9a0bfa3))
+* **deps:** bump lucide-react from 0.555.0 to 0.556.0 in /client ([#240](https://github.com/activadee/kanban-ai/issues/240)) ([603056d](https://github.com/activadee/kanban-ai/commit/603056db235c1c5c2aa001abc4d80a869371f01e))
+* **deps:** bump lucide-react from 0.556.0 to 0.559.0 ([#254](https://github.com/activadee/kanban-ai/issues/254)) ([95094ce](https://github.com/activadee/kanban-ai/commit/95094ce4c03aff1454df10e5d01677575aebc424))
+* **deps:** bump lucide-react from 0.556.0 to 0.559.0 in /client ([#255](https://github.com/activadee/kanban-ai/issues/255)) ([35e289b](https://github.com/activadee/kanban-ai/commit/35e289b60aa55a39f64b4ebd76562c202a5eab91))
+
 ## [0.15.0](https://github.com/activadee/kanban-ai/compare/v0.14.1...v0.15.0) (2025-12-03)
 
 ### Features
