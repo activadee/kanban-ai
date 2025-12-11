@@ -152,6 +152,9 @@ Forward-compatibility:
   - One card that merges live `Active attempts` (status badges, project/agent metadata, relative update timestamps, and board links) with `Recent activity` (completed/stopped attempts in the same time range). Empty states explain when no data is available for the current preset.
 - **Inbox**
   - Renders actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox`. Each item shows card/ticket context, project/agent metadata, and the most recent timestamp (`lastUpdatedAt`/`finishedAt`/`createdAt`), with groups sorted by recency so urgent work surfaces first.
+  - Tabs for **All**, **Review**, **Failed**, or **Stuck** items live above the list, display counts for each kind, and persist the selected filter in session storage to keep the same bucket focused while navigating the dashboard.
+  - A refresh button beside the tabs triggers a manual reload; the panel renders skeleton placeholders during the initial load and surfaces a retryable error banner if the dashboard query fails.
+  - Each row is keyboard accessible and exposes inline actions: clicking the row or the attempt icon opens `/attempts/:attemptId`, a PR icon opens `prUrl` (if present) in a new tab, and failed items include a retry button that re-queues the agent and refreshes the inbox.
 - **Project Health**
   - Replaces the legacy project snapshot card with rows that surface each project’s repository, total cards, open cards, and active attempts for the selected range, plus links to the board so you can jump straight to overloaded workspaces.
 - **Agents & System**

@@ -48,10 +48,10 @@ This page gives you a tour of the main product features and how they fit togethe
 - **Create Pull Requests** – From a card with an active Attempt, open a PR dialog that targets the Attempt branch, pre‑fills title and body, and ties the PR back to the card.
 - **Connection status** – The Dashboard shows whether you’re connected to GitHub and which account is active.
 ### [Dashboard](core/dashboard)
-- **High‑level metrics** – See total projects, active Attempts, attempts in the selected time range (default last 7 days), and open cards, all scoped to the Mission Control window you choose.
+- **High-level metrics** – See total projects, active Attempts, attempts in the selected time range (default last 7 days), and open cards, all scoped to the Mission Control window you choose.
 - **Live Agent Activity** – One card merging live `Active attempts` with recent attempt history; every row shows status badges, project/agent metadata, relative timestamps, and links back to boards so you can reconcile the totals with what agents have been doing.
-- **Project Health** – Per‑project rows track repository slug/path, total cards, open cards, and active attempts for the chosen preset (links point back to each board).
-- **Inbox** – Actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox` that surface reminders, failures, and stuck work in the same time range; items are sorted by recency and include relative timestamps.
+- **Project Health** – Per-project rows track repository slug/path, total cards, open cards, and active attempts for the chosen preset (links point back to each board).
+- **Inbox** – Actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox` that surface reminders, failures, and stuck work in the same time range; tabs for **All/Review/Failed/Stuck** show counts, the selected filter is remembered in session storage, skeletons/error banners guard loading states, and each row exposes attempt, PR, and retry actions alongside the usual relative timestamp.
 - **Agents & System** – Replaces the legacy System status card with GitHub connectivity and per-agent summary rows that honor the current preset (attempts in range, success rate, last activity, and an “inactive in this range” hint when appropriate).
 - **Time range presets** – Mission Control exposes a preset selector (`Last 24 hours`, `Last 7 days`, `Last 30 days`) that scopes metrics, inbox items, and agent stats; switching presets refetches the snapshot with a dedicated query key so the WebSocket stream stays live on the default range.
 ### [Onboarding & settings](core/onboarding-and-settings)
