@@ -32,7 +32,8 @@ At the top of the page you’ll see five KPI cards that surface the headline agg
 - **Items to review** – Count of inbox review items that still require human verification. It mirrors `DashboardInbox.review` plus any `meta.totalReview` count surfaced by the service.
 - **Active projects** – Number of boards with any attempt activity in the selected range. This card only appears after the KPI snapshot loads; while the request is in flight you’ll see a loading skeleton instead.
 
-The cards show a skeleton on first load, surface a small error banner when the KPI request fails, and keep helper text tied to the selected preset so you can interpret the numbers at a glance.
+The cards show a skeleton on first load, surface a small error banner with a retry action when the KPI request fails, and keep helper text tied to the selected preset so you can interpret the numbers at a glance.
+When the KPI snapshot succeeds but reports zero counts across the supported metrics, Mission Control gently swaps in an empty-state message explaining that the cards will light up once agents start running attempts for the selected range.
 
 ## Live Agent Activity panel
 
@@ -42,6 +43,7 @@ The cards show a skeleton on first load, surface a small error banner when the K
   - Click or press Enter/Space on any row to open the attempt detail page (`/attempts/:attemptId`) that contains the attempt summary, metadata, and streaming log chronicle alongside the board link that already existed.
   - When the dashboard WebSocket temporarily drops or reconnects, a helper note informs you that live updates are paused and the panel will resume with the latest cached snapshot once the socket returns.
   - Empty states explain when no live attempts match the current preset so you know why the list is blank.
+  - When the live activity query fails and there are no cached attempts, a compact retryable error banner appears inside the card so you can refresh without blocking the rest of Mission Control; the empty-state messaging is suppressed until the list succeeds again.
 
 ## Recent Attempt History panel
 
@@ -59,6 +61,7 @@ The cards show a skeleton on first load, surface a small error banner when the K
   - Badge indicators surface high activity or high failure rates with tooltips that explain what triggered the highlight, and each row shows open/total card counts plus recent attempts/failures for the chosen preset.
   - Clicking (or pressing Enter/Space on) a row jumps straight to that board so you can investigate the project quickly.
   - Empty state encourages creating a project to populate the list.
+  - When the project snapshots request fails, the card shows an inline retryable error banner without hiding the sort controls so you can try again without leaving Mission Control.
 - Use this to identify overloaded boards or projects with too much open work, failed attempts, or queued attempts during the chosen window.
 
 ## Agents & System panel
