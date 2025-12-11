@@ -11,6 +11,7 @@ import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/c
 import {ActiveAttemptsList} from './ActiveAttemptsList'
 import {RecentActivityList} from './RecentActivityList'
 import type {DashboardStreamStatus} from '@/hooks'
+import {SectionErrorBanner} from '@/pages/dashboard/SectionState'
 
 type Props = {
     activeAttempts: ActiveAttemptSummary[]
@@ -156,22 +157,12 @@ export function LiveAgentActivityPanel({
             </CardHeader>
             <CardContent className="space-y-6">
                 {hasError && !isLoading && !hasAttempts ? (
-                    <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span>Unable to load live agent activity.</span>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 border-destructive/60 px-2 text-[11px]"
-                                onClick={onRetry}
-                            >
-                                Retry
-                            </Button>
-                        </div>
-                        <p className="mt-1 text-[11px] text-destructive/80">
-                            Showing the latest known data when available.
-                        </p>
-                    </div>
+                    <SectionErrorBanner
+                        data-testid="live-activity-error"
+                        title="Unable to load live agent activity."
+                        description="Check your connection and retry. Other dashboard sections may still be available."
+                        onRetry={onRetry}
+                    />
                 ) : null}
 
                 <div>
@@ -266,7 +257,7 @@ export function LiveAgentActivityPanel({
                         </div>
                     ) : null}
 
-                    {isLoading ? (
+                    {isLoading || (hasError && !hasAttempts) ? (
                         <ActiveAttemptsList
                             attempts={[]}
                             isLoading
@@ -298,7 +289,7 @@ export function LiveAgentActivityPanel({
                     </div>
                     <RecentActivityList
                         items={recentRows}
-                        isLoading={isLoading}
+                        isLoading={isLoading || (hasError && !hasAttempts)}
                         finishedLabel={updatedLabel}
                     />
                 </div>

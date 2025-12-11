@@ -6,6 +6,7 @@ import {Separator} from '@/components/ui/separator'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Link} from 'react-router-dom'
 import {formatAttemptDuration} from './formatters'
+import {SectionErrorBanner} from '@/pages/dashboard/SectionState'
 
 type Props = {
     attempts: AttemptActivityItem[]
@@ -79,12 +80,10 @@ export function RecentAttemptHistoryPanel({
             </CardHeader>
             <CardContent className="space-y-3">
                 {hasError ? (
-                    <div className="flex items-center justify-between gap-3 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                        <span>Unable to load recent attempt history.</span>
-                        <Button size="sm" variant="outline" onClick={onRetry}>
-                            Retry
-                        </Button>
-                    </div>
+                    <SectionErrorBanner
+                        title="Unable to load recent attempt history."
+                        onRetry={onRetry}
+                    />
                 ) : null}
 
                 {isLoading ? (

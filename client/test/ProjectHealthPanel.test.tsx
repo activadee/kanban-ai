@@ -128,4 +128,25 @@ describe("ProjectHealthPanel", () => {
         const rows = list.querySelectorAll("[data-testid='project-health-row']")
         expect(rows[0].textContent).toMatch(/High Failure/)
     })
+
+    it("renders an inline error state with retry when loading fails", () => {
+        const handleRetry = vi.fn()
+
+        render(
+            <ProjectHealthPanel
+                snapshots={[]}
+                isLoading={false}
+                hasError
+                onRetry={handleRetry}
+            />,
+        )
+
+        expect(
+            screen.getByText(/Unable to load project health\./i),
+        ).toBeTruthy()
+
+        const retryButton = screen.getByRole("button", {name: /Retry/i})
+        fireEvent.click(retryButton)
+        expect(handleRetry).toHaveBeenCalledTimes(1)
+    })
 })
