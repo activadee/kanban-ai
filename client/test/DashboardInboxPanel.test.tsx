@@ -1,6 +1,6 @@
 import React from "react";
 import {describe, it, expect, beforeEach, vi} from "vitest";
-import {render, cleanup, screen, fireEvent, waitFor} from "@testing-library/react";
+import {render, cleanup, screen, fireEvent, waitFor, within} from "@testing-library/react";
 import {MemoryRouter} from "react-router-dom";
 import type {DashboardInbox} from "shared";
 
@@ -163,7 +163,7 @@ function renderInboxPanel(overrides?: {
     const onReload = overrides?.onReload ?? vi.fn();
     const onAttemptNavigate = overrides?.onAttemptNavigate ?? vi.fn();
 
-    render(
+    const result = render(
         <MemoryRouter>
             <InboxPanel
                 inbox={inbox}
@@ -176,7 +176,7 @@ function renderInboxPanel(overrides?: {
         </MemoryRouter>,
     );
 
-    return {onReload, onAttemptNavigate};
+    return {onReload, onAttemptNavigate, container: result.container};
 }
 
 describe("Dashboard InboxPanel", () => {
@@ -295,5 +295,15 @@ describe("Dashboard InboxPanel", () => {
         });
         expect(onReload).not.toHaveBeenCalled();
         expect(toast).toHaveBeenCalled();
+    });
+
+    it("wraps the inbox grid in a horizontally scrollable container", () => {
+        renderInboxPanel();
+
+        const scrollContainer = screen.getByTestId("inbox-scroll-container");
+        expect(scrollContainer).toBeTruthy();
+
+        const inboxList = within(scrollContainer).getByTestId("inbox-list");
+        expect(inboxList).toBeTruthy();
     });
 });

@@ -267,7 +267,7 @@ export function InboxPanel({
                         </p>
                     ) : null}
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto" data-testid="inbox-scroll-container">
                         <div className="min-w-[720px] space-y-1" data-testid="inbox-list">
                             <div className="grid grid-cols-[0.9fr,2fr,1.5fr,1.3fr,1.3fr,auto] gap-3 px-2 pb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                                 <div>Kind</div>

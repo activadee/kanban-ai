@@ -117,7 +117,7 @@ function renderDashboard() {
         },
     });
 
-    render(
+    return render(
         <QueryClientProvider client={client}>
             <MemoryRouter>
                 <DashboardPage/>
@@ -150,6 +150,35 @@ describe("Mission Control dashboard layout", () => {
         expect(screen.getByText("Inbox")).toBeTruthy();
         expect(screen.getByText("Project Health")).toBeTruthy();
         expect(screen.getByText("Agents & System")).toBeTruthy();
+    });
+
+    it("stacks dashboard sections in the expected mobile order", () => {
+        renderDashboard();
+
+        const kpiRow = screen.getByRole("group", {name: /Key performance indicators/i});
+        const liveActivityHeading = screen.getByText("Live Agent Activity");
+        const inboxHeading = screen.getByText("Inbox");
+        const projectsHeading = screen.getByText("Project Health");
+        const agentsHeading = screen.getByText("Agents & System");
+        const historyHeading = screen.getByText("Recent Attempt History");
+
+        const DOCUMENT_POSITION_FOLLOWING = 4; // Node.DOCUMENT_POSITION_FOLLOWING
+        const isBefore = (a: HTMLElement, b: HTMLElement) =>
+            (a.compareDocumentPosition(b) & DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+        expect(isBefore(kpiRow, liveActivityHeading)).toBe(true);
+        expect(isBefore(liveActivityHeading, inboxHeading)).toBe(true);
+        expect(isBefore(inboxHeading, projectsHeading)).toBe(true);
+        expect(isBefore(projectsHeading, agentsHeading)).toBe(true);
+        expect(isBefore(agentsHeading, historyHeading)).toBe(true);
+    });
+
+    it("uses a responsive two-column grid for main sections at large widths", () => {
+        renderDashboard();
+
+        const gridSection = screen.getByTestId("mission-control-grid");
+        expect(gridSection).toBeTruthy();
+        expect(gridSection.className).toContain("xl:grid-cols-2");
     });
 
     it("renders KPI cards with expected labels", () => {

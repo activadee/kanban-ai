@@ -15,6 +15,12 @@ Presented as **Mission Control** in the app header, this page gives you a high-l
   - `/api/v1/ws/dashboard` to stream live updates.
 - The page header now labels the experience **Mission Control** while the route and API surface remain the same, and the time range selector sits beside the action buttons so you can scope the entire snapshot before diving in.
 
+## Panel layout and ordering
+
+- Mission Control wraps the KPI cards and the primary panels inside a responsive container with `px-4 py-4` on small screens that grows to `px-8 py-6` at desktop widths so the content stays centered and readable.
+- Below the KPI row the dashboard uses a two-column grid once the viewport reaches the `xl` breakpoint (`xl:grid-cols-2` with consistent `gap-6`). In that layout the **Live Agent Activity** and **Inbox** cards share the first row, **Project Health** and **Agents & System** share the second row, and the **Recent Attempt History** card spans the full width (it renders inside a wrapper with `xl:col-span-2`) so you can pan across a longer list without losing context.
+- On smaller screens the same DOM order is preserved, so the panels stack vertically in the sequence: Live Agent Activity → Inbox → Project Health → Agents & System → Recent Attempt History. This keeps mobile users focused on the most critical information first while still surfacing project health, system status, and history in a predictable order.
+
 ## Time range selector
 
 - The drop-down beside the primary actions lets you scope Mission Control to one of the supported presets (`Last 24 hours`, `Last 7 days`, `Last 30 days`).
