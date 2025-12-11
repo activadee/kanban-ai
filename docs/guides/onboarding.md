@@ -63,3 +63,10 @@ GitHub device flow:
 - Secrets are stored locally; no remote storage.
 - GitHub connection can also be initiated later from sidebar GitHub box or Settings.***
 - Auto-start agent on In Progress defaults to off; onboarding surfaces the toggle so teams can opt into automatic attempt creation when moving cards from Backlog to In Progress.
+
+## Next steps: Mission Control
+
+After onboarding completes, most users land on the projects view and quickly move to the dashboard:
+
+- Open **Dashboard → Mission Control** to see KPIs, live agent activity, Inbox items, project health, and system status for your workspace.
+- For a walkthrough of each panel and the global time range selector, see the [Mission Control dashboard guide](dashboard-ui).
