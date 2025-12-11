@@ -37,9 +37,12 @@ The cards show a skeleton on first load, surface a small error banner when the K
 
 - The **Live Agent Activity** card merges in-flight work and recent outcomes.
   - The **Active attempts** subsection lists running/queued attempts with status badges, project/agent metadata, relative update timestamps, and quick links back to the project.
+    - Dropdown filters let you scope the list by agent, attempt status (`queued`, `running`, `stopping`), and project, with a “Clear filters” button and badge that show how many filters are active. Filters persist across live updates so you can keep a narrowed view even as new attempts stream in.
+    - Click or press Enter/Space on any row to jump to the new attempt detail page (`/attempts/:attemptId`), which surfaces the attempt summary, metadata, and streaming log chronicle alongside the board link that already existed.
+    - When the dashboard WebSocket temporarily drops or reconnects, a helper note informs you that live updates are paused and the panel will resume with the latest cached snapshot once the socket returns.
   - The **Recent activity** subsection shows completed/stopped attempts in the same time range, with relative timestamps and links to the originating boards.
-- Both subsections honor the selected preset so you can match the timeline with the corresponding “Attempts in range” total.
-- Empty-state copy appears for each subsection when no data is available in the chosen window.
+  - Both subsections honor the selected preset so you can match the timeline with the corresponding “Attempts in range” total.
+  - Empty-state copy appears for each subsection when no data is available in the chosen window.
 
 ## Project Health panel
 
