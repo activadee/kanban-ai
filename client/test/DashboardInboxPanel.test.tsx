@@ -163,7 +163,7 @@ function renderInboxPanel(overrides?: {
     const onReload = overrides?.onReload ?? vi.fn();
     const onAttemptNavigate = overrides?.onAttemptNavigate ?? vi.fn();
 
-    render(
+    const result = render(
         <MemoryRouter>
             <InboxPanel
                 inbox={inbox}
@@ -176,7 +176,7 @@ function renderInboxPanel(overrides?: {
         </MemoryRouter>,
     );
 
-    return {onReload, onAttemptNavigate};
+    return {onReload, onAttemptNavigate, container: result.container};
 }
 
 describe("Dashboard InboxPanel", () => {
@@ -295,5 +295,15 @@ describe("Dashboard InboxPanel", () => {
         });
         expect(onReload).not.toHaveBeenCalled();
         expect(toast).toHaveBeenCalled();
+    });
+
+    it("wraps the inbox grid in a horizontally scrollable container", () => {
+        const {container} = renderInboxPanel();
+
+        const scrollContainer = container.querySelector("div.overflow-x-auto");
+        expect(scrollContainer).not.toBeNull();
+
+        const inboxList = scrollContainer?.querySelector("[data-testid='inbox-list']");
+        expect(inboxList).not.toBeNull();
     });
 });
