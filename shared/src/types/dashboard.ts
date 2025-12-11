@@ -228,6 +228,45 @@ export interface DashboardMetrics {
      */
     byKey: Record<string, DashboardMetricSeries>
     /**
+     * Convenience aggregate for the number of currently active attempts.
+     *
+     * Implementations SHOULD keep this consistent with the
+     * `"attempts.active"` metric exposed via `byKey` when present.
+     */
+    activeAttempts?: number
+    /**
+     * Convenience aggregate for the total number of attempts that fall within
+     * the selected `DashboardOverview.timeRange`.
+     *
+     * This SHOULD mirror `DashboardOverview.attemptsInRange` when populated.
+     */
+    attemptsInRange?: number
+    /**
+     * Convenience aggregate for the success rate of attempts within the
+     * selected `DashboardOverview.timeRange`.
+     *
+     * Expressed as a fraction between `0` and `1` unless otherwise
+     * documented; when there are no attempts in the window this should be
+     * `0` to avoid `NaN`.
+     */
+    successRateInRange?: number
+    /**
+     * Convenience aggregate for the number of inbox items that require
+     * review within the selected `DashboardOverview.timeRange`.
+     *
+     * Implementations SHOULD keep this consistent with the `review` list on
+     * `DashboardInbox` and any associated `meta.totalReview` count.
+     */
+    reviewItemsCount?: number
+    /**
+     * Convenience aggregate for how many distinct projects/boards have any
+     * attempt activity within the selected `DashboardOverview.timeRange`.
+     *
+     * This SHOULD mirror `DashboardOverview.projectsWithActivityInRange`
+     * when populated.
+     */
+    projectsWithActivity?: number
+    /**
      * Convenience handle for the `"attempts.started"` metric when available.
      *
      * Clients SHOULD prefer this field when present, falling back to

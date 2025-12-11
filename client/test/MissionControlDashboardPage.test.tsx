@@ -1,6 +1,6 @@
 import React from "react";
 import {describe, it, expect, beforeEach, vi} from "vitest";
-import {render, cleanup, screen, fireEvent} from "@testing-library/react";
+import {render, cleanup, screen, fireEvent, within} from "@testing-library/react";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {MemoryRouter} from "react-router-dom";
 import {
@@ -150,7 +150,19 @@ describe("Mission Control dashboard layout", () => {
         expect(screen.getByText("Agents & System")).toBeTruthy();
     });
 
-    it("updates time range preset and KPI label when selection changes", () => {
+    it("renders KPI cards with expected labels", () => {
+        renderDashboard();
+
+        const kpiRow = screen.getByRole("group", {name: /Key performance indicators/i});
+
+        expect(within(kpiRow).getByText("Active attempts")).toBeTruthy();
+        expect(within(kpiRow).getByText("Attempts in range")).toBeTruthy();
+        expect(within(kpiRow).getByText("Success rate")).toBeTruthy();
+        expect(within(kpiRow).getByText("Items to review")).toBeTruthy();
+        expect(within(kpiRow).getByText("Active projects")).toBeTruthy();
+    });
+
+    it("updates time range preset and KPI helper text when selection changes", () => {
         renderDashboard();
 
         // Initial hook call uses the default preset.
@@ -158,8 +170,9 @@ describe("Mission Control dashboard layout", () => {
         const firstCallOptions = dashboardMocks.useDashboardOverview.mock.calls[0][0];
         expect(firstCallOptions?.timeRangePreset).toBe(DEFAULT_DASHBOARD_TIME_RANGE_PRESET);
 
-        // Initial KPI label reflects the default time range.
-        expect(screen.getByText(/Attempts \(Last 7 days\)/i)).toBeTruthy();
+        // Initial KPI helper text reflects the default time range.
+        const kpiRow = screen.getByRole("group", {name: /Key performance indicators/i});
+        expect(within(kpiRow).getByText(/Last 7 days/i)).toBeTruthy();
 
         // Change the time range to "Last 24 hours".
         const last24hOption = screen.getByRole("option", {name: /Last 24 hours/i});
@@ -171,7 +184,8 @@ describe("Mission Control dashboard layout", () => {
                 ][0];
         expect(lastCallOptions?.timeRangePreset).toBe("last_24h");
 
-        // KPI label reflects the newly selected range.
-        expect(screen.getByText(/Attempts \(Last 24 hours\)/i)).toBeTruthy();
+        // KPI helper text reflects the newly selected range.
+        const updatedKpiRow = screen.getByRole("group", {name: /Key performance indicators/i});
+        expect(within(updatedKpiRow).getByText(/Last 24 hours/i)).toBeTruthy();
     });
 });

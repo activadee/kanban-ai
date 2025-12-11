@@ -518,6 +518,16 @@ describe("dashboard/service.getDashboardOverview", () => {
 
         expect(projectsTotal.points).toHaveLength(1);
         expect(projectsTotal.points[0]?.value).toBe(3);
+
+        expect(overview.metrics.activeAttempts).toBe(activeAttempts.total);
+        expect(overview.metrics.attemptsInRange).toBe(overview.attemptsInRange);
+        expect(overview.metrics.successRateInRange).toBe(overview.successRateInRange);
+        expect(overview.metrics.projectsWithActivity).toBe(
+            overview.projectsWithActivityInRange,
+        );
+        expect(overview.metrics.reviewItemsCount).toBe(
+            overview.inboxItems.review.length,
+        );
     });
 
     it("excludes attempts outside the selected time range from in-range metrics", async () => {

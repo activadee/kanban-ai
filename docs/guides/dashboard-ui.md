@@ -23,21 +23,22 @@ Presented as **Mission Control** in the app header, this page gives you a high-l
 
 ## Metric cards
 
-At the top of the page you’ll see four metric cards:
+At the top of the page you’ll see five KPI cards that surface the headline aggregates from `DashboardOverview.metrics`:
 
-- **Projects** – number of boards/projects tracked.
-- **Active Attempts** – Attempts currently `queued`, `running`, or `stopping`.
-- **Attempts (range)** – Attempts that completed (succeeded, failed, or stopped) within the selected time range. The label reflects the preset (e.g. “Attempts (Last 7 days)” by default) so you can correlate the total with the time window you’re viewing.
-- **Open Cards** – cards on boards that are not in a Done column.
+- **Active attempts** – how many Attempts are currently `queued`, `running`, or `stopping`. The helper text “Currently in progress” emphasizes that this is a live count of in-flight work.
+- **Attempts in range** – Attempts whose `createdAt` falls within the selected preset or custom window. The helper text “Within selected period” keeps the total tied to the visible filter.
+- **Success rate** – Percentage of attempts in the selected range that succeeded (formatted as `xx%`). Its helper text changes to match the selected preset (e.g. “Last 7 days”), so you can quickly see the timeframe behind the ratio.
+- **Items to review** – Count of inbox review items that still require human verification. It mirrors `DashboardInbox.review` plus any `meta.totalReview` count surfaced by the service.
+- **Active projects** – Number of boards with any attempt activity in the selected range. This card only appears after the KPI snapshot loads; while the request is in flight you’ll see a loading skeleton instead.
 
-Use these to gauge workload and automation at a glance.
+The cards show a skeleton on first load, surface a small error banner when the KPI request fails, and keep helper text tied to the selected preset so you can interpret the numbers at a glance.
 
 ## Live Agent Activity panel
 
 - The **Live Agent Activity** card merges in-flight work and recent outcomes.
   - The **Active attempts** subsection lists running/queued attempts with status badges, project/agent metadata, relative update timestamps, and quick links back to the project.
   - The **Recent activity** subsection shows completed/stopped attempts in the same time range, with relative timestamps and links to the originating boards.
-- Both subsections honor the selected preset so you can match the timeline with the corresponding “Attempts (range)” total.
+- Both subsections honor the selected preset so you can match the timeline with the corresponding “Attempts in range” total.
 - Empty-state copy appears for each subsection when no data is available in the chosen window.
 
 ## Project Health panel
