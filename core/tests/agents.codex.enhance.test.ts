@@ -82,6 +82,39 @@ describe('CodexAgent.enhance', () => {
             description: 'Enhanced body',
         })
     })
+
+    it('forwards modelReasoningEffort including xhigh to the Codex SDK', async () => {
+        const {CodexAgent} = await import('../src/agents/codex/core/agent')
+
+        const controller = new AbortController()
+        const input: TicketEnhanceInput = {
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            title: 'Original Title',
+            description: 'Original Description',
+            profileId: 'ap-1',
+            signal: controller.signal,
+        }
+
+        const profile = {
+            ...defaultProfile,
+            modelReasoningEffort: 'xhigh',
+        }
+
+        runMock.mockResolvedValue({
+            items: [],
+            finalResponse: '# Enhanced Title\nEnhanced body',
+            usage: null,
+        })
+
+        await (CodexAgent as any).enhance(input, profile)
+
+        expect(startThreadMock).toHaveBeenCalledTimes(1)
+        const threadOptions = startThreadMock.mock.calls[0][0] as {modelReasoningEffort?: string}
+        expect(threadOptions.modelReasoningEffort).toBe('xhigh')
+    })
 })
 
 describe('CodexAgent.summarizePullRequest', () => {

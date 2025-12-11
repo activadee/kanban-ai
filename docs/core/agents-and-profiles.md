@@ -32,6 +32,7 @@ Codex and OpenCode, with additional agents under active development.
     - Streams structured messages (steps, logs, diffs, suggestions) that power the Messages, Processes, and Logs views.
   - Configuration:
     - Tuned via agent profiles (model, temperature, tools/sandbox config) stored per project or globally.
+    - Supports `modelReasoningEffort` (`minimal` | `low` | `medium` | `high` | `xhigh`) to control how much reasoning the Codex backend performs; higher levels, especially `xhigh`, typically trade higher latency and token usage for more robust planning and analysis.
 
 - **Droid** (WIP)
   - Status: **Work in progress – not exposed in the UI, not supported for production use.**
