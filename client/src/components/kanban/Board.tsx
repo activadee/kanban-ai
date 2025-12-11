@@ -73,6 +73,7 @@ type Props = {
     handlers: BoardHandlers;
     enhancementStatusByCardId?: Record<string, CardEnhancementStatus>;
     onCardEnhancementClick?: (cardId: string) => void;
+    initialSelectedCardId?: string | null;
 };
 
 export function Board({
@@ -81,6 +82,7 @@ export function Board({
                           handlers,
                           enhancementStatusByCardId,
                           onCardEnhancementClick,
+                          initialSelectedCardId,
                       }: Props) {
     const columns = useMemo<ColumnType[]>(
         () => state.columnOrder.map((id) => state.columns[id]).filter(Boolean),
@@ -96,7 +98,9 @@ export function Board({
     const [editingCardId, setEditingCardId] = useState<string | null>(null);
     const [editingCardAutoEnhance, setEditingCardAutoEnhance] =
         useState<boolean>(false);
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedId, setSelectedId] = useState<string | null>(
+        initialSelectedCardId ?? null,
+    );
     const resolvedSelectedId = useMemo(
         () => (selectedId && state.cards[selectedId] ? selectedId : null),
         [selectedId, state.cards],
@@ -199,6 +203,11 @@ export function Board({
         window.addEventListener("resize", updateSize);
         return () => window.removeEventListener("resize", updateSize);
     }, []);
+
+    useEffect(() => {
+        if (!initialSelectedCardId) return;
+        setSelectedId(initialSelectedCardId);
+    }, [initialSelectedCardId]);
 
     const boardContent = (
         <DndContext

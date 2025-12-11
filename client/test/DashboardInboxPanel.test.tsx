@@ -244,6 +244,19 @@ describe("Dashboard InboxPanel", () => {
         expect(link).not.toBeNull();
         expect(link?.getAttribute("href")).toBe("https://example.com/pr/1");
         expect(link?.getAttribute("target")).toBe("_blank");
+        expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
+    });
+
+    it("links card titles to the project board with cardId query", () => {
+        renderInboxPanel();
+
+        const cardLink = screen
+            .getByText((content) => content.includes("Add login flow"))
+            .closest("a");
+        expect(cardLink).not.toBeNull();
+        expect(cardLink?.getAttribute("href")).toBe(
+            "/projects/proj-1?cardId=card-1",
+        );
     });
 
     it("retries failed attempts via API and refreshes inbox", async () => {

@@ -11,6 +11,7 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/compon
 import {toast} from '@/components/ui/toast'
 import {startAttemptRequest} from '@/api/attempts'
 import {describeApiError} from '@/api/http'
+import {getProjectCardPath} from '@/lib/routes'
 
 type InboxFilter = 'all' | 'review' | 'failed' | 'stuck'
 
@@ -323,7 +324,10 @@ export function InboxPanel({
                                                         <TooltipTrigger asChild>
                                                             {hasProject ? (
                                                                 <Link
-                                                                    to={`/projects/${item.projectId}`}
+                                                                    to={getProjectCardPath(
+                                                                        item.projectId!,
+                                                                        item.cardId ?? undefined,
+                                                                    )}
                                                                     className="max-w-full truncate text-[13px] font-medium text-foreground hover:underline"
                                                                     onClick={(event) => event.stopPropagation()}
                                                                 >
@@ -403,7 +407,7 @@ export function InboxPanel({
                                                                     <ArrowUpRight className="size-3.5"/>
                                                                 </Button>
                                                             </TooltipTrigger>
-                                                            <TooltipContent>View attempt</TooltipContent>
+                                                            <TooltipContent>Open attempt details</TooltipContent>
                                                         </Tooltip>
                                                     ) : null}
 
@@ -420,8 +424,9 @@ export function InboxPanel({
                                                                     <a
                                                                         href={item.prUrl}
                                                                         target="_blank"
-                                                                        rel="noreferrer"
+                                                                        rel="noopener noreferrer"
                                                                         onClick={(event) => event.stopPropagation()}
+                                                                        aria-label="Open pull request"
                                                                     >
                                                                         <GitPullRequest className="size-3.5"/>
                                                                     </a>

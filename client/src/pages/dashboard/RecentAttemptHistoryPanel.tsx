@@ -5,6 +5,7 @@ import {Button} from '@/components/ui/button'
 import {Separator} from '@/components/ui/separator'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {Link} from 'react-router-dom'
+import {getAttemptPath, getProjectCardPath} from '@/lib/routes'
 import {formatAttemptDuration} from './formatters'
 import {SectionErrorBanner} from '@/pages/dashboard/SectionState'
 
@@ -155,7 +156,10 @@ export function RecentAttemptHistoryPanel({
                                                 <Link
                                                     to={
                                                         item.projectId
-                                                            ? `/projects/${item.projectId}`
+                                                            ? getProjectCardPath(
+                                                                  item.projectId,
+                                                                  item.cardId,
+                                                              )
                                                             : '#'
                                                     }
                                                     onClick={(event) => {
@@ -203,7 +207,7 @@ export function RecentAttemptHistoryPanel({
                                                 className="mt-1 h-auto p-0 text-xs"
                                             >
                                                 <Link
-                                                    to={`/attempts/${item.attemptId}`}
+                                                    to={getAttemptPath(item.attemptId)}
                                                     onClick={(event) => event.stopPropagation()}
                                                 >
                                                     View attempt

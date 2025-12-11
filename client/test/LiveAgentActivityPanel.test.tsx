@@ -311,6 +311,47 @@ describe("LiveAgentActivityPanel – navigation and websocket states", () => {
         expect(within(recentList).getAllByRole("listitem").length).toBe(1);
     });
 
+    it("renders deep links for recent activity items", () => {
+        const activity = createActivity({
+            attemptId: "attempt-activity-42",
+            projectId: "project-42",
+            cardId: "card-42",
+        });
+
+        render(
+            <MemoryRouter>
+                <LiveAgentActivityPanel
+                    activeAttempts={[]}
+                    recentActivity={[activity]}
+                    agents={agents}
+                    isLoading={false}
+                    timeRangeLabel="Last 7 days"
+                    updatedLabel={noopTimeLabel}
+                    streamStatus="open"
+                    hasError={false}
+                    onRetry={() => undefined}
+                />
+            </MemoryRouter>,
+        );
+
+        const list = screen.getByTestId("recent-activity-list");
+        const viewAttemptLink = within(list)
+            .getByText("View attempt")
+            .closest("a");
+        expect(viewAttemptLink).not.toBeNull();
+        expect(viewAttemptLink?.getAttribute("href")).toBe(
+            "/attempts/attempt-activity-42",
+        );
+
+        const viewBoardLink = within(list)
+            .getByText("View board")
+            .closest("a");
+        expect(viewBoardLink).not.toBeNull();
+        expect(viewBoardLink?.getAttribute("href")).toBe(
+            "/projects/project-42?cardId=card-42",
+        );
+    });
+
     it("renders a non-blocking error banner with retry when loading fails", () => {
         const onRetry = vi.fn();
 

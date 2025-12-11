@@ -53,6 +53,7 @@ You can also create cards directly in a column using column-specific controls (e
       same ratio.
   - On mobile:
     - The inspector still opens as a full-height sheet that slides in from the side, keeping the focus on the tapped card.
+  - The board page accepts a `cardId` query parameter (for example `/projects/<projectId>?cardId=<cardId>`) so dashboard cards, side panels, and activity lists can deep link directly to a task and open the inspector without an extra click.
 - The inspector includes:
 - **Header**:
   - Ticket key (if present).
