@@ -1,100 +1,351 @@
 ---
-title: Dashboard (UI)
+title: Mission Control dashboard
 ---
 
-# Dashboard (UI)
+# Mission Control dashboard
 
-Presented as **Mission Control** in the app header, this page gives you a high-level view of projects, agent activity, and system health. This guide explains what each metric and panel does.
+Mission Control is the main operational dashboard for KanbanAI. It gives you a high‑level view of active work, project health, and system status so you can see what agents are doing and what needs your attention.
 
-## Accessing the Dashboard
+## What Mission Control is for
 
-- From the sidebar, click **Dashboard**.
-- The Dashboard route is `/dashboard`.
-- Under the hood it uses:
-  - `GET /api/v1/dashboard` for the initial snapshot.
-  - `/api/v1/ws/dashboard` to stream live updates.
-- The page header now labels the experience **Mission Control** while the route and API surface remain the same, and the time range selector sits beside the action buttons so you can scope the entire snapshot before diving in.
+- **Primary use cases**
+  - Monitor active Attempts and quickly spot stuck or failing work.
+  - Scan project health across boards to find overloaded or risky projects.
+  - Triage review items, failures, and long‑running Attempts from a single inbox.
+  - Verify that agents and GitHub integration are configured and healthy.
+- **Who uses it**
+  - Individual developers checking on their Attempts and review queue.
+  - Tech leads / EMs keeping an eye on delivery risk and throughput.
+  - Operators verifying that the local server, agents, and GitHub are behaving.
+- **How it relates to the rest of KanbanAI**
+  - KPIs and **Project Health** roll up card and Attempt metrics from project boards.
+  - **Live Agent Activity**, **Recent Attempt History**, and **Inbox** are driven by the same `DashboardOverview` API that powers attempt lists and board updates.
+  - **Agents & System** surfaces the same agent registry and GitHub connection state used by the Agents page and Settings.
 
-## Panel layout and ordering
+## Accessing Mission Control
 
-- Mission Control wraps the KPI cards and the primary panels inside a responsive container with `px-4 py-4` on small screens that grows to `px-8 py-6` at desktop widths so the content stays centered and readable.
-- Below the KPI row the dashboard uses a two-column grid once the viewport reaches the `xl` breakpoint (`xl:grid-cols-2` with consistent `gap-6`). In that layout the **Live Agent Activity** and **Inbox** cards share the first row, **Project Health** and **Agents & System** share the second row, and the **Recent Attempt History** card spans the full width (it renders inside a wrapper with `xl:col-span-2`) so you can pan across a longer list without losing context.
-- On smaller screens the same DOM order is preserved, so the panels stack vertically in the sequence: Live Agent Activity → Inbox → Project Health → Agents & System → Recent Attempt History. This keeps mobile users focused on the most critical information first while still surfacing project health, system status, and history in a predictable order.
+- From the sidebar, click **Dashboard** (labelled **Mission Control** in the page header).
+- Route: `/dashboard`.
+- API surfaces:
+  - `GET /api/v1/dashboard` – initial snapshot, returning a `DashboardOverview`.
+  - `GET /api/v1/ws/dashboard` – WebSocket channel that streams `dashboard_overview` messages for the default time range.
 
-## Time range selector
+## Layout and panel ordering
 
-- The drop-down beside the primary actions lets you scope Mission Control to one of the supported presets (`Last 24 hours`, `Last 7 days`, `Last 30 days`).
-- The default preset is **Last 7 days**; changing it refetches the HTTP snapshot, keeps a dedicated query key, and rerenders the metric cards, inbox items, project snapshots, and agent stats for that window.
-- The selected preset is remembered in browser session storage, so navigating away from and back to Mission Control (or soft reloading the page) keeps the last chosen time range for the current session.
-- When the default preset is selected the live WebSocket stream stays connected; choosing a different preset keeps the stream untouched by using a separate cache entry for each range so you still see live updates when you switch back to **Last 7 days**.
+- The dashboard wraps KPI cards and all panels in a responsive container with `px-4 py-4` on small screens, growing to `px-8 py-6` at desktop widths so content stays centered and readable.
+- Below the KPI row, Mission Control uses a two‑column grid from the `xl` breakpoint (`xl:grid-cols-2` with `gap-6`):
+  - **Row 1**: **Live Agent Activity** and **Inbox**.
+  - **Row 2**: **Project Health** and **Agents & System**.
+  - **Row 3**: **Recent Attempt History** spanning both columns (`xl:col-span-2`) so the list can stretch horizontally.
+- On smaller screens, panels stack vertically in this order:
+  1. KPI cards
+  2. Live Agent Activity
+  3. Inbox
+  4. Project Health
+  5. Agents & System
+  6. Recent Attempt History
 
-## Metric cards
+This order keeps live activity and actionable items near the top on both mobile and desktop.
 
-At the top of the page you’ll see five KPI cards that surface the headline aggregates from `DashboardOverview.metrics`:
+## Time range behavior
 
-- **Active attempts** – how many Attempts are currently `queued`, `running`, or `stopping`. The helper text “Currently in progress” emphasizes that this is a live count of in-flight work.
-- **Attempts in range** – Attempts whose `createdAt` falls within the selected preset or custom window. The helper text “Within selected period” keeps the total tied to the visible filter.
-- **Success rate** – Percentage of attempts in the selected range that succeeded (formatted as `xx%`). Its helper text changes to match the selected preset (e.g. “Last 7 days”), so you can quickly see the timeframe behind the ratio.
-- **Items to review** – Count of inbox review items that still require human verification. It mirrors `DashboardInbox.review` plus any `meta.totalReview` count surfaced by the service.
-- **Active projects** – Number of boards with any attempt activity in the selected range. This card only appears after the KPI snapshot loads; while the request is in flight you’ll see a loading skeleton instead.
+Mission Control is scoped by a global time range selector; most widgets respect this range, while a few panels intentionally show live, time‑range‑agnostic data.
 
-The cards show a skeleton on first load, surface a small error banner with a retry action when the KPI request fails, and keep helper text tied to the selected preset so you can interpret the numbers at a glance.
-When the KPI snapshot succeeds but reports zero counts across the supported metrics, Mission Control gently swaps in an empty-state message explaining that the cards will light up once agents start running attempts for the selected range.
+### Selector and presets
 
-## Live Agent Activity panel
+- The selector beside the primary actions supports these presets:
+  - **Last 24 hours** (`last_24h`)
+  - **Last 7 days** (`last_7d`) – default (`DEFAULT_DASHBOARD_TIME_RANGE_PRESET`)
+  - **Last 30 days** (`last_30d`)
+- Changing the preset:
+  - Refetches the snapshot via `GET /api/v1/dashboard?timeRangePreset=<preset>`.
+  - Re-renders:
+    - KPI cards.
+    - **Recent Attempt History**.
+    - **Inbox**.
+    - **Project Health**.
+    - **Agents & System**.
+- The chosen preset is stored in browser session storage under `dashboard.timeRangePreset`, so navigation away and back (or soft reloads) keep your last range for that session.
 
-  - The **Live Agent Activity** card now focuses exclusively on live attempts that are queued, running, or stopping.
-    - The **Active attempts** subsection lists those in-flight attempts with status badges, project/agent metadata, relative update timestamps, and quick links back to the board.
-    - Dropdown filters let you scope the list by agent, attempt status (`queued`, `running`, `stopping`), and project, with a “Clear filters” button and a badge showing how many filters are active. Filters persist across live updates so you can keep a narrowed view even as new data streams in.
-    - Click or press Enter/Space on any row to open the attempt detail page (`/attempts/:attemptId`) that contains the attempt summary, metadata, and streaming log chronicle alongside the board link that already existed.
-    - Each row now surfaces dedicated **View attempt** and **View board** links; the board link passes the `cardId` query parameter so the target board opens with the inspector pre-selected on that card.
-    - When the dashboard WebSocket temporarily drops or reconnects, a helper note informs you that live updates are paused and the panel will resume with the latest cached snapshot once the socket returns.
-  - Empty states explain when no live attempts match the current preset so you know why the list is blank.
-  - When the live activity query fails and there are no cached attempts, a compact retryable error banner appears inside the card so you can refresh without blocking the rest of Mission Control; the empty-state messaging is suppressed until the list succeeds again.
+### Widgets that respect the time range
 
-## Recent Attempt History panel
+The following panels use the selected time range (or a custom range) when computing their data:
 
-  - A new **Recent Attempt History** card surfaces completed and stopped attempts from across boards, ordered by most recent completion time within the selected timeframe.
-    - Each row shows the attempt status badge, ticket title/key, project name, agent label (or `Unknown agent` fallback), formatted duration, and both absolute and relative timestamps, so you can quickly understand what ran and how long it took.
-    - Rows are keyboard and mouse accessible: clicking (or pressing Enter/Space) navigates to the attempt detail, while project links jump straight to the associated board without losing focus.
-    - Inline action links have been added as well so you can tap **View attempt** to land on the detail page or **View board** (with `cardId`) to open the inspector for the recorded card.
-  - The header mirrors the dashboard time range label for context, and a **Show more / Show less** footer lets you page through large histories while keeping the default viewport limited for readability.
-  - Skeletons render while the history data is loading, an inline error banner with a retry button appears when the fetch fails, and a friendly empty-state message explains that no attempts have completed yet when the list is blank.
+- **KPI cards** – “Attempts in range”, “Success rate”, “Items to review”, and “Active projects” all derive from the window described by `DashboardOverview.timeRange`.
+- **Recent Attempt History** – shows recently completed or stopped Attempts whose activity falls inside the selected range, ordered by recency.
+- **Inbox** – “Review”, “Failed”, and “Stuck” buckets are derived from attempt activity within the same window; the payload is capped to the most recent items.
+- **Project Health** – per‑project Attempt counts, failure counts, failure rates, and open card counts are all scoped to the current range.
+- **Agents & System** – per‑agent “attempts in range”, success rates, and “last activity” timestamps use the selected window.
 
-## Project Health panel
+### Widgets that are effectively live
 
-- The **Project Health** card summarizes each project’s workload for the selected time range.
-  - Rows include the project name, repository slug/path, total cards, open cards, column breakdowns, and active attempts.
-  - A **Sort by** control lets you order projects by open cards or failed attempts within the current range so you can focus on either volume or risk.
-  - Badge indicators surface high activity or high failure rates with tooltips that explain what triggered the highlight, and each row shows open/total card counts plus recent attempts/failures for the chosen preset.
-  - Clicking (or pressing Enter/Space on) a row jumps straight to that board so you can investigate the project quickly.
-  - Empty state encourages creating a project to populate the list.
-  - When the project snapshots request fails, the card shows an inline retryable error banner without hiding the sort controls so you can try again without leaving Mission Control.
-- Use this to identify overloaded boards or projects with too much open work, failed attempts, or queued attempts during the chosen window.
+- **Active attempts (KPI card)** and the **Active attempts** list in the **Live Agent Activity** panel always represent the current queue:
+  - They include Attempts whose status is `queued`, `running`, or `stopping` regardless of the historical preset.
+  - The time range label is still shown for context, but the list itself is about “right now”.
 
-## Agents & System panel
+### Live vs. fixed updates
 
-- The panel now renders the new **AgentsSystemStatusPanel**, which blends a readiness indicator, GitHub integration state, and an agent fleet snapshot for the selected time range.
-  - The **System readiness** subsection exposes a tone-aware badge plus helper text that explains whether GitHub and agents are configured, active, or degraded, and it surfaces quick links to **View agents** and **Integration settings** so you can act without leaving Mission Control.
-  - The **GitHub integration** subsection reports the current connection status (connected, disconnected, error, or unknown), highlights the connected account when available, and shows either a **Manage GitHub** or **Connect GitHub** button depending on the state. Errors and loading states display inline guidance plus a retry link so you can refresh the status on demand.
-  - The **Agent fleet** subsection summarizes how many agents are registered, whether any handled attempts during the selected window, and whether additional retries are needed when the dashboard or agent queries fail. When agent stats are available, the panel lists up to eight agents ordered by last activity, surfaces the formatted success rate, and shows relative last-activity timestamps with tooltips containing the exact time. Idle or inactive agents remain visible with muted styling so you can still compare who is online versus who needs work.
-- Error handling is non-blocking: GitHub or agent fetch failures render contextual banners with retry buttons, while empty states remind you to register agents or wait for attempts to appear in the chosen timeframe.
+- For the default preset (**Last 7 days**):
+  - `useDashboardOverview` polls the HTTP endpoint every 15 seconds.
+  - `useDashboardStream` opens `/api/v1/ws/dashboard` and applies any `dashboard_overview` messages directly to the default-range cache.
+- For non‑default presets:
+  - Only HTTP polling is used; WebSocket messages do not overwrite the non‑default range caches.
+- Known limits and edge cases:
+  - The data model and API support additional presets (`last_90d`, `all_time`) and ISO `from`/`to` ranges, but the Mission Control UI only exposes the three presets above.
+  - Recent Attempt History is limited to the most recent slice of events; you may not see older Attempts even with a long range if there has been a lot of recent activity.
+  - The inbox payload is truncated to a bounded list (most recent items) and exposes counts via metadata rather than returning every actionable Attempt.
 
-## Inbox panel
+## KPI cards
 
-- Surfaces actionable items coming from the shared `DashboardInbox` payload.
-- Divided into three lists:
-  - **Review** – succeeded attempts that still require human verification (e.g. a PR is still open or the card is not in a Done column).
-  - **Failed** – attempts that ended in failure without a later resolved success.
-  - **Stuck** – queued or running attempts that exceeded the backend thresholds (roughly 10 minutes for queued work, 30 minutes for running).
-  - Items are sorted by recency (`lastUpdatedAt`) so the most urgent work appears at the top, and each row surfaces the related card, project, agent (or agent ID fallback), relative last activity timestamp, and the attempt’s status badge.
-  - Card titles link to `/projects/:projectId?cardId=:cardId` so tapping them opens the board with the inspector already highlighting the referenced task.
-- Tabs at the top of the panel let you toggle between **All**, **Review**, **Failed**, or **Stuck** items while showing counts for each category. The selected filter is remembered for the current browser session so you can keep focused on one bucket while you flip between attempts or revisit Mission Control.
-- A refresh button is exposed beside the tabs in case you need an on-demand reload, while the panel renders skeleton placeholders during the initial load and surfaces a retryable error banner if the dashboard fetch fails.
-- Tapping an inbox entry opens the corresponding attempt detail page so you can inspect logs, PRs, or agent output before taking action.
-- Each row is keyboard accessible and exposes inline actions: click the attempt icon to land on the attempt detail page, open the PR in a new tab when a `prUrl` is available, or retry a failed item directly from the panel (the retry action re-queues the agent and refreshes the inbox).
+Mission Control shows a row of KPI cards derived from `DashboardOverview.metrics` and convenience aggregates:
+
+- **Active attempts**
+  - Count of Attempts currently `queued`, `running`, or `stopping` across all projects.
+  - Represents live, in‑flight work rather than a historical snapshot.
+- **Attempts in range**
+  - Attempts whose `createdAt` falls within the current time window.
+  - Helper text reflects the active preset (for example, “Within selected period” or “Last 7 days”).
+- **Success rate**
+  - Percentage of Attempts in the current range that succeeded.
+  - Computed from `DashboardOverview.successRateInRange` / `DashboardMetrics.successRateInRange`.
+- **Items to review**
+  - Count of inbox review items that still require human verification.
+  - Mirrors `DashboardInbox.review` plus any `meta.totalReview` count provided by the service.
+- **Active projects**
+  - Number of boards with any Attempt activity in the selected range.
+  - Derived from `DashboardOverview.projectsWithActivityInRange` / `DashboardMetrics.projectsWithActivity`.
+
+Skeleton placeholders run while KPIs are loading; a compact error banner appears if the KPI fetch fails, and an empty state explains what you’ll see once agents begin running Attempts in the selected range.
+
+## Live Agent Activity
+
+The Live Agent Activity card surfaces what agents are doing right now and what they’ve done recently.
+
+- **Active attempts**
+  - Lists in‑flight Attempts with:
+    - Status badges.
+    - Card title/ticket key.
+    - Project name.
+    - Agent label.
+    - Relative “Updated …” timestamp.
+    - Links back to the board.
+  - Filters:
+    - Filter by agent, Attempt status (`queued`, `running`, `stopping`), and project.
+    - A “Clear filters” action and a small badge show how many filters are active.
+    - Filters persist while the component is mounted, so you can keep a narrowed view as new events stream in.
+  - Keyboard and mouse:
+    - Click a row or press Enter/Space to open `/attempts/:attemptId` (Attempt detail).
+  - Empty state:
+    - When there are no active Attempts, the panel shows “No active attempts right now.” regardless of the chosen historical range.
+- **Recent activity**
+  - Compact feed of recently completed or stopped Attempts scoped to the selected time range.
+  - Each row shows:
+    - Status badge.
+    - Card title/ticket key and project name.
+    - Agent label.
+    - Relative “Finished …” timestamp.
+  - Dedicated **View attempt** and **View board** links jump into deeper views without losing your place on the dashboard.
+- **Error handling**
+  - When the underlying query fails and there is no cached data, the card shows a small retryable error banner.
+  - WebSocket disruptions (errors/reconnects) are reflected via a short note (“Live updates temporarily unavailable. Showing latest known data.”) while the UI continues to show the most recent snapshot.
+
+Use this panel to monitor live work across projects, find long‑running Attempts, and jump straight into details when something looks suspicious.
+
+## Inbox
+
+The Inbox panel surfaces actionable items from the shared `DashboardInbox` payload:
+
+- **Buckets**
+  - **Review** – succeeded Attempts that still require human verification (for example, PR open or card not in a Done column).
+  - **Failed** – Attempts that ended in failure without a later resolved success; each item carries an error summary when available.
+  - **Stuck** – queued or running Attempts that exceeded backend thresholds (roughly 10 minutes queued, 30 minutes running).
+- **Sorting and layout**
+  - Items are ordered by `lastUpdatedAt` so the most urgent work appears first.
+  - Each row shows card title/ticket key, project name, agent label (or agent ID fallback), relative last activity, and an Attempt status badge.
+  - Card titles link to `/projects/:projectId?cardId=:cardId`, opening the board with the inspector focused on that card.
+- **Filtering and refresh**
+  - Tabs at the top toggle between **All**, **Review**, **Failed**, and **Stuck`, displaying counts for each bucket.
+  - The selected tab is stored in session storage so you stay focused on one bucket as you navigate away and back.
+  - A refresh button beside the tabs triggers a manual reload.
+- **Interactions**
+  - Clicking a row (or pressing Enter/Space) opens `/attempts/:attemptId`.
+  - Inline icons let you:
+    - Open the Attempt detail page.
+    - Open the PR in a new tab when `prUrl` is available.
+    - Retry failed items directly from the panel, which re‑queues the agent and refreshes the Inbox.
+- **States**
+  - Skeletons render for initial load.
+  - A compact error banner appears when the dashboard fetch fails.
+  - Empty states explain that items will appear as agents start running Attempts that need review or intervention.
+
+## Project Health
+
+Project Health summarizes board workload and risk for the selected time range.
+
+- **Rows**
+  - Each project row shows:
+    - Project name.
+    - Repository slug/path (when known).
+    - Total cards and open cards.
+    - Column breakdowns (Backlog, In progress, Review, Done).
+    - Active Attempts and Attempt/failure counts in the current range.
+- **Sorting and highlighting**
+  - A **Sort by** control lets you order rows by:
+    - Open cards (descending).
+    - Failed Attempts in range (descending).
+  - Badge indicators highlight:
+    - **High Activity** – elevated open card or Attempt volume.
+    - **High Failure Rate** – failure rates and volumes above heuristic thresholds.
+- **Navigation and states**
+  - Clicking a row (or using Enter/Space) jumps directly to that board.
+  - Empty state encourages creating a project when no boards are present.
+  - An inline retryable error banner appears when the project snapshot fetch fails.
+- **Limits**
+  - The snapshot currently includes only a bounded number of projects (latest boards first). In large workspaces, older or low‑activity boards may not appear even though they still exist.
+
+Use this panel to spot overloaded projects, high failure rates, or boards with too much open work in the selected window.
+
+## Agents & System
+
+This panel blends system readiness, GitHub integration status, and per‑agent statistics for the selected time range.
+
+- **System readiness**
+  - Shows an overall badge describing whether GitHub and agents are configured and healthy.
+  - Provides quick links to **View agents** and **Integration settings** so you can act without leaving Mission Control.
+- **GitHub integration**
+  - Reports whether the GitHub OAuth app is connected, disconnected, erroring, or unknown.
+  - Highlights the connected account when available.
+  - Shows either **Manage GitHub** or **Connect GitHub** depending on state.
+  - Errors and loading states display inline guidance plus a retry link to refresh status.
+- **Agent fleet**
+  - Summarizes:
+    - How many agents are registered.
+    - How many handled Attempts in the current range.
+    - Success rate and last activity per agent.
+  - Up to a bounded set of agents are listed, ordered by recent activity; idle agents in the selected range appear with muted styling but stay visible for comparison.
+- **Error handling**
+  - GitHub or agent fetch failures render contextual banners with retry buttons.
+  - Empty states remind you to register agents or wait for Attempts to appear in the selected timeframe.
 
 ## Version indicator
 
-- A small inline indicator beside the title surfaces the current server version (`vX.Y.Z`), or `Version unavailable`/`Checking version…` while the UI polls `GET /version`.
-- When `/version` reports `updateAvailable: true`, the indicator shows a badge (`Update available — restart to apply`) so you know to restart KanbanAI to pick up the latest release.
+- A small inline indicator beside the Mission Control title:
+  - Shows the current server version (`vX.Y.Z`) when `/api/v1/version` resolves cleanly.
+  - Shows `Version unavailable` or `Checking version…` while the UI polls.
+  - When `updateAvailable: true` is returned, the indicator displays an “Update available — restart to apply” badge so you know to restart KanbanAI for the latest release.
+
+## Visual examples
+
+Mission Control is best understood with a few concrete views:
+
+- **Full dashboard overview**
+  - Example image: `docs/assets/mission-control/mission-control-overview.png` – Mission Control with KPI cards, Live Agent Activity, Inbox, Project Health, Agents & System, and Recent Attempt History visible.
+- **Per‑panel focus**
+  - KPIs: `docs/assets/mission-control/mission-control-kpis.png`.
+  - Live Agent Activity: `docs/assets/mission-control/mission-control-live-activity.png`.
+  - Inbox: `docs/assets/mission-control/mission-control-inbox.png`.
+  - Project Health: `docs/assets/mission-control/mission-control-project-health.png`.
+  - Agents & System: `docs/assets/mission-control/mission-control-agents-system.png`.
+- **Time range interaction**
+  - Short GIF or video (optional): `docs/assets/mission-control/mission-control-time-range.gif` demonstrating switching between presets and watching KPIs and panels update.
+
+If these image files are not present in your clone yet, capture them from a running local environment (`bun run dev`, then open `/dashboard`) and save them under `docs/assets/mission-control/` with the filenames above so the docs render inline screenshots.
+
+## For contributors
+
+This section is for contributors who want to extend or debug the Mission Control experience.
+
+### Code locations
+
+- **Shared types**
+  - `shared/src/types/dashboard.ts` – source of `DashboardTimeRange`, `DashboardOverview`, `DashboardMetrics`, inbox types, project snapshots, and per‑agent stats used by both server and client.
+- **Core service**
+  - `core/src/dashboard/service.ts` – `getDashboardOverview(timeRange?: DashboardTimeRange)` aggregates KPIs, active Attempts, recent Attempt history, inbox items, project snapshots, and agent stats from the database.
+  - `core/src/dashboard/time-range.ts` – normalizes presets and custom ranges into canonical `timeRange` values and concrete `from`/`to` bounds.
+- **Server / API**
+  - `server/src/dashboard/routes.ts` – Hono router for `GET /api/v1/dashboard`; parses `timeRangePreset`, `from`/`to`, or `range` aliases and calls `getDashboardOverview`.
+  - `server/src/dashboard/listeners.ts` – subscribes to project/card/attempt events and coalesces `dashboard_overview` broadcasts over WebSockets with a short delay to avoid thrashing.
+  - `server/src/ws/dashboard-handlers.ts` – `/api/v1/ws/dashboard` handlers; on connect, sends a `hello` message then the latest `DashboardOverview`, and keeps the socket read‑only.
+- **Client / UI**
+  - `client/src/api/dashboard.ts` – thin REST wrapper around `GET /api/v1/dashboard`.
+  - `client/src/hooks/dashboard.ts` – `useDashboardOverview` (React Query snapshot fetching) and `useDashboardStream` (WebSocket streaming for the default preset).
+  - `client/src/pages/DashboardPage.tsx` – top‑level Mission Control page that wires the time range selector, KPI cards, and all panels together.
+  - `client/src/pages/dashboard/*.tsx` – panel components:
+    - `LiveAgentActivityPanel.tsx` and `ActiveAttemptsList.tsx`.
+    - `RecentAttemptHistoryPanel.tsx` and `RecentActivityList.tsx`.
+    - `InboxPanel.tsx`.
+    - `ProjectHealthPanel.tsx` and `projectHealthHelpers.ts`.
+    - `AgentsSystemStatusPanel.tsx`.
+
+### DashboardOverview API at a glance
+
+- **HTTP**
+  - Endpoint: `GET /api/v1/dashboard`.
+  - Query parameters:
+    - `timeRangePreset?: "last_24h" | "last_7d" | "last_30d" | "last_90d" | "all_time"`.
+    - `from?: string`, `to?: string` – ISO 8601 UTC bounds; both must be present when `timeRangePreset` is omitted.
+    - `range?: "24h" | "7d" | "30d" | "90d" | "all"` – friendly alias mapped to presets; unknown values return HTTP 400.
+  - Semantics:
+    - Valid `from`/`to` win over presets; invalid or partial custom bounds are ignored in favor of a preset.
+    - `"all_time"` is treated as unbounded on the lower side and bounded at “now” on the upper side.
+    - The resolved `DashboardTimeRange` is echoed back as `overview.timeRange` and used consistently by all range‑scoped metrics.
+- **WebSocket**
+  - Endpoint: `/api/v1/ws/dashboard`.
+  - Messages:
+    - `{"type":"hello","payload":{"serverTime":"<ISO>"}}` on connect.
+    - `{"type":"dashboard_overview","payload": <DashboardOverview>}` on connect and whenever listeners schedule a broadcast.
+  - The client only streams the default preset and uses HTTP polling for other presets to keep cache behavior simple.
+- **Payload structure (high level)**
+  - `timeRange` – canonical window applied to all range‑scoped metrics.
+  - `generatedAt` / `updatedAt?` – timestamp used for the “Updated …” label.
+  - `metrics` – KPI‑friendly wrapper around the `byKey` metric registry plus convenience fields such as `activeAttempts`, `attemptsInRange`, `successRateInRange`, `reviewItemsCount`, and `projectsWithActivity`.
+  - `activeAttempts` – live queue of `queued` / `running` / `stopping` Attempts across projects (not filtered by time range).
+  - `recentAttemptActivity` – bounded list of recently completed/stopped Attempts ordered by recency and scoped to `timeRange`.
+  - `inboxItems` – grouped `review` / `failed` / `stuck` items; truncated to the most recent items with counts exposed via `meta`.
+  - `projectSnapshots` – snapshot of recent projects with per‑board card counts, activity/failure metrics, and derived health flags.
+  - `agentStats` – per‑agent Attempt counts, success rates, and last‑activity timestamps for the selected range.
+
+### Performance and caching considerations
+
+- `getDashboardOverview` performs a small number of aggregate queries over the attempts, cards, columns, and boards tables. It is designed to be called frequently but benefits from:
+  - Using presets or reasonably bounded custom ranges instead of extremely wide windows in very high‑volume installations.
+  - Avoiding custom ranges that advance in tiny increments when you do not need that precision.
+- WebSocket broadcasts are coalesced:
+  - `registerDashboardListeners` batches project/card/attempt events into a single `dashboard_overview` update using a short timeout so heavy activity does not flood clients.
+  - The client’s `useDashboardStream` backs off reconnection attempts exponentially when the socket is unhealthy.
+- On the client:
+  - `useDashboardOverview` caches snapshots per time range (`dashboard.overview()` for the default, `dashboard.overview(<preset>)` for others) and refetches them every 15 seconds in the background.
+  - WebSocket messages update only the default‑range cache entry; non‑default presets rely purely on HTTP polling.
+
+### Tests
+
+Mission Control is covered by tests in all three workspaces. Commands below assume you have already run `bun install` from the repository root.
+
+- **All workspaces**
+  - Run the full suite (core, server, client):  
+    - `bun run test`
+- **Core service**
+  - Key tests: `core/tests/dashboard.service.test.ts`.
+  - Run only the dashboard service tests:  
+    - `cd core && bun run test -- --runTestsByPath core/tests/dashboard.service.test.ts`
+- **Server / API**
+  - Key tests:
+    - `server/test/dashboard.routes.test.ts` – HTTP routing, parameter parsing, and error codes for `/api/v1/dashboard`.
+    - `server/test/dashboard.ws.test.ts` – WebSocket handshake, hello message, and `dashboard_overview` broadcasting.
+  - Run only the dashboard server tests:  
+    - `cd server && bun run test -- --runTestsByPath server/test/dashboard.routes.test.ts server/test/dashboard.ws.test.ts`
+- **Client / UI**
+  - Key tests:
+    - `client/test/MissionControlDashboardPage.test.tsx` – overall layout, KPI labels, and time range selector behavior.
+    - `client/test/LiveAgentActivityPanel.test.tsx` – live activity filtering and empty/error states.
+    - `client/test/ProjectHealthPanel.test.tsx` and `client/test/projectHealthHelpers.test.ts` – project health metrics and sorting.
+    - `client/test/RecentAttemptHistoryPanel.test.tsx` – recent history rendering and empty/error states.
+    - `client/test/DashboardInboxPanel.test.tsx` and `client/test/DashboardAgentsPanel.test.tsx` – inbox and Agents & System panels.
+    - `client/test/dashboardApi.test.ts` – REST wrapper for the DashboardOverview API.
+  - Run only the dashboard‑related client tests (example):  
+    - `cd client && bun run test -- client/test/MissionControlDashboardPage.test.tsx client/test/LiveAgentActivityPanel.test.tsx client/test/ProjectHealthPanel.test.tsx client/test/RecentAttemptHistoryPanel.test.tsx client/test/DashboardInboxPanel.test.tsx client/test/DashboardAgentsPanel.test.tsx client/test/dashboardApi.test.ts`
+- **E2E**
+  - There are currently no Playwright/Cypress‑style end‑to‑end tests for Mission Control. When such tests are added, they should be documented here with their exact commands and any required fixtures.
+
+The core dashboard service tests use an in‑memory SQLite database, server tests stub `getDashboardOverview`, and client tests run under jsdom, so no external databases or mock servers are needed to run the Mission Control suite locally.
+
