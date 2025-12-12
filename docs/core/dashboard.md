@@ -49,6 +49,7 @@ The Dashboard overview is represented by the shared `DashboardOverview` type in 
   - Each item is a discriminated `InboxItem` union (`type: "review" | "failed" | "stuck"`, with a matching `kind` field).  
   - Common fields per item include:
     - `id`, `attemptId?`, `projectId?`/`projectName?`, `cardId?`/`cardTitle?`, `ticketKey?`, `agentId?`/`agentName?`, `status?`, `cardStatus?`, `createdAt`, `updatedAt?`, `finishedAt?`, `lastUpdatedAt?`, `prUrl?`, `errorSummary?`, and `meta?`.  
+    - `isRead?` – whether the user has marked the inbox item as read; new rows default to `false`, and read state is persisted in `dashboard_inbox_items`.
   - `review` items represent succeeded attempts that still require human review (for example, PR open or card not in a Done column).  
   - `failed` items represent failed (or stopped) attempts that have not yet been resolved or superseded by a later success and include a short `errorSummary`.  
   - `stuck` items represent long-running or queued/stopping attempts beyond configured thresholds and include `stuckForSeconds`.  
@@ -119,6 +120,12 @@ Forward-compatibility:
         `DEFAULT_DASHBOARD_TIME_RANGE_PRESET` from `shared` (currently `last_7d`)
         as the default window. Client code should import and reuse this constant
         instead of hard-coding the preset string.
+  - `PATCH /api/v1/dashboard/inbox/:id/read` – mark a single inbox item as read or unread.
+    - Body: JSON `{isRead?: boolean}` (snake_case `is_read` is also accepted); omitted values default to `true`.
+    - Responds with `{ok: true, id, isRead}` after persisting the flag in `dashboard_inbox_items`.
+  - `PATCH /api/v1/dashboard/inbox/mark-all-read` – mark every inbox item that would be returned for a given time range as read.
+    - Accepts the same `timeRangePreset|from+to|range` query parameters as `GET /api/v1/dashboard` to determine the current snapshot.
+    - Returns `{ok: true, count: <number of inbox items marked read>}` after delegating to `markDashboardInboxItemsRead`.
     - Precedence rules:
       - If `from` or `to` is provided, the handler requires both to be valid ISO 8601 values and ignores any `timeRangePreset` or `range`.
       - Otherwise, a valid `timeRangePreset` is used when present and the `range` alias is ignored.
@@ -158,8 +165,11 @@ Forward-compatibility:
 - **Inbox**
   - Renders actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox`. Each item shows card/ticket context, project/agent metadata, and the most recent timestamp (`lastUpdatedAt`/`finishedAt`/`createdAt`), with groups sorted by recency so urgent work surfaces first.
   - Tabs for **All**, **Review**, **Failed**, or **Stuck** items live above the list, display counts for each kind, and persist the selected filter in session storage to keep the same bucket focused while navigating the dashboard.
+  - A secondary row of tabs filters by read state (**All**, **Unread**, **Read**) and is stored in session storage as well so you can consistently track new items even when moving between panels.
   - A refresh button beside the tabs triggers a manual reload; the panel renders skeleton placeholders during the initial load and surfaces a retryable error banner if the dashboard query fails.
+  - A **Mark all read** action clears the current inbox snapshot (after a confirmation step) and refreshes the dashboard so you can reset focus to newer work without clicking individual rows.
   - Each row is keyboard accessible and exposes inline actions: clicking the row or the attempt icon opens `/attempts/:attemptId`, a PR icon opens `prUrl` (if present) in a new tab, and failed items include a retry button that re-queues the agent and refreshes the inbox.
+  - A read/unread toggle on every row lets you mark items without leaving Mission Control; read rows receive muted styling and a check-circle icon while unread rows show a hollow circle so you can scan for outstanding work more quickly.
 - **Project Health**
 -  - Replaces the legacy project snapshot card with rows that surface each project’s repository, total cards, open cards, active attempts, and column breakdowns (backlog, in-progress, review, done) for the selected range.
 -  - Includes a **Sort by** control so you can order projects by open cards or failed attempts in range, and each row can be activated (click/keyboard) to jump straight to the board to keep investigating.

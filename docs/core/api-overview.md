@@ -117,6 +117,12 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
       - Precedence: explicit `from`/`to` wins, otherwise a provided `timeRangePreset` is used before `range`.
     - The `DashboardOverview.meta` object includes `availableTimeRangePresets` (allowed presets) and `version` (forward-compatible version string).
     - The handler maps these parameters into the shared `DashboardTimeRange` type and echoes it on the response.
+  - `PATCH /api/v1/dashboard/inbox/:id/read` – toggle read/unread state for a single inbox item.
+    - Body `{isRead?: boolean}` (or `{is_read?: boolean}`); if omitted, the payload defaults to `true`.
+    - Returns `{ok: true, id, isRead}` after updating `dashboard_inbox_items`.
+  - `PATCH /api/v1/dashboard/inbox/mark-all-read` – mark every inbox item in the resolved time range snapshot as read.
+    - Uses the same query params as the GET endpoint (`timeRangePreset`, `from`/`to`, `range`).
+    - Returns `{ok: true, count: <number of inbox items marked read>}`.
   - WebSocket channel: `GET /api/v1/ws/dashboard` (see realtime docs).
 - Metrics:
   - `GET /api/v1/metrics` – minimal Prometheus-style metrics for liveness.

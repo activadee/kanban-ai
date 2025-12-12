@@ -158,10 +158,12 @@ The Inbox panel surfaces actionable items from the shared `DashboardInbox` paylo
   - Card titles link to `/projects/:projectId?cardId=:cardId`, opening the board with the inspector focused on that card.
 - **Filtering and refresh**
   - Tabs at the top toggle between **All**, **Review**, **Failed**, and **Stuck**, displaying counts for each bucket.
-  - The selected tab is stored in session storage so you stay focused on one bucket as you navigate away and back.
+  - Beside the bucket tabs is a second row of tabs that filter by read state (**All**, **Unread**, **Read**); the selection is also stored in session storage so you can track what’s new even while you switch pages.
   - A refresh button beside the tabs triggers a manual reload.
+  - A **Mark all read** action lets you clear the current inbox snapshot (with a confirmation prompt) so you can focus on new work; the UI re-fetches the dashboard after successfully marking everything read.
 - **Interactions**
   - Clicking a row (or pressing Enter/Space) opens `/attempts/:attemptId`.
+  - A dedicated icon on each row toggles the read/unread state without leaving Mission Control; read rows dim slightly and use muted typography so you can keep your attention on pending work, while the icon switches between a hollow circle (unread) and filled check circle (read).
   - Inline icons let you:
     - Open the Attempt detail page.
     - Open the PR in a new tab when `prUrl` is available.
