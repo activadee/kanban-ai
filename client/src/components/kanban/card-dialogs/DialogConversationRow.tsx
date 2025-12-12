@@ -1,4 +1,5 @@
 import type {ConversationItem} from 'shared'
+import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
 
 export function DialogConversationRow({item}: { item: ConversationItem }) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
@@ -17,15 +18,19 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
     }
 
     if (item.type === 'thinking') {
+        const ariaLabel = item.title ? `thinking · ${item.title}` : 'thinking'
         return (
-            <div
-                className="mb-2 rounded border border-dashed border-border/50 bg-muted/20 p-2 text-xs text-muted-foreground">
-                <div className="mb-1 flex items-center justify-between">
+            <CollapsibleThinkingBlock
+                ariaLabel={ariaLabel}
+                className="border-border/50 text-xs text-muted-foreground"
+                headerLeft={
                     <span>thinking{item.title ? ` · ${item.title}` : ''}</span>
-                    <span>{time}</span>
-                </div>
-                <div className="whitespace-pre-wrap">{item.text}</div>
-            </div>
+                }
+                headerRight={<span>{time}</span>}
+                previewClassName="text-xs text-muted-foreground"
+                contentClassName="text-xs text-muted-foreground"
+                text={item.text}
+            />
         )
     }
 
