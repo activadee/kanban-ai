@@ -58,6 +58,7 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
 
 - Attempts stream messages as they run.
 - You can send follow-up prompts by typing into the input and pressing send.
+- “Thinking” entries (the agent’s planning/analysis steps) now surface as collapsible blocks that default to their header summary (using the provided title or the first line of text alongside the timestamp); click the header to expand and read the full reasoning text.
 - Controls:
   - **Stop Attempt**:
     - Sends a stop request to the server.
