@@ -31,6 +31,21 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         return problemJson(c, {status: 404, detail: "Column not found"});
     }
 
+    const toUserGithubError = (error: unknown): string => {
+        const message = error instanceof Error ? error.message : String(error ?? "");
+        const lower = message.toLowerCase();
+        if (lower.includes("not connected") || lower.includes("token")) {
+            return "GitHub is not connected. Connect GitHub and try again.";
+        }
+        if (lower.includes("origin") || lower.includes("github repo") || lower.includes("unsupported remote")) {
+            return "Project repository is not a GitHub repo or has no origin remote.";
+        }
+        if (lower.includes("persist") || lower.includes("mapping")) {
+            return "GitHub issue was created, but KanbanAI couldn't link it. Please re‑sync later.";
+        }
+        return "Failed to create GitHub issue. Check connection and permissions.";
+    };
+
     try {
         const cardId = await createBoardCard(
             body.columnId,
@@ -61,10 +76,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
                     });
                 }
             } catch (error) {
-                githubIssueError =
-                    error instanceof Error
-                        ? error.message
-                        : "GitHub issue creation failed";
+                githubIssueError = toUserGithubError(error);
                 log.warn("board:cards", "GitHub issue create failed", {
                     err: error,
                     boardId,

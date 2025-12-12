@@ -142,6 +142,10 @@ export function GithubIssueSyncSection({
                     <span>Exported: {statsQuery.data.exported}</span>
                     <span>Total linked: {statsQuery.data.total}</span>
                 </div>
+            ) : statsQuery.isLoading ? (
+                <div className="text-xs text-muted-foreground">Loading GitHub issue stats…</div>
+            ) : statsQuery.isError ? (
+                <div className="text-xs text-muted-foreground">Unable to load GitHub issue stats.</div>
             ) : null}
         </section>
     )

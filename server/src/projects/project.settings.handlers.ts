@@ -61,6 +61,7 @@ export const updateProjectSettingsHandler = async (c: any) => {
         githubIssueSyncEnabled?: boolean;
         githubIssueSyncState?: "open" | "all" | "closed";
         githubIssueSyncIntervalMinutes?: number;
+        githubIssueAutoCreateEnabled?: boolean;
     };
     let {
         defaultAgent,
@@ -220,6 +221,9 @@ export const updateProjectSettingsHandler = async (c: any) => {
     }
     if (body.githubIssueSyncIntervalMinutes !== undefined) {
         updates.githubIssueSyncIntervalMinutes = body.githubIssueSyncIntervalMinutes;
+    }
+    if (body.githubIssueAutoCreateEnabled !== undefined) {
+        updates.githubIssueAutoCreateEnabled = body.githubIssueAutoCreateEnabled;
     }
 
     try {
