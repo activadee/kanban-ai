@@ -61,7 +61,6 @@ export function buildTicketEnhancePrompt(
         '- Detailed description with steps and acceptance criteria.',
         '- No meta-explanation, only the ticket content.',
         '- Do not edit or create files.',
-        '- Do not run shell commands or use tools.',
         '- Respond only with the ticket Markdown content, no additional commentary or instructions.',
     ].join('\n')
 
@@ -108,7 +107,6 @@ export function buildPrSummaryPrompt(
     parts.push('- Detailed description of the changes with steps and rationale.')
     parts.push('- No meta-explanation, only the PR body content.')
     parts.push('- Do not edit or create files.')
-    parts.push('- Do not run shell commands or use tools.')
     parts.push('- Respond only with the PR Markdown content, no additional commentary or instructions.')
 
     const base = parts.join('\n')

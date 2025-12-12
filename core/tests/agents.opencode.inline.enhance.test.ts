@@ -76,7 +76,7 @@ describe('OpencodeAgent.enhance (inline ticketEnhance)', () => {
             profile.inlineProfile ?? profile.appendPrompt ?? undefined,
         )
         const inlineGuard =
-            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
+            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
         const expectedPrompt = `${basePrompt}\n\n${inlineGuard}`
 
         const session: SessionCreateResponse = {
@@ -179,7 +179,7 @@ describe('OpencodeAgent.enhance (inline ticketEnhance)', () => {
         const expectedAppend = profile.inlineProfile
         const basePrompt = buildTicketEnhancePrompt(input, expectedAppend ?? undefined)
         const inlineGuard =
-            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
+            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
         const expectedPrompt = `${basePrompt}\n\n${inlineGuard}`
 
         const session: SessionCreateResponse = {
@@ -343,7 +343,7 @@ describe('OpencodeAgent.summarizePullRequest (inline prSummary)', () => {
             profile.inlineProfile ?? profile.appendPrompt ?? undefined,
         )
         const inlineGuard =
-            'IMPORTANT: Inline PR summary only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
+            'IMPORTANT: Inline PR summary only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
         const expectedPrompt = `${basePrompt}\n\n${inlineGuard}`
 
         const session: SessionCreateResponse = {
