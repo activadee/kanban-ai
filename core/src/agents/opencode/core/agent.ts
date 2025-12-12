@@ -9,14 +9,26 @@ import type {
     ToolState,
     Todo,
     SessionCreateResponse,
+    SessionPromptResponse,
 } from '@opencode-ai/sdk'
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
-import type {AgentContext} from '../../types'
+import type {
+    AgentContext,
+    InlineTaskContext,
+    InlineTaskInputByKind,
+    InlineTaskKind,
+    InlineTaskResultByKind,
+    PrSummaryInlineInput,
+    PrSummaryInlineResult,
+    TicketEnhanceInput,
+    TicketEnhanceResult,
+} from '../../types'
 import type {AttemptTodoSummary} from 'shared'
 import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
 
 const nowIso = () => new Date().toISOString()
 
@@ -166,6 +178,16 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         if (inline.length > 0) return inline
         if (typeof profile.appendPrompt === 'string' && profile.appendPrompt.trim().length) {
             return profile.appendPrompt.trim()
+        }
+        return undefined
+    }
+
+    private buildInlineAppendPrompt(profile: OpencodeProfile): string | undefined {
+        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
+        if (inline.length > 0) return inline
+        if (typeof profile.appendPrompt === 'string') {
+            const trimmed = profile.appendPrompt.trim()
+            if (trimmed.length > 0) return trimmed
         }
         return undefined
     }
@@ -505,6 +527,277 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 break
             default:
                 break
+        }
+    }
+
+    private extractPromptMarkdown(response: SessionPromptResponse): string {
+        const targetMessageId = response.info.id
+        let text = ''
+
+        for (const part of response.parts) {
+            if (part.type === 'text' && part.messageID === targetMessageId) {
+                text += part.text
+            }
+        }
+
+        return text.trim()
+    }
+
+    async inline<K extends InlineTaskKind>(
+        kind: K,
+        input: InlineTaskInputByKind[K],
+        profile: OpencodeProfile,
+        opts?: {context: InlineTaskContext; signal?: AbortSignal},
+    ): Promise<InlineTaskResultByKind[K]> {
+        if (kind === 'ticketEnhance') {
+            const result = await this.enhance(input as TicketEnhanceInput, profile)
+            return result as InlineTaskResultByKind[K]
+        }
+        if (kind === 'prSummary') {
+            const result = await this.summarizePullRequest(
+                input as PrSummaryInlineInput,
+                profile,
+                opts?.signal,
+            )
+            return result as InlineTaskResultByKind[K]
+        }
+        throw new Error(`OpenCode inline kind ${kind} is not implemented`)
+    }
+
+    async enhance(input: TicketEnhanceInput, profile: OpencodeProfile): Promise<TicketEnhanceResult> {
+        const enhanceCtx: AgentContext = {
+            attemptId: `enhance-${input.projectId}`,
+            boardId: input.boardId,
+            cardId: 'ticket',
+            worktreePath: input.repositoryPath,
+            repositoryPath: input.repositoryPath,
+            branchName: input.baseBranch,
+            baseBranch: input.baseBranch,
+            cardTitle: input.title,
+            cardDescription: input.description,
+            ticketType: input.ticketType ?? null,
+            profileId: input.profileId ?? null,
+            sessionId: undefined,
+            followupPrompt: undefined,
+            signal: input.signal,
+            emit: (event) => {
+                if (event.type === 'log') {
+                    const level = event.level ?? 'info'
+                    const message = event.message
+                    if (level === 'error') {
+                        // eslint-disable-next-line no-console
+                        console.error(message)
+                    } else if (level === 'warn') {
+                        // eslint-disable-next-line no-console
+                        console.warn(message)
+                    } else {
+                        // eslint-disable-next-line no-console
+                        console.info(message)
+                    }
+                }
+            },
+        }
+
+        const installation = await this.detectInstallation(profile, enhanceCtx)
+        const client = (await this.createClient(profile, enhanceCtx, installation)) as OpencodeClient
+        const opencode = client
+
+        const session = (await opencode.session.create({
+            query: {directory: installation.directory},
+            body: {title: enhanceCtx.cardTitle},
+            signal: input.signal,
+            responseStyle: 'data',
+            throwOnError: true,
+        })) as unknown as SessionCreateResponse
+
+        const system = this.buildSystemPrompt(profile)
+        const model = this.buildModelConfig(profile)
+        const effectiveAppend = this.buildInlineAppendPrompt(profile)
+        const basePrompt = buildTicketEnhancePrompt(input, effectiveAppend)
+        const inlineGuard =
+            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
+        const prompt = `${basePrompt}\n\n${inlineGuard}`
+
+        if (profile.debug) {
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode:inline] ticketEnhance sending prompt (length=${prompt.length}) for project=${input.projectId} board=${input.boardId}`,
+            })
+        }
+
+        let response: SessionPromptResponse
+        try {
+            response = (await opencode.session.prompt({
+                path: {id: session.id},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts: prompt
+                        ? [
+                              {
+                                  type: 'text' as const,
+                                  text: prompt,
+                              },
+                          ]
+                        : [],
+                },
+                signal: input.signal,
+                responseStyle: 'data',
+            throwOnError: true,
+        })) as unknown as SessionPromptResponse
+        } catch (err) {
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] inline ticketEnhance failed: ${String(err)}`,
+            })
+            throw err
+        }
+
+        const markdown = this.extractPromptMarkdown(response)
+        if (profile.debug) {
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode:inline] ticketEnhance received markdown (length=${markdown.length}) for project=${input.projectId}`,
+            })
+        }
+
+        if (!markdown) {
+            if (profile.debug) {
+                enhanceCtx.emit({
+                    type: 'log',
+                    level: 'warn',
+                    message:
+                        '[opencode:inline] ticketEnhance received empty response, falling back to original title/description',
+                })
+            }
+            return {
+                title: input.title,
+                description: input.description,
+            }
+        }
+        const result = splitTicketMarkdown(markdown, input.title, input.description)
+        if (profile.debug) {
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode:inline] ticketEnhance final result title="${result.title}" descriptionLength=${result.description.length}`,
+            })
+        }
+        return result
+    }
+
+    async summarizePullRequest(
+        input: PrSummaryInlineInput,
+        profile: OpencodeProfile,
+        signal?: AbortSignal,
+    ): Promise<PrSummaryInlineResult> {
+        const effectiveSignal = signal ?? new AbortController().signal
+
+        const summaryCtx: AgentContext = {
+            attemptId: `pr-summary-${input.repositoryPath}`,
+            boardId: 'pr-summary',
+            cardId: 'pr',
+            worktreePath: input.repositoryPath,
+            repositoryPath: input.repositoryPath,
+            branchName: input.headBranch,
+            baseBranch: input.baseBranch,
+            cardTitle: `PR from ${input.headBranch} into ${input.baseBranch}`,
+            cardDescription: undefined,
+            ticketType: null,
+            profileId: null,
+            sessionId: undefined,
+            followupPrompt: undefined,
+            signal: effectiveSignal,
+            emit: (event) => {
+                if (event.type === 'log') {
+                    const level = event.level ?? 'info'
+                    const message = event.message
+                    if (level === 'error') {
+                        // eslint-disable-next-line no-console
+                        console.error(message)
+                    } else if (level === 'warn') {
+                        // eslint-disable-next-line no-console
+                        console.warn(message)
+                    } else {
+                        // eslint-disable-next-line no-console
+                        console.info(message)
+                    }
+                }
+            },
+        }
+
+        const installation = await this.detectInstallation(profile, summaryCtx)
+        const client = (await this.createClient(profile, summaryCtx, installation)) as OpencodeClient
+        const opencode = client
+
+        const session = (await opencode.session.create({
+            query: {directory: installation.directory},
+            body: {title: summaryCtx.cardTitle},
+            signal: effectiveSignal,
+            responseStyle: 'data',
+            throwOnError: true,
+        })) as unknown as SessionCreateResponse
+
+        const system = this.buildSystemPrompt(profile)
+        const model = this.buildModelConfig(profile)
+        const effectiveAppend = this.buildInlineAppendPrompt(profile)
+        const basePrompt = buildPrSummaryPrompt(input, effectiveAppend)
+        const inlineGuard =
+            'IMPORTANT: Inline PR summary only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
+        const prompt = `${basePrompt}\n\n${inlineGuard}`
+
+        let response: SessionPromptResponse
+        try {
+            response = (await opencode.session.prompt({
+                path: {id: session.id},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts: prompt
+                        ? [
+                              {
+                                  type: 'text' as const,
+                                  text: prompt,
+                              },
+                          ]
+                        : [],
+                },
+                signal: effectiveSignal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as SessionPromptResponse
+        } catch (err) {
+            summaryCtx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] inline prSummary failed: ${String(err)}`,
+            })
+            throw err
+        }
+
+        const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`
+        const fallbackBody = `Changes from ${input.baseBranch} to ${input.headBranch} in ${input.repositoryPath}`
+
+        const markdown = this.extractPromptMarkdown(response)
+        if (!markdown) {
+            return {
+                title: fallbackTitle,
+                body: fallbackBody,
+            }
+        }
+        const split = splitTicketMarkdown(markdown, fallbackTitle, fallbackBody)
+        return {
+            title: split.title,
+            body: split.description,
         }
     }
 
