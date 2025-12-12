@@ -91,7 +91,12 @@ export async function createBoardCard(
     return createdCardId
 }
 
-export async function moveBoardCard(cardId: string, toColumnId: string, toIndex: number) {
+export async function moveBoardCard(
+    cardId: string,
+    toColumnId: string,
+    toIndex: number,
+    opts?: {suppressBroadcast?: boolean},
+) {
     let boardId: string | null = null
     let fromColumnId: string | null = null
     await withTx(async (tx) => {
@@ -126,7 +131,9 @@ export async function moveBoardCard(cardId: string, toColumnId: string, toIndex:
             toColumnId,
             toIndex,
         })
-        await broadcastBoard(boardId)
+        if (!opts?.suppressBroadcast) {
+            await broadcastBoard(boardId)
+        }
     }
 }
 

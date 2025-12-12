@@ -125,6 +125,7 @@ export async function runGithubPrAutoCloseTick(
 
         for (const project of projects) {
             const projectId = project.id;
+            const boardId = project.boardId;
             try {
                 const settings = await services.getSettings(projectId);
                 if (
@@ -149,6 +150,8 @@ export async function runGithubPrAutoCloseTick(
                 if (!lockAcquired) continue;
 
                 let status: "succeeded" | "failed" = "succeeded";
+                let hadErrors = false;
+                let movedAny = false;
 
                 try {
                     const originUrl = await getOriginUrl(
@@ -158,7 +161,7 @@ export async function runGithubPrAutoCloseTick(
                         log.warn(
                             "github:pr-auto-close",
                             "No GitHub origin; skipping project",
-                            {projectId, boardId: project.boardId},
+                            {projectId, boardId},
                         );
                         status = "failed";
                         continue;
@@ -171,7 +174,7 @@ export async function runGithubPrAutoCloseTick(
                             "Origin is not a GitHub repo; skipping project",
                             {
                                 projectId,
-                                boardId: project.boardId,
+                                boardId,
                                 originUrl,
                             },
                         );
@@ -180,7 +183,7 @@ export async function runGithubPrAutoCloseTick(
                     }
 
                     const columns =
-                        await repo.listColumnsForBoard(projectId);
+                        await repo.listColumnsForBoard(boardId);
                     const isReviewColumn = (c: {id: string; title?: string}) =>
                         c.id.trim().toLowerCase() === "col-review" ||
                         (c.title || "").trim().toLowerCase() === "review";
@@ -201,7 +204,7 @@ export async function runGithubPrAutoCloseTick(
                             "No Done column found; refusing to auto-close (expected id col-done or title Done)",
                             {
                                 projectId,
-                                boardId: project.boardId,
+                                boardId,
                             },
                         );
                         status = "failed";
@@ -260,16 +263,23 @@ export async function runGithubPrAutoCloseTick(
                             if (pr.state !== "closed" || !pr.merged) continue;
 
                             for (const card of cardsForPr) {
+                                if (!taskSvc.moveBoardCard) {
+                                    throw new Error(
+                                        "tasks.moveBoardCard is not available",
+                                    );
+                                }
                                 await taskSvc.moveBoardCard(
                                     card.id,
                                     doneColumnId,
                                     Number.MAX_SAFE_INTEGER,
+                                    {suppressBroadcast: true},
                                 );
+                                movedAny = true;
                                 events.publish(
                                     "github.pr.merged.autoClosed",
                                     {
                                         projectId,
-                                        boardId: project.boardId,
+                                        boardId,
                                         cardId: card.id,
                                         prNumber,
                                         prUrl: card.prUrl!,
@@ -281,7 +291,7 @@ export async function runGithubPrAutoCloseTick(
                                     "card moved to Done on PR merge",
                                     {
                                         projectId,
-                                        boardId: project.boardId,
+                                        boardId,
                                         cardId: card.id,
                                         ticketKey: card.ticketKey ?? null,
                                         prNumber,
@@ -290,6 +300,7 @@ export async function runGithubPrAutoCloseTick(
                                 );
                             }
                         } catch (error) {
+                            hadErrors = true;
                             log.warn(
                                 "github:pr-auto-close",
                                 "PR lookup failed",
@@ -298,6 +309,21 @@ export async function runGithubPrAutoCloseTick(
                                     projectId,
                                     prNumber,
                                 },
+                            );
+                        }
+                    }
+
+                    if (movedAny) {
+                        try {
+                            if (taskSvc.broadcastBoard) {
+                                await taskSvc.broadcastBoard(boardId);
+                            }
+                        } catch (error) {
+                            hadErrors = true;
+                            log.warn(
+                                "github:pr-auto-close",
+                                "Board broadcast failed after PR auto-close",
+                                {err: error, projectId, boardId},
                             );
                         }
                     }
@@ -310,6 +336,9 @@ export async function runGithubPrAutoCloseTick(
                     );
                 } finally {
                     try {
+                        if (status !== "failed" && hadErrors) {
+                            status = "failed";
+                        }
                         await settingsSync.completeGithubPrAutoClose(
                             projectId,
                             status,

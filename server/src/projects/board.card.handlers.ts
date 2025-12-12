@@ -252,6 +252,8 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
                 ticketType: updatedCard.ticketType ?? null,
                 isEnhanced: updatedCard.isEnhanced ?? false,
                 prUrl: updatedCard.prUrl ?? undefined,
+                disableAutoCloseOnPRMerge:
+                    updatedCard.disableAutoCloseOnPRMerge ?? false,
                 title: updatedCard.title,
                 description: updatedCard.description ?? undefined,
                 dependsOn: deps.length ? deps : undefined,

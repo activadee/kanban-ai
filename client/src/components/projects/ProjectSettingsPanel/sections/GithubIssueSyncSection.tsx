@@ -151,7 +151,11 @@ export function GithubIssueSyncSection({
                         min={5}
                         max={1440}
                         value={githubIssueSyncIntervalMinutes.toString()}
-                        disabled={disabled || !githubIssueSyncEnabled}
+                        disabled={
+                            disabled ||
+                            (!githubIssueSyncEnabled &&
+                                !autoCloseTicketOnPRMerge)
+                        }
                         onChange={(e) => handleIntervalChange(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">

@@ -18,6 +18,7 @@ const mockListColumns = vi.fn();
 const mockListCardsForColumns = vi.fn();
 const mockGetGithubConnection = vi.fn();
 const mockMoveBoardCard = vi.fn();
+const mockBroadcastBoard = vi.fn();
 const mockIsEnabled = vi.fn(
     (settings: {autoCloseTicketOnPRMerge?: boolean}) =>
         Boolean(settings.autoCloseTicketOnPRMerge),
@@ -52,6 +53,7 @@ function makeDeps() {
         },
         tasks: {
             moveBoardCard: mockMoveBoardCard,
+            broadcastBoard: mockBroadcastBoard,
         },
         getGitOriginUrl: mockGetGitOriginUrl,
         parseGithubOwnerRepo: mockParseGithubOwnerRepo,
@@ -66,6 +68,7 @@ describe("github PR auto-close scheduler", () => {
         mockListCardsForColumns.mockReset();
         mockGetGithubConnection.mockReset();
         mockMoveBoardCard.mockReset();
+        mockBroadcastBoard.mockReset();
         mockIsEnabled.mockReset();
         mockIsDue.mockReset();
         mockTryStart.mockReset();
@@ -162,7 +165,9 @@ describe("github PR auto-close scheduler", () => {
             "card-1",
             "col-done",
             Number.MAX_SAFE_INTEGER,
+            {suppressBroadcast: true},
         );
+        expect(mockBroadcastBoard).toHaveBeenCalledWith("p1");
         expect(events.publish).toHaveBeenCalledWith(
             "github.pr.merged.autoClosed",
             expect.objectContaining({cardId: "card-1", prNumber: 12}),
@@ -186,6 +191,7 @@ describe("github PR auto-close scheduler", () => {
 
         expect(mockGetPullRequest).not.toHaveBeenCalled();
         expect(mockMoveBoardCard).not.toHaveBeenCalled();
+        expect(mockBroadcastBoard).not.toHaveBeenCalled();
     });
 
     it("skips PR URLs that are not on a GitHub hostname", async () => {
@@ -209,6 +215,7 @@ describe("github PR auto-close scheduler", () => {
 
         expect(mockGetPullRequest).not.toHaveBeenCalled();
         expect(mockMoveBoardCard).not.toHaveBeenCalled();
+        expect(mockBroadcastBoard).not.toHaveBeenCalled();
     });
 
     it("still works when Review/Done titles are renamed (uses default ids)", async () => {
@@ -240,6 +247,8 @@ describe("github PR auto-close scheduler", () => {
             "card-1",
             "col-done",
             Number.MAX_SAFE_INTEGER,
+            {suppressBroadcast: true},
         );
+        expect(mockBroadcastBoard).toHaveBeenCalledWith("p1");
     });
 });
