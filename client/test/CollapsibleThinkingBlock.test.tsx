@@ -23,7 +23,10 @@ describe("CollapsibleThinkingBlock", () => {
         expect(screen.getByText("Toggle")).not.toBeNull();
 
         const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
-        expect(content).not.toBeNull();
+        expect(content).toBeNull();
+
+        const summary = container.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
+        expect(summary?.getAttribute("aria-expanded")).toBe("false");
     });
 
     it("toggles expanded/collapsed on click and updates aria-expanded", () => {
@@ -41,9 +44,13 @@ describe("CollapsibleThinkingBlock", () => {
 
         fireEvent.click(summary as HTMLElement);
         expect(details?.open).toBe(true);
+        expect(summary?.getAttribute("aria-expanded")).toBe("true");
+        expect(container.querySelector('[data-slot="thinking-content"]')).not.toBeNull();
 
         fireEvent.click(summary as HTMLElement);
         expect(details?.open).toBe(false);
+        expect(summary?.getAttribute("aria-expanded")).toBe("false");
+        expect(container.querySelector('[data-slot="thinking-content"]')).toBeNull();
     });
 
     it("is keyboard accessible via native summary semantics", () => {
@@ -60,9 +67,13 @@ describe("CollapsibleThinkingBlock", () => {
         expect(summary).not.toBeNull();
 
         fireEvent.keyDown(summary as HTMLElement, {key: "Enter"});
-        // JSDOM may not implement keyboard toggling; ensure element remains focusable and the toggle affordance exists.
         expect(screen.getByText("Toggle")).not.toBeNull();
+        expect(details?.open).toBe(true);
+        expect(summary?.getAttribute("aria-expanded")).toBe("true");
+
+        fireEvent.keyDown(summary as HTMLElement, {key: " "});
         expect(details?.open).toBe(false);
+        expect(summary?.getAttribute("aria-expanded")).toBe("false");
     });
 
     it("keeps styling stable (visual regression)", () => {
@@ -94,9 +105,9 @@ describe("CollapsibleThinkingBlock", () => {
               "className": "mb-2 rounded border border-border/60 bg-background p-2",
               "open": false,
             },
-            "content": "mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground",
+            "content": undefined,
             "contentRegion": {
-              "className": "mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground",
+              "className": null,
             },
             "summary": "flex cursor-pointer list-none items-center justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
             "toggleText": "text-xs text-muted-foreground",
@@ -105,11 +116,14 @@ describe("CollapsibleThinkingBlock", () => {
 
         fireEvent.click(summary as HTMLElement);
         const blockOpen = container.querySelector('[data-slot="thinking-block"]') as HTMLDetailsElement | null;
+        const contentOpen = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
 
         expect({
             open: blockOpen?.open ?? null,
+            content: contentOpen?.className ?? null,
         }).toMatchInlineSnapshot(`
           {
+            "content": "mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground",
             "open": true,
           }
         `);

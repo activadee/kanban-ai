@@ -64,9 +64,10 @@ describe("AttemptsSection – thinking blocks", () => {
         expect(details?.open).toBe(false);
 
         expect(document.querySelector('[data-slot="thinking-preview"]')).toBeNull();
-        expect(document.querySelector('[data-slot="thinking-content"]')).not.toBeNull();
+        expect(document.querySelector('[data-slot="thinking-content"]')).toBeNull();
 
         fireEvent.click(summary as HTMLElement);
         expect(details?.open).toBe(true);
+        expect(document.querySelector('[data-slot="thinking-content"]')).not.toBeNull();
     });
 });
