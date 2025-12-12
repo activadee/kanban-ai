@@ -131,6 +131,7 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         githubIssueSyncState:
             (row.githubIssueSyncState as "open" | "all" | "closed") ?? "open",
         githubIssueSyncIntervalMinutes: intervalMinutes,
+        githubIssueAutoCreateEnabled: Boolean(row.githubIssueAutoCreateEnabled),
         lastGithubIssueSyncAt: toNullableIso(row.lastGithubIssueSyncAt),
         lastGithubIssueSyncStatus: normalizeStatus(
             row.lastGithubIssueSyncStatus,
@@ -177,6 +178,7 @@ export async function ensureProjectSettings(
             githubIssueSyncState: "open",
             githubIssueSyncIntervalMinutes:
                 DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
+            githubIssueAutoCreateEnabled: false,
             lastGithubIssueSyncAt: null,
             lastGithubIssueSyncStatus: "idle",
             createdAt: now,
@@ -260,6 +262,9 @@ export async function updateProjectSettings(
         patch.githubIssueSyncIntervalMinutes = normalizeGithubIssueSyncInterval(
             updates.githubIssueSyncIntervalMinutes,
         );
+    }
+    if (updates.githubIssueAutoCreateEnabled !== undefined) {
+        patch.githubIssueAutoCreateEnabled = Boolean(updates.githubIssueAutoCreateEnabled);
     }
     patch.updatedAt = new Date();
     await updateProjectSettingsRow(projectId, patch as any, executor);

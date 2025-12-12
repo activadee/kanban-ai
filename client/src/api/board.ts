@@ -1,5 +1,5 @@
 import {SERVER_URL} from '@/lib/env'
-import type {BoardState, Card, Column, ColumnId, TicketType} from 'shared'
+import type {BoardState, Card, Column, ColumnId, TicketType, GithubIssueStatsResponse} from 'shared'
 import {parseApiResponse} from '@/api/http'
 
 const jsonHeaders = {'Content-Type': 'application/json'}
@@ -12,6 +12,7 @@ export type MoveCardResponse = {
 export type CreateCardResponse = {
     state: BoardState;
     cardId: string;
+    githubIssueError?: string | null;
 }
 
 export async function fetchBoardState(boardId: string): Promise<BoardState> {
@@ -20,10 +21,15 @@ export async function fetchBoardState(boardId: string): Promise<BoardState> {
     return data.state
 }
 
+export async function fetchGithubIssueStats(boardId: string): Promise<GithubIssueStatsResponse> {
+    const res = await fetch(`${SERVER_URL}/boards/${boardId}/github/issues/stats`)
+    return parseApiResponse<GithubIssueStatsResponse>(res)
+}
+
 export async function createCard(
     boardId: string,
     columnId: string,
-    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null },
+    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null; createGithubIssue?: boolean },
 ): Promise<CreateCardResponse> {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards`, {
         method: 'POST',
@@ -34,6 +40,7 @@ export async function createCard(
             description: values.description ?? null,
             dependsOn: values.dependsOn ?? [],
             ticketType: values.ticketType ?? null,
+            createGithubIssue: values.createGithubIssue === true,
         }),
     })
     return parseApiResponse<CreateCardResponse>(res)

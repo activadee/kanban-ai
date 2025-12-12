@@ -1,7 +1,8 @@
 import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
-import type {BoardState} from 'shared'
+import type {BoardState, GithubIssueStatsResponse} from 'shared'
 import {
     fetchBoardState,
+    fetchGithubIssueStats,
     createCard,
     updateCard,
     deleteCard,
@@ -13,6 +14,7 @@ import {
 export const boardKeys = {
     all: ['board'] as const,
     state: (boardId: string) => [...boardKeys.all, boardId] as const,
+    githubIssueStats: (boardId: string) => [...boardKeys.all, boardId, 'github-issue-stats'] as const,
 }
 
 type BoardOptions = Partial<UseQueryOptions<BoardState>>
@@ -20,7 +22,7 @@ type BoardOptions = Partial<UseQueryOptions<BoardState>>
 type CreateArgs = {
     boardId: string;
     columnId: string;
-    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null }
+    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; createGithubIssue?: boolean }
 }
 
 type UpdateArgs = {
@@ -38,6 +40,18 @@ export function useBoardState(boardId: string | undefined, options?: BoardOption
     return useQuery({
         queryKey: boardId ? boardKeys.state(boardId) : ['board', 'disabled'],
         queryFn: () => fetchBoardState(boardId!),
+        enabled,
+        ...options,
+    })
+}
+
+type GithubIssueStatsOptions = Partial<UseQueryOptions<GithubIssueStatsResponse>>
+
+export function useGithubIssueStats(boardId: string | undefined, options?: GithubIssueStatsOptions) {
+    const enabled = Boolean(boardId)
+    return useQuery({
+        queryKey: boardId ? boardKeys.githubIssueStats(boardId) : ['board', 'github-issue-stats', 'disabled'],
+        queryFn: () => fetchGithubIssueStats(boardId!),
         enabled,
         ...options,
     })

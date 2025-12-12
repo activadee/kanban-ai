@@ -30,6 +30,10 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
     - **Title** – required.
     - **Description** – optional.
     - **Dependencies** – optional list of other cards this card depends on.
+    - When GitHub Issue Creation is enabled in project settings (`githubIssueAutoCreateEnabled`), a **Create GitHub Issue**
+      checkbox appears. Checking it creates a GitHub issue in the project’s origin repository using the ticket title/
+      description and links it back to the card. The card is still created if issue export fails, but the UI surfaces a
+      toast with the error.
 - Submit to create the card in the chosen column.
 
 While editing the description, a small bot button in the textarea lets you send the current title/description to the

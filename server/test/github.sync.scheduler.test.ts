@@ -80,6 +80,7 @@ describe('github issue sync scheduler', () => {
             githubIssueSyncEnabled: true,
             githubIssueSyncState: 'open',
             githubIssueSyncIntervalMinutes: 15,
+            githubIssueAutoCreateEnabled: false,
             lastGithubIssueSyncAt: null,
             lastGithubIssueSyncStatus: 'idle',
             createdAt: new Date().toISOString(),
@@ -116,4 +117,3 @@ describe('github issue sync scheduler', () => {
         )
     })
 })
-

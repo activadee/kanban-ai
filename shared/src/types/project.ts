@@ -73,6 +73,7 @@ export interface ProjectSettings {
     githubIssueSyncEnabled: boolean
     githubIssueSyncState: 'open' | 'all' | 'closed'
     githubIssueSyncIntervalMinutes: number
+    githubIssueAutoCreateEnabled: boolean
     lastGithubIssueSyncAt: string | null
     lastGithubIssueSyncStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     createdAt: string
@@ -102,6 +103,7 @@ export interface UpdateProjectSettingsRequest {
     githubIssueSyncEnabled?: boolean
     githubIssueSyncState?: 'open' | 'all' | 'closed'
     githubIssueSyncIntervalMinutes?: number
+    githubIssueAutoCreateEnabled?: boolean
 }
 
 export type ProjectSettingsResponse = {

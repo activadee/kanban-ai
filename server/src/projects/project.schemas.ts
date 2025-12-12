@@ -77,6 +77,7 @@ export const updateProjectSettingsSchema = z
         githubIssueSyncEnabled: z.boolean().optional(),
         githubIssueSyncState: z.enum(["open", "all", "closed"]).optional(),
         githubIssueSyncIntervalMinutes: z.number().int().min(5).max(1440).optional(),
+        githubIssueAutoCreateEnabled: z.boolean().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "No updates provided",
@@ -106,6 +107,7 @@ export const createCardSchema = z.object({
     description: z.string().optional().nullable(),
     dependsOn: z.array(z.string()).optional(),
     ticketType: ticketTypeSchema,
+    createGithubIssue: z.boolean().optional(),
 });
 
 export const updateCardSchema = z

@@ -17,8 +17,35 @@ const { useNextTicketKeyMock } = vi.hoisted(() => {
     };
 });
 
+const { useProjectSettingsMock } = vi.hoisted(() => {
+    return {
+        useProjectSettingsMock: vi.fn(),
+    };
+});
+
+const { useGithubAuthStatusMock } = vi.hoisted(() => {
+    return {
+        useGithubAuthStatusMock: vi.fn(),
+    };
+});
+
+const { useProjectGithubOriginMock } = vi.hoisted(() => {
+    return {
+        useProjectGithubOriginMock: vi.fn(),
+    };
+});
+
 vi.mock("@/hooks", () => ({
     useNextTicketKey: useNextTicketKeyMock,
+    useProjectSettings: useProjectSettingsMock,
+}));
+
+vi.mock("@/hooks/github", () => ({
+    useGithubAuthStatus: useGithubAuthStatusMock,
+}));
+
+vi.mock("@/hooks/projects", () => ({
+    useProjectGithubOrigin: useProjectGithubOriginMock,
 }));
 
 function renderDialog() {
@@ -53,6 +80,21 @@ describe("CreateCardDialog – Create & Enhance", () => {
         useNextTicketKeyMock.mockReturnValue({
             isLoading: false,
             data: { key: "PRJ-1" },
+        });
+
+        useProjectSettingsMock.mockReturnValue({
+            isLoading: false,
+            data: { githubIssueAutoCreateEnabled: true },
+        });
+
+        useGithubAuthStatusMock.mockReturnValue({
+            isLoading: false,
+            data: { status: "valid" },
+        });
+
+        useProjectGithubOriginMock.mockReturnValue({
+            isLoading: false,
+            data: { owner: "acme", repo: "repo" },
         });
     });
 

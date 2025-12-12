@@ -235,7 +235,7 @@ export function ProjectBoardPage() {
                             values: CardFormValues,
                         ) => {
                             try {
-                                await createCardMutation.mutateAsync({
+                                const result = await createCardMutation.mutateAsync({
                                     boardId,
                                     columnId,
                                     values: {
@@ -244,8 +244,16 @@ export function ProjectBoardPage() {
                                             values.description || undefined,
                                         dependsOn: values.dependsOn ?? [],
                                         ticketType: values.ticketType ?? null,
+                                        createGithubIssue: values.createGithubIssue === true,
                                     },
                                 });
+                                if (result.githubIssueError) {
+                                    toast({
+                                        title: "GitHub issue not created",
+                                        description: result.githubIssueError,
+                                        variant: "destructive",
+                                    });
+                                }
                             } catch (err) {
                                 console.error("Create card failed", err);
                                 const problem = describeApiError(
@@ -273,9 +281,17 @@ export function ProjectBoardPage() {
                                             values.description || undefined,
                                         dependsOn: values.dependsOn ?? [],
                                         ticketType: values.ticketType ?? null,
+                                        createGithubIssue: values.createGithubIssue === true,
                                     },
                                 });
                                 const cardId = result.cardId;
+                                if (result.githubIssueError) {
+                                    toast({
+                                        title: "GitHub issue not created",
+                                        description: result.githubIssueError,
+                                        variant: "destructive",
+                                    });
+                                }
                                 if (cardId) {
                                     // Fire-and-forget so the dialog can close immediately; internal hook toasts on error.
                                     startEnhancementForNewCard({

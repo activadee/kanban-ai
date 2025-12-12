@@ -76,7 +76,11 @@ that repository:
     repository.
   - Settings exposed via `GET /projects/:projectId/settings` and `PATCH /projects/:projectId/settings` include
     `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), and
-    `githubIssueSyncIntervalMinutes` (clamped between 5 and 1440 minutes).
+    `githubIssueSyncIntervalMinutes` (clamped between 5 and 1440 minutes), plus
+    `githubIssueAutoCreateEnabled` to allow per‑ticket GitHub issue creation on card create.
+  - When GitHub is connected and a board context is available, the Project Settings view also surfaces the counts of
+    linked issues (`imported`, `exported`, `total`) by calling `/boards/:boardId/github/issues/stats`, giving you a quick
+    snapshot of what has been synced or exported so far.
   - The sync pipeline respects the connection state and origin discovered for the project, stores `lastGithubIssueSyncAt`
     / `lastGithubIssueSyncStatus` timestamps, and logs each run with the `github:sync` scope (see
     `docs/core/github-integration.md`).
@@ -92,7 +96,7 @@ Project-related APIs are rooted under `/api/v1`:
 - `POST /projects` – create a project (existing or blank repository).
 - `GET /projects/:projectId` – fetch a project and its board metadata.
 - `GET /projects/:projectId/settings` – load per-project settings (ensuring defaults).
-- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags, and the failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`). Unspecified mapping keys keep existing/fallback behavior.
+- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags, the failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and the GitHub issue toggle `githubIssueAutoCreateEnabled`). Unspecified mapping keys keep existing/fallback behavior.
 - `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card’s title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
 - `GET /projects/:projectId/github/origin` – inspect GitHub origin information for the project repository.
 

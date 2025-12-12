@@ -18,6 +18,7 @@ export const githubIssues = sqliteTable('github_issues', {
     cardId: text('card_id').notNull(),
     owner: text('owner').notNull(),
     repo: text('repo').notNull(),
+    direction: text('direction').notNull().default('imported'),
     issueId: text('issue_id').notNull(),
     issueNumber: integer('issue_number').notNull(),
     titleSnapshot: text('title_snapshot').notNull(),

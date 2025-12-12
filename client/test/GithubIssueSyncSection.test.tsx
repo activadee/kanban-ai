@@ -13,12 +13,20 @@ const projectMocks = vi.hoisted(() => ({
     })),
 }));
 
+const boardMocks = vi.hoisted(() => ({
+    useGithubIssueStats: vi.fn(() => ({data: {imported: 0, exported: 0, total: 0}})),
+}));
+
 vi.mock("@/hooks/github", () => ({
     useGithubAuthStatus: githubMocks.useGithubAuthStatus,
 }));
 
 vi.mock("@/hooks/projects", () => ({
     useProjectGithubOrigin: projectMocks.useProjectGithubOrigin,
+}));
+
+vi.mock("@/hooks/board", () => ({
+    useGithubIssueStats: boardMocks.useGithubIssueStats,
 }));
 
 describe("GithubIssueSyncSection", () => {
@@ -31,9 +39,11 @@ describe("GithubIssueSyncSection", () => {
         render(
             <GithubIssueSyncSection
                 projectId="proj-1"
+                boardId="proj-1"
                 githubIssueSyncEnabled={false}
                 githubIssueSyncState="open"
                 githubIssueSyncIntervalMinutes={15}
+                githubIssueAutoCreateEnabled={false}
                 onChange={() => {}}
             />,
         );
@@ -56,9 +66,11 @@ describe("GithubIssueSyncSection", () => {
         render(
             <GithubIssueSyncSection
                 projectId="proj-1"
+                boardId="proj-1"
                 githubIssueSyncEnabled={false}
                 githubIssueSyncState="open"
                 githubIssueSyncIntervalMinutes={15}
+                githubIssueAutoCreateEnabled={false}
                 onChange={() => {}}
             />,
         );

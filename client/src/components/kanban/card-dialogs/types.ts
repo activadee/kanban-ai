@@ -5,6 +5,7 @@ export type CardFormValues = {
     description: string
     dependsOn?: string[]
     ticketType?: TicketType | null
+    createGithubIssue?: boolean
 }
 
 export type BaseDialogProps = {
