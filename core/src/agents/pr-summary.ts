@@ -3,6 +3,8 @@ import type {ProjectSummary} from 'shared'
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getPrDiffSummary} from '../git/service'
+import {listGithubIssueMappingsByCardId} from '../github/repo'
+import {getAttemptById} from '../attempts/repo'
 import {getAgent} from './registry'
 import {runInlineTask} from './inline'
 import type {
@@ -12,6 +14,7 @@ import type {
     PrSummaryInlineResult,
 } from './types'
 import {resolveAgentProfile} from './profile-resolution'
+import {appendGithubIssueAutoCloseReferences} from './pr-summary-issues'
 
 export type AgentSummarizePullRequestOptions = {
     projectId: string
@@ -19,6 +22,8 @@ export type AgentSummarizePullRequestOptions = {
     headBranch: string
     agentKey?: string
     profileId?: string
+    attemptId?: string
+    cardId?: string
     signal?: AbortSignal
 }
 
@@ -62,6 +67,41 @@ function createSignal(source?: AbortSignal): AbortSignal {
         source.addEventListener('abort', onAbort, {once: true})
     }
     return controller.signal
+}
+
+async function resolveAssociatedCardIds(opts: AgentSummarizePullRequestOptions): Promise<string[]> {
+    const cardIds = new Set<string>()
+    const directCardId = typeof opts.cardId === 'string' ? opts.cardId.trim() : ''
+    if (directCardId) cardIds.add(directCardId)
+
+    const attemptId = typeof opts.attemptId === 'string' ? opts.attemptId.trim() : ''
+    if (attemptId) {
+        try {
+            const attempt = await getAttemptById(attemptId)
+            const attemptCardId = attempt?.cardId?.trim?.() || attempt?.cardId
+            if (typeof attemptCardId === 'string' && attemptCardId.trim()) {
+                cardIds.add(attemptCardId.trim())
+            }
+        } catch {
+        }
+    }
+
+    return Array.from(cardIds)
+}
+
+async function resolveGithubIssueNumbers(cardIds: string[]): Promise<number[]> {
+    const issueNumbers = new Set<number>()
+    for (const cardId of cardIds) {
+        try {
+            const mappings = await listGithubIssueMappingsByCardId(cardId)
+            for (const mapping of mappings as Array<{issueNumber?: unknown}>) {
+                const num = Number(mapping.issueNumber)
+                if (Number.isFinite(num) && num > 0) issueNumbers.add(num)
+            }
+        } catch {
+        }
+    }
+    return Array.from(issueNumbers).sort((a, b) => a - b)
 }
 
 export async function agentSummarizePullRequest(
@@ -171,7 +211,7 @@ export async function agentSummarizePullRequest(
         profileSource,
     }
 
-    return runInlineTask({
+    const summary = await runInlineTask({
         agentKey,
         kind: 'prSummary',
         input,
@@ -179,4 +219,14 @@ export async function agentSummarizePullRequest(
         context,
         signal,
     })
+
+    const cardIds = await resolveAssociatedCardIds(opts)
+    if (cardIds.length === 0) return summary
+
+    const issueNumbers = await resolveGithubIssueNumbers(cardIds)
+    if (issueNumbers.length === 0) return summary
+
+    const body = appendGithubIssueAutoCloseReferences(summary.body, issueNumbers)
+    if (body === summary.body) return summary
+    return {...summary, body}
 }

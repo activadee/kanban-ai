@@ -39,6 +39,8 @@ The UI uses a dedicated summary endpoint:
   - Request body:
     - `base` (string, optional) – base branch; when omitted, falls back to the project’s configured `baseBranch`.
     - `branch` (string, optional) – head branch; when omitted, the server uses the current git branch.
+    - `attemptId` (string, optional) – Attempt ID associated with the PR; used to look up linked GitHub issues.
+    - `cardId` (string, optional) – Card/ticket ID associated with the PR; used to look up linked GitHub issues.
     - `agent` (string, optional agent key override).
     - `profileId` (string, optional profile ID override).
   - Successful response (`200 OK`):
@@ -58,8 +60,8 @@ PR summarization reuses the same inline infrastructure as ticket enhancement:
 
 - Input options for `agentSummarizePullRequest`:
   - `projectId`, required `headBranch`, optional `baseBranch`.
-  - Optional `agentKey`, optional `profileId`, optional `AbortSignal`.
-- Behavior:
+  - Optional `agentKey`, optional `profileId`, optional `attemptId`/`cardId`, optional `AbortSignal`.
+  - Behavior:
   - Loads the project and its settings (including `baseBranch`, `inlineAgent`, `inlineProfileId`, and the per-inline-agent profile mapping).
   - Resolves an effective agent/profile:
     - Uses the explicit `agentKey` / `profileId` when provided.
@@ -73,7 +75,7 @@ PR summarization reuses the same inline infrastructure as ticket enhancement:
     - Otherwise, the primary profile’s prompt (e.g. `appendPrompt`) is used.
   - Builds an `InlineTaskContext` annotated with `profileSource: "inline" | "primary"`.
   - Invokes `runInlineTask({agentKey, kind: "prSummary", input, profile, context, signal})`.
-  - Returns `PrSummaryInlineResult` `{title, body}`.
+  - Returns `PrSummaryInlineResult` `{title, body}`. When the associated card/ticket has GitHub issues, the body ends with an auto-close line like `closes #123, fixes #456`.
   - Built-in agents that currently implement PR inline summary are:
     - `CODEX` via the Codex SDK.
     - `DROID` via the Droid CLI.

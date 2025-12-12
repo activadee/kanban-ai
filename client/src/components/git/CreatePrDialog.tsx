@@ -55,6 +55,8 @@ export function CreatePrDialog({
 
     const headBranch = branch?.trim() || ''
     const baseBranchTrimmed = baseBranch?.trim() || undefined
+    const attemptIdTrimmed = attemptId?.trim() || undefined
+    const cardIdTrimmed = cardId?.trim() || undefined
 
     const branchLabel = headBranch || 'current branch'
 
@@ -147,6 +149,8 @@ export function CreatePrDialog({
                 projectId,
                 branch: headBranch,
                 base: baseBranchTrimmed,
+                attemptId: attemptIdTrimmed,
+                cardId: cardIdTrimmed,
                 signal: controller.signal,
             },
             {

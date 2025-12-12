@@ -135,6 +135,8 @@ type PrSummaryArgs = {
     projectId: string
     base?: string
     branch?: string
+    attemptId?: string
+    cardId?: string
     agent?: string
     profileId?: string
     signal?: AbortSignal

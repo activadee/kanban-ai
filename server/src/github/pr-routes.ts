@@ -26,6 +26,8 @@ const listPrQuerySchema = z.object({
 const createPrSummarySchema = z.object({
     base: z.string().min(1).optional(),
     branch: z.string().min(1).optional(),
+    attemptId: z.string().min(1).optional(),
+    cardId: z.string().min(1).optional(),
     agent: z.string().optional(),
     profileId: z.string().optional(),
 })
@@ -65,7 +67,7 @@ export function createGithubProjectRouter() {
         '/:projectId/pull-requests/summary',
         zValidator('json', createPrSummarySchema),
         async (c) => {
-            const {base, branch, agent, profileId} = c.req.valid('json')
+            const {base, branch, attemptId, cardId, agent, profileId} = c.req.valid('json')
             const projectId = c.req.param('projectId')
 
             const trimmedBranch = branch?.trim() || ''
@@ -84,6 +86,28 @@ export function createGithubProjectRouter() {
                     })
                 }
 
+                const attempt = attemptId ? await attempts.getAttempt(attemptId) : null
+                if (attempt && attempt.boardId !== projectId) {
+                    return problemJson(c, {status: 400, detail: 'Attempt does not belong to this project'})
+                }
+
+                const card = cardId
+                    ? await projectsRepo.getCardById(cardId)
+                    : attempt?.cardId
+                        ? await projectsRepo.getCardById(attempt.cardId)
+                        : null
+                let cardBoardId: string | null = null
+                if (card) {
+                    cardBoardId = card.boardId ?? null
+                    if (!cardBoardId) {
+                        const column = await projectsRepo.getColumnById(card.columnId)
+                        cardBoardId = column?.boardId ?? null
+                    }
+                    if (cardBoardId && cardBoardId !== projectId) {
+                        return problemJson(c, {status: 400, detail: 'Card does not belong to this project'})
+                    }
+                }
+
                 const baseBranch = base?.trim() || undefined
 
                 const summary = await agentSummarizePullRequest({
@@ -92,6 +116,8 @@ export function createGithubProjectRouter() {
                     headBranch,
                     agentKey: agent,
                     profileId,
+                    attemptId,
+                    cardId,
                     signal: c.req.raw.signal,
                 })
 

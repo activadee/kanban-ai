@@ -29,6 +29,14 @@ vi.mock('../src/git/service', () => ({
     }),
 }))
 
+vi.mock('../src/github/repo', () => ({
+    listGithubIssueMappingsByCardId: vi.fn(),
+}))
+
+vi.mock('../src/attempts/repo', () => ({
+    getAttemptById: vi.fn(),
+}))
+
 describe('agents/pr-summary agentSummarizePullRequest', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -441,5 +449,135 @@ describe('agents/pr-summary agentSummarizePullRequest', () => {
         expect(result).toEqual(summaryResult)
         expect(getAgent).toHaveBeenCalledWith('DROID')
         expect(resolveAgentProfile).not.toHaveBeenCalled()
+    })
+
+    it('appends GitHub issue auto-close references when card has issues', async () => {
+        const {projectsService} = await import('../src/projects/service')
+        const {ensureProjectSettings} = await import('../src/projects/settings/service')
+        const {getAgent} = await import('../src/agents/registry')
+        const {runInlineTask} = await import('../src/agents/inline')
+        const {listGithubIssueMappingsByCardId} = await import('../src/github/repo')
+        const {agentSummarizePullRequest} = await import('../src/agents/pr-summary')
+
+        projectsService.get.mockResolvedValue({
+            id: 'proj-1',
+            boardId: 'board-1',
+            name: 'Test Project',
+            status: 'Active' as const,
+            createdAt: new Date().toISOString(),
+            repositoryPath: '/repos/proj-1',
+            repositoryUrl: null,
+            repositorySlug: 'proj-1',
+        })
+
+        ensureProjectSettings.mockResolvedValue({
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            baseBranch: 'main',
+            preferredRemote: null,
+            setupScript: null,
+            devScript: null,
+            cleanupScript: null,
+            copyFiles: null,
+            defaultAgent: 'DROID',
+            defaultProfileId: null,
+            inlineAgent: null,
+            inlineProfileId: null,
+            autoCommitOnFinish: false,
+            autoPushOnAutocommit: false,
+            ticketPrefix: 'PRJ',
+            nextTicketNumber: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        })
+
+        const agent = {
+            key: 'DROID',
+            label: 'Droid',
+            defaultProfile: {foo: 'bar'},
+            profileSchema: {safeParse: vi.fn()} as any,
+            run: vi.fn(),
+            inline: vi.fn(),
+        }
+
+        getAgent.mockReturnValue(agent)
+        ;(runInlineTask as any).mockResolvedValue({title: 'PR', body: 'Base body'} as any)
+        ;(listGithubIssueMappingsByCardId as any).mockResolvedValueOnce([
+            {issueNumber: 123},
+            {issueNumber: 456},
+        ])
+
+        const result = await agentSummarizePullRequest({
+            projectId: 'proj-1',
+            headBranch: 'feature/test',
+            cardId: 'card-1',
+        })
+
+        expect(result.body).toBe('Base body\n\ncloses #123, fixes #456')
+    })
+
+    it('resolves cardId from attemptId for issue auto-close references', async () => {
+        const {projectsService} = await import('../src/projects/service')
+        const {ensureProjectSettings} = await import('../src/projects/settings/service')
+        const {getAgent} = await import('../src/agents/registry')
+        const {runInlineTask} = await import('../src/agents/inline')
+        const {listGithubIssueMappingsByCardId} = await import('../src/github/repo')
+        const {getAttemptById} = await import('../src/attempts/repo')
+        const {agentSummarizePullRequest} = await import('../src/agents/pr-summary')
+
+        projectsService.get.mockResolvedValue({
+            id: 'proj-1',
+            boardId: 'board-1',
+            name: 'Test Project',
+            status: 'Active' as const,
+            createdAt: new Date().toISOString(),
+            repositoryPath: '/repos/proj-1',
+            repositoryUrl: null,
+            repositorySlug: 'proj-1',
+        })
+
+        ensureProjectSettings.mockResolvedValue({
+            projectId: 'proj-1',
+            boardId: 'board-1',
+            baseBranch: 'main',
+            preferredRemote: null,
+            setupScript: null,
+            devScript: null,
+            cleanupScript: null,
+            copyFiles: null,
+            defaultAgent: 'DROID',
+            defaultProfileId: null,
+            inlineAgent: null,
+            inlineProfileId: null,
+            autoCommitOnFinish: false,
+            autoPushOnAutocommit: false,
+            ticketPrefix: 'PRJ',
+            nextTicketNumber: 1,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        })
+
+        const agent = {
+            key: 'DROID',
+            label: 'Droid',
+            defaultProfile: {foo: 'bar'},
+            profileSchema: {safeParse: vi.fn()} as any,
+            run: vi.fn(),
+            inline: vi.fn(),
+        }
+
+        getAgent.mockReturnValue(agent)
+        ;(runInlineTask as any).mockResolvedValue({title: 'PR', body: 'Body'} as any)
+        ;(getAttemptById as any).mockResolvedValueOnce({id: 'a1', cardId: 'card-2'})
+        ;(listGithubIssueMappingsByCardId as any).mockResolvedValueOnce([{issueNumber: 789}])
+
+        const result = await agentSummarizePullRequest({
+            projectId: 'proj-1',
+            headBranch: 'feature/test',
+            attemptId: 'a1',
+        })
+
+        expect(listGithubIssueMappingsByCardId).toHaveBeenCalledWith('card-2')
+        expect(result.body).toBe('Body\n\ncloses #789')
     })
 })
