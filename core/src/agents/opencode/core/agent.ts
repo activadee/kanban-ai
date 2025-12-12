@@ -13,6 +13,7 @@ import type {
     SessionPromptResponse,
     Part,
     FilePartInput,
+    ProviderListResponse,
 } from '@opencode-ai/sdk'
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
 import type {
@@ -100,6 +101,8 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     private readonly groupers = new Map<string, OpencodeGrouper>()
     private static localServer: ServerHandle | null = null
     private static localServerUrl: string | null = null
+    private static providerListCache = new Map<string, {expiresAt: number; value: ProviderListResponse}>()
+    private static readonly providerListCacheTtlMs = 60_000
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
@@ -213,6 +216,63 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
     }
 
+    private getProviderCacheKey(installation: OpencodeInstallation): string {
+        if (installation.mode === 'remote' && installation.baseUrl) return `remote:${installation.baseUrl}`
+        if (OpencodeImpl.localServerUrl) return `local:${OpencodeImpl.localServerUrl}`
+        return installation.mode
+    }
+
+    private async getProviderList(
+        opencode: OpencodeClient,
+        installation: OpencodeInstallation,
+        signal: AbortSignal,
+    ): Promise<ProviderListResponse | null> {
+        const cacheKey = this.getProviderCacheKey(installation)
+        const cached = OpencodeImpl.providerListCache.get(cacheKey)
+        if (cached && cached.expiresAt > Date.now()) return cached.value
+
+        try {
+            const fresh = (await opencode.provider.list({
+                query: {directory: installation.directory},
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as ProviderListResponse
+            OpencodeImpl.providerListCache.set(cacheKey, {
+                expiresAt: Date.now() + OpencodeImpl.providerListCacheTtlMs,
+                value: fresh,
+            })
+            return fresh
+        } catch {
+            return null
+        }
+    }
+
+    private async modelSupportsImages(
+        opencode: OpencodeClient,
+        installation: OpencodeInstallation,
+        signal: AbortSignal,
+        providerID: string,
+        modelID: string,
+    ): Promise<boolean | null> {
+        const list = await this.getProviderList(opencode, installation, signal)
+        if (!list) return null
+        const provider = list.all.find((p) => p.id === providerID)
+        if (!provider) return null
+
+        const model =
+            (provider.models as Record<string, unknown>)[modelID] ??
+            Object.values(provider.models as Record<string, unknown>).find((m) => {
+                const id = (m as {id?: unknown} | undefined)?.id
+                return typeof id === 'string' && id === modelID
+            })
+        if (!model || typeof model !== 'object') return null
+
+        const input = (model as {modalities?: {input?: unknown}}).modalities?.input
+        if (!Array.isArray(input)) return false
+        return input.includes('image')
+    }
+
     private async openEventStream(
         client: OpencodeClient,
         installation: OpencodeInstallation,
@@ -307,8 +367,15 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             }
         }
 
+        this.debug(
+            profile,
+            ctx,
+            `prompt parts: ${parts.map((p) => p.type).join(', ')} (image_attachments=${attachments?.length ?? 0})`,
+        )
+
+        let promptResponse: SessionPromptResponse | null = null
         try {
-            await opencode.session.prompt({
+            promptResponse = (await opencode.session.prompt({
                 path: {id: session.id},
                 query: {directory: installation.directory},
                 body: {
@@ -321,7 +388,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 signal,
                 responseStyle: 'data',
                 throwOnError: true,
-            })
+            })) as unknown as SessionPromptResponse
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
             ctx.emit({
@@ -338,6 +405,28 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 },
             })
             throw err
+        }
+
+        const usedProviderID = (promptResponse as {info?: {providerID?: unknown}} | null)?.info?.providerID
+        const usedModelID = (promptResponse as {info?: {modelID?: unknown}} | null)?.info?.modelID
+        if (attachments?.length && typeof usedProviderID === 'string' && typeof usedModelID === 'string') {
+            const supportsImages = await this.modelSupportsImages(
+                opencode,
+                installation,
+                signal,
+                usedProviderID,
+                usedModelID,
+            )
+            if (supportsImages === false) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'error',
+                        timestamp: nowIso(),
+                        text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                    },
+                })
+            }
         }
 
         return {stream, sessionId: session.id}
@@ -376,8 +465,15 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             }
         }
 
+        this.debug(
+            profile,
+            ctx,
+            `prompt parts: ${parts.map((p) => p.type).join(', ')} (image_attachments=${attachments?.length ?? 0})`,
+        )
+
+        let promptResponse: SessionPromptResponse | null = null
         try {
-            await opencode.session.prompt({
+            promptResponse = (await opencode.session.prompt({
                 path: {id: sessionId},
                 query: {directory: installation.directory},
                 body: {
@@ -389,7 +485,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 signal,
                 responseStyle: 'data',
                 throwOnError: true,
-            })
+            })) as unknown as SessionPromptResponse
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err)
             ctx.emit({
@@ -406,6 +502,28 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 },
             })
             throw err
+        }
+
+        const usedProviderID = (promptResponse as {info?: {providerID?: unknown}} | null)?.info?.providerID
+        const usedModelID = (promptResponse as {info?: {modelID?: unknown}} | null)?.info?.modelID
+        if (attachments?.length && typeof usedProviderID === 'string' && typeof usedModelID === 'string') {
+            const supportsImages = await this.modelSupportsImages(
+                opencode,
+                installation,
+                signal,
+                usedProviderID,
+                usedModelID,
+            )
+            if (supportsImages === false) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'error',
+                        timestamp: nowIso(),
+                        text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                    },
+                })
+            }
         }
 
         return {stream, sessionId}
