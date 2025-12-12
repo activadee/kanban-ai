@@ -27,51 +27,63 @@ function parsePrUrl(
         }
     };
 
-    // Match common GitHub PR URLs, including API-style URLs.
-    const match = trimmed.match(
-        /github\.com\/(?:repos\/)?([^/]+)\/([^/]+)\/pulls?\/(\d+)(?:[/?#]|$)/i,
-    );
-    if (match) {
-        const ownerRaw = match[1];
-        const repoRaw = match[2];
-        const numberRaw = match[3];
-        if (!ownerRaw || !repoRaw || !numberRaw) return null;
+    const isGithubHostname = (hostname: string) => {
+        const host = hostname.trim().toLowerCase();
+        return (
+            host === "github.com" ||
+            host === "www.github.com" ||
+            host.endsWith(".github.com")
+        );
+    };
 
-        const number = Number(numberRaw);
-        if (!Number.isFinite(number)) return null;
-        const owner = safeDecode(ownerRaw);
-        const repo = stripGitSuffix(safeDecode(repoRaw));
-        return {owner, repo, number};
-    }
-
-    // Fall back to URL parsing for less common formats.
     try {
-        const url = new URL(trimmed);
-        if (!url.hostname.toLowerCase().endsWith("github.com")) return null;
+        const url = (() => {
+            try {
+                return new URL(trimmed);
+            } catch {
+                // Allow scheme-less GitHub URLs like "github.com/org/repo/pull/123".
+                if (
+                    /^(?:github\.com|www\.github\.com|api\.github\.com)\//i.test(
+                        trimmed,
+                    )
+                ) {
+                    return new URL(`https://${trimmed}`);
+                }
+                return null;
+            }
+        })();
+        if (!url) return null;
+        const protocol = url.protocol.toLowerCase();
+        if (protocol !== "http:" && protocol !== "https:") return null;
+        if (!isGithubHostname(url.hostname)) return null;
+
         const parts = url.pathname.split("/").filter(Boolean);
         if (parts.length < 4) return null;
 
-        let owner = parts[0]!;
-        let repo = parts[1]!;
-        let kind = parts[2]!;
-        let numStr = parts[3]!;
-
-        if (owner.toLowerCase() === "repos" && parts.length >= 5) {
-            owner = parts[1]!;
-            repo = parts[2]!;
-            kind = parts[3]!;
-            numStr = parts[4]!;
+        // API-style: /repos/<owner>/<repo>/pulls/<number>
+        if (parts[0]?.toLowerCase() === "repos") {
+            if (parts.length < 5) return null;
+            const owner = safeDecode(parts[1] ?? "");
+            const repo = stripGitSuffix(safeDecode(parts[2] ?? ""));
+            const kind = (parts[3] ?? "").toLowerCase();
+            const numStr = parts[4] ?? "";
+            if (kind !== "pull" && kind !== "pulls") return null;
+            const number = Number(numStr);
+            if (!Number.isFinite(number)) return null;
+            if (!owner || !repo) return null;
+            return {owner, repo, number};
         }
 
-        kind = kind.toLowerCase();
+        // HTML-style: /<owner>/<repo>/pull/<number>
+        const owner = safeDecode(parts[0] ?? "");
+        const repo = stripGitSuffix(safeDecode(parts[1] ?? ""));
+        const kind = (parts[2] ?? "").toLowerCase();
+        const numStr = parts[3] ?? "";
         if (kind !== "pull" && kind !== "pulls") return null;
         const number = Number(numStr);
         if (!Number.isFinite(number)) return null;
-        return {
-            owner: safeDecode(owner),
-            repo: stripGitSuffix(safeDecode(repo)),
-            number,
-        };
+        if (!owner || !repo) return null;
+        return {owner, repo, number};
     } catch {
         return null;
     }
@@ -169,27 +181,28 @@ export async function runGithubPrAutoCloseTick(
 
                     const columns =
                         await repo.listColumnsForBoard(projectId);
+                    const isReviewColumn = (c: {id: string; title?: string}) =>
+                        c.id.trim().toLowerCase() === "col-review" ||
+                        (c.title || "").trim().toLowerCase() === "review";
+                    const isDoneColumn = (c: {id: string; title?: string}) =>
+                        c.id.trim().toLowerCase() === "col-done" ||
+                        (c.title || "").trim().toLowerCase() === "done";
+
                     const reviewColumnIds = columns
-                        .filter(
-                            (c) =>
-                                (c.title || "")
-                                    .trim()
-                                    .toLowerCase() === "review",
-                        )
+                        .filter(isReviewColumn)
                         .map((c) => c.id);
                     if (reviewColumnIds.length === 0) continue;
 
-                    const hasDoneColumn = columns.some(
-                        (c) =>
-                            (c.title || "")
-                                .trim()
-                                .toLowerCase() === "done",
-                    );
-                    if (!hasDoneColumn) {
+                    const doneColumnId =
+                        columns.find(isDoneColumn)?.id ?? null;
+                    if (!doneColumnId) {
                         log.warn(
                             "github:pr-auto-close",
-                            "No Done column found; refusing to auto-close",
-                            {projectId, boardId: project.boardId},
+                            "No Done column found; refusing to auto-close (expected id col-done or title Done)",
+                            {
+                                projectId,
+                                boardId: project.boardId,
+                            },
                         );
                         status = "failed";
                         continue;
@@ -247,11 +260,10 @@ export async function runGithubPrAutoCloseTick(
                             if (pr.state !== "closed" || !pr.merged) continue;
 
                             for (const card of cardsForPr) {
-                                await taskSvc.moveCardToColumnByTitle(
-                                    projectId,
+                                await taskSvc.moveBoardCard(
                                     card.id,
-                                    "Done",
-                                    {fallbackToFirst: false},
+                                    doneColumnId,
+                                    Number.MAX_SAFE_INTEGER,
                                 );
                                 events.publish(
                                     "github.pr.merged.autoClosed",
