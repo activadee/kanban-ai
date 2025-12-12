@@ -10,6 +10,7 @@ import type {
     Todo,
     SessionCreateResponse,
     SessionPromptResponse,
+    Part,
 } from '@opencode-ai/sdk'
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
 import type {
@@ -29,7 +30,7 @@ import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../pr
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
-import {relative, basename} from 'node:path'
+import {relative} from 'node:path'
 
 const nowIso = () => new Date().toISOString()
 
@@ -295,20 +296,17 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
-        const parts: Array<{type: 'text'; text: string} | {type: 'file'; mime: string; filename?: string; url: string}> = []
         const trimmed = prompt.trim()
-        if (trimmed.length) parts.push({type: 'text', text: trimmed})
-        if (ctx.images?.length) {
-            for (const img of ctx.images) {
-                const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
-                parts.push({
-                    type: 'file',
-                    mime: img.mimeType,
-                    filename: basename(img.path),
-                    url: rel,
-                })
-            }
-        }
+        const imageRefs = ctx.images?.length
+            ? ctx.images
+                  .map((img) => {
+                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
+                      return `@${rel}`
+                  })
+                  .join('\n')
+            : ''
+        const combinedPrompt = [trimmed, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
+        const parts = combinedPrompt ? [{type: 'text' as const, text: combinedPrompt}] : []
 
         try {
             await opencode.session.prompt({
@@ -370,19 +368,16 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const parts: Array<{type: 'text'; text: string} | {type: 'file'; mime: string; filename?: string; url: string}> = []
-        if (trimmedPrompt.length) parts.push({type: 'text', text: trimmedPrompt})
-        if (ctx.images?.length) {
-            for (const img of ctx.images) {
-                const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
-                parts.push({
-                    type: 'file',
-                    mime: img.mimeType,
-                    filename: basename(img.path),
-                    url: rel,
-                })
-            }
-        }
+        const imageRefs = ctx.images?.length
+            ? ctx.images
+                  .map((img) => {
+                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
+                      return `@${rel}`
+                  })
+                  .join('\n')
+            : ''
+        const combinedPrompt = [trimmedPrompt, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
+        const parts = combinedPrompt ? [{type: 'text' as const, text: combinedPrompt}] : []
 
         try {
             await opencode.session.prompt({
@@ -392,7 +387,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     agent: profile.agent,
                     model,
                     system,
-                    tools: undefined,
                     parts,
                 },
                 signal,
@@ -944,7 +938,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             if (grouper) {
                 try {
                     grouper.flush(ctx)
-                } catch {
+                } catch(err) {
+                  console.error('[opencode] error flushing grouper')
+                  console.error(err)
                     // ignore
                 }
                 this.groupers.delete(ctx.attemptId)
