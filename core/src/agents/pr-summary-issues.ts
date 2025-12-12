@@ -99,7 +99,7 @@ export function extractGithubIssueAutoCloseNumbers(body: string): Set<number> {
 export function appendGithubIssueAutoCloseReferencesForRefs(
     body: string,
     refs: GithubIssueRef[],
-    opts?: {compareByNumber?: boolean},
+    opts?: {compareByNumber?: boolean; targetRepo?: {owner: string; repo: string} | null},
 ): string {
     const normalized = normalizeIssueRefs(refs)
     if (normalized.length === 0) return body
@@ -110,7 +110,19 @@ export function appendGithubIssueAutoCloseReferencesForRefs(
         missing = normalized.filter((ref) => !existingNumbers.has(ref.issueNumber))
     } else {
         const existingKeys = extractGithubIssueAutoCloseRefs(body)
-        missing = normalized.filter((ref) => !existingKeys.has(issueRefKey(ref)))
+        const targetOwner = opts?.targetRepo?.owner.trim().toLowerCase() || null
+        const targetRepoName = opts?.targetRepo?.repo.trim().toLowerCase() || null
+        const targetQualifiedPrefix = targetOwner && targetRepoName ? `${targetOwner}/${targetRepoName}#` : null
+
+        missing = normalized.filter((ref) => {
+            const key = issueRefKey(ref)
+            if (existingKeys.has(key)) return false
+            if (targetQualifiedPrefix && key.startsWith('#')) {
+                const qualifiedKey = `${targetQualifiedPrefix}${ref.issueNumber}`
+                if (existingKeys.has(qualifiedKey)) return false
+            }
+            return true
+        })
     }
 
     if (missing.length === 0) return body

@@ -81,7 +81,7 @@ async function resolveProjectGithubOwnerRepo(project: ProjectSummary): Promise<{
     }
 
     const repoUrl =
-        typeof (project as any).repositoryUrl === 'string' ? (project as any).repositoryUrl.trim() : ''
+        typeof project.repositoryUrl === 'string' ? project.repositoryUrl.trim() : ''
     if (repoUrl) {
         const parsed = parseGithubOwnerRepo(repoUrl)
         if (parsed) return parsed
@@ -290,7 +290,8 @@ export async function agentSummarizePullRequest(
     if (issueRefs.length === 0) return summary
 
     const body = appendGithubIssueAutoCloseReferencesForRefs(summary.body, issueRefs, {
-        compareByNumber: Boolean(targetRepo),
+        compareByNumber: false,
+        targetRepo,
     })
     if (body === summary.body) return summary
     return {...summary, body}

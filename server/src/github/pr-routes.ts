@@ -26,8 +26,8 @@ const listPrQuerySchema = z.object({
 const createPrSummarySchema = z.object({
     base: z.string().min(1).optional(),
     branch: z.string().min(1).optional(),
-    attemptId: z.string().min(1).optional(),
-    cardId: z.string().min(1).optional(),
+    attemptId: z.string().trim().min(1).optional(),
+    cardId: z.string().trim().min(1).optional(),
     agent: z.string().optional(),
     profileId: z.string().optional(),
 })
@@ -86,12 +86,15 @@ export function createGithubProjectRouter() {
                     })
                 }
 
-                const attempt = attemptId ? await attempts.getAttempt(attemptId) : null
+                const trimmedAttemptId = attemptId?.trim() || undefined
+                const trimmedCardId = cardId?.trim() || undefined
+
+                const attempt = trimmedAttemptId ? await attempts.getAttempt(trimmedAttemptId) : null
                 if (attempt && attempt.boardId !== projectId) {
                     return problemJson(c, {status: 400, detail: 'Attempt does not belong to this project'})
                 }
 
-                const explicitCardId = cardId?.trim() || ''
+                const explicitCardId = trimmedCardId || ''
                 const attemptCardId =
                     attempt && typeof (attempt as any).cardId === 'string'
                         ? (attempt as any).cardId.trim()
@@ -103,10 +106,11 @@ export function createGithubProjectRouter() {
                     })
                 }
 
-                const card = cardId
-                    ? await projectsRepo.getCardById(cardId)
-                    : attempt?.cardId
-                        ? await projectsRepo.getCardById(attempt.cardId)
+                const attemptCardIdForLookup = attemptCardId || (attempt?.cardId?.trim?.() || attempt?.cardId || '')
+                const card = trimmedCardId
+                    ? await projectsRepo.getCardById(trimmedCardId)
+                    : attemptCardIdForLookup
+                        ? await projectsRepo.getCardById(attemptCardIdForLookup)
                         : null
                 let cardBoardId: string | null = null
                 if (card) {
@@ -128,8 +132,8 @@ export function createGithubProjectRouter() {
                     headBranch,
                     agentKey: agent,
                     profileId,
-                    attemptId,
-                    cardId,
+                    attemptId: trimmedAttemptId,
+                    cardId: trimmedCardId,
                     signal: c.req.raw.signal,
                 })
 

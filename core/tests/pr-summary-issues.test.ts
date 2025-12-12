@@ -58,4 +58,15 @@ describe('agents/pr-summary-issues', () => {
             ]),
         ).toBe('Body\n\ncloses acme/repo#1, fixes acme/repo#2')
     })
+
+    it('does not suppress target repo closes when body has other-repo qualified refs', () => {
+        const body = 'Body\n\ncloses other/repo#1'
+        expect(
+            appendGithubIssueAutoCloseReferencesForRefs(
+                body,
+                [{issueNumber: 1}],
+                {targetRepo: {owner: 'acme', repo: 'repo'}},
+            ),
+        ).toBe('Body\n\ncloses other/repo#1\n\ncloses #1')
+    })
 })
