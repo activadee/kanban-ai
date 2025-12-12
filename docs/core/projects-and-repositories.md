@@ -64,6 +64,12 @@ that repository:
     auto-commit against the Attempt worktree.
   - `autoPushOnAutocommit` – when enabled in combination with the above, the auto-commit handler also pushes the branch
     to the preferred remote.
+  - `allowScriptsToFail` – a global toggle that treats automation script failures (copy/setup/dev/cleanup) as warnings, so
+    agents can still start even when those stages fail.
+  - Per-script overrides (`allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`,
+    `allowCleanupScriptToFail`) let you mark individual stages as warning-only even when the global toggle remains off,
+    and they surface as per-stage checkboxes in the Project Settings form. Each override records an `allowedFailure`
+    marker alongside the automation event while keeping the Attempt running.
 
 - **GitHub Issue Sync**
   - Enables a scheduled background sync that keeps board cards aligned with GitHub issues from the project's origin
@@ -86,7 +92,7 @@ Project-related APIs are rooted under `/api/v1`:
 - `POST /projects` – create a project (existing or blank repository).
 - `GET /projects/:projectId` – fetch a project and its board metadata.
 - `GET /projects/:projectId/settings` – load per-project settings (ensuring defaults).
-- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags). Unspecified mapping keys keep existing/fallback behavior.
+- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags, and the failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`). Unspecified mapping keys keep existing/fallback behavior.
 - `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card’s title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
 - `GET /projects/:projectId/github/origin` – inspect GitHub origin information for the project repository.
 
