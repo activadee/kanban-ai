@@ -35,6 +35,49 @@ import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} fro
 
 type CodexInstallation = { executablePath: string }
 const execFileAsync = promisify(execFile)
+const nowIso = () => new Date().toISOString()
+
+const normalizeForLog = (value: string) => value.replace(/\s+/g, ' ').trim()
+
+const redactSecrets = (value: string) => {
+    let out = value
+    // Common "VAR=secret" patterns.
+    out = out.replace(/\b(OPENAI_API_KEY|CODEX_API_KEY|OPENCODE_API_KEY|GITHUB_TOKEN)=\S+/g, '$1=<redacted>')
+    // Authorization headers (best-effort).
+    out = out.replace(/\bAuthorization\s*:\s*(Bearer|Token)\s+([^\s"']+)/gi, (_m, scheme: string) => {
+        return `Authorization: ${scheme} <redacted>`
+    })
+    out = out.replace(/\bAuthorization\s*:\s*(token)\s+([^\s"']+)/gi, () => {
+        return 'Authorization: token <redacted>'
+    })
+    // GitHub PAT formats (best-effort).
+    out = out.replace(/\bgithub_pat_[a-zA-Z0-9_]{10,}\b/g, 'github_pat_<redacted>')
+    out = out.replace(/\bgh[pous]_[a-zA-Z0-9_]{10,}\b/g, 'ghp_<redacted>')
+    // Common OpenAI-style API keys (best-effort).
+    out = out.replace(/\bsk-[a-zA-Z0-9_-]{10,}\b/g, 'sk-<redacted>')
+    return out
+}
+
+const previewForLog = (value: string, maxLen: number) => {
+    // Avoid O(n) work for very large strings: slice first, then normalize/redact.
+    const prefixLen = Math.max(0, maxLen + 64)
+    const prefix = value.slice(0, prefixLen)
+    const cleaned = redactSecrets(normalizeForLog(prefix))
+    const truncated = value.length > maxLen
+    if (cleaned.length <= maxLen) return truncated ? cleaned + '...' : cleaned
+    return cleaned.slice(0, maxLen) + '...'
+}
+
+const summarizeUnknown = (value: unknown): {kind: string; keys?: string[]; length?: number} => {
+    if (value === null) return {kind: 'null'}
+    if (value === undefined) return {kind: 'undefined'}
+    if (typeof value === 'string') return {kind: 'string', length: value.length}
+    if (typeof value === 'number') return {kind: 'number'}
+    if (typeof value === 'boolean') return {kind: 'boolean'}
+    if (Array.isArray(value)) return {kind: 'array', length: value.length}
+    if (typeof value === 'object') return {kind: 'object', keys: Object.keys(value as Record<string, unknown>).slice(0, 12)}
+    return {kind: typeof value}
+}
 
 class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     key = 'CODEX'
@@ -45,6 +88,182 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
 
     private groupers = new Map<string, StreamGrouper>()
     private execOutputs = new Map<string, string>()
+
+    private safeStringify(value: unknown): string {
+        try {
+            const seen = new WeakSet<object>()
+            return JSON.stringify(value, (_key, val) => {
+                if (typeof val === 'bigint') return String(val)
+                if (typeof val === 'function') return '[Function]'
+                if (val && typeof val === 'object') {
+                    if (seen.has(val)) return '[Circular]'
+                    seen.add(val)
+                }
+                return val
+            })
+        } catch (err) {
+            return JSON.stringify({
+                event: 'debug.serialize_failed',
+                error: String(err),
+                payload: summarizeUnknown(value),
+            })
+        }
+    }
+
+    private debug(
+        profile: CodexProfile,
+        ctx: AgentContext,
+        payload: Record<string, unknown> | (() => Record<string, unknown>) | string | (() => string),
+    ) {
+        if (!profile.debug) return
+        const computed = typeof payload === 'function' ? payload() : payload
+        if (typeof computed === 'string') {
+            ctx.emit({type: 'log', level: 'info', message: `[codex:debug] ${computed}`})
+            return
+        }
+        const base = {
+            ts: nowIso(),
+            attemptId: ctx.attemptId,
+            boardId: ctx.boardId,
+            cardId: ctx.cardId,
+            profileId: ctx.profileId ?? null,
+            ...computed,
+        }
+        const serialized = this.safeStringify(base)
+        ctx.emit({type: 'log', level: 'info', message: `[codex:debug] ${serialized}`})
+    }
+
+    private summarizeThreadEvent(ev: ThreadEvent): Record<string, unknown> {
+        const base: Record<string, unknown> = {event: ev.type}
+        if (ev.type === 'thread.started') {
+            return {...base, thread_id: ev.thread_id}
+        }
+        if (ev.type === 'turn.started') {
+            return base
+        }
+        if (ev.type === 'turn.completed') {
+            return {
+                ...base,
+                usage: {
+                    input_tokens: ev.usage.input_tokens,
+                    cached_input_tokens: ev.usage.cached_input_tokens,
+                    output_tokens: ev.usage.output_tokens,
+                },
+            }
+        }
+        if (ev.type === 'turn.failed') {
+            return {...base, error: {message: ev.error.message}}
+        }
+        if (ev.type === 'error') {
+            return {...base, error: {message: ev.message}}
+        }
+
+        if (ev.type === 'item.started' || ev.type === 'item.updated' || ev.type === 'item.completed') {
+            const item = ev.item
+            const baseItem: Record<string, unknown> = {id: item.id, type: item.type}
+            const common: Record<string, unknown> = {
+                ...base,
+                item: baseItem,
+            }
+
+            switch (item.type) {
+                case 'agent_message':
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            text_len: item.text.length,
+                            text_preview: previewForLog(item.text, 120),
+                        },
+                    }
+                case 'reasoning':
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            text_len: item.text.length,
+                        },
+                    }
+                case 'command_execution':
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            status: item.status,
+                            exit_code: item.exit_code ?? null,
+                            command_preview: previewForLog(item.command, 200),
+                            aggregated_output_len: (item.aggregated_output ?? '').length,
+                        },
+                    }
+                case 'mcp_tool_call':
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            status: item.status,
+                            server: item.server,
+                            tool: item.tool,
+                            arguments: summarizeUnknown(item.arguments),
+                            result: item.result
+                                ? {
+                                      content_len: Array.isArray(item.result.content) ? item.result.content.length : 0,
+                                      structured_content: summarizeUnknown(item.result.structured_content),
+                                  }
+                                : null,
+                            error: item.error ? {message: previewForLog(item.error.message, 200)} : null,
+                        },
+                    }
+                case 'file_change': {
+                    const max = 20
+                    const changes = (item.changes ?? []).slice(0, max).map((c) => ({path: c.path, kind: c.kind}))
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            status: item.status,
+                            changes_count: (item.changes ?? []).length,
+                            changes,
+                            changes_truncated: (item.changes ?? []).length > max,
+                        },
+                    }
+                }
+                case 'web_search':
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            query_len: item.query.length,
+                            query_preview: previewForLog(item.query, 160),
+                        },
+                    }
+                case 'todo_list': {
+                    const items = item.items ?? []
+                    const completed = items.filter((t) => Boolean((t as any).completed)).length
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            items_total: items.length,
+                            items_completed: completed,
+                        },
+                    }
+                }
+                case 'error':
+                    return {
+                        ...common,
+                        item: {
+                            ...baseItem,
+                            message_len: item.message.length,
+                            message_preview: previewForLog(item.message, 200),
+                        },
+                    }
+                default:
+                    return common
+            }
+        }
+
+        return base
+    }
 
     private async verifyExecutable(path: string): Promise<string> {
         const candidate = path.trim()
@@ -88,7 +307,7 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
 
     private threadOptions(profile: CodexProfile, ctx: AgentContext): ThreadOptions {
         const reasoningEffort = profile.modelReasoningEffort
-        return {
+        const options: ThreadOptions = {
             model: profile.model,
             sandboxMode: profile.sandbox && profile.sandbox !== 'auto' ? profile.sandbox : undefined,
             workingDirectory: ctx.worktreePath,
@@ -99,6 +318,19 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             approvalPolicy: profile.approvalPolicy,
             additionalDirectories: profile.additionalDirectories,
         }
+        this.debug(profile, ctx, () => ({
+            event: 'thread.options',
+            model: options.model ?? null,
+            sandboxMode: options.sandboxMode ?? 'auto',
+            workingDirectory: options.workingDirectory,
+            skipGitRepoCheck: options.skipGitRepoCheck ?? null,
+            modelReasoningEffort: options.modelReasoningEffort ?? null,
+            networkAccessEnabled: options.networkAccessEnabled ?? null,
+            webSearchEnabled: options.webSearchEnabled ?? null,
+            approvalPolicy: options.approvalPolicy ?? null,
+            additionalDirectories_count: Array.isArray(options.additionalDirectories) ? options.additionalDirectories.length : 0,
+        }))
+        return options
     }
 
     protected async createClient(profile: CodexProfile, _ctx: AgentContext, installation: CodexInstallation) {
@@ -117,6 +349,10 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         _installation: CodexInstallation,
     ) {
         const codex = client as Codex
+        this.debug(profile, ctx, () => ({
+            event: 'session.start',
+            prompt_len: typeof prompt === 'string' ? prompt.length : null,
+        }))
         const thread = codex.startThread(this.threadOptions(profile, ctx))
         const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
@@ -132,6 +368,11 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         _installation: CodexInstallation,
     ) {
         const codex = client as Codex
+        this.debug(profile, ctx, () => ({
+            event: 'session.resume',
+            sessionId,
+            prompt_len: typeof prompt === 'string' ? prompt.length : null,
+        }))
         const thread = codex.resumeThread(sessionId, this.threadOptions(profile, ctx))
         const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
@@ -291,9 +532,15 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     protected handleEvent(event: unknown, ctx: AgentContext, profile: CodexProfile): void {
         if (!event || typeof event !== 'object' || typeof (event as { type?: unknown }).type !== 'string') return
         const ev = event as ThreadEvent
+        this.debug(profile, ctx, () => this.summarizeThreadEvent(ev))
         if (ev.type === 'thread.started') {
             ctx.emit({type: 'log', level: 'info', message: `[codex] thread ${ev.thread_id}`})
             ctx.emit({type: 'session', id: ev.thread_id})
+            return
+        }
+        if (ev.type === 'error') {
+            ctx.emit({type: 'log', level: 'error', message: `[codex] sdk error: ${ev.message}`})
+            ctx.emit({type: 'conversation', item: {type: 'error', timestamp: nowIso(), text: ev.message}})
             return
         }
         if (ev.type === 'turn.failed') {
