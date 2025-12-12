@@ -1,3 +1,10 @@
+## [0.18.0](https://github.com/activadee/kanban-ai/compare/v0.17.0...v0.18.0) (2025-12-12)
+
+### Features
+
+* allow scripts to fail ([#275](https://github.com/activadee/kanban-ai/issues/275)) ([ec8dfae](https://github.com/activadee/kanban-ai/commit/ec8dfae7a3fb56f0070e17c5c7484cc5bab08c54))
+* enhance GitHub sync with issue export on ticket creation ([#276](https://github.com/activadee/kanban-ai/issues/276)) ([b90e08c](https://github.com/activadee/kanban-ai/commit/b90e08cd17402b0046e7bfd03b8ebad60a6670b3))
+
 ## [0.17.0](https://github.com/activadee/kanban-ai/compare/v0.16.1...v0.17.0) (2025-12-12)
 
 ### Features
