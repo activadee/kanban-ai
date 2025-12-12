@@ -8,6 +8,7 @@ import {useGithubIssueStats} from '@/hooks/board'
 
 type GithubIssueSyncSectionProps = {
     projectId: string;
+    boardId: string;
     githubIssueSyncEnabled: boolean;
     githubIssueSyncState: 'open' | 'all' | 'closed';
     githubIssueSyncIntervalMinutes: number;
@@ -22,6 +23,7 @@ type GithubIssueSyncSectionProps = {
 
 export function GithubIssueSyncSection({
                                            projectId,
+                                           boardId,
                                            githubIssueSyncEnabled,
                                            githubIssueSyncState,
                                            githubIssueSyncIntervalMinutes,
@@ -30,7 +32,7 @@ export function GithubIssueSyncSection({
                                        }: GithubIssueSyncSectionProps) {
     const githubCheckQuery = useGithubAuthStatus()
     const originQuery = useProjectGithubOrigin(projectId)
-    const statsQuery = useGithubIssueStats(projectId, {
+    const statsQuery = useGithubIssueStats(boardId, {
         enabled: githubCheckQuery.data?.status === 'valid' && Boolean(originQuery.data?.owner && originQuery.data?.repo),
         staleTime: 30_000,
     })

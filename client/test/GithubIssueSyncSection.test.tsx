@@ -39,6 +39,7 @@ describe("GithubIssueSyncSection", () => {
         render(
             <GithubIssueSyncSection
                 projectId="proj-1"
+                boardId="proj-1"
                 githubIssueSyncEnabled={false}
                 githubIssueSyncState="open"
                 githubIssueSyncIntervalMinutes={15}
@@ -65,6 +66,7 @@ describe("GithubIssueSyncSection", () => {
         render(
             <GithubIssueSyncSection
                 projectId="proj-1"
+                boardId="proj-1"
                 githubIssueSyncEnabled={false}
                 githubIssueSyncState="open"
                 githubIssueSyncIntervalMinutes={15}

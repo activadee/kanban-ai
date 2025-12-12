@@ -235,6 +235,7 @@ export function ProjectSettingsPanel({
 
                                 <GithubIssueSyncSection
                                     projectId={projectId}
+                                    boardId={project?.boardId ?? projectId}
                                     githubIssueSyncEnabled={form.githubIssueSyncEnabled}
                                     githubIssueSyncState={form.githubIssueSyncState}
                                     githubIssueSyncIntervalMinutes={form.githubIssueSyncIntervalMinutes}
