@@ -9,6 +9,7 @@ import {EditorStep} from './OnboardingPage/steps/EditorStep'
 import {GitStep} from './OnboardingPage/steps/GitStep'
 import {GithubDeviceFlowStep} from './OnboardingPage/steps/GithubDeviceFlowStep'
 import {SummaryStep} from './OnboardingPage/steps/SummaryStep'
+import {PageHeader} from '@/components/layout/PageHeader'
 
 export function OnboardingPage() {
     const {state, actions} = useOnboardingState()
@@ -97,23 +98,23 @@ export function OnboardingPage() {
             </aside>
 
             <div className="flex-1">
-                <header className="border-b border-border/60 bg-card/60 px-6 py-4 backdrop-blur">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">Onboarding</p>
-                            <h1 className="text-xl font-semibold text-foreground">{stepMeta.title}</h1>
-                            <p className="text-sm text-muted-foreground">{stepMeta.description}</p>
+                <PageHeader
+                    kicker="Onboarding"
+                    title={stepMeta.title}
+                    description={
+                        <>
+                            <p>{stepMeta.description}</p>
                             {state.onboardingCompleted ? (
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                <p className="mt-1 text-xs">
                                     You previously completed onboarding. You can revisit steps and save updates here.
                                 </p>
                             ) : null}
-                        </div>
-                        <Badge variant="secondary">{currentStep + 1} / {stepCount}</Badge>
-                    </div>
-                </header>
+                        </>
+                    }
+                    actions={<Badge variant="secondary">{currentStep + 1} / {stepCount}</Badge>}
+                />
 
-                <main className="mx-auto w-full max-w-5xl px-6 py-8">
+                <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
                     <div className="rounded-xl border border-border/70 bg-card/70 p-6 shadow-sm backdrop-blur">
                         {stepId === 'welcome' ? (
                             <IntroStep appCredForm={state.appCredForm} setAppCredForm={actions.setAppCredForm}/>

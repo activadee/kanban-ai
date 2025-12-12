@@ -18,6 +18,7 @@ import {ProjectHealthPanel} from '@/pages/dashboard/ProjectHealthPanel'
 import {AgentsSystemStatusPanel} from '@/pages/dashboard/AgentsSystemStatusPanel'
 import {RecentAttemptHistoryPanel} from '@/pages/dashboard/RecentAttemptHistoryPanel'
 import {formatSuccessRate} from '@/pages/dashboard/formatters'
+import {PageHeader} from '@/components/layout/PageHeader'
 import {
     SectionEmptyState,
     SectionErrorBanner,
@@ -175,57 +176,51 @@ export function DashboardPage() {
     }
 
     return (
-        <div className="flex h-full flex-col overflow-auto bg-background px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
-            <div className="w-full space-y-6">
-                <header className="flex flex-col gap-4 border-b border-border/60 pb-4">
-                    <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <h1 className="text-2xl font-semibold text-foreground">Mission Control</h1>
-                            <VersionIndicator/>
-                        </div>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                            Centralize agent activity, project health, and system status in one dashboard.
-                        </p>
+        <div className="flex h-full flex-col overflow-auto bg-background">
+            <PageHeader
+                title="Mission Control"
+                titleAccessory={<VersionIndicator/>}
+                description="Centralize agent activity, project health, and system status in one dashboard."
+            >
+                <Button asChild size="sm">
+                    <Link to={getProjectsPath()}>View projects</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                    <Link to={getSettingsPath()}>App settings</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                    <Link to={getAgentSettingsPath('CODEX')}>Manage agents</Link>
+                </Button>
+                <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        <span>Time range</span>
+                        <Select
+                            value={effectiveTimeRangePreset}
+                            onValueChange={(value) => setTimeRangePreset(value as DashboardTimeRangePreset)}
+                        >
+                            <SelectTrigger size="sm">
+                                <SelectValue placeholder="Select range"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {timeRangeOptions.map((option) => (
+                                    <SelectItem key={option.preset} value={option.preset}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Button asChild size="sm">
-                            <Link to={getProjectsPath()}>View projects</Link>
-                        </Button>
-                        <Button asChild size="sm" variant="outline">
-                            <Link to={getSettingsPath()}>App settings</Link>
-                        </Button>
-                        <Button asChild size="sm" variant="outline">
-                            <Link to={getAgentSettingsPath('CODEX')}>Manage agents</Link>
-                        </Button>
-                        <div className="ml-auto flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                                <span>Time range</span>
-                                <Select
-                                    value={effectiveTimeRangePreset}
-                                    onValueChange={(value) => setTimeRangePreset(value as DashboardTimeRangePreset)}
-                                >
-                                    <SelectTrigger size="sm">
-                                        <SelectValue placeholder="Select range"/>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {timeRangeOptions.map((option) => (
-                                            <SelectItem key={option.preset} value={option.preset}>
-                                                {option.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <span>
-                                {overview?.generatedAt || overview?.updatedAt
-                                    ? `Updated ${relativeTimeFromNow(overview.generatedAt ?? overview.updatedAt)}`
-                                    : dashboardQuery.isFetching
-                                        ? 'Updating…'
-                                        : ''}
-                            </span>
-                        </div>
-                    </div>
-                </header>
+                    <span>
+                        {overview?.generatedAt || overview?.updatedAt
+                            ? `Updated ${relativeTimeFromNow(overview.generatedAt ?? overview.updatedAt)}`
+                            : dashboardQuery.isFetching
+                                ? 'Updating…'
+                                : ''}
+                    </span>
+                </div>
+            </PageHeader>
+
+            <div className="w-full space-y-6 px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
 
                 {dashboardQuery.isError ? (
                     <SectionErrorBanner

@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PageHeader > matches the snapshot (visual regression) 1`] = `
+<header
+  class="border-b border-border/60 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50"
+  data-component="PageHeader"
+  data-testid="page-header"
+>
+  <div
+    class="mx-auto flex w-full flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8 max-w-5xl"
+  >
+    <div
+      class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
+    >
+      <div
+        class="min-w-0 space-y-1"
+      >
+        <p
+          class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        >
+          Kicker
+        </p>
+        <div
+          class="flex flex-wrap items-center gap-3"
+        >
+          <h1
+            class="text-2xl font-semibold leading-tight text-foreground"
+          >
+            Snapshot Title
+          </h1>
+        </div>
+        <div
+          class="text-sm text-muted-foreground"
+        >
+          Snapshot description
+        </div>
+      </div>
+      <div
+        class="flex flex-wrap items-center gap-2"
+      >
+        <button
+          type="button"
+        >
+          Action
+        </button>
+      </div>
+    </div>
+    <div
+      class="flex flex-wrap items-center gap-2"
+    >
+      <span>
+        Footer
+      </span>
+    </div>
+  </div>
+</header>
+`;
