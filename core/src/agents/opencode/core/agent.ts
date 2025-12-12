@@ -295,20 +295,49 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
               ]
             : []
 
-        await opencode.session.prompt({
-            path: {id: session.id},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        try {
+            await opencode.session.prompt({
+                path: {id: session.id},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })
+        } catch (err) {
+            if (imageRefs) {
+                ctx.emit({
+                    type: 'log',
+                    level: 'warn',
+                    message: `[opencode] image attachments failed; retrying without images: ${String(err)}`,
+                })
+                const fallbackParts = prompt.trim()
+                    ? [{type: 'text' as const, text: prompt.trim()}]
+                    : []
+                await opencode.session.prompt({
+                    path: {id: session.id},
+                    query: {directory: installation.directory},
+                    body: {
+                        agent: profile.agent,
+                        model,
+                        system,
+                        tools: undefined,
+                        parts: fallbackParts,
+                    },
+                    signal,
+                    responseStyle: 'data',
+                    throwOnError: true,
+                })
+            } else {
+                throw err
+            }
+        }
 
         return {stream, sessionId: session.id}
     }
@@ -346,20 +375,49 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
               ]
             : []
 
-        await opencode.session.prompt({
-            path: {id: sessionId},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        try {
+            await opencode.session.prompt({
+                path: {id: sessionId},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })
+        } catch (err) {
+            if (imageRefs) {
+                ctx.emit({
+                    type: 'log',
+                    level: 'warn',
+                    message: `[opencode] image attachments failed; retrying without images: ${String(err)}`,
+                })
+                const fallbackParts = trimmedPrompt
+                    ? [{type: 'text' as const, text: trimmedPrompt}]
+                    : []
+                await opencode.session.prompt({
+                    path: {id: sessionId},
+                    query: {directory: installation.directory},
+                    body: {
+                        agent: profile.agent,
+                        model,
+                        system,
+                        tools: undefined,
+                        parts: fallbackParts,
+                    },
+                    signal,
+                    responseStyle: 'data',
+                    throwOnError: true,
+                })
+            } else {
+                throw err
+            }
+        }
 
         return {stream, sessionId}
     }
