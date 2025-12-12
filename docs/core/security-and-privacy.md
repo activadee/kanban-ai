@@ -59,7 +59,7 @@ By default, the server and CLI make outbound calls to:
   - Device Flow endpoints during OAuth.
   - REST APIs for:
     - User info and repo discovery.
-    - Issue import (when you use “Import GitHub issues”).
+    - Issue import (when you use “Import GitHub issues”) and issue export/update (when the Create GitHub Issue checkbox creates or keeps a GitHub issue in sync with a card).
     - Pull request creation and inspection.
   - Release APIs when the CLI checks for or downloads a new binary.
 
