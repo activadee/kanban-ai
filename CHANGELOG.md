@@ -1,3 +1,17 @@
+## [0.17.0](https://github.com/activadee/kanban-ai/compare/v0.16.1...v0.17.0) (2025-12-12)
+
+### Features
+
+* **core:** add OPENCODE inline agent for PR ticket enhancement ([#270](https://github.com/activadee/kanban-ai/issues/270)) ([38c32a1](https://github.com/activadee/kanban-ai/commit/38c32a12c7977afaec0fbd3bfa065c42c1da5df0))
+* support `xhigh` reasoning level in SDK ([#269](https://github.com/activadee/kanban-ai/issues/269)) ([525bc8f](https://github.com/activadee/kanban-ai/commit/525bc8f1b6f102ec3da490087248ce5898f381ca))
+
+### Build
+
+* **deps:** bump @openai/codex-sdk from 0.69.0 to 0.71.0 ([#272](https://github.com/activadee/kanban-ai/issues/272)) ([6b24fe3](https://github.com/activadee/kanban-ai/commit/6b24fe3a41b5d740aae4c8de86f97e9aa2097a4f))
+* **deps:** bump @openai/codex-sdk from 0.69.0 to 0.71.0 in /core ([#274](https://github.com/activadee/kanban-ai/issues/274)) ([6260a19](https://github.com/activadee/kanban-ai/commit/6260a1947fc414be0248affd0a3a277f6038607e))
+* **deps:** bump lucide-react from 0.559.0 to 0.560.0 ([#273](https://github.com/activadee/kanban-ai/issues/273)) ([e84e235](https://github.com/activadee/kanban-ai/commit/e84e235f1ed8dea0289e236f29db44a0fedd5ef8))
+* **deps:** bump lucide-react from 0.559.0 to 0.560.0 in /client ([#271](https://github.com/activadee/kanban-ai/issues/271)) ([ba5f8c2](https://github.com/activadee/kanban-ai/commit/ba5f8c2c6e359fe297ed29bd8ce4d326d05caeef))
+
 ## [0.16.1](https://github.com/activadee/kanban-ai/compare/v0.16.0...v0.16.1) (2025-12-11)
 
 ### Bug Fixes
