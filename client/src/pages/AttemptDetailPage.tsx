@@ -3,6 +3,7 @@ import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Button} from '@/components/ui/button'
 import {StatusBadge} from '@/components/common/StatusBadge'
 import {useAttempt, useAttemptLogs, useRelativeTimeFormatter} from '@/hooks'
+import {PageHeader} from '@/components/layout/PageHeader'
 
 export function AttemptDetailPage() {
     const {attemptId} = useParams<{ attemptId: string }>()
@@ -45,30 +46,30 @@ export function AttemptDetailPage() {
     const updatedLabel = relativeTimeFromNow(attempt.updatedAt ?? attempt.createdAt ?? null)
 
     return (
-        <div className="flex h-full flex-col overflow-auto bg-background px-8 py-6">
-            <div className="mx-auto w-full max-w-5xl space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl font-semibold text-foreground">
-                            Attempt {attempt.id.slice(0, 8)}
-                        </h1>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Status{' '}
-                            <StatusBadge status={attempt.status} className="align-middle"/>
-                            <span className="ml-2">
-                                · Updated {updatedLabel}
-                            </span>
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex h-full flex-col overflow-auto bg-background">
+            <PageHeader
+                title={`Attempt ${attempt.id.slice(0, 8)}`}
+                description={
+                    <>
+                        Status{' '}
+                        <StatusBadge status={attempt.status} className="align-middle"/>
+                        <span className="ml-2">· Updated {updatedLabel}</span>
+                    </>
+                }
+                actions={
+                    <>
                         <Button asChild size="sm" variant="outline">
                             <Link to="/dashboard">Back to dashboard</Link>
                         </Button>
                         <Button asChild size="sm" variant="outline">
                             <Link to={`/projects/${attempt.boardId}`}>Open board</Link>
                         </Button>
-                    </div>
-                </div>
+                    </>
+                }
+                containerClassName="max-w-5xl"
+            />
+
+            <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
 
                 <Card className="border-border/70 bg-card/60">
                     <CardHeader>
