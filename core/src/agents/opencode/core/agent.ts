@@ -29,6 +29,7 @@ import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../pr
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
+import {relative} from 'node:path'
 
 const nowIso = () => new Date().toISOString()
 
@@ -276,11 +277,20 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
-        const parts = prompt
+        const imageRefs = ctx.images?.length
+            ? ctx.images
+                  .map((img) => {
+                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
+                      return `@${rel}`
+                  })
+                  .join('\n')
+            : ''
+        const combinedPrompt = [prompt, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
+        const parts = combinedPrompt
             ? [
                   {
                       type: 'text' as const,
-                      text: prompt,
+                      text: combinedPrompt,
                   },
               ]
             : []
@@ -318,11 +328,20 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const parts = trimmedPrompt
+        const imageRefs = ctx.images?.length
+            ? ctx.images
+                  .map((img) => {
+                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
+                      return `@${rel}`
+                  })
+                  .join('\n')
+            : ''
+        const combinedPrompt = [trimmedPrompt, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
+        const parts = combinedPrompt
             ? [
                   {
                       type: 'text' as const,
-                      text: trimmedPrompt,
+                      text: combinedPrompt,
                   },
               ]
             : []

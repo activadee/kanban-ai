@@ -66,7 +66,7 @@ Last updated: 2025-11-28
   - Can include pasted or drag‑dropped image attachments from the UI.
     - Supported formats: PNG, JPEG, WebP.
     - Limits: up to 4 images per follow‑up, 5MB each.
-    - Vision‑capable agents (e.g., Codex) receive images for processing; text‑only agents ignore them gracefully.
+    - Vision‑capable agents (e.g., Codex, OpenCode when using a vision model) receive images for processing; text‑only agents ignore them gracefully.
 - Stopping Attempts:
   - `PATCH /attempts/:id` with `status: "stopped"` triggers `attempt.stopped`.
   - The runner and listeners update status so the UI shows the Attempt as stopped.
