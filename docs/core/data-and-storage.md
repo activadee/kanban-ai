@@ -38,6 +38,15 @@ summarizes where data lives and how it is managed.
     - A card is moved to **Done** and its Attempt is finished (Tasks cleanup listener).
     - A project is deleted (Filesystem listener purges worktrees for that repo).
 
+## Attachments cache
+
+- When you paste or drop an image into the follow-up UI, KanbanAI persists the resulting PNG/JPEG/WebP data under
+  `<attempt-worktree>/.kanbanai/attachments/<attemptId>/`.
+- Files saved here are referenced from conversation history via `/api/v1/attempts/:id/attachments/<fileName>`,
+  which keeps the database/event payloads small and avoids storing raw base64 blobs.
+- The helper in `core/src/attempts/attachments-store.ts` also ensures `.kanbanai/attachments` is added to
+  `<worktree>/.git/info/exclude` so no attempt-specific files are accidentally committed.
+
 ## Static assets
 
 - In development:
