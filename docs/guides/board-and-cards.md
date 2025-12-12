@@ -127,3 +127,12 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
 - After import:
   - The board state is invalidated and re-fetched.
   - New cards appear live thanks to WebSocket updates.
+
+## Auto-closing Review cards
+
+- When a project has GitHub Issue Sync enabled and GitHub is connected, you can toggle **Auto-close tickets on PR merge** in the
+  same settings panel to move Review cards into Done automatically once their linked PRs are merged.
+- The server runs a lightweight scheduler that inspects Review cards with a `prUrl`, checks whether the PR is closed + merged,
+  and quietly advances the card to Done so you do not have to move it manually.
+- To keep a specific card in Review even after the PR is merged, set its `disableAutoCloseOnPRMerge` flag so the scheduler skips
+  that card while still auto-closing others.
