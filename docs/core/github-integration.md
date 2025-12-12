@@ -79,6 +79,8 @@ Additional configuration endpoints:
   - Start/end of each scheduled sync run with project + repo context.
   - Counts of new/updated/skipped issues.
   - Per-issue logging when cards are created or updated.
+- The Project Settings UI also surfaces aggregated counts of linked issues (`imported`, `exported`, `total`) by calling `/boards/:boardId/github/issues/stats`
+  when the GitHub connection and board context are available, so you can see how many issues have already been synced or exported.
 - Cards that are mapped in `github_issues` expose a `#<issueNumber>` badge in the board and inspector UI; clicking it opens the GitHub issue in a new tab.
 
 ## Pull requests
