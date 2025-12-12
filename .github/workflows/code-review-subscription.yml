@@ -19,5 +19,5 @@ jobs:
     uses: activadee/codex-shared-workflows/.github/workflows/codex-review.yml@main
     secrets: inherit
     with: 
-      model: "gpt-5.1"
-      effort: "high"
+      model: "gpt-5.2"
+      effort: "xhigh"
