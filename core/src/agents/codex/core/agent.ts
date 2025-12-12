@@ -43,14 +43,28 @@ const redactSecrets = (value: string) => {
     let out = value
     // Common "VAR=secret" patterns.
     out = out.replace(/\b(OPENAI_API_KEY|CODEX_API_KEY|OPENCODE_API_KEY|GITHUB_TOKEN)=\S+/g, '$1=<redacted>')
+    // Authorization headers (best-effort).
+    out = out.replace(/\bAuthorization\s*:\s*(Bearer|Token)\s+([^\s"']+)/gi, (_m, scheme: string) => {
+        return `Authorization: ${scheme} <redacted>`
+    })
+    out = out.replace(/\bAuthorization\s*:\s*(token)\s+([^\s"']+)/gi, () => {
+        return 'Authorization: token <redacted>'
+    })
+    // GitHub PAT formats (best-effort).
+    out = out.replace(/\bgithub_pat_[a-zA-Z0-9_]{10,}\b/g, 'github_pat_<redacted>')
+    out = out.replace(/\bgh[pous]_[a-zA-Z0-9_]{10,}\b/g, 'ghp_<redacted>')
     // Common OpenAI-style API keys (best-effort).
     out = out.replace(/\bsk-[a-zA-Z0-9_-]{10,}\b/g, 'sk-<redacted>')
     return out
 }
 
 const previewForLog = (value: string, maxLen: number) => {
-    const cleaned = redactSecrets(normalizeForLog(value))
-    if (cleaned.length <= maxLen) return cleaned
+    // Avoid O(n) work for very large strings: slice first, then normalize/redact.
+    const prefixLen = Math.max(0, maxLen + 64)
+    const prefix = value.slice(0, prefixLen)
+    const cleaned = redactSecrets(normalizeForLog(prefix))
+    const truncated = value.length > maxLen
+    if (cleaned.length <= maxLen) return truncated ? cleaned + '...' : cleaned
     return cleaned.slice(0, maxLen) + '...'
 }
 
@@ -75,6 +89,27 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     private groupers = new Map<string, StreamGrouper>()
     private execOutputs = new Map<string, string>()
 
+    private safeStringify(value: unknown): string {
+        try {
+            const seen = new WeakSet<object>()
+            return JSON.stringify(value, (_key, val) => {
+                if (typeof val === 'bigint') return String(val)
+                if (typeof val === 'function') return '[Function]'
+                if (val && typeof val === 'object') {
+                    if (seen.has(val)) return '[Circular]'
+                    seen.add(val)
+                }
+                return val
+            })
+        } catch (err) {
+            return JSON.stringify({
+                event: 'debug.serialize_failed',
+                error: String(err),
+                payload: summarizeUnknown(value),
+            })
+        }
+    }
+
     private debug(
         profile: CodexProfile,
         ctx: AgentContext,
@@ -94,7 +129,8 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             profileId: ctx.profileId ?? null,
             ...computed,
         }
-        ctx.emit({type: 'log', level: 'info', message: `[codex:debug] ${JSON.stringify(base)}`})
+        const serialized = this.safeStringify(base)
+        ctx.emit({type: 'log', level: 'info', message: `[codex:debug] ${serialized}`})
     }
 
     private summarizeThreadEvent(ev: ThreadEvent): Record<string, unknown> {
@@ -502,11 +538,16 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             ctx.emit({type: 'session', id: ev.thread_id})
             return
         }
+        if (ev.type === 'error') {
+            ctx.emit({type: 'log', level: 'error', message: `[codex] sdk error: ${ev.message}`})
+            ctx.emit({type: 'conversation', item: {type: 'error', timestamp: nowIso(), text: ev.message}})
+            return
+        }
         if (ev.type === 'turn.failed') {
             ctx.emit({type: 'conversation', item: {type: 'error', timestamp: new Date().toISOString(), text: ev.error.message}})
             return
         }
-        if (ev.type === 'turn.started' || ev.type === 'turn.completed' || ev.type === 'error') return
+        if (ev.type === 'turn.started' || ev.type === 'turn.completed') return
 
         if ('item' in ev && ev.item && typeof ev.item === 'object') {
             const item = ev.item as

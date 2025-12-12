@@ -80,7 +80,8 @@ describe('CodexAgent debug logging', () => {
                 item: {
                     id: 'cmd-1',
                     type: 'command_execution',
-                    command: 'echo OPENAI_API_KEY=sk-secret1234567890',
+                    command:
+                        'curl -H \"Authorization: Bearer ghp_abcdefghijklmnopqrstuvwxyz123456\" https://example.com && echo OPENAI_API_KEY=sk-secret1234567890',
                     aggregated_output: '',
                     status: 'in_progress',
                 },
@@ -95,8 +96,38 @@ describe('CodexAgent debug logging', () => {
         const parsed = parseDebugJson((log as any).message)
         expect(parsed.event).toBe('item.started')
         expect(parsed.item?.type).toBe('command_execution')
+        expect(String(parsed.item?.command_preview)).not.toContain('ghp_abcdefghijklmnopqrstuvwxyz')
+        expect(String(parsed.item?.command_preview)).toContain('Authorization: Bearer <redacted>')
         expect(String(parsed.item?.command_preview)).not.toContain('sk-secret')
         expect(String(parsed.item?.command_preview)).toContain('OPENAI_API_KEY=<redacted>')
     })
-})
 
+    it('redacts github_pat_ tokens in debug previews', () => {
+        const events: Array<{type: string; [key: string]: any}> = []
+        const ctx = baseCtx(events)
+        const profile: CodexProfile = {...defaultProfile, debug: true}
+
+        ;(CodexAgent as any).handleEvent(
+            {
+                type: 'item.started',
+                item: {
+                    id: 'cmd-2',
+                    type: 'command_execution',
+                    command: 'echo github_pat_11AA22BB33CC44DD55EE66FF77GG88HH99',
+                    aggregated_output: '',
+                    status: 'in_progress',
+                },
+            },
+            ctx,
+            profile,
+        )
+
+        const log = events.find((e) => e.type === 'log' && typeof e.message === 'string' && e.message.startsWith('[codex:debug] '))
+        expect(log).toBeTruthy()
+
+        const parsed = parseDebugJson((log as any).message)
+        expect(parsed.item?.type).toBe('command_execution')
+        expect(String(parsed.item?.command_preview)).toContain('github_pat_<redacted>')
+        expect(String(parsed.item?.command_preview)).not.toContain('github_pat_11AA22')
+    })
+})
