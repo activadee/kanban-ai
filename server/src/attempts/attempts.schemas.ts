@@ -47,8 +47,13 @@ export const attemptMessageSchema = z
         images: z.array(imageAttachmentSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
     })
     .superRefine((data, ctx) => {
-        const total = (data.images ?? []).reduce((sum, img) => sum + (img.sizeBytes ?? 0), 0)
-        if (total > MAX_TOTAL_IMAGE_BYTES) {
+        let totalEstimated = 0
+        for (const img of data.images ?? []) {
+            const prefix = imageDataUrlPrefix(img.mimeType)
+            if (!img.dataUrl.startsWith(prefix)) continue
+            totalEstimated += estimateDecodedBytesFromDataUrl(img.dataUrl, prefix.length)
+        }
+        if (totalEstimated > MAX_TOTAL_IMAGE_BYTES) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 path: ['images'],

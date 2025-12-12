@@ -302,7 +302,8 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
 	                                nextAttachments.push({
 	                                    ...att,
 	                                    id: stored.fileName,
-	                                    dataUrl: `/api/v1/attempts/${attemptId}/attachments/${stored.fileName}`,
+	                                    // API-base-relative URL (client resolves against SERVER_URL).
+	                                    dataUrl: `attempts/${attemptId}/attachments/${stored.fileName}`,
 	                                })
 	                            } catch (err) {
 	                                const message = err instanceof Error ? err.message : String(err)

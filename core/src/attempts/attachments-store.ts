@@ -9,10 +9,11 @@ import {
     imageDataUrlPrefix,
 } from 'shared'
 
-function sanitizeFsSegment(value: string): string {
+function sanitizeFsSegment(value: string, maxLen = 64): string {
     const trimmed = value.trim()
     const sanitized = trimmed.replace(/[^a-zA-Z0-9_-]/g, '_')
-    return sanitized.length ? sanitized : `id_${crypto.randomUUID().replace(/-/g, '')}`
+    const capped = sanitized.slice(0, Math.max(1, maxLen))
+    return capped.length ? capped : `id_${crypto.randomUUID().replace(/-/g, '')}`
 }
 
 function resolveChildPath(baseDir: string, ...parts: string[]): string {
@@ -106,9 +107,10 @@ export async function materializeImageDataUrlToFile(params: {
     await fsp.mkdir(dir, {recursive: true})
     await ensureKanbanaiIgnoredInWorktree(worktreePath)
 
-    const safeStem = sanitizeFsSegment(fileStemHint)
+    const safeStem = sanitizeFsSegment(fileStemHint, 48)
     const ext = extensionForMime(mimeType)
-    const fileName = `${safeStem}.${ext}`
+    const suffix = crypto.randomUUID().slice(0, 8)
+    const fileName = `${safeStem}-${suffix}.${ext}`
     const filePath = resolveChildPath(dir, fileName)
 
     const base64 = dataUrl.slice(prefix.length)

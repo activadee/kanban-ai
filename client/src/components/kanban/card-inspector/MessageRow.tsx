@@ -28,10 +28,20 @@ export function MessageRow({item}: { item: ConversationItem }) {
                     {attachments && attachments.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                             {attachments.map((img) => {
-                                const src =
-                                    img.dataUrl.startsWith('data:') || img.dataUrl.startsWith('http')
-                                        ? img.dataUrl
-                                        : `${SERVER_URL}${img.dataUrl.startsWith('/') ? '' : '/'}${img.dataUrl}`
+                                let src = img.dataUrl
+                                if (!src.startsWith('data:') && !src.startsWith('http')) {
+                                    try {
+                                        // Support both:
+                                        // - api-base-relative: "attempts/:id/attachments/..."
+                                        // - origin-relative legacy: "/api/v1/attempts/..." or "/attempts/..."
+                                        const apiBase = new URL(`${SERVER_URL.replace(/\/?$/, '')}/`)
+                                        src = src.startsWith('/')
+                                            ? new URL(src, apiBase.origin).toString()
+                                            : new URL(src, apiBase).toString()
+                                    } catch {
+                                        // keep as-is
+                                    }
+                                }
                                 return (
                                     <img
                                         key={img.id ?? img.dataUrl}

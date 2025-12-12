@@ -181,7 +181,7 @@ export async function postAttemptMessageHandler(c: any) {
         }
 
         const events = c.get('events')
-        await attempts.followupAttempt(c.req.param('id'), prompt, profileId, images as any, {events})
+        await attempts.followupAttempt(c.req.param('id'), prompt, profileId, images, {events})
         return c.json({ok: true}, 201)
     } catch (err) {
         return problemJson(c, {

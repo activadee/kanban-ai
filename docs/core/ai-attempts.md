@@ -68,7 +68,7 @@ Last updated: 2025-11-28
     - Supported formats: PNG, JPEG, WebP.
     - Limits: up to 4 images per follow‑up, 5MB each.
     - Vision‑capable agents (e.g., Codex, OpenCode when using a vision model) receive images for processing; text‑only agents ignore them gracefully.
-  - Persisted attachments are served from `/api/v1/attempts/:id/attachments/<fileName>` so conversation history references stable URLs instead of raw base64 data.
+  - Persisted attachments are served from `GET /api/v1/attempts/:id/attachments/:fileName`, but conversation history stores them as API-base-relative URLs (`attempts/:id/attachments/<fileName>`) so clients can resolve them against `SERVER_URL` without duplicating `/api/v1`.
 - Stopping Attempts:
   - `PATCH /attempts/:id` with `status: "stopped"` triggers `attempt.stopped`.
   - The runner and listeners update status so the UI shows the Attempt as stopped.

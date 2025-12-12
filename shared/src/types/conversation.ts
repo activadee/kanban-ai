@@ -14,7 +14,8 @@ export type ImageAttachment = {
      * Image location.
      *
      * - For new messages from the UI this is typically a `data:` URL (clipboard/file preview).
-     * - For persisted conversation history this may be a server URL (e.g. `/api/v1/attempts/:id/attachments/<file>`).
+     * - For persisted conversation history this may be an API-base-relative URL
+     *   (e.g. `attempts/:id/attachments/<file>`) that the client resolves against `SERVER_URL`.
      */
     dataUrl: string
     /**
