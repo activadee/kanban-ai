@@ -28,6 +28,8 @@ export function MessageRow({item}: { item: ConversationItem }) {
             )
         }
         case 'thinking': {
+            const firstLine = item.text.split('\n')[0]?.trim()
+            const summaryLabel = item.title?.trim() || firstLine || 'thinking'
             const ariaLabel = item.title ? `thinking · ${item.title}` : 'thinking'
             return (
                 <CollapsibleThinkingBlock
@@ -35,8 +37,8 @@ export function MessageRow({item}: { item: ConversationItem }) {
                     headerLeft={(
                         <>
                             <Badge className="text-[10px]" variant="outline">thinking</Badge>
+                            <span className="min-w-0 flex-1 truncate text-xs font-medium">{summaryLabel}</span>
                             <span className="text-xs text-muted-foreground">{time}</span>
-                            {item.title ? <span className="text-xs font-semibold">{item.title}</span> : null}
                         </>
                     )}
                     text={item.text}

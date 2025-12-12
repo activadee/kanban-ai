@@ -18,16 +18,20 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
     }
 
     if (item.type === 'thinking') {
+        const firstLine = item.text.split('\n')[0]?.trim()
+        const summaryLabel = item.title?.trim() || firstLine || 'thinking'
         const ariaLabel = item.title ? `thinking · ${item.title}` : 'thinking'
         return (
             <CollapsibleThinkingBlock
                 ariaLabel={ariaLabel}
-                className="border-border/50 text-xs text-muted-foreground"
+                className="text-xs"
                 headerLeft={
-                    <span>thinking{item.title ? ` · ${item.title}` : ''}</span>
+                    <>
+                        <span className="text-[10px] uppercase text-muted-foreground">thinking</span>
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium">{summaryLabel}</span>
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                    </>
                 }
-                headerRight={<span>{time}</span>}
-                previewClassName="text-xs text-muted-foreground"
                 contentClassName="text-xs text-muted-foreground"
                 text={item.text}
             />
