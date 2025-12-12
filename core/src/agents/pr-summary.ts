@@ -3,6 +3,7 @@ import type {ProjectSummary} from 'shared'
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getPrDiffSummary} from '../git/service'
+import {getGitOriginUrl, parseGithubOwnerRepo} from '../fs/git'
 import {listGithubIssueMappingsByCardId} from '../github/repo'
 import {getAttemptById} from '../attempts/repo'
 import {getAgent} from './registry'
@@ -69,6 +70,23 @@ function createSignal(source?: AbortSignal): AbortSignal {
     return controller.signal
 }
 
+async function resolveProjectGithubOwnerRepo(project: ProjectSummary): Promise<{owner: string; repo: string} | null> {
+    const originUrl = await getGitOriginUrl(project.repositoryPath)
+    if (originUrl) {
+        const parsed = parseGithubOwnerRepo(originUrl)
+        if (parsed) return parsed
+    }
+
+    const repoUrl =
+        typeof (project as any).repositoryUrl === 'string' ? (project as any).repositoryUrl.trim() : ''
+    if (repoUrl) {
+        const parsed = parseGithubOwnerRepo(repoUrl)
+        if (parsed) return parsed
+    }
+
+    return null
+}
+
 async function resolveAssociatedCardIds(opts: AgentSummarizePullRequestOptions): Promise<string[]> {
     const cardIds = new Set<string>()
     const directCardId = typeof opts.cardId === 'string' ? opts.cardId.trim() : ''
@@ -82,23 +100,42 @@ async function resolveAssociatedCardIds(opts: AgentSummarizePullRequestOptions):
             if (typeof attemptCardId === 'string' && attemptCardId.trim()) {
                 cardIds.add(attemptCardId.trim())
             }
-        } catch {
+        } catch (err) {
+            console.warn('[agents:prSummary] Failed to resolve attempt cardId', {attemptId, err})
         }
     }
 
     return Array.from(cardIds)
 }
 
-async function resolveGithubIssueNumbers(cardIds: string[]): Promise<number[]> {
+async function resolveGithubIssueNumbers(
+    cardIds: string[],
+    targetRepo: {owner: string; repo: string} | null,
+): Promise<number[]> {
     const issueNumbers = new Set<number>()
+    const targetOwner = targetRepo?.owner.trim().toLowerCase() || null
+    const targetRepoName = targetRepo?.repo.trim().toLowerCase() || null
     for (const cardId of cardIds) {
         try {
             const mappings = await listGithubIssueMappingsByCardId(cardId)
-            for (const mapping of mappings as Array<{issueNumber?: unknown}>) {
+            for (const mapping of mappings as Array<{issueNumber?: unknown; owner?: unknown; repo?: unknown}>) {
                 const num = Number(mapping.issueNumber)
-                if (Number.isFinite(num) && num > 0) issueNumbers.add(num)
+                if (!Number.isFinite(num) || num <= 0) continue
+
+                if (targetOwner && targetRepoName) {
+                    const owner =
+                        typeof mapping.owner === 'string' ? mapping.owner.trim().toLowerCase() : null
+                    const repo =
+                        typeof mapping.repo === 'string' ? mapping.repo.trim().toLowerCase() : null
+                    if (owner && repo && (owner !== targetOwner || repo !== targetRepoName)) {
+                        continue
+                    }
+                }
+
+                issueNumbers.add(num)
             }
-        } catch {
+        } catch (err) {
+            console.warn('[agents:prSummary] Failed to resolve GitHub issues for card', {cardId, err})
         }
     }
     return Array.from(issueNumbers).sort((a, b) => a - b)
@@ -223,7 +260,8 @@ export async function agentSummarizePullRequest(
     const cardIds = await resolveAssociatedCardIds(opts)
     if (cardIds.length === 0) return summary
 
-    const issueNumbers = await resolveGithubIssueNumbers(cardIds)
+    const targetRepo = await resolveProjectGithubOwnerRepo(project)
+    const issueNumbers = await resolveGithubIssueNumbers(cardIds, targetRepo)
     if (issueNumbers.length === 0) return summary
 
     const body = appendGithubIssueAutoCloseReferences(summary.body, issueNumbers)

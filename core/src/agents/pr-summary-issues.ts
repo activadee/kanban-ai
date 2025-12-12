@@ -19,7 +19,7 @@ export function buildGithubIssueAutoCloseLine(issueNumbers: number[]): string | 
 export function extractGithubIssueAutoCloseNumbers(body: string): Set<number> {
     const referenced = new Set<number>()
     if (!body) return referenced
-    const regex = /\b(?:close[sd]?|fixe[sd]?|resolve[sd]?)\s+#(\d+)\b/gi
+    const regex = /\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\b\s*(?:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)?#(\d+)\b/gi
     let match: RegExpExecArray | null
     while ((match = regex.exec(body))) {
         const num = Number(match[1])

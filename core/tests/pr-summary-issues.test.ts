@@ -20,8 +20,8 @@ describe('agents/pr-summary-issues', () => {
     })
 
     it('extractGithubIssueAutoCloseNumbers finds existing references', () => {
-        const body = 'Some text\n\ncloses #12, fixes #34\nResolves #56'
-        expect(Array.from(extractGithubIssueAutoCloseNumbers(body)).sort((a, b) => a - b)).toEqual([12, 34, 56])
+        const body = 'Some text\n\ncloses #12, fixes owner/repo#34\nfix #56\nResolves other/repo#78'
+        expect(Array.from(extractGithubIssueAutoCloseNumbers(body)).sort((a, b) => a - b)).toEqual([12, 34, 56, 78])
     })
 
     it('appendGithubIssueAutoCloseReferences appends missing references', () => {
@@ -43,4 +43,3 @@ describe('agents/pr-summary-issues', () => {
         expect(appendGithubIssueAutoCloseReferences(body, [123, 456])).toBe(body)
     })
 })
-

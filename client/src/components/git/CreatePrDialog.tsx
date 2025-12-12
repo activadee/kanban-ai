@@ -60,7 +60,13 @@ export function CreatePrDialog({
 
     const branchLabel = headBranch || 'current branch'
 
-    const summaryQuery = usePrInlineSummaryCache(projectId, headBranch, baseBranchTrimmed)
+    const summaryQuery = usePrInlineSummaryCache(
+        projectId,
+        headBranch,
+        baseBranchTrimmed,
+        cardIdTrimmed,
+        attemptIdTrimmed,
+    )
     const summaryState = summaryQuery.data ?? {status: 'idle', branch: headBranch, base: baseBranchTrimmed}
     const summaryKey = summaryQuery.key
     const summarizing = summaryState.status === 'running'

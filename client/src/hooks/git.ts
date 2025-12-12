@@ -16,8 +16,20 @@ const gitKey = (attemptId: string, suffix: string) => ['attempt-git', attemptId,
 
 export const prInlineSummaryKeys = {
     all: ['pr-inline-summary'] as const,
-    detail: (projectId: string, headBranch: string, baseBranch?: string) =>
-        [...prInlineSummaryKeys.all, projectId, headBranch, baseBranch ?? '__auto__'] as const,
+    detail: (
+        projectId: string,
+        headBranch: string,
+        baseBranch?: string,
+        cardId?: string,
+        attemptId?: string,
+    ) =>
+        [
+            ...prInlineSummaryKeys.all,
+            projectId,
+            headBranch,
+            baseBranch ?? '__auto__',
+            cardId?.trim() || attemptId?.trim() || '__none__',
+        ] as const,
     disabled: ['pr-inline-summary', 'disabled'] as const,
 }
 
@@ -41,11 +53,22 @@ export function usePrInlineSummaryCache(
     projectId?: string,
     branch?: string | null,
     base?: string | null,
+    cardId?: string | null,
+    attemptId?: string | null,
 ) {
     const queryClient = useQueryClient()
     const headBranch = normalizeBranch(branch)
     const baseBranch = normalizeBase(base)
-    const key = projectId && headBranch ? prInlineSummaryKeys.detail(projectId, headBranch, baseBranch) : prInlineSummaryKeys.disabled
+    const key =
+        projectId && headBranch
+            ? prInlineSummaryKeys.detail(
+                projectId,
+                headBranch,
+                baseBranch,
+                cardId ?? undefined,
+                attemptId ?? undefined,
+            )
+            : prInlineSummaryKeys.disabled
     const query = useQuery<PrInlineSummaryCache>({
         queryKey: key,
         queryFn: () =>
