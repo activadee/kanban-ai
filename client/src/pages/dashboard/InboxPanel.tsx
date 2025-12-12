@@ -42,7 +42,7 @@ function resolveReadFilterFromStorage(): ReadFilter {
     if (typeof window === 'undefined') return 'all'
     const raw = window.sessionStorage.getItem(INBOX_READ_FILTER_STORAGE_KEY)
     if (raw === 'all' || raw === 'unread' || raw === 'read') return raw
-    return 'all'
+    return 'unread'
 }
 
 function storeFilter(value: InboxFilter) {
