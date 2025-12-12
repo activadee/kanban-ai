@@ -99,6 +99,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     capabilities = {resume: true}
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
+    private readonly imageSupportNotices = new Set<string>()
     private static localServer: ServerHandle | null = null
     private static localServerUrl: string | null = null
     private static providerListCache = new Map<string, {expiresAt: number; value: ProviderListResponse}>()
@@ -418,14 +419,29 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 usedModelID,
             )
             if (supportsImages === false) {
-                ctx.emit({
-                    type: 'conversation',
-                    item: {
-                        type: 'error',
-                        timestamp: nowIso(),
-                        text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
-                    },
-                })
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unsupported')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'error',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                        },
+                    })
+                }
+            } else if (supportsImages === null) {
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unknown')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'message',
+                            role: 'system',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}. KanbanAI could not verify whether this model supports image input. If the assistant cannot see your image, set a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                            format: 'markdown',
+                        },
+                    })
+                }
             }
         }
 
@@ -515,18 +531,45 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 usedModelID,
             )
             if (supportsImages === false) {
-                ctx.emit({
-                    type: 'conversation',
-                    item: {
-                        type: 'error',
-                        timestamp: nowIso(),
-                        text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
-                    },
-                })
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unsupported')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'error',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                        },
+                    })
+                }
+            } else if (supportsImages === null) {
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unknown')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'message',
+                            role: 'system',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}. KanbanAI could not verify whether this model supports image input. If the assistant cannot see your image, set a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                            format: 'markdown',
+                        },
+                    })
+                }
             }
         }
 
         return {stream, sessionId}
+    }
+
+    private shouldEmitImageSupportNotice(
+        ctx: AgentContext,
+        providerID: string,
+        modelID: string,
+        kind: 'unsupported' | 'unknown',
+    ): boolean {
+        const key = `${ctx.attemptId}:${providerID}/${modelID}:${kind}`
+        if (this.imageSupportNotices.has(key)) return false
+        this.imageSupportNotices.add(key)
+        return true
     }
 
     private getGrouper(ctx: AgentContext): OpencodeGrouper {

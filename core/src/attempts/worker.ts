@@ -148,6 +148,8 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
     queueMicrotask(async () => {
         let cleanupRunner: (() => Promise<void>) | null = null
         let currentStatus: AttemptStatus = 'running'
+        let attachmentsDir: string | null = null
+        const attachmentMaterializationWarnings: string[] = []
         try {
             await updateAttempt(attemptId, {
                 status: 'running',
@@ -187,32 +189,44 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
             let imageInputs: AgentImageInput[] | undefined = undefined
             if (params.mode === 'resume' && params.followupAttachments?.length) {
                 attachments = params.followupAttachments
-                const attachmentsDir = join(worktreePath, '.kanbanai', 'attachments', attemptId)
-                mkdirSync(attachmentsDir, {recursive: true})
-                imageInputs = []
-                for (const att of attachments) {
-                    const match = /^data:(image\/png|image\/jpeg|image\/webp);base64,(.+)$/i.exec(att.dataUrl)
-                    if (!match) throw new Error('Unsupported image data URL')
-                    const mimeSource = match[1]
-                    const payload = match[2]
-                    if (!mimeSource || !payload) throw new Error('Unsupported image data URL')
-                    const mimeType = mimeSource.toLowerCase()
-                    const buf = Buffer.from(payload, 'base64')
-                    const ext =
-                        mimeType === 'image/png'
-                            ? 'png'
-                            : mimeType === 'image/jpeg'
-                              ? 'jpg'
-                              : 'webp'
-                    const rawId = att.id ?? `img-${crypto.randomUUID()}`
-                    const safeId = rawId.replace(/[^a-z0-9_-]/gi, '_')
-                    const filePath = join(attachmentsDir, `${safeId}.${ext}`)
-                    await fsp.writeFile(filePath, buf)
-                    imageInputs.push({
-                        path: filePath,
-                        mimeType,
-                        sizeBytes: buf.byteLength,
-                    })
+                // Only materialize images on disk for agents that require local file access.
+                // (OpenCode receives image data URLs as file parts.)
+                const shouldMaterializeImages = params.agentKey === 'CODEX'
+                if (shouldMaterializeImages) {
+                    attachmentsDir = join(worktreePath, '.kanbanai', 'attachments', attemptId)
+                    mkdirSync(attachmentsDir, {recursive: true})
+                    imageInputs = []
+                    for (const att of attachments) {
+                        try {
+                            const dataUrl = (att.dataUrl ?? '').trim()
+                            const prefix = `data:${att.mimeType};base64,`
+                            if (!dataUrl.startsWith(prefix)) throw new Error('Unsupported image data URL')
+                            const payload = dataUrl.slice(prefix.length)
+                            const buf = Buffer.from(payload, 'base64')
+                            const ext =
+                                att.mimeType === 'image/png'
+                                    ? 'png'
+                                    : att.mimeType === 'image/jpeg'
+                                      ? 'jpg'
+                                      : 'webp'
+                            const rawId = att.id ?? `img-${crypto.randomUUID()}`
+                            const safeId = rawId.replace(/[^a-z0-9_-]/gi, '_')
+                            const filePath = join(attachmentsDir, `${safeId}.${ext}`)
+                            await fsp.writeFile(filePath, buf)
+                            imageInputs.push({
+                                path: filePath,
+                                mimeType: att.mimeType,
+                                sizeBytes: buf.byteLength,
+                            })
+                        } catch (err) {
+                            const idLabel = att.id || att.name || 'unknown'
+                            const message = err instanceof Error ? err.message : String(err)
+                            attachmentMaterializationWarnings.push(
+                                `[attachments] failed to materialize image "${idLabel}"; continuing without it. (${message})`,
+                            )
+                        }
+                    }
+                    if (imageInputs.length === 0) imageInputs = undefined
                 }
             }
 
@@ -400,6 +414,10 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 message: string,
             ) => emit({type: 'log', level, message})
 
+            for (const warning of attachmentMaterializationWarnings) {
+                await log('warn', warning)
+            }
+
             const profile = await resolveProfileForAgent(
                 agent,
                 boardId,
@@ -572,6 +590,9 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 }
             } catch {}
         } finally {
+            if (attachmentsDir) {
+                await fsp.rm(attachmentsDir, {recursive: true, force: true}).catch(() => {})
+            }
             try {
                 if (cleanupRunner) await cleanupRunner()
             } catch {}
