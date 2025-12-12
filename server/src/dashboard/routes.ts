@@ -90,9 +90,13 @@ export function createDashboardRouter() {
     })
 
     router.patch('/inbox/:id/read', async (c) => {
-        const id = c.req.param('id')
+        const rawId = c.req.param('id') ?? ''
+        const id = rawId.trim()
         if (!id) {
             return problemJson(c, {status: 400, detail: 'Missing inbox item id'})
+        }
+        if (id.length > 200 || /\s/.test(id)) {
+            return problemJson(c, {status: 400, detail: 'Invalid inbox item id'})
         }
         let body: any = {}
         try {

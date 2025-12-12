@@ -1,5 +1,10 @@
 import {useEffect, useMemo, useState} from 'react'
-import type {AttemptStatus, DashboardInbox, InboxItem} from 'shared'
+import type {
+    AttemptStatus,
+    DashboardInbox,
+    DashboardTimeRangePreset,
+    InboxItem,
+} from 'shared'
 import {Link} from 'react-router-dom'
 import {ArrowUpRight, CheckCircle2, Circle, GitPullRequest, RotateCcw} from 'lucide-react'
 import {Button} from '@/components/ui/button'
@@ -24,6 +29,7 @@ type Props = {
     onReload: () => void
     formatTime: (value: string | null | undefined) => string
     onAttemptNavigate?: (attemptId: string) => void
+    timeRangePreset?: DashboardTimeRangePreset
 }
 
 const INBOX_FILTER_STORAGE_KEY = 'dashboard.inboxFilter'
@@ -131,6 +137,7 @@ export function InboxPanel({
                                onReload,
                                formatTime,
                                onAttemptNavigate,
+                               timeRangePreset,
                            }: Props) {
     const [filter, setFilter] = useState<InboxFilter>(() => resolveFilterFromStorage())
     const [readFilter, setReadFilter] = useState<ReadFilter>(() => resolveReadFilterFromStorage())
@@ -272,7 +279,9 @@ export function InboxPanel({
                                 return next
                             })
                             try {
-                                await markAllInboxRead()
+                                await markAllInboxRead(
+                                    timeRangePreset ? {timeRangePreset} : undefined,
+                                )
                                 toast({
                                     title: 'Inbox cleared',
                                     description: 'All items marked as read.',
@@ -479,30 +488,30 @@ export function InboxPanel({
                                             <div className="flex shrink-0 items-center gap-1 pt-0.5 text-[11px]">
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <Button
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="size-7 text-muted-foreground hover:text-foreground"
-                                                            onClick={async (event) => {
-                                                                event.stopPropagation()
-                                                                const nextRead = !itemIsRead
-                                                                setOptimisticRead((current) => ({
-                                                                    ...current,
-                                                                    [item.id]: nextRead,
-                                                                }))
-                                                                try {
-                                                                    await patchInboxItemRead(item.id, nextRead)
-                                                                    onReload()
-                                                                } catch (error) {
-                                                                    setOptimisticRead((current) => {
-                                                                        const reverted = {...current}
-                                                                        delete reverted[item.id]
-                                                                        return reverted
-                                                                    })
-                                                                    const problem = describeApiError(
-                                                                        error,
-                                                                        'Failed to update read status',
-                                                                    )
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="size-7 text-muted-foreground hover:text-foreground"
+                                                                onClick={async (event) => {
+                                                                    event.stopPropagation()
+                                                                    const previousRead = itemIsRead
+                                                                    const nextRead = !previousRead
+                                                                    setOptimisticRead((current) => ({
+                                                                        ...current,
+                                                                        [item.id]: nextRead,
+                                                                    }))
+                                                                    try {
+                                                                        await patchInboxItemRead(item.id, nextRead)
+                                                                        onReload()
+                                                                    } catch (error) {
+                                                                        setOptimisticRead((current) => ({
+                                                                            ...current,
+                                                                            [item.id]: previousRead,
+                                                                        }))
+                                                                        const problem = describeApiError(
+                                                                            error,
+                                                                            'Failed to update read status',
+                                                                        )
                                                                     toast({
                                                                         title: problem.title,
                                                                         description: problem.description,

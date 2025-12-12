@@ -294,6 +294,7 @@ export function DashboardPage() {
                                     hasError={inboxLoadError}
                                     onReload={dashboardQuery.refetch}
                                     formatTime={relativeTimeFromNow}
+                                    timeRangePreset={effectiveTimeRangePreset}
                                     onAttemptNavigate={(attemptId) => {
                                         navigate(getAttemptPath(attemptId))
                                     }}
