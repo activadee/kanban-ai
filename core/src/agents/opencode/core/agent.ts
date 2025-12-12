@@ -292,20 +292,38 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             }
         }
 
-        await opencode.session.prompt({
-            path: {id: session.id},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        try {
+            await opencode.session.prompt({
+                path: {id: session.id},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            ctx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] prompt failed: ${message}`,
+            })
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'error',
+                    timestamp: nowIso(),
+                    text: message,
+                },
+            })
+            throw err
+        }
 
         return {stream, sessionId: session.id}
     }
@@ -339,20 +357,38 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             }
         }
 
-        await opencode.session.prompt({
-            path: {id: sessionId},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        try {
+            await opencode.session.prompt({
+                path: {id: sessionId},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            ctx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] prompt failed: ${message}`,
+            })
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'error',
+                    timestamp: nowIso(),
+                    text: message,
+                },
+            })
+            throw err
+        }
 
         return {stream, sessionId}
     }
