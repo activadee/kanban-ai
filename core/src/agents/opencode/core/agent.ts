@@ -5,12 +5,14 @@ import type {
     EventSessionError,
     EventTodoUpdated,
     TextPart,
+    TextPartInput,
     ToolPart,
     ToolState,
     Todo,
     SessionCreateResponse,
     SessionPromptResponse,
     Part,
+    FilePartInput,
 } from '@opencode-ai/sdk'
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
 import type {
@@ -24,13 +26,12 @@ import type {
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
-import type {AttemptTodoSummary} from 'shared'
+import type {AttemptTodoSummary, ImageAttachment} from 'shared'
 import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
-import {relative} from 'node:path'
 
 const nowIso = () => new Date().toISOString()
 
@@ -288,16 +289,23 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmed = prompt.trim()
-        const refs = ctx.images?.length
-            ? ctx.images
-                  .map((img) => {
-                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
-                      return `@${rel}`
-                  })
-                  .join('\n')
-            : ''
-        const combinedPrompt = [trimmed, refs].filter((p) => p && p.trim().length).join('\n\n').trim()
-        const parts = combinedPrompt ? [{type: 'text' as const, text: combinedPrompt}] : []
+        const parts: Array<TextPartInput | FilePartInput> = []
+
+        if (trimmed.length > 0) {
+            parts.push({type: 'text', text: trimmed})
+        }
+
+        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
+        if (attachments?.length) {
+            for (const att of attachments) {
+                parts.push({
+                    type: 'file',
+                    mime: att.mimeType,
+                    filename: att.name,
+                    url: att.dataUrl,
+                })
+            }
+        }
 
         try {
             await opencode.session.prompt({
@@ -350,16 +358,23 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const refs = ctx.images?.length
-            ? ctx.images
-                  .map((img) => {
-                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
-                      return `@${rel}`
-                  })
-                  .join('\n')
-            : ''
-        const combinedPrompt = [trimmedPrompt, refs].filter((p) => p && p.trim().length).join('\n\n').trim()
-        const parts = combinedPrompt ? [{type: 'text' as const, text: combinedPrompt}] : []
+        const parts: Array<TextPartInput | FilePartInput> = []
+
+        if (trimmedPrompt.length > 0) {
+            parts.push({type: 'text', text: trimmedPrompt})
+        }
+
+        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
+        if (attachments?.length) {
+            for (const att of attachments) {
+                parts.push({
+                    type: 'file',
+                    mime: att.mimeType,
+                    filename: att.name,
+                    url: att.dataUrl,
+                })
+            }
+        }
 
         try {
             await opencode.session.prompt({

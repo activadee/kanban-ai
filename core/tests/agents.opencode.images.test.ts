@@ -27,47 +27,7 @@ const baseCtx = (): AgentContext => {
 }
 
 describe('OpencodeAgent image input wiring', () => {
-    it('adds @file references to text parts when images are present', async () => {
-        const promptSpy = vi.fn().mockResolvedValue({})
-        const createSpy = vi.fn().mockResolvedValue({id: 'sess-1'})
-        const client = {
-            event: {
-                subscribe: vi.fn().mockResolvedValue({
-                    stream: (async function* () {})(),
-                }),
-            },
-            session: {
-                create: createSpy,
-                prompt: promptSpy,
-            },
-        }
-
-        const ctx = baseCtx()
-        ctx.images = [
-            {
-                path: '/tmp/worktree/.kanbanai/attachments/att/img.png',
-                mimeType: 'image/png',
-                sizeBytes: 10,
-            },
-        ]
-
-        await (OpencodeAgent as any).startSession(
-            client,
-            'hello',
-            defaultProfile,
-            ctx,
-            ctx.signal,
-            {mode: 'local', directory: ctx.worktreePath},
-        )
-
-        const body = promptSpy.mock.calls[0][0].body
-        expect(body.parts).toHaveLength(1)
-        expect(body.parts[0]).toMatchObject({type: 'text'})
-        expect(body.parts[0].text).toContain('hello')
-        expect(body.parts[0].text).toContain('@.kanbanai/attachments/att/img.png')
-    })
-
-    it('adds @file references even when using a remote server', async () => {
+    it('sends image attachments as file parts (data URLs)', async () => {
         const promptSpy = vi.fn().mockResolvedValue({})
         const createSpy = vi.fn().mockResolvedValue({id: 'sess-1'})
         const client = {
@@ -89,13 +49,54 @@ describe('OpencodeAgent image input wiring', () => {
                 mimeType: 'image/png',
                 dataUrl: 'data:image/png;base64,Zm9v',
                 sizeBytes: 3,
-            } as any,
+                name: 'clipboard.png',
+            },
         ]
-        ctx.images = [
+
+        await (OpencodeAgent as any).startSession(
+            client,
+            'hello',
+            defaultProfile,
+            ctx,
+            ctx.signal,
+            {mode: 'local', directory: ctx.worktreePath},
+        )
+
+        const body = promptSpy.mock.calls[0][0].body
+        expect(body.parts).toHaveLength(2)
+        expect(body.parts[0]).toMatchObject({type: 'text', text: 'hello'})
+        expect(body.parts[0].text).not.toContain('@')
+        expect(body.parts[1]).toMatchObject({
+            type: 'file',
+            mime: 'image/png',
+            filename: 'clipboard.png',
+            url: 'data:image/png;base64,Zm9v',
+        })
+    })
+
+    it('sends file parts even when using a remote server', async () => {
+        const promptSpy = vi.fn().mockResolvedValue({})
+        const createSpy = vi.fn().mockResolvedValue({id: 'sess-1'})
+        const client = {
+            event: {
+                subscribe: vi.fn().mockResolvedValue({
+                    stream: (async function* () {})(),
+                }),
+            },
+            session: {
+                create: createSpy,
+                prompt: promptSpy,
+            },
+        }
+
+        const ctx = baseCtx()
+        ctx.attachments = [
             {
-                path: '/tmp/worktree/.kanbanai/attachments/att/img.png',
+                id: 'img-1',
                 mimeType: 'image/png',
-                sizeBytes: 10,
+                dataUrl: 'data:image/png;base64,Zm9v',
+                sizeBytes: 3,
+                name: 'clipboard.png',
             },
         ]
 
@@ -109,9 +110,14 @@ describe('OpencodeAgent image input wiring', () => {
         )
 
         const body = promptSpy.mock.calls[0][0].body
-        expect(body.parts).toHaveLength(1)
-        expect(body.parts[0].text).toContain('describe')
-        expect(body.parts[0].text).toContain('@.kanbanai/attachments/att/img.png')
-        expect(body.parts[0].text).not.toContain('data:image')
+        expect(body.parts).toHaveLength(2)
+        expect(body.parts[0]).toMatchObject({type: 'text', text: 'describe'})
+        expect(body.parts[0].text).not.toContain('@')
+        expect(body.parts[1]).toMatchObject({
+            type: 'file',
+            mime: 'image/png',
+            filename: 'clipboard.png',
+            url: 'data:image/png;base64,Zm9v',
+        })
     })
 })
