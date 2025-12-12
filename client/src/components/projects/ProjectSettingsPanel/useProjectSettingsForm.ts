@@ -24,6 +24,7 @@ export type ProjectSettingsFormState = {
     githubIssueSyncEnabled: boolean;
     githubIssueSyncState: 'open' | 'all' | 'closed';
     githubIssueSyncIntervalMinutes: number;
+    githubIssueAutoCreateEnabled: boolean;
 }
 
 export function mapSettingsToForm(settings: ProjectSettings | null | undefined): ProjectSettingsFormState {
@@ -51,6 +52,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             githubIssueSyncEnabled: false,
             githubIssueSyncState: 'open',
             githubIssueSyncIntervalMinutes: 15,
+            githubIssueAutoCreateEnabled: false,
         }
     }
 
@@ -77,6 +79,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         githubIssueSyncEnabled: settings.githubIssueSyncEnabled ?? false,
         githubIssueSyncState: settings.githubIssueSyncState ?? 'open',
         githubIssueSyncIntervalMinutes: settings.githubIssueSyncIntervalMinutes ?? 15,
+        githubIssueAutoCreateEnabled: settings.githubIssueAutoCreateEnabled ?? false,
     }
 }
 
@@ -166,6 +169,9 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if ((form.githubIssueSyncIntervalMinutes || 15) !== (initial.githubIssueSyncIntervalMinutes ?? 15)) {
         payload.githubIssueSyncIntervalMinutes = form.githubIssueSyncIntervalMinutes
+    }
+    if (form.githubIssueAutoCreateEnabled !== (initial.githubIssueAutoCreateEnabled ?? false)) {
+        payload.githubIssueAutoCreateEnabled = form.githubIssueAutoCreateEnabled
     }
 
     return payload

@@ -9,6 +9,7 @@ KanbanAI integrates with GitHub to:
 - Authenticate users via the OAuth **Device Authorization Flow**.
 - Import issues into project boards as cards.
 - Automatically sync issues in the background for projects that opt in.
+- Optionally create GitHub issues when you create new tickets, keeping them linked.
 - Create pull requests from attempt branches, keeping tickets, attempts, and PRs linked.
 
 ## OAuth App & credentials
@@ -52,6 +53,10 @@ Additional configuration endpoints:
   - Creates or updates cards on the target board.
   - Emits `github.issues.imported` with the number of issues processed.
 - Imported cards retain links back to the originating GitHub issues so you can navigate between the board and GitHub.
+- When **GitHub Issue Creation** is enabled in a project’s settings, the Create Ticket dialog exposes a per‑ticket **Create GitHub Issue** checkbox.
+  - If checked, KanbanAI creates a new issue in the project’s origin repository using the ticket title and description.
+  - The created issue is stored in `github_issues` with `direction = 'exported'`, so the card displays a clickable `#<issueNumber>` badge.
+  - If issue creation fails, the ticket is still created and the client shows an error toast.
 
 ### Background Issue Sync
 
@@ -62,6 +67,7 @@ Additional configuration endpoints:
   - `githubIssueSyncEnabled: boolean` – opt in/out of automatic sync (default `false`).
   - `githubIssueSyncState: 'open' | 'all' | 'closed'` – which issue states to sync (default `open`).
   - `githubIssueSyncIntervalMinutes: number` – how often to sync (default `15`, min `5`, max `1440`).
+  - `githubIssueAutoCreateEnabled: boolean` – enables per‑ticket GitHub issue creation (default `false`).
 - When enabled and a valid GitHub connection + origin (`owner/repo`) exist:
   - A lightweight scheduler in the server periodically selects eligible projects.
   - For each project, it checks the last sync metadata stored in `project_settings`:

@@ -6,12 +6,15 @@ import {Label} from '@/components/ui/label'
 import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
+import {Checkbox} from '@/components/ui/checkbox'
 import {projectsKeys} from '@/lib/queryClient'
-import {useNextTicketKey} from '@/hooks'
+import {useNextTicketKey, useProjectSettings} from '@/hooks'
 import {DependenciesPicker} from '@/components/kanban/DependenciesPicker'
 import type {CardFormValues, BaseDialogProps} from './types'
 import type {TicketType} from 'shared'
 import {defaultTicketType, ticketTypeOptions} from '@/lib/ticketTypes'
+import {useGithubAuthStatus} from '@/hooks/github'
+import {useProjectGithubOrigin} from '@/hooks/projects'
 
 type CreateProps = BaseDialogProps & {
     columns: { id: string; title: string }[]
@@ -37,6 +40,7 @@ export function CreateCardDialog({
         description: '',
         dependsOn: [],
         ticketType: defaultTicketType,
+        createGithubIssue: false,
     })
     const [columnId, setColumnId] = useState<string>(defaultColumnId ?? columns[0]?.id ?? '')
     const [submitting, setSubmitting] = useState(false)
@@ -47,9 +51,22 @@ export function CreateCardDialog({
         staleTime: 5_000,
     })
 
+    const settingsQuery = useProjectSettings(projectId, {
+        enabled: open && Boolean(projectId),
+        staleTime: 30_000,
+    })
+    const githubCheckQuery = useGithubAuthStatus({enabled: open})
+    const originQuery = useProjectGithubOrigin(projectId, {enabled: open && Boolean(projectId)})
+
+    const hasGithubConnection = githubCheckQuery.data?.status === 'valid'
+    const origin = originQuery.data
+    const hasOrigin = Boolean(origin?.owner && origin?.repo)
+    const autoCreateEnabled = Boolean(settingsQuery.data?.githubIssueAutoCreateEnabled)
+    const canCreateGithubIssue = autoCreateEnabled && hasGithubConnection && hasOrigin
+
     useEffect(() => {
         if (!open) {
-            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType})
+            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
         }
     }, [open, columns, defaultColumnId])
@@ -63,9 +80,10 @@ export function CreateCardDialog({
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
+                createGithubIssue: values.createGithubIssue === true && canCreateGithubIssue,
             })
             onOpenChange(false)
-            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType})
+            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
@@ -83,9 +101,10 @@ export function CreateCardDialog({
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
+                createGithubIssue: values.createGithubIssue === true && canCreateGithubIssue,
             })
             onOpenChange(false)
-            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType})
+            setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
@@ -172,6 +191,34 @@ export function CreateCardDialog({
                             hint="Choose tickets that must be Done before this can start."
                         />
                     </div>
+                    <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                            <Checkbox
+                                id="create-github-issue"
+                                checked={values.createGithubIssue === true}
+                                disabled={!canCreateGithubIssue || submitting}
+                                onCheckedChange={(checked) =>
+                                    setValues((prev) => ({
+                                        ...prev,
+                                        createGithubIssue: checked === true,
+                                    }))
+                                }
+                            />
+                            <div className="space-y-1">
+                                <Label htmlFor="create-github-issue">Create GitHub Issue</Label>
+                                <p className="text-xs text-muted-foreground">
+                                    {origin?.owner && origin?.repo
+                                        ? `Creates an issue in ${origin.owner}/${origin.repo} when this ticket is created.`
+                                        : 'Creates an issue in the project’s GitHub repository when this ticket is created.'}
+                                </p>
+                                {!canCreateGithubIssue ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        Enable GitHub Issue Creation in project settings and ensure GitHub is connected.
+                                    </p>
+                                ) : null}
+                            </div>
+                        </div>
+                    </div>
                     <div className="text-xs text-muted-foreground">
                         {previewQuery.isLoading ? 'Previewing ticket key…' : previewQuery.data?.key ? `Preview: ${previewQuery.data.key}` : null}
                     </div>
@@ -181,14 +228,14 @@ export function CreateCardDialog({
                         Cancel
                     </Button>
                     <Button onClick={handleSubmit} disabled={!values.title.trim() || !columnId || submitting}>
-                        Create Ticket
+                        {submitting && values.createGithubIssue && canCreateGithubIssue ? 'Creating GitHub issue…' : 'Create Ticket'}
                     </Button>
                     <Button
                         variant="secondary"
                         onClick={handleCreateAndEnhance}
                         disabled={!values.title.trim() || !columnId || submitting}
                     >
-                        Create &amp; Enhance
+                        {submitting && values.createGithubIssue && canCreateGithubIssue ? 'Creating GitHub issue…' : 'Create & Enhance'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

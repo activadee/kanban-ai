@@ -4,16 +4,19 @@ import {Input} from '@/components/ui/input'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {useGithubAuthStatus} from '@/hooks/github'
 import {useProjectGithubOrigin} from '@/hooks/projects'
+import {useGithubIssueStats} from '@/hooks/board'
 
 type GithubIssueSyncSectionProps = {
     projectId: string;
     githubIssueSyncEnabled: boolean;
     githubIssueSyncState: 'open' | 'all' | 'closed';
     githubIssueSyncIntervalMinutes: number;
+    githubIssueAutoCreateEnabled: boolean;
     onChange: (patch: Partial<{
         githubIssueSyncEnabled: boolean;
         githubIssueSyncState: 'open' | 'all' | 'closed';
         githubIssueSyncIntervalMinutes: number;
+        githubIssueAutoCreateEnabled: boolean;
     }>) => void;
 }
 
@@ -22,10 +25,15 @@ export function GithubIssueSyncSection({
                                            githubIssueSyncEnabled,
                                            githubIssueSyncState,
                                            githubIssueSyncIntervalMinutes,
+                                           githubIssueAutoCreateEnabled,
                                            onChange,
                                        }: GithubIssueSyncSectionProps) {
     const githubCheckQuery = useGithubAuthStatus()
     const originQuery = useProjectGithubOrigin(projectId)
+    const statsQuery = useGithubIssueStats(projectId, {
+        enabled: githubCheckQuery.data?.status === 'valid' && Boolean(originQuery.data?.owner && originQuery.data?.repo),
+        staleTime: 30_000,
+    })
 
     const hasGithubConnection = githubCheckQuery.data?.status === 'valid'
     const origin = originQuery.data
@@ -77,6 +85,22 @@ export function GithubIssueSyncSection({
                         </p>
                     </div>
                 </div>
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id="github-issue-auto-create-enabled"
+                        checked={githubIssueAutoCreateEnabled}
+                        disabled={disabled}
+                        onCheckedChange={(checked) =>
+                            onChange({githubIssueAutoCreateEnabled: checked === true})
+                        }
+                    />
+                    <div className="space-y-1">
+                        <Label htmlFor="github-issue-auto-create-enabled">Enable GitHub Issue Creation</Label>
+                        <p className="text-xs text-muted-foreground">
+                            Allows creating GitHub issues when you create new tickets.
+                        </p>
+                    </div>
+                </div>
                 <div className="space-y-2">
                     <Label htmlFor="github-issue-sync-state">Sync issue state</Label>
                     <Select
@@ -112,7 +136,13 @@ export function GithubIssueSyncSection({
                     </p>
                 </div>
             </div>
+            {statsQuery.data ? (
+                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>Imported: {statsQuery.data.imported}</span>
+                    <span>Exported: {statsQuery.data.exported}</span>
+                    <span>Total linked: {statsQuery.data.total}</span>
+                </div>
+            ) : null}
         </section>
     )
 }
-

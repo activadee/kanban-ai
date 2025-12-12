@@ -118,6 +118,7 @@ export async function importGithubIssues(
                         cardId,
                         owner: params.owner,
                         repo: params.repo,
+                        direction: 'imported',
                         issueId: String(issue.id),
                         issueNumber: issue.number,
                         titleSnapshot: issue.title,

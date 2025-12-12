@@ -70,3 +70,32 @@ export async function fetchRepoIssues(owner: string, repo: string, state: 'open'
         throw error
     }
 }
+
+export async function createRepoIssue(params: {
+    owner: string
+    repo: string
+    title: string
+    body?: string | null
+}): Promise<GithubIssue> {
+    const token = await requireToken()
+    try {
+        const payload = await githubApiJson<GithubIssue>({
+            path: `/repos/${params.owner}/${params.repo}/issues`,
+            token,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: params.title,
+                body: params.body ?? undefined,
+            }),
+        })
+        return payload
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub issue create failed'))
+        }
+        throw error
+    }
+}

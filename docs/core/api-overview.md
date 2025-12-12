@@ -26,17 +26,18 @@ All endpoints below are rooted at `/api/v1`; paths are shown with the full prefi
   - `GET  /api/v1/projects/:projectId` – fetch a single project/board.
   - `GET  /api/v1/projects/:projectId/github/origin` – inspect GitHub origin.
   - `GET  /api/v1/projects/:projectId/settings` – load per-project settings.
-- `PATCH /api/v1/projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, optional per-inline-agent profile mapping for workflows like ticket enhancement/PR summary, automation flags, failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and the GitHub Issue Sync flags `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), and `githubIssueSyncIntervalMinutes` (5–1440 minutes)).
+  - `PATCH /api/v1/projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, optional per-inline-agent profile mapping for workflows like ticket enhancement/PR summary, automation flags, failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and GitHub Issue settings: `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), `githubIssueSyncIntervalMinutes` (5–1440 minutes), and `githubIssueAutoCreateEnabled`).
   - `POST /api/v1/projects/:projectId/tickets/enhance` – send `{title, description?, agent?, profileId?}` to the configured agent and receive `{ticket}` with rewritten text (RFC 7807 errors on failure).
   - `GET  /api/v1/projects/:projectId/enhancements` – hydrate persisted enhancement entries. Returns `{ enhancements: Record<string, { status: "enhancing" | "ready", suggestion?: { title: string, description?: string } }> }` so the UI can show badges and up-to-date suggestions.
   - `PUT  /api/v1/projects/:projectId/cards/:cardId/enhancement` – record a card’s enhancement status (`"enhancing"` while the job runs, `"ready"` when the agent response is available) and an optional suggestion payload.
   - `DELETE /api/v1/projects/:projectId/cards/:cardId/enhancement` – clear the persisted enhancement state after acceptance, rejection, or abandonment.
 - Boards:
   - `GET    /api/v1/boards/:boardId` – board state (columns + cards).
-  - `POST   /api/v1/boards/:boardId/cards` – create a card. Responds with `{ state, cardId }` so clients can track the created card (e.g. when queuing background enhancements).
+  - `POST   /api/v1/boards/:boardId/cards` – create a card. Accepts optional `createGithubIssue: boolean` (only effective when `githubIssueAutoCreateEnabled` is on). Responds with `{ state, cardId, githubIssueError? }`.
   - `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index).
   - `DELETE /api/v1/boards/:boardId/cards/:cardId` – delete a card.
   - `POST   /api/v1/boards/:boardId/import/github/issues` – import GitHub issues as cards.
+  - `GET    /api/v1/boards/:boardId/github/issues/stats` – counts linked issues by direction (`imported`, `exported`, `total`).
 
 For a project-specific view, you can also access board routes under `/api/v1/projects/:projectId/board/*`.
 

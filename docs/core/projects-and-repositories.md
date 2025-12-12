@@ -76,7 +76,8 @@ that repository:
     repository.
   - Settings exposed via `GET /projects/:projectId/settings` and `PATCH /projects/:projectId/settings` include
     `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), and
-    `githubIssueSyncIntervalMinutes` (clamped between 5 and 1440 minutes).
+    `githubIssueSyncIntervalMinutes` (clamped between 5 and 1440 minutes), plus
+    `githubIssueAutoCreateEnabled` to allow per‑ticket GitHub issue creation on card create.
   - The sync pipeline respects the connection state and origin discovered for the project, stores `lastGithubIssueSyncAt`
     / `lastGithubIssueSyncStatus` timestamps, and logs each run with the `github:sync` scope (see
     `docs/core/github-integration.md`).

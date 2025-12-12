@@ -22,6 +22,7 @@ import {
     startCardAttemptForBoardHandler,
 } from "./board.attempt.handlers";
 import {importGithubIssuesHandler} from "./board.import.handlers";
+import {getGithubIssueStatsHandler} from "./board.github.handlers";
 
 export type BoardContext = {boardId: string; project: ProjectSummary};
 
@@ -115,6 +116,12 @@ export function createBoardRouter(
             return importGithubIssuesHandler(c, ctx);
         },
     );
+
+    boardRouter.get("/github/issues/stats", async (c) => {
+        const ctx = await loadContext(c);
+        if (ctx instanceof Response) return ctx;
+        return getGithubIssueStatsHandler(c, ctx);
+    });
 
     return boardRouter;
 }

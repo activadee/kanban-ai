@@ -1,7 +1,8 @@
 import type {BoardContext} from "./board.routes";
-import {projectsRepo, projectDeps, tasks} from "core";
+import {projectsRepo, projectDeps, tasks, projectsService} from "core";
 import {problemJson} from "../http/problem";
 import {log} from "../log";
+import {createGithubIssueForCard} from "../github/export.service";
 
 const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
 const {
@@ -21,6 +22,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         description?: string | null;
         dependsOn?: string[];
         ticketType?: import("shared").TicketType | null;
+        createGithubIssue?: boolean;
     };
 
     const column = await getColumnById(body.columnId);
@@ -39,9 +41,41 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         if (Array.isArray(body.dependsOn) && body.dependsOn.length > 0) {
             await projectDeps.setDependencies(cardId, body.dependsOn);
         }
+
+        let githubIssueError: string | null = null;
+        if (body.createGithubIssue === true) {
+            try {
+                const settings = await projectsService.getSettings(project.id);
+                if (!settings.githubIssueAutoCreateEnabled) {
+                    githubIssueError = "GitHub issue creation is disabled for this project.";
+                } else {
+                    const createdCard = await getCardById(cardId);
+                    await createGithubIssueForCard({
+                        boardId,
+                        cardId,
+                        repositoryPath: project.repositoryPath,
+                        title: body.title,
+                        description: body.description ?? null,
+                        ticketKey: createdCard?.ticketKey ?? null,
+                    });
+                }
+            } catch (error) {
+                githubIssueError =
+                    error instanceof Error
+                        ? error.message
+                        : "GitHub issue creation failed";
+                log.warn("board:cards", "GitHub issue create failed", {
+                    err: error,
+                    boardId,
+                    projectId: project.id,
+                    cardId,
+                });
+            }
+        }
+
         await broadcastBoard(boardId);
         const state = await fetchBoardState(boardId);
-        return c.json({state, cardId}, 201);
+        return c.json({state, cardId, githubIssueError}, 201);
     } catch (error) {
         log.error("board:cards", "create failed", {err: error, boardId, projectId: project.id});
         return problemJson(c, {status: 502, detail: "Failed to create card"});

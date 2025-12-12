@@ -238,6 +238,7 @@ export function ProjectSettingsPanel({
                                     githubIssueSyncEnabled={form.githubIssueSyncEnabled}
                                     githubIssueSyncState={form.githubIssueSyncState}
                                     githubIssueSyncIntervalMinutes={form.githubIssueSyncIntervalMinutes}
+                                    githubIssueAutoCreateEnabled={form.githubIssueAutoCreateEnabled}
                                     onChange={(patch) => updateForm(patch)}
                                 />
                             </div>

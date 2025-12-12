@@ -13,11 +13,14 @@
     - `/auth/github/logout` revokes stored credentials and emits `github.disconnected`.
 2. **Issue Import (`import.service.ts`)**
     - Fetches issues, creates/updates cards, and emits `github.issues.imported` with the imported count.
+3. **Issue Export on Ticket Create (`export.service.ts`)**
+    - When `githubIssueAutoCreateEnabled` is true and a user checks **Create GitHub Issue** in the Create Ticket dialog, the board card creation handler calls `createGithubIssueForCard`.
+    - The service resolves the project’s GitHub origin, creates an issue via the REST API, and stores a `github_issues` mapping with `direction = 'exported'`.
 3. **Background Issue Sync (`sync.ts`)**
     - Lightweight scheduler started from the server entrypoints.
     - On a fixed tick, enumerates projects with GitHub Issue Sync enabled and a valid GitHub connection, resolves the GitHub origin (`owner/repo`), and invokes `importGithubIssues` with the configured state (`open`/`all`/`closed`).
     - Stores per-project sync metadata (`lastGithubIssueSyncAt`, `lastGithubIssueSyncStatus`) in `project_settings` to avoid overlapping runs and to respect the configured interval.
-3. **PR Creation (`projects/routes.ts`)**
+4. **PR Creation (`projects/routes.ts`)**
     - Attempt PR endpoint calls `createPR` and emits `github.pr.created`.
 
 ## Key Entry Points
@@ -26,6 +29,7 @@
 - `auth.service.ts`: device-flow state machine using `github-client` + `githubRepo`.
 - `auth.routes.ts` / `app-config.routes.ts`: Hono endpoints for auth, app config, and repo listing (with event hooks).
 - `import.service.ts`: GitHub issue import and mapping management (used by both manual imports and scheduled sync).
+- `export.service.ts`: Creates GitHub issues for newly created cards and persists exported mappings.
 - `sync.ts`: background scheduler that drives recurring issue sync for eligible projects.
 - `pr.ts`: PR helpers used by attempts/projects via `github-client`.
 

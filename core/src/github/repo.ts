@@ -1,4 +1,4 @@
-import {and, eq} from 'drizzle-orm'
+import {and, eq, sql} from 'drizzle-orm'
 import {githubConnections, githubIssues, githubAppConfigs, type GithubConnection, type GithubAppConfigRow} from '../db/schema'
 import type {DbExecutor} from '../db/with-tx'
 import {resolveDb} from '../db/with-tx'
@@ -136,4 +136,33 @@ export async function insertGithubIssueMapping(values: typeof githubIssues.$infe
 export async function updateGithubIssueMapping(id: string, patch: Partial<typeof githubIssues.$inferInsert>, executor?: DbExecutor) {
     const database = resolveDb(executor)
     await database.update(githubIssues).set(patch).where(eq(githubIssues.id, id)).run()
+}
+
+export type GithubIssueDirection = 'imported' | 'exported'
+
+export type GithubIssueStats = {
+    imported: number
+    exported: number
+    total: number
+}
+
+export async function getGithubIssueStats(boardId: string, executor?: DbExecutor): Promise<GithubIssueStats> {
+    const database = resolveDb(executor)
+    const rows = await database
+        .select({
+            direction: githubIssues.direction,
+            count: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(githubIssues)
+        .where(eq(githubIssues.boardId, boardId))
+        .groupBy(githubIssues.direction)
+
+    let imported = 0
+    let exported = 0
+    for (const row of rows) {
+        if (row.direction === 'exported') exported = row.count
+        else imported = row.count
+    }
+    const total = imported + exported
+    return {imported, exported, total}
 }

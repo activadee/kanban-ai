@@ -54,3 +54,9 @@ export type GitOriginResponse = {
     owner: string | null
     repo: string | null
 }
+
+export type GithubIssueStatsResponse = {
+    imported: number
+    exported: number
+    total: number
+}
