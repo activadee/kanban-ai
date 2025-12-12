@@ -185,6 +185,8 @@ export function CardInspector({
                                             conversation={attempt.conversation}
                                             followup={attempt.followup}
                                             onFollowupChange={attempt.setFollowup}
+                                            followupImages={attempt.followupImages}
+                                            onFollowupImagesChange={attempt.setFollowupImages}
                                             onSendFollowup={attempt.sendFollowup}
                                             sendPending={attempt.sendFollowupPending}
                                             stopping={attempt.stopping}

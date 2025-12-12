@@ -63,6 +63,10 @@ Last updated: 2025-11-28
 - Follow-up prompts:
   - Sent via `POST /attempts/:id/messages`.
   - Reuse the same Attempt session so the agent can use prior context.
+  - Can include pasted or drag‑dropped image attachments from the UI.
+    - Supported formats: PNG, JPEG, WebP.
+    - Limits: up to 4 images per follow‑up, 5MB each.
+    - Vision‑capable agents (e.g., Codex) receive images for processing; text‑only agents ignore them gracefully.
 - Stopping Attempts:
   - `PATCH /attempts/:id` with `status: "stopped"` triggers `attempt.stopped`.
   - The runner and listeners update status so the UI shows the Attempt as stopped.

@@ -28,7 +28,11 @@ export async function listAttemptLogsHandler(c: any) {
 }
 
 export async function postAttemptMessageHandler(c: any) {
-    const {prompt, profileId} = c.req.valid('json') as {prompt: string; profileId?: string}
+    const {prompt = '', profileId, images} = c.req.valid('json') as {
+        prompt?: string
+        profileId?: string
+        images?: unknown[]
+    }
     try {
         const attempt = await attempts.getAttempt(c.req.param('id'))
         if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
@@ -46,7 +50,7 @@ export async function postAttemptMessageHandler(c: any) {
         }
 
         const events = c.get('events')
-        await attempts.followupAttempt(c.req.param('id'), prompt, profileId, {events})
+        await attempts.followupAttempt(c.req.param('id'), prompt, profileId, images as any, {events})
         return c.json({ok: true}, 201)
     } catch (err) {
         return problemJson(c, {

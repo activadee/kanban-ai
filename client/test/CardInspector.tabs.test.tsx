@@ -187,6 +187,8 @@ const createInspectorState = (
         followupProfiles: [],
         followup: "",
         setFollowup: vi.fn(),
+        followupImages: [],
+        setFollowupImages: vi.fn(),
         sendFollowup: vi.fn(),
         sendFollowupPending: false,
         startAttempt: vi.fn(),

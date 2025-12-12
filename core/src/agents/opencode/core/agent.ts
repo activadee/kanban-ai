@@ -804,15 +804,18 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     async run(ctx: AgentContext, profile: OpencodeProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
         const prompt = this.buildPrompt(profile, ctx)
-        if (prompt) {
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (prompt || attachments?.length) {
+            const text = prompt?.trim().length ? prompt : attachments ? '[Image attached]' : ''
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text,
                     format: 'markdown',
+                    attachments,
                     profileId: ctx.profileId ?? null,
                 },
             })
@@ -843,15 +846,18 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length) {
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (prompt.length || attachments?.length) {
+            const text = prompt.length ? prompt : attachments ? '[Image attached]' : ''
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text,
                     format: 'markdown',
+                    attachments,
                     profileId: ctx.profileId ?? null,
                 },
             })

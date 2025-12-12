@@ -1,4 +1,6 @@
-import {existsSync} from 'fs'
+import {existsSync, mkdirSync} from 'fs'
+import {promises as fsp} from 'node:fs'
+import {join} from 'node:path'
 import type {
     AttemptStatus,
     ConversationItem,
@@ -6,11 +8,12 @@ import type {
     AttemptTodoSummary,
     TicketType,
     AutomationStage,
+    ImageAttachment,
 } from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {createWorktree} from '../ports/worktree'
 import {getAgent} from '../agents/registry'
-import type {Agent} from '../agents/types'
+import type {Agent, AgentImageInput} from '../agents/types'
 import {
     getNextConversationSeq,
     insertAttemptLog,
@@ -81,6 +84,7 @@ export type StartAttemptWorkerParams = AttemptWorkerCommonParams
 export type FollowupAttemptWorkerParams = AttemptWorkerCommonParams & {
     sessionId: string
     followupPrompt: string
+    followupAttachments?: ImageAttachment[]
 }
 
 type InternalWorkerParams =
@@ -178,6 +182,39 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
 
             const agent = getAgent(agentKey) as Agent<any> | undefined
             if (!agent) throw new Error(`Unknown agent: ${agentKey}`)
+
+            let attachments: ImageAttachment[] | undefined = undefined
+            let imageInputs: AgentImageInput[] | undefined = undefined
+            if (params.mode === 'resume' && params.followupAttachments?.length) {
+                attachments = params.followupAttachments
+                const attachmentsDir = join(worktreePath, '.kanbanai', 'attachments', attemptId)
+                mkdirSync(attachmentsDir, {recursive: true})
+                imageInputs = []
+                for (const att of attachments) {
+                    const match = /^data:(image\/png|image\/jpeg|image\/webp);base64,(.+)$/i.exec(att.dataUrl)
+                    if (!match) throw new Error('Unsupported image data URL')
+                    const mimeSource = match[1]
+                    const payload = match[2]
+                    if (!mimeSource || !payload) throw new Error('Unsupported image data URL')
+                    const mimeType = mimeSource.toLowerCase()
+                    const buf = Buffer.from(payload, 'base64')
+                    const ext =
+                        mimeType === 'image/png'
+                            ? 'png'
+                            : mimeType === 'image/jpeg'
+                              ? 'jpg'
+                              : 'webp'
+                    const rawId = att.id ?? `img-${crypto.randomUUID()}`
+                    const safeId = rawId.replace(/[^a-z0-9_-]/gi, '_')
+                    const filePath = join(attachmentsDir, `${safeId}.${ext}`)
+                    await fsp.writeFile(filePath, buf)
+                    imageInputs.push({
+                        path: filePath,
+                        mimeType,
+                        sizeBytes: buf.byteLength,
+                    })
+                }
+            }
 
             let msgSeq = await getNextConversationSeq(attemptId)
             const emit = async (
@@ -441,6 +478,8 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                             emit,
                             sessionId: params.sessionId,
                             followupPrompt: params.followupPrompt,
+                            attachments,
+                            images: imageInputs,
                             profileId: profileId ?? null,
                         } as any,
                         profile as any,

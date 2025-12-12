@@ -12,7 +12,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
 
     switch (item.type) {
         case 'message': {
-            const {role, text} = item
+            const {role, text, attachments} = item
             const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
             return (
                 <div className="mb-2 rounded bg-background p-2">
@@ -23,6 +23,18 @@ export function MessageRow({item}: { item: ConversationItem }) {
                             <span className="text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
                     </div>
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
+                    {attachments && attachments.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {attachments.map((img) => (
+                                <img
+                                    key={img.id ?? img.dataUrl}
+                                    src={img.dataUrl}
+                                    alt={img.name ?? 'attachment'}
+                                    className="h-28 w-28 rounded border object-cover"
+                                />
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             )
         }

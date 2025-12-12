@@ -4,10 +4,26 @@ export const stopAttemptSchema = z.object({
     status: z.enum(['stopped']),
 })
 
-export const attemptMessageSchema = z.object({
-    prompt: z.string().min(1),
-    profileId: z.string().optional(),
+const imageAttachmentSchema = z.object({
+    id: z.string().optional(),
+    mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+    dataUrl: z.string().min(1),
+    sizeBytes: z.number().int().positive(),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    name: z.string().optional(),
 })
+
+export const attemptMessageSchema = z
+    .object({
+        prompt: z.string().optional().default(''),
+        profileId: z.string().optional(),
+        images: z.array(imageAttachmentSchema).optional(),
+    })
+    .refine(
+        (data) => (data.prompt?.trim().length ?? 0) > 0 || (data.images?.length ?? 0) > 0,
+        {message: 'Provide a prompt or at least one image'},
+    )
 
 export const openEditorSchema = z.object({
     subpath: z.string().optional(),

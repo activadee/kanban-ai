@@ -1,9 +1,11 @@
-import {useEffect, useRef} from 'react'
-import type {AgentKey, Attempt, ConversationItem} from 'shared'
+import {useEffect, useRef, useState, type ClipboardEvent, type DragEvent} from 'react'
+import type {AgentKey, Attempt, ConversationItem, ImageAttachment} from 'shared'
 import {Label} from '@/components/ui/label'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {toast} from '@/components/ui/toast'
+import {X} from 'lucide-react'
 import {MessageRow} from '../MessageRow'
 
 export type AttemptsSectionProps = {
@@ -13,6 +15,8 @@ export type AttemptsSectionProps = {
     conversation: ConversationItem[]
     followup: string
     onFollowupChange: (value: string) => void
+    followupImages: ImageAttachment[]
+    onFollowupImagesChange: (images: ImageAttachment[]) => void
     onSendFollowup: () => void
     sendPending: boolean
     stopping: boolean
@@ -23,6 +27,10 @@ export type AttemptsSectionProps = {
     followupProfiles: Array<{ id: string; name: string }>
 }
 
+const MAX_IMAGES_PER_MESSAGE = 4
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
+
 export function AttemptsSection({
                                     attempt,
                                     cardId,
@@ -30,6 +38,8 @@ export function AttemptsSection({
                                     conversation,
                                     followup,
                                     onFollowupChange,
+                                    followupImages,
+                                    onFollowupImagesChange,
                                     onSendFollowup,
                                     sendPending,
                                     stopping,
@@ -42,6 +52,97 @@ export function AttemptsSection({
     const messagesContainerRef = useRef<HTMLDivElement | null>(null)
     const messagesEndRef = useRef<HTMLDivElement | null>(null)
     const initialScrolledForCardRef = useRef<string | null>(null)
+    const [dragActive, setDragActive] = useState(false)
+
+    const readFileDataUrl = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = () => reject(reader.error)
+            reader.readAsDataURL(file)
+        })
+
+    const addImageFiles = async (files: File[]) => {
+        if (!files.length) return
+        const remaining = MAX_IMAGES_PER_MESSAGE - followupImages.length
+        if (remaining <= 0) {
+            toast({
+                title: 'Image limit reached',
+                description: `You can attach up to ${MAX_IMAGES_PER_MESSAGE} images.`,
+                variant: 'destructive',
+            })
+            return
+        }
+        const nextFiles = files.slice(0, remaining)
+        const newAttachments: ImageAttachment[] = []
+        for (const file of nextFiles) {
+            const mimeType = file.type as (typeof ALLOWED_IMAGE_TYPES)[number]
+            if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+                toast({
+                    title: 'Unsupported image format',
+                    description: 'Only PNG, JPEG, and WebP are supported.',
+                    variant: 'destructive',
+                })
+                continue
+            }
+            if (file.size > MAX_IMAGE_BYTES) {
+                toast({
+                    title: 'Image too large',
+                    description: `Images must be under ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB.`,
+                    variant: 'destructive',
+                })
+                continue
+            }
+            try {
+                const dataUrl = await readFileDataUrl(file)
+                newAttachments.push({
+                    id: `img-${crypto.randomUUID()}`,
+                    mimeType,
+                    dataUrl,
+                    sizeBytes: file.size,
+                    name: file.name,
+                })
+            } catch (err) {
+                console.warn('Failed reading image', err)
+            }
+        }
+        if (newAttachments.length) {
+            onFollowupImagesChange([...followupImages, ...newAttachments])
+        }
+    }
+
+    const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+        const items = Array.from(event.clipboardData.items ?? [])
+        const files = items
+            .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+            .map((item) => item.getAsFile())
+            .filter(Boolean) as File[]
+        if (files.length) {
+            void addImageFiles(files)
+        }
+    }
+
+    const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+        if (!event.dataTransfer.types.includes('Files')) return
+        event.preventDefault()
+        setDragActive(true)
+    }
+
+    const handleDragLeave = () => {
+        setDragActive(false)
+    }
+
+    const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+        event.preventDefault()
+        setDragActive(false)
+        const files = Array.from(event.dataTransfer.files ?? []).filter((f) => f.type.startsWith('image/'))
+        if (files.length) void addImageFiles(files)
+    }
+
+    const removeImage = (id?: string) => {
+        if (!id) return
+        onFollowupImagesChange(followupImages.filter((img) => img.id !== id))
+    }
 
     useEffect(() => {
         if (!conversation.length) return
@@ -71,13 +172,50 @@ export function AttemptsSection({
                 <div className="mt-2 space-y-2">
                     <div className="space-y-1">
                         <Label htmlFor="ins-follow">Follow-up</Label>
-                        <Textarea
-                            id="ins-follow"
-                            rows={3}
-                            value={followup}
-                            onChange={(event) => onFollowupChange(event.target.value)}
-                            placeholder="Ask the agent to continue…"
-                        />
+                        <div
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={handleDrop}
+                            className={dragActive ? 'rounded-md ring-2 ring-ring/50' : undefined}
+                        >
+                            <Textarea
+                                id="ins-follow"
+                                rows={3}
+                                value={followup}
+                                onChange={(event) => onFollowupChange(event.target.value)}
+                                onPaste={handlePaste}
+                                placeholder="Ask the agent to continue… (paste or drop images)"
+                            />
+                        </div>
+                        {followupImages.length > 0 ? (
+                            <div className="mt-2 space-y-1">
+                                <div className="text-xs text-muted-foreground">
+                                    Attached images ({followupImages.length})
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {followupImages.map((img) => (
+                                        <div key={img.id ?? img.dataUrl} className="relative">
+                                            <img
+                                                src={img.dataUrl}
+                                                alt={img.name ?? 'attachment'}
+                                                className="h-20 w-20 rounded border object-cover"
+                                            />
+                                            {img.id ? (
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="secondary"
+                                                    className="absolute -right-2 -top-2 h-6 w-6 rounded-full"
+                                                    onClick={() => removeImage(img.id)}
+                                                >
+                                                    <X className="h-3 w-3"/>
+                                                </Button>
+                                            ) : null}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         {attemptAgent ? (
@@ -117,7 +255,7 @@ export function AttemptsSection({
                             <Button
                                 size="sm"
                                 onClick={onSendFollowup}
-                                disabled={sendPending || !followup.trim()}
+                                disabled={sendPending || (!followup.trim() && followupImages.length === 0)}
                             >
                                 {sendPending ? 'Sending…' : 'Send'}
                             </Button>
@@ -128,4 +266,3 @@ export function AttemptsSection({
         </div>
     )
 }
-

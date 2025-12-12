@@ -1,4 +1,10 @@
-import type {AttemptStatus, ConversationItem, AttemptTodoSummary} from 'shared'
+import type {
+    AttemptStatus,
+    ConversationItem,
+    AttemptTodoSummary,
+    ImageAttachment,
+    ImageMimeType,
+} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -55,6 +61,46 @@ function deserializeConversationItem(row: {
             text: 'Failed to load conversation entry',
         }
     }
+}
+
+const MAX_IMAGES_PER_MESSAGE = 4
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const ALLOWED_IMAGE_MIME_TYPES: ImageMimeType[] = [
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+]
+
+function validateImageAttachments(raw: ImageAttachment[] | undefined): ImageAttachment[] {
+    if (!raw || raw.length === 0) return []
+    if (raw.length > MAX_IMAGES_PER_MESSAGE) {
+        throw new Error(`Too many images attached (max ${MAX_IMAGES_PER_MESSAGE})`)
+    }
+    const validated: ImageAttachment[] = []
+    for (const att of raw) {
+        const dataUrl = (att.dataUrl ?? '').trim()
+        const match = /^data:(image\/png|image\/jpeg|image\/webp);base64,(.+)$/i.exec(dataUrl)
+        if (!match) throw new Error('Unsupported image data URL')
+        const mimeSource = match[1]
+        const payload = match[2]
+        if (!mimeSource || !payload) throw new Error('Unsupported image data URL')
+        const mimeType = mimeSource.toLowerCase() as ImageMimeType
+        if (!ALLOWED_IMAGE_MIME_TYPES.includes(mimeType)) {
+            throw new Error(`Unsupported image format: ${mimeType}`)
+        }
+        const buf = Buffer.from(payload, 'base64')
+        if (buf.byteLength > MAX_IMAGE_BYTES) {
+            throw new Error(`Image exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`)
+        }
+        const id = att.id?.trim() || `img-${crypto.randomUUID()}`
+        validated.push({
+            ...att,
+            id,
+            mimeType,
+            sizeBytes: buf.byteLength,
+        })
+    }
+    return validated
 }
 
 export async function getLatestAttemptForCard(boardId: string, cardId: string) {
@@ -276,6 +322,7 @@ export async function followupAttempt(
     attemptId: string,
     prompt: string,
     profileId: string | undefined,
+    attachments: ImageAttachment[] | undefined,
     events: AppEventBus,
 ) {
     const base = await getAttemptById(attemptId)
@@ -298,6 +345,7 @@ export async function followupAttempt(
     const allowSetupScriptToFail = settings.allowSetupScriptToFail ?? false
     const allowDevScriptToFail = settings.allowDevScriptToFail ?? false
     const allowCleanupScriptToFail = settings.allowCleanupScriptToFail ?? false
+    const validatedAttachments = validateImageAttachments(attachments)
     const now = new Date()
     const repoPath = await (async () => {
         const p = await getRepositoryPath(base.boardId)
@@ -348,6 +396,7 @@ export async function followupAttempt(
             cardDescription: null,
             sessionId: base.sessionId,
             followupPrompt: prompt,
+            followupAttachments: validatedAttachments,
             automation: {
                 copyScript,
                 setupScript,
