@@ -15,7 +15,10 @@ import type {
     PrSummaryInlineResult,
 } from './types'
 import {resolveAgentProfile} from './profile-resolution'
-import {appendGithubIssueAutoCloseReferences} from './pr-summary-issues'
+import {
+    appendGithubIssueAutoCloseReferencesForRefs,
+    type GithubIssueRef,
+} from './pr-summary-issues'
 
 export type AgentSummarizePullRequestOptions = {
     projectId: string
@@ -88,33 +91,51 @@ async function resolveProjectGithubOwnerRepo(project: ProjectSummary): Promise<{
 }
 
 async function resolveAssociatedCardIds(opts: AgentSummarizePullRequestOptions): Promise<string[]> {
-    const cardIds = new Set<string>()
     const directCardId = typeof opts.cardId === 'string' ? opts.cardId.trim() : ''
-    if (directCardId) cardIds.add(directCardId)
-
     const attemptId = typeof opts.attemptId === 'string' ? opts.attemptId.trim() : ''
-    if (attemptId) {
-        try {
-            const attempt = await getAttemptById(attemptId)
-            const attemptCardId = attempt?.cardId?.trim?.() || attempt?.cardId
-            if (typeof attemptCardId === 'string' && attemptCardId.trim()) {
-                cardIds.add(attemptCardId.trim())
+
+    if (directCardId) {
+        if (attemptId) {
+            try {
+                const attempt = await getAttemptById(attemptId)
+                const attemptCardId = attempt?.cardId?.trim?.() || attempt?.cardId
+                const attemptCardIdTrimmed =
+                    typeof attemptCardId === 'string' ? attemptCardId.trim() : ''
+                if (attemptCardIdTrimmed && attemptCardIdTrimmed !== directCardId) {
+                    console.warn('[agents:prSummary] attemptId/cardId mismatch; using explicit cardId', {
+                        attemptId,
+                        attemptCardId: attemptCardIdTrimmed,
+                        cardId: directCardId,
+                    })
+                }
+            } catch (err) {
+                console.warn('[agents:prSummary] Failed to resolve attempt cardId', {attemptId, err})
             }
-        } catch (err) {
-            console.warn('[agents:prSummary] Failed to resolve attempt cardId', {attemptId, err})
         }
+        return [directCardId]
     }
 
-    return Array.from(cardIds)
+    if (!attemptId) return []
+    try {
+        const attempt = await getAttemptById(attemptId)
+        const attemptCardId = attempt?.cardId?.trim?.() || attempt?.cardId
+        const attemptCardIdTrimmed =
+            typeof attemptCardId === 'string' ? attemptCardId.trim() : ''
+        return attemptCardIdTrimmed ? [attemptCardIdTrimmed] : []
+    } catch (err) {
+        console.warn('[agents:prSummary] Failed to resolve attempt cardId', {attemptId, err})
+        return []
+    }
 }
 
-async function resolveGithubIssueNumbers(
+async function resolveGithubIssueRefs(
     cardIds: string[],
     targetRepo: {owner: string; repo: string} | null,
-): Promise<number[]> {
-    const issueNumbers = new Set<number>()
+): Promise<GithubIssueRef[]> {
+    const refs: GithubIssueRef[] = []
     const targetOwner = targetRepo?.owner.trim().toLowerCase() || null
     const targetRepoName = targetRepo?.repo.trim().toLowerCase() || null
+    const targetKnown = Boolean(targetOwner && targetRepoName)
     for (const cardId of cardIds) {
         try {
             const mappings = await listGithubIssueMappingsByCardId(cardId)
@@ -122,23 +143,27 @@ async function resolveGithubIssueNumbers(
                 const num = Number(mapping.issueNumber)
                 if (!Number.isFinite(num) || num <= 0) continue
 
-                if (targetOwner && targetRepoName) {
-                    const owner =
-                        typeof mapping.owner === 'string' ? mapping.owner.trim().toLowerCase() : null
-                    const repo =
-                        typeof mapping.repo === 'string' ? mapping.repo.trim().toLowerCase() : null
-                    if (owner && repo && (owner !== targetOwner || repo !== targetRepoName)) {
-                        continue
-                    }
-                }
+                const owner =
+                    typeof mapping.owner === 'string' ? mapping.owner.trim() : null
+                const repo =
+                    typeof mapping.repo === 'string' ? mapping.repo.trim() : null
 
-                issueNumbers.add(num)
+                if (targetKnown) {
+                    const ownerNorm = owner?.toLowerCase() || null
+                    const repoNorm = repo?.toLowerCase() || null
+                    if (ownerNorm && repoNorm && (ownerNorm !== targetOwner || repoNorm !== targetRepoName)) continue
+                    refs.push({issueNumber: num})
+                    continue
+                }
+                if (owner && repo) {
+                    refs.push({issueNumber: num, owner, repo})
+                }
             }
         } catch (err) {
             console.warn('[agents:prSummary] Failed to resolve GitHub issues for card', {cardId, err})
         }
     }
-    return Array.from(issueNumbers).sort((a, b) => a - b)
+    return refs
 }
 
 export async function agentSummarizePullRequest(
@@ -261,10 +286,12 @@ export async function agentSummarizePullRequest(
     if (cardIds.length === 0) return summary
 
     const targetRepo = await resolveProjectGithubOwnerRepo(project)
-    const issueNumbers = await resolveGithubIssueNumbers(cardIds, targetRepo)
-    if (issueNumbers.length === 0) return summary
+    const issueRefs = await resolveGithubIssueRefs(cardIds, targetRepo)
+    if (issueRefs.length === 0) return summary
 
-    const body = appendGithubIssueAutoCloseReferences(summary.body, issueNumbers)
+    const body = appendGithubIssueAutoCloseReferencesForRefs(summary.body, issueRefs, {
+        compareByNumber: Boolean(targetRepo),
+    })
     if (body === summary.body) return summary
     return {...summary, body}
 }

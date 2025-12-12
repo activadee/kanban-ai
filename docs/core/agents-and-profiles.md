@@ -139,7 +139,7 @@ experimentation.
     - `repositoryPath`, `baseBranch`, `headBranch`, plus optional change summaries in the future.
   - Resolves the agent profile using the shared profile resolution helpers, including support for inline-specific prompts via `inlineProfile`.
   - Builds an `InlineTaskContext` annotated with `profileSource: "inline" | "primary"` so downstream telemetry can distinguish which prompt was used.
-  - Invokes `runInlineTask({agentKey, kind: 'prSummary', input, profile, context, signal})`, appends an auto-close line like `closes #123` when linked GitHub issues exist, and returns the resulting `PrSummaryInlineResult` `{title, body}` used to populate PR title/body suggestions in the UI.
+  - Invokes `runInlineTask({agentKey, kind: 'prSummary', input, profile, context, signal})`, appends an auto-close line like `closes #123` when linked GitHub issues exist (or fully-qualified `owner/repo#123` when the PR repo is unknown), and returns the resulting `PrSummaryInlineResult` `{title, body}` used to populate PR title/body suggestions in the UI. When both `cardId` and `attemptId` are supplied, `cardId` wins and mismatches are treated as errors by the server.
 
 ## Profiles: configuration for agents
 

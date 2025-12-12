@@ -167,6 +167,34 @@ describe("POST /projects/:projectId/pull-requests/summary", () => {
         });
     });
 
+    it("returns 400 when attemptId and cardId refer to different cards", async () => {
+        const app = createApp();
+        const core = await import("core");
+
+        (core.attempts.getAttempt as any).mockResolvedValueOnce({
+            id: "a2",
+            boardId: "proj-1",
+            cardId: "card-from-attempt",
+        });
+
+        const res = await app.request(
+            "/projects/proj-1/pull-requests/summary",
+            {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({branch: "feature/test", attemptId: "a2", cardId: "card-explicit"}),
+            },
+        );
+
+        expect(res.status).toBe(400);
+        const data = (await res.json()) as any;
+        expect(data).toMatchObject({
+            status: 400,
+            detail: "Attempt cardId does not match provided cardId",
+        });
+        expect(core.agentSummarizePullRequest).not.toHaveBeenCalled();
+    });
+
     it("returns 409 when branch name is missing", async () => {
         const app = createApp();
         const {git, agentSummarizePullRequest} = await import("core");

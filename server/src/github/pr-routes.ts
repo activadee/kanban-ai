@@ -91,6 +91,18 @@ export function createGithubProjectRouter() {
                     return problemJson(c, {status: 400, detail: 'Attempt does not belong to this project'})
                 }
 
+                const explicitCardId = cardId?.trim() || ''
+                const attemptCardId =
+                    attempt && typeof (attempt as any).cardId === 'string'
+                        ? (attempt as any).cardId.trim()
+                        : ''
+                if (attempt && explicitCardId && attemptCardId && attemptCardId !== explicitCardId) {
+                    return problemJson(c, {
+                        status: 400,
+                        detail: 'Attempt cardId does not match provided cardId',
+                    })
+                }
+
                 const card = cardId
                     ? await projectsRepo.getCardById(cardId)
                     : attempt?.cardId

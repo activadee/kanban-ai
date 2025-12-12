@@ -75,7 +75,7 @@ PR summarization reuses the same inline infrastructure as ticket enhancement:
     - Otherwise, the primary profile’s prompt (e.g. `appendPrompt`) is used.
   - Builds an `InlineTaskContext` annotated with `profileSource: "inline" | "primary"`.
   - Invokes `runInlineTask({agentKey, kind: "prSummary", input, profile, context, signal})`.
-  - Returns `PrSummaryInlineResult` `{title, body}`. When the associated card/ticket has GitHub issues, the body ends with an auto-close line like `closes #123, fixes #456`.
+  - Returns `PrSummaryInlineResult` `{title, body}`. When the associated card/ticket has GitHub issues, the body ends with an auto-close line like `closes #123, fixes #456`. If the PR repository cannot be resolved, references are emitted as fully-qualified `owner/repo#123`. When both `cardId` and `attemptId` are provided, `cardId` takes precedence; mismatches are rejected at the HTTP layer.
   - Built-in agents that currently implement PR inline summary are:
     - `CODEX` via the Codex SDK.
     - `DROID` via the Droid CLI.
