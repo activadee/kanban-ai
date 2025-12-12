@@ -62,6 +62,7 @@ export const updateProjectSettingsHandler = async (c: any) => {
         githubIssueSyncState?: "open" | "all" | "closed";
         githubIssueSyncIntervalMinutes?: number;
         githubIssueAutoCreateEnabled?: boolean;
+        autoCloseTicketOnPRMerge?: boolean;
     };
     let {
         defaultAgent,
@@ -224,6 +225,9 @@ export const updateProjectSettingsHandler = async (c: any) => {
     }
     if (body.githubIssueAutoCreateEnabled !== undefined) {
         updates.githubIssueAutoCreateEnabled = body.githubIssueAutoCreateEnabled;
+    }
+    if (body.autoCloseTicketOnPRMerge !== undefined) {
+        updates.autoCloseTicketOnPRMerge = body.autoCloseTicketOnPRMerge;
     }
 
     try {

@@ -5,6 +5,7 @@ import { loadConfig, setRuntimeConfig, type AppServices } from '../env'
 import { applyDevDatabaseConfig } from './dev-config'
 import { createEventBus } from '../events/bus'
 import { startGithubIssueSyncScheduler } from '../github/sync'
+import { startGithubPrAutoCloseScheduler } from '../github/pr-auto-close.sync'
 import { projectsService, settingsService } from 'core'
 
 if (import.meta.main) {
@@ -44,6 +45,7 @@ if (import.meta.main) {
     const app = createApp({ upgradeWebSocket, config, services, events })
     const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
     startGithubIssueSyncScheduler({ events })
+    startGithubPrAutoCloseScheduler({ events })
     log.info('server', 'listening', { url, dbFile, mode: 'dev' })
   }
   run().catch((error) => {

@@ -134,6 +134,8 @@ export function kanbanWebsocketHandlers(boardId: string) {
                             title: msg.payload.title,
                             description: msg.payload.description,
                             ticketType: msg.payload.ticketType,
+                            disableAutoCloseOnPRMerge:
+                                msg.payload.disableAutoCloseOnPRMerge,
                             isEnhanced: msg.payload.isEnhanced,
                         })
                         break

@@ -78,6 +78,8 @@ that repository:
     `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), and
     `githubIssueSyncIntervalMinutes` (clamped between 5 and 1440 minutes), plus
     `githubIssueAutoCreateEnabled` to allow per‑ticket GitHub issue creation on card create.
+  - `autoCloseTicketOnPRMerge` (default `false`) opt‑in enables a background scheduler that moves Review cards with
+    merged PRs into Done; cards can opt out individually by setting their `disableAutoCloseOnPRMerge` flag.
   - When GitHub is connected and a board context is available, the Project Settings view also surfaces the counts of
     linked issues (`imported`, `exported`, `total`) by calling `/boards/:boardId/github/issues/stats`, giving you a quick
     snapshot of what has been synced or exported so far.

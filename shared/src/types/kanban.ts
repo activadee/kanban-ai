@@ -19,6 +19,11 @@ export interface Card {
     id: CardId
     ticketKey?: string | null
     prUrl?: string | null
+    /**
+     * Per-card opt-out from project-level auto-close on PR merge.
+     * When true, this card will not be auto-closed.
+     */
+    disableAutoCloseOnPRMerge?: boolean
     ticketType?: TicketType | null
     isEnhanced: boolean
     githubIssue?: {
@@ -58,7 +63,17 @@ export type WsMsg =
     | { type: 'pong'; payload?: { ts?: string } }
     | { type: 'create_card'; payload: { columnId: ColumnId; title: string; description?: string; ticketType?: TicketType | null } }
     | { type: 'move_card'; payload: { cardId: CardId; toColumnId: ColumnId; toIndex: number } }
-    | { type: 'update_card'; payload: { cardId: CardId; title?: string; description?: string; ticketType?: TicketType | null; isEnhanced?: boolean } }
+    | {
+    type: 'update_card';
+    payload: {
+        cardId: CardId;
+        title?: string;
+        description?: string;
+        ticketType?: TicketType | null;
+        isEnhanced?: boolean;
+        disableAutoCloseOnPRMerge?: boolean;
+    }
+}
     | { type: 'delete_card'; payload: { cardId: CardId } }
     // Attempt event envelopes broadcast by server; client may ignore until UI lands
     | { type: 'attempt_started'; payload: { attemptId: string; cardId: string } }

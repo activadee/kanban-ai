@@ -27,6 +27,7 @@ import { toast } from "@/components/ui/toast.tsx";
 import { eventBus } from "@/lib/events.ts";
 import { describeApiError } from "@/api/http";
 import { Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export function ProjectBoardPage() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -188,48 +189,50 @@ export function ProjectBoardPage() {
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col">
-            <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    <img src={"/vite.svg"} className="h-6 w-6" />
-                    <div className="text-xl font-semibold">{project.name}</div>
-                    <VersionIndicator />
-                </div>
-                <div className="flex items-center gap-2">
-                    <Badge variant={connectionBadgeVariant}>
-                        {connectionLabel}
-                    </Badge>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setImportOpen(true)}
-                    >
-                        Import GitHub issues
-                    </Button>
-                </div>
-            </div>
+        <div className="flex h-full min-h-0 flex-col bg-background">
+            <PageHeader
+                title={project.name}
+                titleAccessory={<VersionIndicator />}
+                actions={
+                    <>
+                        <Badge variant={connectionBadgeVariant}>
+                            {connectionLabel}
+                        </Badge>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setImportOpen(true)}
+                        >
+                            Import GitHub issues
+                        </Button>
+                    </>
+                }
+            />
 
-            {enhancingCount > 0 && (
-                <div className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin text-primary" />
-                    <span>
-                        {enhancingCount === 1
-                            ? "Enhancing 1 ticket in the background"
-                            : `Enhancing ${enhancingCount} tickets in the background`}
-                    </span>
-                </div>
-            )}
+            <div className="flex flex-1 min-h-0 flex-col px-4 py-4 sm:px-6 lg:px-8">
+                {enhancingCount > 0 && (
+                    <div className="mb-2 flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                        <Loader2 className="size-4 animate-spin text-primary" />
+                        <span>
+                            {enhancingCount === 1
+                                ? "Enhancing 1 ticket in the background"
+                                : `Enhancing ${enhancingCount} tickets in the background`}
+                        </span>
+                    </div>
+                )}
 
-            <div className="flex-1 min-h-0 px-4 pb-4">
-                <Board
-                    projectId={project.id}
-                    state={boardState}
-                    initialSelectedCardId={initialSelectedCardId}
-                    enhancementStatusByCardId={enhancementStatusByCardId}
-                    onCardEnhancementClick={(cardId) =>
-                        setEnhancementDialogCardId(cardId)
-                    }
-                    handlers={{
+                <div className="flex-1 min-h-0">
+                    <Board
+                        projectId={project.id}
+                        state={boardState}
+                        initialSelectedCardId={initialSelectedCardId}
+                        enhancementStatusByCardId={
+                            enhancementStatusByCardId
+                        }
+                        onCardEnhancementClick={(cardId) =>
+                            setEnhancementDialogCardId(cardId)
+                        }
+                        handlers={{
                         onCreateCard: async (
                             columnId,
                             values: CardFormValues,
@@ -431,7 +434,8 @@ export function ProjectBoardPage() {
                             });
                         },
                     }}
-                />
+                    />
+                </div>
             </div>
             <CardEnhancementDialog
                 open={Boolean(
