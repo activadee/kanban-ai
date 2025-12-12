@@ -151,7 +151,7 @@ export async function findCardsByPrUrls(
             and(
                 eq(cards.boardId, boardId),
                 inArray(cards.prUrl, urls),
-                eq((cards as any).disableAutoCloseOnPRMerge, false),
+                eq(cards.disableAutoCloseOnPRMerge, false),
             ),
         )
         .orderBy(asc(cards.createdAt))

@@ -79,6 +79,10 @@ export interface ProjectSettings {
      * into the Done column (unless per-card opt-out is set).
      */
     autoCloseTicketOnPRMerge: boolean
+    /** Last time the background PR auto-close ran (if enabled). */
+    lastGithubPrAutoCloseAt: string | null
+    /** Current/last status of the PR auto-close tick. */
+    lastGithubPrAutoCloseStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     lastGithubIssueSyncAt: string | null
     lastGithubIssueSyncStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     createdAt: string

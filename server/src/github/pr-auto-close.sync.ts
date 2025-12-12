@@ -1,6 +1,6 @@
-import {projectsService, projectsRepo, githubRepo, projectSettingsSync, tasks} from "core";
+import * as core from "core";
 import type {AppEventBus} from "../events/bus";
-import {getPullRequest} from "./pr";
+import {getPullRequest as getPullRequestDefault} from "./pr";
 import {log} from "../log";
 
 const DEFAULT_TICK_INTERVAL_SECONDS = 60;
@@ -10,121 +10,312 @@ export type GithubPrAutoCloseSchedulerOptions = {
     intervalSeconds?: number;
 };
 
-const lastRunByProject = new Map<string, number>();
 let tickInProgress = false;
 
-function extractPrNumber(prUrl: string): number | null {
-    const match = prUrl.match(/\/pull\/(\d+)(?:$|[?#/])/i);
-    if (!match) return null;
-    const n = Number(match[1]);
-    return Number.isFinite(n) ? n : null;
+function parsePrUrl(
+    prUrl: string,
+): {owner: string; repo: string; number: number} | null {
+    const trimmed = prUrl.trim();
+    const stripGitSuffix = (name: string) =>
+        name.toLowerCase().endsWith(".git") ? name.slice(0, -4) : name;
+
+    const safeDecode = (value: string) => {
+        try {
+            return decodeURIComponent(value);
+        } catch {
+            return value;
+        }
+    };
+
+    // Match common GitHub PR URLs, including API-style URLs.
+    const match = trimmed.match(
+        /github\.com\/(?:repos\/)?([^/]+)\/([^/]+)\/pulls?\/(\d+)(?:[/?#]|$)/i,
+    );
+    if (match) {
+        const ownerRaw = match[1];
+        const repoRaw = match[2];
+        const numberRaw = match[3];
+        if (!ownerRaw || !repoRaw || !numberRaw) return null;
+
+        const number = Number(numberRaw);
+        if (!Number.isFinite(number)) return null;
+        const owner = safeDecode(ownerRaw);
+        const repo = stripGitSuffix(safeDecode(repoRaw));
+        return {owner, repo, number};
+    }
+
+    // Fall back to URL parsing for less common formats.
+    try {
+        const url = new URL(trimmed);
+        if (!url.hostname.toLowerCase().endsWith("github.com")) return null;
+        const parts = url.pathname.split("/").filter(Boolean);
+        if (parts.length < 4) return null;
+
+        let owner = parts[0]!;
+        let repo = parts[1]!;
+        let kind = parts[2]!;
+        let numStr = parts[3]!;
+
+        if (owner.toLowerCase() === "repos" && parts.length >= 5) {
+            owner = parts[1]!;
+            repo = parts[2]!;
+            kind = parts[3]!;
+            numStr = parts[4]!;
+        }
+
+        kind = kind.toLowerCase();
+        if (kind !== "pull" && kind !== "pulls") return null;
+        const number = Number(numStr);
+        if (!Number.isFinite(number)) return null;
+        return {
+            owner: safeDecode(owner),
+            repo: stripGitSuffix(safeDecode(repo)),
+            number,
+        };
+    } catch {
+        return null;
+    }
 }
 
-async function shouldRun(projectId: string, intervalMinutes: number, nowMs: number) {
-    const last = lastRunByProject.get(projectId);
-    if (!last) return true;
-    return nowMs - last >= intervalMinutes * 60 * 1000;
-}
-
-export async function runGithubPrAutoCloseTick(events: AppEventBus): Promise<void> {
+export async function runGithubPrAutoCloseTick(
+    events: AppEventBus,
+    deps?: Partial<{
+        getPullRequest: typeof getPullRequestDefault;
+        projectsService: typeof core.projectsService;
+        projectsRepo: typeof core.projectsRepo;
+        githubRepo: typeof core.githubRepo;
+        projectSettingsPrAutoClose: typeof core.projectSettingsPrAutoClose;
+        tasks: typeof core.tasks;
+        getGitOriginUrl: typeof core.getGitOriginUrl;
+        parseGithubOwnerRepo: typeof core.parseGithubOwnerRepo;
+    }>,
+): Promise<void> {
     if (tickInProgress) return;
     tickInProgress = true;
+    const getPullRequest = deps?.getPullRequest ?? getPullRequestDefault;
+    const services = deps?.projectsService ?? core.projectsService;
+    const repo = deps?.projectsRepo ?? core.projectsRepo;
+    const ghRepo = deps?.githubRepo ?? core.githubRepo;
+    const settingsSync =
+        deps?.projectSettingsPrAutoClose ??
+        core.projectSettingsPrAutoClose;
+    const taskSvc = deps?.tasks ?? core.tasks;
+    const getOriginUrl =
+        deps?.getGitOriginUrl ?? core.getGitOriginUrl;
+    const parseOrigin =
+        deps?.parseGithubOwnerRepo ?? core.parseGithubOwnerRepo;
     try {
-        const connection = await githubRepo.getGithubConnection();
+        const connection = await ghRepo.getGithubConnection();
         if (!connection?.accessToken) return;
 
-        const projects = await projectsService.list();
+        const projects = await services.list();
         const now = new Date();
-        const nowMs = now.getTime();
 
         for (const project of projects) {
+            const projectId = project.id;
             try {
-                const settings = await projectsService.getSettings(project.id);
-                if (!settings.autoCloseTicketOnPRMerge) continue;
-
-                const intervalMinutes = projectSettingsSync.normalizeGithubIssueSyncInterval(
-                    settings.githubIssueSyncIntervalMinutes,
-                );
-                if (!(await shouldRun(project.id, intervalMinutes, nowMs))) continue;
-                lastRunByProject.set(project.id, nowMs);
-
-                const columns = await projectsRepo.listColumnsForBoard(project.id);
-                const reviewColumnIds = columns
-                    .filter(
-                        (c) => (c.title || "").trim().toLowerCase() === "review",
+                const settings = await services.getSettings(projectId);
+                if (
+                    !settingsSync.isGithubPrAutoCloseEnabled(
+                        settings,
                     )
-                    .map((c) => c.id);
-                if (reviewColumnIds.length === 0) continue;
+                )
+                    continue;
+                if (
+                    !settingsSync.isGithubPrAutoCloseDue(
+                        settings,
+                        now,
+                    )
+                )
+                    continue;
 
-                const cards = await projectsRepo.listCardsForColumns(
-                    reviewColumnIds,
-                );
-                const reviewCardsWithPr = cards.filter(
-                    (c) =>
-                        Boolean(c.prUrl) &&
-                        !(c as any).disableAutoCloseOnPRMerge,
-                );
-                if (reviewCardsWithPr.length === 0) continue;
+                const lockAcquired =
+                    await settingsSync.tryStartGithubPrAutoClose(
+                        projectId,
+                        now,
+                    );
+                if (!lockAcquired) continue;
 
-                // Group cards by PR number
-                const byPrNumber = new Map<number, typeof reviewCardsWithPr>();
-                for (const card of reviewCardsWithPr) {
-                    const prNumber = extractPrNumber(card.prUrl!);
-                    if (!prNumber) continue;
-                    const list = byPrNumber.get(prNumber) ?? [];
-                    list.push(card);
-                    byPrNumber.set(prNumber, list);
-                }
+                let status: "succeeded" | "failed" = "succeeded";
 
-                for (const [prNumber, cardsForPr] of byPrNumber.entries()) {
-                    try {
-                        const pr = await getPullRequest(
-                            project.id,
-                            connection.accessToken,
-                            prNumber,
+                try {
+                    const originUrl = await getOriginUrl(
+                        project.repositoryPath,
+                    );
+                    if (!originUrl) {
+                        log.warn(
+                            "github:pr-auto-close",
+                            "No GitHub origin; skipping project",
+                            {projectId, boardId: project.boardId},
                         );
-                        if (pr.state !== "closed" || !pr.merged) continue;
+                        status = "failed";
+                        continue;
+                    }
 
-                        for (const card of cardsForPr) {
-                            await tasks.moveCardToColumnByTitle(
-                                project.id,
-                                card.id,
-                                "Done",
-                            );
-                            events.publish("github.pr.merged.autoClosed", {
-                                projectId: project.id,
+                    const origin = parseOrigin(originUrl);
+                    if (!origin) {
+                        log.warn(
+                            "github:pr-auto-close",
+                            "Origin is not a GitHub repo; skipping project",
+                            {
+                                projectId,
                                 boardId: project.boardId,
-                                cardId: card.id,
-                                prNumber,
-                                prUrl: card.prUrl!,
-                                ts: new Date().toISOString(),
-                            });
-                            log.info(
+                                originUrl,
+                            },
+                        );
+                        status = "failed";
+                        continue;
+                    }
+
+                    const columns =
+                        await repo.listColumnsForBoard(projectId);
+                    const reviewColumnIds = columns
+                        .filter(
+                            (c) =>
+                                (c.title || "")
+                                    .trim()
+                                    .toLowerCase() === "review",
+                        )
+                        .map((c) => c.id);
+                    if (reviewColumnIds.length === 0) continue;
+
+                    const hasDoneColumn = columns.some(
+                        (c) =>
+                            (c.title || "")
+                                .trim()
+                                .toLowerCase() === "done",
+                    );
+                    if (!hasDoneColumn) {
+                        log.warn(
+                            "github:pr-auto-close",
+                            "No Done column found; refusing to auto-close",
+                            {projectId, boardId: project.boardId},
+                        );
+                        status = "failed";
+                        continue;
+                    }
+
+                    const cards =
+                        await repo.listCardsForColumns(
+                            reviewColumnIds,
+                        );
+                    const reviewCardsWithPr = cards.filter(
+                        (c) =>
+                            Boolean(c.prUrl) &&
+                            !c.disableAutoCloseOnPRMerge,
+                    );
+                    if (reviewCardsWithPr.length === 0) continue;
+
+                    const byPrNumber = new Map<
+                        number,
+                        typeof reviewCardsWithPr
+                    >();
+                    for (const card of reviewCardsWithPr) {
+                        const parsedPr = parsePrUrl(card.prUrl!);
+                        if (!parsedPr) continue;
+                        if (
+                            parsedPr.owner.toLowerCase() !==
+                                origin.owner.toLowerCase() ||
+                            parsedPr.repo.toLowerCase() !==
+                                origin.repo.toLowerCase()
+                        ) {
+                            log.warn(
                                 "github:pr-auto-close",
-                                "card moved to Done on PR merge",
+                                "PR url does not match project origin; skipping card",
                                 {
-                                    projectId: project.id,
-                                    boardId: project.boardId,
+                                    projectId,
                                     cardId: card.id,
-                                    ticketKey: card.ticketKey ?? null,
-                                    prNumber,
                                     prUrl: card.prUrl,
+                                    originOwner: origin.owner,
+                                    originRepo: origin.repo,
+                                },
+                            );
+                            continue;
+                        }
+                        const list = byPrNumber.get(parsedPr.number) ?? [];
+                        list.push(card);
+                        byPrNumber.set(parsedPr.number, list);
+                    }
+
+                    for (const [prNumber, cardsForPr] of byPrNumber.entries()) {
+                        try {
+                            const pr = await getPullRequest(
+                                projectId,
+                                connection.accessToken,
+                                prNumber,
+                            );
+                            if (pr.state !== "closed" || !pr.merged) continue;
+
+                            for (const card of cardsForPr) {
+                                await taskSvc.moveCardToColumnByTitle(
+                                    projectId,
+                                    card.id,
+                                    "Done",
+                                    {fallbackToFirst: false},
+                                );
+                                events.publish(
+                                    "github.pr.merged.autoClosed",
+                                    {
+                                        projectId,
+                                        boardId: project.boardId,
+                                        cardId: card.id,
+                                        prNumber,
+                                        prUrl: card.prUrl!,
+                                        ts: new Date().toISOString(),
+                                    },
+                                );
+                                log.info(
+                                    "github:pr-auto-close",
+                                    "card moved to Done on PR merge",
+                                    {
+                                        projectId,
+                                        boardId: project.boardId,
+                                        cardId: card.id,
+                                        ticketKey: card.ticketKey ?? null,
+                                        prNumber,
+                                        prUrl: card.prUrl,
+                                    },
+                                );
+                            }
+                        } catch (error) {
+                            log.warn(
+                                "github:pr-auto-close",
+                                "PR lookup failed",
+                                {
+                                    err: error,
+                                    projectId,
+                                    prNumber,
                                 },
                             );
                         }
-                    } catch (error) {
-                        log.warn("github:pr-auto-close", "PR lookup failed", {
-                            err: error,
-                            projectId: project.id,
-                            prNumber,
-                        });
+                    }
+                } catch (error) {
+                    status = "failed";
+                    log.error(
+                        "github:pr-auto-close",
+                        "Scheduled PR auto-close failed",
+                        {err: error, projectId},
+                    );
+                } finally {
+                    try {
+                        await settingsSync.completeGithubPrAutoClose(
+                            projectId,
+                            status,
+                            new Date(),
+                        );
+                    } catch (completeError) {
+                        log.warn(
+                            "github:pr-auto-close",
+                            "Failed to persist PR auto-close status",
+                            {err: completeError, projectId},
+                        );
                     }
                 }
             } catch (error) {
                 log.error(
                     "github:pr-auto-close",
                     "Unexpected error during scheduled PR auto-close for project",
-                    {err: error, projectId: project.id},
+                    {err: error, projectId},
                 );
             }
         }

@@ -1,4 +1,16 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
+import type {AppEventBus} from "../src/events/bus";
+
+// Mock core to avoid Node ESM loader trying to resolve Bun workspace URLs.
+vi.mock("core", () => ({
+    projectsService: {},
+    projectsRepo: {},
+    githubRepo: {},
+    projectSettingsPrAutoClose: {},
+    tasks: {},
+    getGitOriginUrl: () => null,
+    parseGithubOwnerRepo: () => null,
+}));
 
 const mockProjectsList = vi.fn();
 const mockGetSettings = vi.fn();
@@ -6,43 +18,71 @@ const mockListColumns = vi.fn();
 const mockListCardsForColumns = vi.fn();
 const mockGetGithubConnection = vi.fn();
 const mockMoveCardToColumnByTitle = vi.fn();
-const mockNormalizeInterval = vi.fn((v: any) =>
-    typeof v === "number" ? v : 15,
+const mockIsEnabled = vi.fn(
+    (settings: {autoCloseTicketOnPRMerge?: boolean}) =>
+        Boolean(settings.autoCloseTicketOnPRMerge),
 );
-
-vi.mock("core", () => ({
-    projectsService: {
-        list: (...args: any[]) => mockProjectsList(...args),
-        getSettings: (...args: any[]) => mockGetSettings(...args),
-    },
-    projectsRepo: {
-        listColumnsForBoard: (...args: any[]) => mockListColumns(...args),
-        listCardsForColumns: (...args: any[]) =>
-            mockListCardsForColumns(...args),
-    },
-    githubRepo: {
-        getGithubConnection: (...args: any[]) =>
-            mockGetGithubConnection(...args),
-    },
-    projectSettingsSync: {
-        normalizeGithubIssueSyncInterval: (...args: any[]) =>
-            mockNormalizeInterval(...args),
-    },
-    tasks: {
-        moveCardToColumnByTitle: (...args: any[]) =>
-            mockMoveCardToColumnByTitle(...args),
-    },
-}));
+const mockIsDue = vi.fn(() => true);
+const mockTryStart = vi.fn().mockResolvedValue(true);
+const mockComplete = vi.fn().mockResolvedValue(undefined);
+const mockGetGitOriginUrl = vi.fn().mockResolvedValue("https://github.com/o/r.git");
+const mockParseGithubOwnerRepo = vi.fn().mockReturnValue({owner: "o", repo: "r"});
 
 const mockGetPullRequest = vi.fn();
-vi.mock("../src/github/pr", () => ({
-    getPullRequest: (...args: any[]) => mockGetPullRequest(...args),
-}));
+
+function makeDeps() {
+    return {
+        getPullRequest: mockGetPullRequest,
+        projectsService: {
+            list: mockProjectsList,
+            getSettings: mockGetSettings,
+        },
+        projectsRepo: {
+            listColumnsForBoard: mockListColumns,
+            listCardsForColumns: mockListCardsForColumns,
+        },
+        githubRepo: {
+            getGithubConnection: mockGetGithubConnection,
+        },
+        projectSettingsPrAutoClose: {
+            isGithubPrAutoCloseEnabled: mockIsEnabled,
+            isGithubPrAutoCloseDue: mockIsDue,
+            tryStartGithubPrAutoClose: mockTryStart,
+            completeGithubPrAutoClose: mockComplete,
+        },
+        tasks: {
+            moveCardToColumnByTitle: mockMoveCardToColumnByTitle,
+        },
+        getGitOriginUrl: mockGetGitOriginUrl,
+        parseGithubOwnerRepo: mockParseGithubOwnerRepo,
+    };
+}
 
 describe("github PR auto-close scheduler", () => {
-    beforeEach(() => {
-        vi.resetModules();
-        vi.clearAllMocks();
+    beforeEach(async () => {
+        mockProjectsList.mockReset();
+        mockGetSettings.mockReset();
+        mockListColumns.mockReset();
+        mockListCardsForColumns.mockReset();
+        mockGetGithubConnection.mockReset();
+        mockMoveCardToColumnByTitle.mockReset();
+        mockIsEnabled.mockReset();
+        mockIsDue.mockReset();
+        mockTryStart.mockReset();
+        mockComplete.mockReset();
+        mockGetGitOriginUrl.mockReset();
+        mockParseGithubOwnerRepo.mockReset();
+        mockGetPullRequest.mockReset();
+
+        mockIsEnabled.mockImplementation(
+            (settings: {autoCloseTicketOnPRMerge?: boolean}) =>
+                Boolean(settings.autoCloseTicketOnPRMerge),
+        );
+        mockIsDue.mockReturnValue(true);
+        mockTryStart.mockResolvedValue(true);
+        mockComplete.mockResolvedValue(undefined);
+        mockGetGitOriginUrl.mockResolvedValue("https://github.com/o/r.git");
+        mockParseGithubOwnerRepo.mockReturnValue({owner: "o", repo: "r"});
 
         mockGetGithubConnection.mockResolvedValue({
             accessToken: "token",
@@ -59,6 +99,8 @@ describe("github PR auto-close scheduler", () => {
         mockGetSettings.mockResolvedValue({
             autoCloseTicketOnPRMerge: true,
             githubIssueSyncIntervalMinutes: 1,
+            lastGithubPrAutoCloseAt: null,
+            lastGithubPrAutoCloseStatus: "idle",
         });
 
         mockListColumns.mockResolvedValue([
@@ -89,16 +131,26 @@ describe("github PR auto-close scheduler", () => {
     it("moves review cards to Done when PR is merged", async () => {
         mockGetPullRequest.mockResolvedValue({
             number: 12,
+            url: "https://github.com/o/r/pull/12",
             state: "closed",
             merged: true,
         });
 
-        const events = {publish: vi.fn()} as any;
+        const events = {publish: vi.fn()} as unknown as AppEventBus;
         const {runGithubPrAutoCloseTick} = await import(
             "../src/github/pr-auto-close.sync"
         );
 
-        await runGithubPrAutoCloseTick(events);
+        await runGithubPrAutoCloseTick(events, makeDeps());
+
+        expect(mockProjectsList).toHaveBeenCalledTimes(1);
+        expect(mockGetSettings).toHaveBeenCalledWith("p1");
+        expect(mockGetGitOriginUrl).toHaveBeenCalledWith("/repo/p1");
+        expect(mockParseGithubOwnerRepo).toHaveBeenCalledWith(
+            "https://github.com/o/r.git",
+        );
+        expect(mockListColumns).toHaveBeenCalledWith("p1");
+        expect(mockListCardsForColumns).toHaveBeenCalledWith(["col-review"]);
 
         expect(mockGetPullRequest).toHaveBeenCalledWith(
             "p1",
@@ -110,6 +162,7 @@ describe("github PR auto-close scheduler", () => {
             "p1",
             "card-1",
             "Done",
+            {fallbackToFirst: false},
         );
         expect(events.publish).toHaveBeenCalledWith(
             "github.pr.merged.autoClosed",
@@ -121,17 +174,18 @@ describe("github PR auto-close scheduler", () => {
         mockGetSettings.mockResolvedValue({
             autoCloseTicketOnPRMerge: false,
             githubIssueSyncIntervalMinutes: 1,
+            lastGithubPrAutoCloseAt: null,
+            lastGithubPrAutoCloseStatus: "idle",
         });
 
-        const events = {publish: vi.fn()} as any;
+        const events = {publish: vi.fn()} as unknown as AppEventBus;
         const {runGithubPrAutoCloseTick} = await import(
             "../src/github/pr-auto-close.sync"
         );
 
-        await runGithubPrAutoCloseTick(events);
+        await runGithubPrAutoCloseTick(events, makeDeps());
 
         expect(mockGetPullRequest).not.toHaveBeenCalled();
         expect(mockMoveCardToColumnByTitle).not.toHaveBeenCalled();
     });
 });
-
