@@ -121,13 +121,15 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
         index?: number;
         ticketType?: import("shared").TicketType | null;
         isEnhanced?: boolean;
+        disableAutoCloseOnPRMerge?: boolean;
     };
     const wantsMove = body.columnId !== undefined || body.index !== undefined;
     const hasContentUpdate =
         body.title !== undefined ||
         body.description !== undefined ||
         body.ticketType !== undefined ||
-        body.isEnhanced !== undefined;
+        body.isEnhanced !== undefined ||
+        body.disableAutoCloseOnPRMerge !== undefined;
     const hasDeps = Array.isArray(body.dependsOn);
     const suppressBroadcast = wantsMove || hasDeps;
 
@@ -161,6 +163,8 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
                     description: body.description ?? undefined,
                     ticketType:
                         body.ticketType === undefined ? undefined : body.ticketType,
+                    isEnhanced: body.isEnhanced,
+                    disableAutoCloseOnPRMerge: body.disableAutoCloseOnPRMerge,
                     isEnhanced: body.isEnhanced,
                 },
                 {suppressBroadcast},

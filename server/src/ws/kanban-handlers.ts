@@ -135,6 +135,9 @@ export function kanbanWebsocketHandlers(boardId: string) {
                             description: msg.payload.description,
                             ticketType: msg.payload.ticketType,
                             isEnhanced: msg.payload.isEnhanced,
+                            disableAutoCloseOnPRMerge:
+                                msg.payload.disableAutoCloseOnPRMerge,
+                            isEnhanced: msg.payload.isEnhanced,
                         })
                         break
                     case 'delete_card':

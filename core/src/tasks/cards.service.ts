@@ -131,16 +131,43 @@ export async function moveBoardCard(cardId: string, toColumnId: string, toIndex:
 }
 
 /** Move card to the last position of the column with the given title on this board. */
-export async function moveCardToColumnByTitle(boardId: string, cardId: string, columnTitle: string) {
+export async function moveCardToColumnByTitle(
+    boardId: string,
+    cardId: string,
+    columnTitle: string,
+    opts?: {fallbackToFirst?: boolean},
+) {
     await ensureDefaultColumns(boardId)
     const columns = await listColumnsForBoard(boardId)
     if (columns.length === 0) return
-    const target = columns.find((c) => c.title === columnTitle) ?? columns[0]!
+    const desired = columnTitle.trim().toLowerCase()
+    const target =
+        columns.find(
+            (c) => (c.title || '').trim().toLowerCase() === desired,
+        ) ?? null
+
+    if (!target) {
+        if (opts?.fallbackToFirst === false) return
+        const fallback = columns[0]!
+        const fallbackOrder = (await getMaxCardOrder(fallback.id)) + 1
+        await moveBoardCard(cardId, fallback.id, fallbackOrder)
+        return
+    }
+
     const nextOrder = (await getMaxCardOrder(target.id)) + 1
     await moveBoardCard(cardId, target.id, nextOrder)
 }
 
-export async function updateBoardCard(cardId: string, updates: { title?: string; description?: string; ticketType?: TicketType | null; isEnhanced?: boolean }, opts?: {
+export async function updateBoardCard(
+    cardId: string,
+    updates: {
+        title?: string;
+        description?: string;
+        ticketType?: TicketType | null;
+        disableAutoCloseOnPRMerge?: boolean;
+        isEnhanced?: boolean;
+    },
+    opts?: {
     suppressBroadcast?: boolean
 }) {
     const existing = await getCardById(cardId)
@@ -158,7 +185,14 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.description !== undefined) payload.description = updates.description ?? null
     if (updates.ticketType !== undefined) payload.ticketType = updates.ticketType ?? null
-    if (updates.isEnhanced !== undefined) payload.isEnhanced = updates.isEnhanced
+    if (updates.disableAutoCloseOnPRMerge !== undefined) {
+        payload.disableAutoCloseOnPRMerge = Boolean(
+            updates.disableAutoCloseOnPRMerge,
+        )
+    }
+    if (updates.isEnhanced !== undefined) {
+        payload.isEnhanced = Boolean(updates.isEnhanced)
+    }
 
     await updateCard(cardId, payload)
 
@@ -170,6 +204,7 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
                 title: updates.title,
                 description: updates.description ?? null,
                 ticketType: updates.ticketType ?? null,
+                disableAutoCloseOnPRMerge: updates.disableAutoCloseOnPRMerge,
                 isEnhanced: updates.isEnhanced,
             },
         })

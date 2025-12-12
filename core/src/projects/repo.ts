@@ -1,4 +1,4 @@
-import {asc, desc, eq, inArray, sql} from 'drizzle-orm'
+import {and, asc, desc, eq, inArray, sql} from 'drizzle-orm'
 import {boards, cards, columns, type Board, type Card, type Column} from '../db/schema'
 import type {TicketType} from 'shared'
 import type {DbExecutor} from '../db/with-tx'
@@ -133,5 +133,26 @@ export async function listCardsWithColumn(boardId: string, executor?: DbExecutor
         .from(cards)
         .innerJoin(columns, eq(cards.columnId, columns.id))
         .where(eq(columns.boardId, boardId))
+        .orderBy(asc(cards.createdAt))
+}
+
+export async function findCardsByPrUrls(
+    boardId: string,
+    prUrls: string[],
+    executor?: DbExecutor,
+): Promise<Card[]> {
+    const urls = prUrls.map((u) => u.trim()).filter((u) => u.length > 0)
+    if (urls.length === 0) return []
+    const database = resolveDb(executor)
+    return database
+        .select()
+        .from(cards)
+        .where(
+            and(
+                eq(cards.boardId, boardId),
+                inArray(cards.prUrl, urls),
+                eq((cards as any).disableAutoCloseOnPRMerge, false),
+            ),
+        )
         .orderBy(asc(cards.createdAt))
 }

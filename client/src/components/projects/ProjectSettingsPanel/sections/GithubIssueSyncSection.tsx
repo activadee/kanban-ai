@@ -13,11 +13,13 @@ type GithubIssueSyncSectionProps = {
     githubIssueSyncState: 'open' | 'all' | 'closed';
     githubIssueSyncIntervalMinutes: number;
     githubIssueAutoCreateEnabled: boolean;
+    autoCloseTicketOnPRMerge: boolean;
     onChange: (patch: Partial<{
         githubIssueSyncEnabled: boolean;
         githubIssueSyncState: 'open' | 'all' | 'closed';
         githubIssueSyncIntervalMinutes: number;
         githubIssueAutoCreateEnabled: boolean;
+        autoCloseTicketOnPRMerge: boolean;
     }>) => void;
 }
 
@@ -28,6 +30,7 @@ export function GithubIssueSyncSection({
                                            githubIssueSyncState,
                                            githubIssueSyncIntervalMinutes,
                                            githubIssueAutoCreateEnabled,
+                                           autoCloseTicketOnPRMerge,
                                            onChange,
                                        }: GithubIssueSyncSectionProps) {
     const githubCheckQuery = useGithubAuthStatus()
@@ -100,6 +103,24 @@ export function GithubIssueSyncSection({
                         <Label htmlFor="github-issue-auto-create-enabled">Enable GitHub Issue Creation</Label>
                         <p className="text-xs text-muted-foreground">
                             Allows creating GitHub issues when you create new tickets.
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id="github-pr-auto-close-enabled"
+                        checked={autoCloseTicketOnPRMerge}
+                        disabled={disabled}
+                        onCheckedChange={(checked) =>
+                            onChange({autoCloseTicketOnPRMerge: checked === true})
+                        }
+                    />
+                    <div className="space-y-1">
+                        <Label htmlFor="github-pr-auto-close-enabled">
+                            Auto-close tickets on PR merge
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            Moves Review cards to Done when their linked PRs are merged.
                         </p>
                     </div>
                 </div>

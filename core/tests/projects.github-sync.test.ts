@@ -36,6 +36,7 @@ describe('projects/settings/github-sync', () => {
             githubIssueSyncState: 'open',
             githubIssueSyncIntervalMinutes: 15,
             githubIssueAutoCreateEnabled: false,
+            autoCloseTicketOnPRMerge: false,
             lastGithubIssueSyncAt: null,
             lastGithubIssueSyncStatus: 'idle',
             createdAt: now.toISOString(),

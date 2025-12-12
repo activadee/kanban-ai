@@ -64,6 +64,15 @@ export interface GithubIssuesImportedEvent {
     importedCount: number
 }
 
+export interface GithubPrMergedAutoClosedEvent {
+    projectId: string
+    boardId: string
+    cardId: string
+    prNumber: number
+    prUrl: string
+    ts: string
+}
+
 export type GitEventMap = {
     'worktree.created': WorktreeCreatedEvent
     'worktree.removed': WorktreeRemovedEvent
@@ -75,4 +84,5 @@ export type GitEventMap = {
     'github.disconnected': GithubDisconnectedEvent
     'github.pr.created': GithubPrCreatedEvent
     'github.issues.imported': GithubIssuesImportedEvent
+    'github.pr.merged.autoClosed': GithubPrMergedAutoClosedEvent
 }

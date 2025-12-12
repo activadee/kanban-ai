@@ -22,6 +22,11 @@
     - Stores per-project sync metadata (`lastGithubIssueSyncAt`, `lastGithubIssueSyncStatus`) in `project_settings` to avoid overlapping runs and to respect the configured interval.
 4. **PR Creation (`projects/routes.ts`)**
     - Attempt PR endpoint calls `createPR` and emits `github.pr.created`.
+5. **Background PR Auto‑Close (`pr-auto-close.sync.ts`)**
+    - Scheduler started from the server entrypoints, sharing the same tick cadence as issue sync.
+    - For projects with `autoCloseTicketOnPRMerge` enabled, periodically checks cards in the **Review** column that have a linked `prUrl`.
+    - If the PR is closed and merged, moves the card to **Done** unless `disableAutoCloseOnPRMerge` is set on that card.
+    - Emits `github.pr.merged.autoClosed` and logs under `github:pr-auto-close`.
 
 ## Key Entry Points
 
@@ -31,6 +36,7 @@
 - `import.service.ts`: GitHub issue import and mapping management (used by both manual imports and scheduled sync).
 - `export.service.ts`: Creates GitHub issues for newly created cards and persists exported mappings.
 - `sync.ts`: background scheduler that drives recurring issue sync for eligible projects.
+- `pr-auto-close.sync.ts`: background scheduler that auto‑closes Review cards when their PRs are merged.
 - `pr.ts`: PR helpers used by attempts/projects via `github-client`.
 
 ## Open Tasks
