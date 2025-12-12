@@ -28,7 +28,7 @@ type CreateArgs = {
 type UpdateArgs = {
     boardId: string;
     cardId: string;
-    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null }
+    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; isEnhanced?: boolean }
 }
 
 type DeleteArgs = { boardId: string; cardId: string }

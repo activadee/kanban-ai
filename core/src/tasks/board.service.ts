@@ -115,6 +115,7 @@ export async function getBoardState(boardId: string): Promise<BoardState> {
             ticketKey: card.ticketKey ?? undefined,
             prUrl: card.prUrl ?? undefined,
             ticketType: card.ticketType ?? null,
+            isEnhanced: card.isEnhanced ?? false,
             githubIssue: githubIssueMap.get(card.id),
             title: card.title,
             description: card.description ?? undefined,

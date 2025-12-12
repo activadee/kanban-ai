@@ -169,6 +169,7 @@ describe("useCardInspectorState – auto-start attempt subscription", () => {
             title: "Test card",
             description: "",
             dependsOn: [],
+            isEnhanced: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };

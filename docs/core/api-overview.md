@@ -34,7 +34,7 @@ All endpoints below are rooted at `/api/v1`; paths are shown with the full prefi
 - Boards:
   - `GET    /api/v1/boards/:boardId` – board state (columns + cards).
   - `POST   /api/v1/boards/:boardId/cards` – create a card. Accepts optional `createGithubIssue: boolean` (only effective when `githubIssueAutoCreateEnabled` is on). Responds with `{ state, cardId, githubIssueError? }`.
-  - `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index).
+  - `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index); the payload also accepts `isEnhanced` so clients can set/clear the enhancement badge without changing the card text.
   - `DELETE /api/v1/boards/:boardId/cards/:cardId` – delete a card.
   - `POST   /api/v1/boards/:boardId/import/github/issues` – import GitHub issues as cards.
   - `GET    /api/v1/boards/:boardId/github/issues/stats` – counts linked issues by direction (`imported`, `exported`, `total`).

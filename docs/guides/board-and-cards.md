@@ -42,7 +42,8 @@ which creates the card and immediately queues a background enhancement job. Whil
 card surfaces an **Enhancing** badge and cannot be dragged. When the suggestion is ready, a sparkles icon appears on the
 card; clicking it opens the enhancement diff dialog to compare the persisted title/description with the AI suggestion.
 Accepting the suggestion updates the card, while rejecting it just clears the pending enhancement so you can try again
-later.
+later. Accepted enhancements also flip the card’s `isEnhanced` flag, which renders a green **Enhanced** badge and a
+subtle highlight in the header row so polished tickets remain visible even after you reload the board.
 
 You can also create cards directly in a column using column-specific controls (e.g. “Add card”) where present.
 

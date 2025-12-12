@@ -20,6 +20,7 @@ export interface Card {
     ticketKey?: string | null
     prUrl?: string | null
     ticketType?: TicketType | null
+    isEnhanced: boolean
     githubIssue?: {
         issueNumber: number
         url: string
@@ -57,7 +58,7 @@ export type WsMsg =
     | { type: 'pong'; payload?: { ts?: string } }
     | { type: 'create_card'; payload: { columnId: ColumnId; title: string; description?: string; ticketType?: TicketType | null } }
     | { type: 'move_card'; payload: { cardId: CardId; toColumnId: ColumnId; toIndex: number } }
-    | { type: 'update_card'; payload: { cardId: CardId; title?: string; description?: string; ticketType?: TicketType | null } }
+    | { type: 'update_card'; payload: { cardId: CardId; title?: string; description?: string; ticketType?: TicketType | null; isEnhanced?: boolean } }
     | { type: 'delete_card'; payload: { cardId: CardId } }
     // Attempt event envelopes broadcast by server; client may ignore until UI lands
     | { type: 'attempt_started'; payload: { attemptId: string; cardId: string } }
@@ -107,6 +108,7 @@ export const initialBoard = (): BoardState => {
         id: mkId('card', 1),
         title: 'Set up project',
         description: 'Bootstrap bhvr monorepo',
+        isEnhanced: false,
         createdAt: now,
         updatedAt: now
     }
@@ -114,6 +116,7 @@ export const initialBoard = (): BoardState => {
         id: mkId('card', 2),
         title: 'Add shadcn UI',
         description: 'Buttons, cards, dialogs',
+        isEnhanced: false,
         createdAt: now,
         updatedAt: now
     }
@@ -121,6 +124,7 @@ export const initialBoard = (): BoardState => {
         id: mkId('card', 3),
         title: 'Wire WebSockets',
         description: 'Realtime board sync',
+        isEnhanced: false,
         createdAt: now,
         updatedAt: now
     }

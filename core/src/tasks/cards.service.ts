@@ -140,7 +140,7 @@ export async function moveCardToColumnByTitle(boardId: string, cardId: string, c
     await moveBoardCard(cardId, target.id, nextOrder)
 }
 
-export async function updateBoardCard(cardId: string, updates: { title?: string; description?: string; ticketType?: TicketType | null }, opts?: {
+export async function updateBoardCard(cardId: string, updates: { title?: string; description?: string; ticketType?: TicketType | null; isEnhanced?: boolean }, opts?: {
     suppressBroadcast?: boolean
 }) {
     const existing = await getCardById(cardId)
@@ -158,6 +158,7 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.description !== undefined) payload.description = updates.description ?? null
     if (updates.ticketType !== undefined) payload.ticketType = updates.ticketType ?? null
+    if (updates.isEnhanced !== undefined) payload.isEnhanced = updates.isEnhanced
 
     await updateCard(cardId, payload)
 
@@ -169,6 +170,7 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
                 title: updates.title,
                 description: updates.description ?? null,
                 ticketType: updates.ticketType ?? null,
+                isEnhanced: updates.isEnhanced,
             },
         })
         if (!opts?.suppressBroadcast) {

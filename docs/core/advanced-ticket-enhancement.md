@@ -45,6 +45,9 @@ they return.
 - The dialog header surfaces a subtle “AI suggestion ready” label and reminds you that the ticket already exists, so the suggestion is just a refinement to the saved draft.
 - **Accept** automatically updates the card via `PATCH /boards/:boardId/cards/:cardId`, overriding the title/description
   with the suggestion and clearing the enhancement state.
+- When the patch succeeds it also sets `isEnhanced = true`, which lets the board render the persistent “Enhanced” badge
+  and highlight discussed in the board guide; clients can toggle that flag via the same endpoint if they want to clear or
+  reapply the badge later.
 - **Reject** dismisses the suggestion without mutating the card and keeps the enhancement badge cleared so you can rerun
   enhancement later.
 - After either action you can trigger enhancement again to get a new suggestion.

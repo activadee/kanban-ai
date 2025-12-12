@@ -118,13 +118,15 @@ export const updateCardSchema = z
         columnId: z.string().min(1, "Column ID is required").optional(),
         index: z.number().int().min(0).optional(),
         ticketType: ticketTypeSchema,
+        isEnhanced: z.boolean().optional(),
     })
     .superRefine((data, ctx) => {
         const hasContent =
             data.title !== undefined ||
             data.description !== undefined ||
             data.dependsOn !== undefined ||
-            data.ticketType !== undefined;
+            data.ticketType !== undefined ||
+            data.isEnhanced !== undefined;
         const wantsMove = data.columnId !== undefined || data.index !== undefined;
 
         if (wantsMove && (data.columnId === undefined || data.index === undefined)) {

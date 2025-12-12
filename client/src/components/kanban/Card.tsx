@@ -66,6 +66,7 @@ export function KanbanCard({
     const isCardDisabled = disabled || isEnhancing
     const showType = card.ticketType !== undefined && card.ticketType !== null
     const hasGithubIssue = Boolean(card.githubIssue)
+    const isEnhanced = card.isEnhanced
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -76,13 +77,20 @@ export function KanbanCard({
         blocked ||
         isEnhancing ||
         isReady ||
+        isEnhanced ||
         Boolean(menuContext)
 
     const cardInner = (
         <UICard
             className={`${
                 isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
-            } ${blocked && !done ? 'border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10' : ''}`}>
+            } ${
+                blocked && !done
+                    ? 'border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10'
+                    : isEnhanced
+                        ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15'
+                        : ''
+            }`}>
             <CardContent className="flex h-full flex-col gap-2 overflow-hidden p-3">
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">
@@ -98,6 +106,14 @@ export function KanbanCard({
                             {card.ticketKey ? (
                                 <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
                                     {card.ticketKey}
+                                </Badge>
+                            ) : null}
+                            {isEnhanced ? (
+                                <Badge
+                                    variant="outline"
+                                    className="border-emerald-500/60 text-[10px] font-semibold tracking-tight text-emerald-700 dark:text-emerald-300"
+                                >
+                                    Enhanced
                                 </Badge>
                             ) : null}
                             {card.githubIssue ? (

@@ -59,7 +59,7 @@ export interface CardCreatedEvent {
 export interface CardUpdatedEvent {
     boardId: string
     cardId: string
-    changes: Partial<{ title: string; description: string | null; ticketKey: string | null; ticketType: TicketType | null }>
+    changes: Partial<{ title: string; description: string | null; ticketKey: string | null; ticketType: TicketType | null; isEnhanced: boolean }>
 }
 
 export interface CardMovedEvent {
