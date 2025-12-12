@@ -16,6 +16,8 @@ export function MessageRow({item}: { item: ConversationItem }) {
         case 'message': {
             const {role, text, attachments} = item
             const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
+            const apiBase = new URL(`${SERVER_URL.replace(/\/?$/, '')}/`)
+            const apiOrigin = apiBase.origin
             return (
                 <div className="mb-2 rounded bg-background p-2">
                     <div className="mb-1 flex items-center gap-2">
@@ -28,20 +30,27 @@ export function MessageRow({item}: { item: ConversationItem }) {
                     {attachments && attachments.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                             {attachments.map((img) => {
-                                let src = img.dataUrl
-                                if (!src.startsWith('data:') && !src.startsWith('http')) {
+                                const raw = img.dataUrl
+                                let src: string | null = null
+                                if (raw.startsWith('data:')) {
+                                    src = raw
+                                } else {
                                     try {
-                                        // Support both:
-                                        // - api-base-relative: "attempts/:id/attachments/..."
-                                        // - origin-relative legacy: "/api/v1/attempts/..." or "/attempts/..."
-                                        const apiBase = new URL(`${SERVER_URL.replace(/\/?$/, '')}/`)
-                                        src = src.startsWith('/')
-                                            ? new URL(src, apiBase.origin).toString()
-                                            : new URL(src, apiBase).toString()
+                                        const resolved = raw.startsWith('/')
+                                            ? new URL(raw, apiOrigin)
+                                            : raw.startsWith('http://') || raw.startsWith('https://')
+                                                ? new URL(raw)
+                                                : new URL(raw, apiBase)
+
+                                        const protocolOk = resolved.protocol === 'http:' || resolved.protocol === 'https:'
+                                        const originOk = resolved.origin === apiOrigin
+                                        if (protocolOk && originOk) src = resolved.toString()
                                     } catch {
-                                        // keep as-is
+                                        // ignore
                                     }
                                 }
+
+                                if (!src) return null
                                 return (
                                     <img
                                         key={img.id ?? img.dataUrl}

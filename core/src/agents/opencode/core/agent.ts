@@ -103,7 +103,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     private static localServer: ServerHandle | null = null
     private static localServerUrl: string | null = null
     private static providerListCache = new Map<string, {expiresAt: number; value: ProviderListResponse}>()
+    private static readonly providerListCacheMaxEntries = 16
     private static readonly providerListCacheTtlMs = 60_000
+    private static readonly imageSupportNoticesMaxEntries = 512
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
@@ -239,6 +241,13 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 responseStyle: 'data',
                 throwOnError: true,
             })) as unknown as ProviderListResponse
+            if (!OpencodeImpl.providerListCache.has(cacheKey)) {
+                while (OpencodeImpl.providerListCache.size >= OpencodeImpl.providerListCacheMaxEntries) {
+                    const oldest = OpencodeImpl.providerListCache.keys().next().value as string | undefined
+                    if (!oldest) break
+                    OpencodeImpl.providerListCache.delete(oldest)
+                }
+            }
             OpencodeImpl.providerListCache.set(cacheKey, {
                 expiresAt: Date.now() + OpencodeImpl.providerListCacheTtlMs,
                 value: fresh,
@@ -568,6 +577,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         modelID: string,
         kind: 'unsupported' | 'unknown',
     ): boolean {
+        if (this.imageSupportNotices.size >= OpencodeImpl.imageSupportNoticesMaxEntries) {
+            this.imageSupportNotices.clear()
+        }
         const key = `${ctx.attemptId}:${providerID}/${modelID}:${kind}`
         if (this.imageSupportNotices.has(key)) return false
         this.imageSupportNotices.add(key)

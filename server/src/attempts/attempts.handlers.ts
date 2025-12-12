@@ -4,6 +4,7 @@ import {log} from '../log'
 import {attemptMessageSchema} from './attempts.schemas'
 import {join, resolve, sep} from 'node:path'
 import {promises as fsp} from 'node:fs'
+import {MAX_IMAGE_BYTES} from 'shared'
 
 const DEFAULT_MAX_FOLLOWUP_BODY_BYTES = 32 * 1024 * 1024
 
@@ -20,6 +21,11 @@ async function readRequestTextWithLimit(req: Request, maxBytes: number): Promise
     if (lenHeader) {
         const declared = Number(lenHeader)
         if (Number.isFinite(declared) && declared > maxBytes) {
+            try {
+                await (req.body as unknown as {cancel?: () => Promise<void> | void} | null)?.cancel?.()
+            } catch {
+                // ignore
+            }
             const err = new Error('Request body too large')
             ;(err as any).code = 'BODY_TOO_LARGE'
             throw err
@@ -30,17 +36,30 @@ async function readRequestTextWithLimit(req: Request, maxBytes: number): Promise
     const reader = req.body.getReader()
     const chunks: Uint8Array[] = []
     let total = 0
-    while (true) {
-        const {value, done} = await reader.read()
-        if (done) break
-        if (value) {
-            total += value.byteLength
-            if (total > maxBytes) {
-                const err = new Error('Request body too large')
-                ;(err as any).code = 'BODY_TOO_LARGE'
-                throw err
+    try {
+        while (true) {
+            const {value, done} = await reader.read()
+            if (done) break
+            if (value) {
+                total += value.byteLength
+                if (total > maxBytes) {
+                    try {
+                        await reader.cancel()
+                    } catch {
+                        // ignore
+                    }
+                    const err = new Error('Request body too large')
+                    ;(err as any).code = 'BODY_TOO_LARGE'
+                    throw err
+                }
+                chunks.push(value)
             }
-            chunks.push(value)
+        }
+    } finally {
+        try {
+            reader.releaseLock()
+        } catch {
+            // ignore
         }
     }
     const out = new Uint8Array(total)
@@ -107,6 +126,31 @@ export async function getAttemptAttachmentHandler(c: any) {
     if (!mime) return problemJson(c, {status: 400, detail: 'Unsupported attachment type'})
 
     try {
+        const attachmentsRoot = join(attempt.worktreePath, '.kanbanai', 'attachments')
+        const rootReal = await fsp.realpath(attachmentsRoot)
+        const dirReal = await fsp.realpath(dir)
+        const rootPrefix = rootReal.endsWith(sep) ? rootReal : rootReal + sep
+        if (!dirReal.startsWith(rootPrefix)) {
+            return problemJson(c, {status: 404, detail: 'Attachment not found'})
+        }
+
+        const lst = await fsp.lstat(filePath)
+        if (lst.isSymbolicLink()) {
+            return problemJson(c, {status: 400, detail: 'Invalid attachment'})
+        }
+        if (!lst.isFile()) {
+            return problemJson(c, {status: 404, detail: 'Attachment not found'})
+        }
+        if (lst.size > MAX_IMAGE_BYTES) {
+            return problemJson(c, {status: 413, detail: 'Attachment too large'})
+        }
+
+        const fileReal = await fsp.realpath(filePath)
+        const dirPrefix = dirReal.endsWith(sep) ? dirReal : dirReal + sep
+        if (!fileReal.startsWith(dirPrefix)) {
+            return problemJson(c, {status: 404, detail: 'Attachment not found'})
+        }
+
         const buf = await fsp.readFile(filePath)
         c.header('Content-Type', mime)
         c.header('Cache-Control', 'private, no-store')

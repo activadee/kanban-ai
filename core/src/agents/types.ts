@@ -23,7 +23,9 @@ export type AgentContext = {
     followupPrompt?: string
     /**
      * Optional image attachments provided by the user for this turn.
-     * These are persisted in conversation history (data URLs).
+     * These are typically provided as `data:` URLs from the UI for the current request.
+     * Conversation history may persist them as `data:` URLs or rewrite them to attachment URLs
+     * served by the API, depending on whether persistence succeeds.
      */
     attachments?: ImageAttachment[]
     /**
