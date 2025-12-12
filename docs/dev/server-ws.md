@@ -13,7 +13,7 @@
         - Validate project/board access.
         - Send a `hello` envelope (`{"type":"hello","payload":{"serverTime":"<ISO 8601>"}}`).
         - Send the initial board `state` payload and recent attempt envelopes.
-        - Handle `get_state`, card CRUD, and heartbeat (`ping`/`pong`) messages.
+        - Handle `get_state`, card CRUD, and heartbeat (`ping`/`pong`) messages, including `update_card` commands that surface `isEnhanced` and `disableAutoCloseOnPRMerge` payloads.
     - Dashboard sockets (`ws/dashboard-handlers.ts`):
         - Register the socket on the fixed `dashboard` channel.
         - Send a `hello` envelope (`{"type":"hello","payload":{"serverTime":"<ISO 8601>"}}`).

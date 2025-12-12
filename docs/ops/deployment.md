@@ -21,7 +21,7 @@ For small self-hosted setups, you can run the Bun-based server directly:
    This will:
 
    - Build the client and server.
-   - Copy `client/dist` into `server/static`.
+   - Copy `client/dist` into `server/static` (generated output; don’t commit it).
    - Generate an embedded static bundle.
    - Start a single Hono/Bun server that serves:
      - API under `/api/v1` (shim at `/api`).
@@ -115,4 +115,3 @@ When exposing KanbanAI on the internet:
 
 For CLI specifics and environment options, see [CLI & binaries](ops/cli-and-binaries). For data layout, see
 [Data & storage](core/data-and-storage).
-

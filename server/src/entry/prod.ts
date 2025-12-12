@@ -5,6 +5,7 @@ import { log, applyLogConfig } from '../log'
 import { loadConfig, setRuntimeConfig, type AppServices } from '../env'
 import { createEventBus } from '../events/bus'
 import { startGithubIssueSyncScheduler } from '../github/sync'
+import { startGithubPrAutoCloseScheduler } from '../github/pr-auto-close.sync'
 import { projectsService, settingsService } from 'core'
 
 type ProdFetch = StartOptions['fetch']
@@ -84,6 +85,7 @@ const run = async () => {
   })
 
   startGithubIssueSyncScheduler({ events })
+  startGithubPrAutoCloseScheduler({ events })
 
   log.info('prod', 'listening', { url, dbFile, migrationsDir: resolvedMigrationsDir })
 }

@@ -22,10 +22,15 @@ vi.mock("core", () => {
         getAgent: vi.fn(),
         listAgents: vi.fn(),
         CodexAgent: {},
-        attempts: {},
+        attempts: {
+            getAttempt: vi.fn(),
+        },
         attemptsRepo: {},
         projectDeps: {},
-        projectsRepo: {},
+        projectsRepo: {
+            getCardById: vi.fn(),
+            getColumnById: vi.fn(),
+        },
         tasks: {},
         git: {
             getStatus: vi.fn(),
@@ -111,10 +116,83 @@ describe("POST /projects/:projectId/pull-requests/summary", () => {
             projectId: "proj-1",
             baseBranch: "main",
             headBranch: "feature/test",
+            attemptId: undefined,
+            cardId: undefined,
             agentKey: undefined,
             profileId: undefined,
             signal: expect.any(AbortSignal),
         });
+    });
+
+    it("passes attemptId and cardId through to core", async () => {
+        const app = createApp();
+        const core = await import("core");
+
+        (core.attempts.getAttempt as any).mockResolvedValue({
+            id: "a1",
+            boardId: "proj-1",
+            cardId: "card-1",
+        });
+        (core.projectsRepo.getCardById as any).mockResolvedValue({
+            id: "card-1",
+            columnId: "col-1",
+            boardId: "proj-1",
+        });
+        (core.agentSummarizePullRequest as any).mockResolvedValue({
+            title: "PR Title",
+            body: "PR Body",
+        });
+
+        const res = await app.request(
+            "/projects/proj-1/pull-requests/summary",
+            {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({branch: "feature/test", attemptId: "a1", cardId: "card-1"}),
+            },
+        );
+
+        expect(res.status).toBe(200);
+        expect(core.attempts.getAttempt).toHaveBeenCalledWith("a1");
+        expect(core.projectsRepo.getCardById).toHaveBeenCalledWith("card-1");
+        expect((core.agentSummarizePullRequest as any)).toHaveBeenCalledWith({
+            projectId: "proj-1",
+            baseBranch: undefined,
+            headBranch: "feature/test",
+            attemptId: "a1",
+            cardId: "card-1",
+            agentKey: undefined,
+            profileId: undefined,
+            signal: expect.any(AbortSignal),
+        });
+    });
+
+    it("returns 400 when attemptId and cardId refer to different cards", async () => {
+        const app = createApp();
+        const core = await import("core");
+
+        (core.attempts.getAttempt as any).mockResolvedValueOnce({
+            id: "a2",
+            boardId: "proj-1",
+            cardId: "card-from-attempt",
+        });
+
+        const res = await app.request(
+            "/projects/proj-1/pull-requests/summary",
+            {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({branch: "feature/test", attemptId: "a2", cardId: "card-explicit"}),
+            },
+        );
+
+        expect(res.status).toBe(400);
+        const data = (await res.json()) as any;
+        expect(data).toMatchObject({
+            status: 400,
+            detail: "Attempt cardId does not match provided cardId",
+        });
+        expect(core.agentSummarizePullRequest).not.toHaveBeenCalled();
     });
 
     it("returns 409 when branch name is missing", async () => {

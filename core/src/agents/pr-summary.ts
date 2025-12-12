@@ -3,6 +3,9 @@ import type {ProjectSummary} from 'shared'
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getPrDiffSummary} from '../git/service'
+import {getGitOriginUrl, parseGithubOwnerRepo} from '../fs/git'
+import {listGithubIssueMappingsByCardId} from '../github/repo'
+import {getAttemptById} from '../attempts/repo'
 import {getAgent} from './registry'
 import {runInlineTask} from './inline'
 import type {
@@ -12,6 +15,10 @@ import type {
     PrSummaryInlineResult,
 } from './types'
 import {resolveAgentProfile} from './profile-resolution'
+import {
+    appendGithubIssueAutoCloseReferencesForRefs,
+    type GithubIssueRef,
+} from './pr-summary-issues'
 
 export type AgentSummarizePullRequestOptions = {
     projectId: string
@@ -19,6 +26,8 @@ export type AgentSummarizePullRequestOptions = {
     headBranch: string
     agentKey?: string
     profileId?: string
+    attemptId?: string
+    cardId?: string
     signal?: AbortSignal
 }
 
@@ -62,6 +71,99 @@ function createSignal(source?: AbortSignal): AbortSignal {
         source.addEventListener('abort', onAbort, {once: true})
     }
     return controller.signal
+}
+
+async function resolveProjectGithubOwnerRepo(project: ProjectSummary): Promise<{owner: string; repo: string} | null> {
+    const originUrl = await getGitOriginUrl(project.repositoryPath)
+    if (originUrl) {
+        const parsed = parseGithubOwnerRepo(originUrl)
+        if (parsed) return parsed
+    }
+
+    const repoUrl =
+        typeof project.repositoryUrl === 'string' ? project.repositoryUrl.trim() : ''
+    if (repoUrl) {
+        const parsed = parseGithubOwnerRepo(repoUrl)
+        if (parsed) return parsed
+    }
+
+    return null
+}
+
+async function resolveAssociatedCardIds(opts: AgentSummarizePullRequestOptions): Promise<string[]> {
+    const directCardId = typeof opts.cardId === 'string' ? opts.cardId.trim() : ''
+    const attemptId = typeof opts.attemptId === 'string' ? opts.attemptId.trim() : ''
+
+    if (directCardId) {
+        if (attemptId) {
+            try {
+                const attempt = await getAttemptById(attemptId)
+                const attemptCardId = attempt?.cardId?.trim?.() || attempt?.cardId
+                const attemptCardIdTrimmed =
+                    typeof attemptCardId === 'string' ? attemptCardId.trim() : ''
+                if (attemptCardIdTrimmed && attemptCardIdTrimmed !== directCardId) {
+                    console.warn('[agents:prSummary] attemptId/cardId mismatch; using explicit cardId', {
+                        attemptId,
+                        attemptCardId: attemptCardIdTrimmed,
+                        cardId: directCardId,
+                    })
+                }
+            } catch (err) {
+                console.warn('[agents:prSummary] Failed to resolve attempt cardId', {attemptId, err})
+            }
+        }
+        return [directCardId]
+    }
+
+    if (!attemptId) return []
+    try {
+        const attempt = await getAttemptById(attemptId)
+        const attemptCardId = attempt?.cardId?.trim?.() || attempt?.cardId
+        const attemptCardIdTrimmed =
+            typeof attemptCardId === 'string' ? attemptCardId.trim() : ''
+        return attemptCardIdTrimmed ? [attemptCardIdTrimmed] : []
+    } catch (err) {
+        console.warn('[agents:prSummary] Failed to resolve attempt cardId', {attemptId, err})
+        return []
+    }
+}
+
+async function resolveGithubIssueRefs(
+    cardIds: string[],
+    targetRepo: {owner: string; repo: string} | null,
+): Promise<GithubIssueRef[]> {
+    const refs: GithubIssueRef[] = []
+    const targetOwner = targetRepo?.owner.trim().toLowerCase() || null
+    const targetRepoName = targetRepo?.repo.trim().toLowerCase() || null
+    const targetKnown = Boolean(targetOwner && targetRepoName)
+    for (const cardId of cardIds) {
+        try {
+            const mappings = await listGithubIssueMappingsByCardId(cardId)
+            for (const mapping of mappings as Array<{issueNumber?: unknown; owner?: unknown; repo?: unknown}>) {
+                const num = Number(mapping.issueNumber)
+                if (!Number.isFinite(num) || num <= 0) continue
+
+                const owner =
+                    typeof mapping.owner === 'string' ? mapping.owner.trim() : null
+                const repo =
+                    typeof mapping.repo === 'string' ? mapping.repo.trim() : null
+
+                if (targetKnown) {
+                    const ownerNorm = owner?.toLowerCase() || null
+                    const repoNorm = repo?.toLowerCase() || null
+                    if (ownerNorm && repoNorm && (ownerNorm !== targetOwner || repoNorm !== targetRepoName)) continue
+                    refs.push({issueNumber: num})
+                    continue
+                }
+                if (owner && repo) {
+                    refs.push({issueNumber: num, owner, repo})
+                }
+            }
+        } catch (err) {
+            console.warn('[agents:prSummary] Failed to resolve GitHub issues for card', {cardId, err})
+        }
+    }
+    return refs
 }
 
 export async function agentSummarizePullRequest(
@@ -171,7 +273,7 @@ export async function agentSummarizePullRequest(
         profileSource,
     }
 
-    return runInlineTask({
+    const summary = await runInlineTask({
         agentKey,
         kind: 'prSummary',
         input,
@@ -179,4 +281,18 @@ export async function agentSummarizePullRequest(
         context,
         signal,
     })
+
+    const cardIds = await resolveAssociatedCardIds(opts)
+    if (cardIds.length === 0) return summary
+
+    const targetRepo = await resolveProjectGithubOwnerRepo(project)
+    const issueRefs = await resolveGithubIssueRefs(cardIds, targetRepo)
+    if (issueRefs.length === 0) return summary
+
+    const body = appendGithubIssueAutoCloseReferencesForRefs(summary.body, issueRefs, {
+        compareByNumber: false,
+        targetRepo,
+    })
+    if (body === summary.body) return summary
+    return {...summary, body}
 }

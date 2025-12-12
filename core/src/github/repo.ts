@@ -148,6 +148,15 @@ export async function findGithubIssueMappingByCardId(cardId: string, executor?: 
     return row ?? null
 }
 
+export async function listGithubIssueMappingsByCardId(cardId: string, executor?: DbExecutor) {
+    const database = resolveDb(executor)
+    const rows = await database
+        .select()
+        .from(githubIssues)
+        .where(eq(githubIssues.cardId, cardId))
+    return rows ?? []
+}
+
 export type GithubIssueDirection = 'imported' | 'exported'
 
 export type GithubIssueStats = {

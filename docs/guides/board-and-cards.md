@@ -42,7 +42,8 @@ which creates the card and immediately queues a background enhancement job. Whil
 card surfaces an **Enhancing** badge and cannot be dragged. When the suggestion is ready, a sparkles icon appears on the
 card; clicking it opens the enhancement diff dialog to compare the persisted title/description with the AI suggestion.
 Accepting the suggestion updates the card, while rejecting it just clears the pending enhancement so you can try again
-later.
+later. Accepted enhancements also flip the card’s `isEnhanced` flag, which renders a green **Enhanced** badge and a
+subtle highlight in the header row so polished tickets remain visible even after you reload the board.
 
 You can also create cards directly in a column using column-specific controls (e.g. “Add card”) where present.
 
@@ -126,3 +127,12 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
 - After import:
   - The board state is invalidated and re-fetched.
   - New cards appear live thanks to WebSocket updates.
+
+## Auto-closing Review cards
+
+- When a project has GitHub Issue Sync enabled and GitHub is connected, you can toggle **Auto-close tickets on PR merge** in the
+  same settings panel to move Review cards into Done automatically once their linked PRs are merged.
+- The server runs a lightweight scheduler that inspects Review cards with a `prUrl`, checks whether the PR is closed + merged,
+  and quietly advances the card to Done so you do not have to move it manually.
+- To keep a specific card in Review even after the PR is merged, set its `disableAutoCloseOnPRMerge` flag so the scheduler skips
+  that card while still auto-closing others.

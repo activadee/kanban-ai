@@ -59,6 +59,7 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
 - Attempts stream messages as they run.
 - You can send follow-up prompts by typing into the input and pressing send.
 - The follow-up textarea now supports pasting or drag-and-dropping PNG, JPEG, or WebP images; attached thumbnails appear below the input with a remove button, and you can send up to four attachments per message (5 MB max per image) with or without accompanying text so vision-capable agents can react while text-only agents simply ignore them.
+- “Thinking” entries (the agent’s planning/analysis steps) now surface as collapsible blocks that default to their header summary (using the provided title or the first line of text alongside the timestamp); click the header to expand and read the full reasoning text.
 - Controls:
   - **Stop Attempt**:
     - Sends a stop request to the server.

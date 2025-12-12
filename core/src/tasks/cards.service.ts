@@ -91,7 +91,12 @@ export async function createBoardCard(
     return createdCardId
 }
 
-export async function moveBoardCard(cardId: string, toColumnId: string, toIndex: number) {
+export async function moveBoardCard(
+    cardId: string,
+    toColumnId: string,
+    toIndex: number,
+    opts?: {suppressBroadcast?: boolean},
+) {
     let boardId: string | null = null
     let fromColumnId: string | null = null
     await withTx(async (tx) => {
@@ -126,21 +131,50 @@ export async function moveBoardCard(cardId: string, toColumnId: string, toIndex:
             toColumnId,
             toIndex,
         })
-        await broadcastBoard(boardId)
+        if (!opts?.suppressBroadcast) {
+            await broadcastBoard(boardId)
+        }
     }
 }
 
 /** Move card to the last position of the column with the given title on this board. */
-export async function moveCardToColumnByTitle(boardId: string, cardId: string, columnTitle: string) {
+export async function moveCardToColumnByTitle(
+    boardId: string,
+    cardId: string,
+    columnTitle: string,
+    opts?: {fallbackToFirst?: boolean},
+) {
     await ensureDefaultColumns(boardId)
     const columns = await listColumnsForBoard(boardId)
     if (columns.length === 0) return
-    const target = columns.find((c) => c.title === columnTitle) ?? columns[0]!
+    const desired = columnTitle.trim().toLowerCase()
+    const target =
+        columns.find(
+            (c) => (c.title || '').trim().toLowerCase() === desired,
+        ) ?? null
+
+    if (!target) {
+        if (opts?.fallbackToFirst === false) return
+        const fallback = columns[0]!
+        const fallbackOrder = (await getMaxCardOrder(fallback.id)) + 1
+        await moveBoardCard(cardId, fallback.id, fallbackOrder)
+        return
+    }
+
     const nextOrder = (await getMaxCardOrder(target.id)) + 1
     await moveBoardCard(cardId, target.id, nextOrder)
 }
 
-export async function updateBoardCard(cardId: string, updates: { title?: string; description?: string; ticketType?: TicketType | null }, opts?: {
+export async function updateBoardCard(
+    cardId: string,
+    updates: {
+        title?: string;
+        description?: string;
+        ticketType?: TicketType | null;
+        disableAutoCloseOnPRMerge?: boolean;
+        isEnhanced?: boolean;
+    },
+    opts?: {
     suppressBroadcast?: boolean
 }) {
     const existing = await getCardById(cardId)
@@ -158,6 +192,19 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.description !== undefined) payload.description = updates.description ?? null
     if (updates.ticketType !== undefined) payload.ticketType = updates.ticketType ?? null
+    const disableAutoCloseOnPRMerge =
+        typeof updates.disableAutoCloseOnPRMerge === 'boolean'
+            ? updates.disableAutoCloseOnPRMerge
+            : undefined
+    const isEnhanced =
+        typeof updates.isEnhanced === 'boolean' ? updates.isEnhanced : undefined
+
+    if (disableAutoCloseOnPRMerge !== undefined) {
+        payload.disableAutoCloseOnPRMerge = disableAutoCloseOnPRMerge
+    }
+    if (isEnhanced !== undefined) {
+        payload.isEnhanced = isEnhanced
+    }
 
     await updateCard(cardId, payload)
 
@@ -169,6 +216,8 @@ export async function updateBoardCard(cardId: string, updates: { title?: string;
                 title: updates.title,
                 description: updates.description ?? null,
                 ticketType: updates.ticketType ?? null,
+                disableAutoCloseOnPRMerge,
+                isEnhanced,
             },
         })
         if (!opts?.suppressBroadcast) {

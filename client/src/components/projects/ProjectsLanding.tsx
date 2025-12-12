@@ -1,8 +1,8 @@
 import {Button} from "@/components/ui/button";
-import {Separator} from "@/components/ui/separator";
 import {Loader2, Plus} from "lucide-react";
 import {ProjectCard, type Project} from "./ProjectCard";
 import {EmptyProjects} from "./EmptyProjects";
+import {PageHeader} from "@/components/layout/PageHeader";
 
 interface ProjectsLandingProps {
     projects: Project[];
@@ -24,12 +24,11 @@ export function ProjectsLanding({
                                     error = null,
                                 }: ProjectsLandingProps) {
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <header className="border-b border-border/50 bg-background/80 backdrop-blur">
-                <div className="flex h-16 items-center justify-between px-4">
-                    <div className="text-lg font-semibold tracking-[0.2em] uppercase text-muted-foreground">
-                        KanbanAI
-                    </div>
+        <div className="flex h-full flex-col overflow-auto bg-background text-foreground">
+            <PageHeader
+                title="Projects"
+                description="Manage your projects and track their progress."
+                actions={
                     <Button
                         variant="outline"
                         size="sm"
@@ -39,19 +38,10 @@ export function ProjectsLanding({
                         <Plus className="size-4"/>
                         Create Project
                     </Button>
-                </div>
-            </header>
+                }
+            />
 
-            <main className="px-4 py-10">
-                <div className="flex flex-col gap-3">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight">Projects</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage your projects and track their progress.
-                        </p>
-                    </div>
-                    <Separator className="bg-border/50"/>
-                </div>
+            <main className="px-4 py-6 sm:px-6 lg:px-8">
 
                 {loading ? (
                     <div className="mt-10 flex flex-col items-center gap-3 text-muted-foreground">

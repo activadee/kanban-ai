@@ -116,10 +116,11 @@ export async function bootstrapRuntime(
   const rootInfo = resolveMigrationsRoot(resolved)
 
   const source = rootInfo.kind
-  const migrations: DrizzleMigrationSpec[] =
+  const migrationsInput: DrizzleMigrationSpec[] =
     rootInfo.kind === 'bundled'
       ? drizzleMigrations
       : loadFolderMigrations(rootInfo.path!)
+  const migrations = [...migrationsInput].sort((a, b) => a.id.localeCompare(b.id))
 
   if (migrations.length === 0) {
     const explicit = Boolean(migrationsDir ?? config.migrationsDir)

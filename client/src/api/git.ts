@@ -95,6 +95,8 @@ export async function listProjectPullRequests(
 export type CreatePrSummaryPayload = {
     base?: string
     branch?: string
+    attemptId?: string
+    cardId?: string
     agent?: string
     profileId?: string
 }

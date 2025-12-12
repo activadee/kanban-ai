@@ -77,4 +77,62 @@ describe('tasks/cards ticket types', () => {
         )
         expect(broadcastBoard).toHaveBeenCalledWith('board-1')
     })
+
+    it('sets isEnhanced when provided', async () => {
+        const {updateBoardCard} = await import('../src/tasks/cards.service')
+        getCardById.mockResolvedValue({
+            id: 'card-1',
+            boardId: 'board-1',
+            columnId: 'col-1',
+            title: 'Old',
+            description: null,
+        })
+
+        await updateBoardCard('card-1', {isEnhanced: true})
+
+        expect(updateCard).toHaveBeenCalledWith(
+            'card-1',
+            expect.objectContaining({isEnhanced: true}),
+        )
+    })
+
+    it('sets disableAutoCloseOnPRMerge when provided', async () => {
+        const {updateBoardCard} = await import('../src/tasks/cards.service')
+        getCardById.mockResolvedValue({
+            id: 'card-1',
+            boardId: 'board-1',
+            columnId: 'col-1',
+            title: 'Old',
+            description: null,
+        })
+
+        await updateBoardCard('card-1', {disableAutoCloseOnPRMerge: true})
+
+        expect(updateCard).toHaveBeenCalledWith(
+            'card-1',
+            expect.objectContaining({disableAutoCloseOnPRMerge: true}),
+        )
+    })
+
+    it('ignores non-boolean disableAutoCloseOnPRMerge', async () => {
+        const {updateBoardCard} = await import('../src/tasks/cards.service')
+        getCardById.mockResolvedValue({
+            id: 'card-1',
+            boardId: 'board-1',
+            columnId: 'col-1',
+            title: 'Old',
+            description: null,
+        })
+
+        await updateBoardCard('card-1', {
+            disableAutoCloseOnPRMerge: ('false' as unknown) as boolean,
+        })
+
+        expect(updateCard).not.toHaveBeenCalledWith(
+            'card-1',
+            expect.objectContaining({
+                disableAutoCloseOnPRMerge: expect.anything(),
+            }),
+        )
+    })
 })

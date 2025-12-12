@@ -24,10 +24,12 @@ Both use the same WebSocket infrastructure but different handlers and message ty
   - Server validates access, then:
     - Sends an initial `hello` message.
     - Sends a `state` payload with the current board snapshot (columns + cards + attempts).
-- Commands:
-  - Board sockets accept commands for:
-    - Creating/updating/deleting cards.
-    - Moving cards between columns.
+      - Each card record now carries `isEnhanced` so clients know which cards should render the persistent “Enhanced” badge/highlight.
+  - Commands:
+    - Board sockets accept commands for:
+      - Creating/updating/deleting cards.
+      - Moving cards between columns.
+        - `update_card` payload now accepts optional `isEnhanced` and `disableAutoCloseOnPRMerge` booleans so clients can mirror enhancement badges and per-card auto-close opt-outs.
   - Handlers validate and forward these commands to the Tasks service; REST and WebSockets share the same underlying
     board logic.
 - Events:
@@ -39,6 +41,7 @@ Both use the same WebSocket infrastructure but different handlers and message ty
     - `agent.profile.changed`, `agent.registered`
   - Messages are shaped according to `shared/src/types/kanban.ts` and include enough data for the client to update local
     state without refetching.
+    - Card envelopes now include `isEnhanced` and `disableAutoCloseOnPRMerge` so badges and auto-close opt-outs stay in sync with real-time updates.
 
 ## Dashboard channel
 

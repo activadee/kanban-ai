@@ -11,6 +11,7 @@ import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
 import {GithubAppCredentialsFields} from '@/components/github/GithubAppCredentialsFields'
 import {describeApiError} from '@/api/http'
+import {PageHeader} from '@/components/layout/PageHeader'
 
 type FormState = {
     theme: 'system' | 'light' | 'dark'
@@ -246,13 +247,14 @@ export function AppSettingsPage() {
     if (data && !form) setForm(initial)
 
     return (
-        <div className="flex h-full flex-col overflow-auto bg-background px-8 py-6">
-            <div className="mx-auto w-full max-w-5xl space-y-6">
-                <div>
-                    <h1 className="text-2xl font-semibold text-foreground">Application Settings</h1>
-                    <p className="mt-2 text-sm text-muted-foreground">Manage global preferences and defaults. Project
-                        settings can override some of these values.</p>
-                </div>
+        <div className="flex h-full flex-col overflow-auto bg-background">
+            <PageHeader
+                title="Application Settings"
+                description="Manage global preferences and defaults. Project settings can override some of these values."
+                containerClassName="max-w-5xl"
+            />
+
+            <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
 
                 {form && (
                     <>

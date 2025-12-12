@@ -14,6 +14,7 @@ import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {PageHeader} from '@/components/layout/PageHeader'
 
 export function AgentSettingsPage() {
     const params = useParams<{ agentKey: string }>()
@@ -57,13 +58,14 @@ export function AgentSettingsPage() {
     }
 
     return (
-        <div className="flex h-full flex-col gap-4 p-4">
-            <div>
-                <h1 className="text-lg font-semibold">{agentKey} Profiles</h1>
-                <p className="text-sm text-muted-foreground">Create, edit, and delete profiles for this agent.</p>
-            </div>
+        <div className="flex h-full flex-col overflow-auto bg-background">
+            <PageHeader
+                title={`${agentKey} Profiles`}
+                description="Create, edit, and delete profiles for this agent."
+            />
 
-            <div className="grid gap-6 md:grid-cols-[280px_1fr]">
+            <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+                <div className="grid gap-6 md:grid-cols-[280px_1fr]">
                 <div className="space-y-2">
                     <div className="text-sm text-muted-foreground">Existing profiles</div>
                     <div className="space-y-1">
@@ -204,6 +206,7 @@ export function AgentSettingsPage() {
                         </div>
                     )}
                 </div>
+            </div>
             </div>
         </div>
     )

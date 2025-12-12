@@ -25,6 +25,7 @@ export type ProjectSettingsFormState = {
     githubIssueSyncState: 'open' | 'all' | 'closed';
     githubIssueSyncIntervalMinutes: number;
     githubIssueAutoCreateEnabled: boolean;
+    autoCloseTicketOnPRMerge: boolean;
 }
 
 export function mapSettingsToForm(settings: ProjectSettings | null | undefined): ProjectSettingsFormState {
@@ -53,6 +54,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             githubIssueSyncState: 'open',
             githubIssueSyncIntervalMinutes: 15,
             githubIssueAutoCreateEnabled: false,
+            autoCloseTicketOnPRMerge: false,
         }
     }
 
@@ -80,6 +82,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         githubIssueSyncState: settings.githubIssueSyncState ?? 'open',
         githubIssueSyncIntervalMinutes: settings.githubIssueSyncIntervalMinutes ?? 15,
         githubIssueAutoCreateEnabled: settings.githubIssueAutoCreateEnabled ?? false,
+        autoCloseTicketOnPRMerge: settings.autoCloseTicketOnPRMerge ?? false,
     }
 }
 
@@ -172,6 +175,9 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if (form.githubIssueAutoCreateEnabled !== (initial.githubIssueAutoCreateEnabled ?? false)) {
         payload.githubIssueAutoCreateEnabled = form.githubIssueAutoCreateEnabled
+    }
+    if (form.autoCloseTicketOnPRMerge !== (initial.autoCloseTicketOnPRMerge ?? false)) {
+        payload.autoCloseTicketOnPRMerge = form.autoCloseTicketOnPRMerge
     }
 
     return payload

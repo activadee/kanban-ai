@@ -20,4 +20,4 @@ jobs:
     secrets: inherit
     with: 
       model: "gpt-5.2"
-      effort: "xhigh"
+      effort: "high"

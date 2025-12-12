@@ -240,6 +240,7 @@ export function ProjectSettingsPanel({
                                     githubIssueSyncState={form.githubIssueSyncState}
                                     githubIssueSyncIntervalMinutes={form.githubIssueSyncIntervalMinutes}
                                     githubIssueAutoCreateEnabled={form.githubIssueAutoCreateEnabled}
+                                    autoCloseTicketOnPRMerge={form.autoCloseTicketOnPRMerge}
                                     onChange={(patch) => updateForm(patch)}
                                 />
                             </div>

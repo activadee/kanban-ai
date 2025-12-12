@@ -78,6 +78,7 @@ export const updateProjectSettingsSchema = z
         githubIssueSyncState: z.enum(["open", "all", "closed"]).optional(),
         githubIssueSyncIntervalMinutes: z.number().int().min(5).max(1440).optional(),
         githubIssueAutoCreateEnabled: z.boolean().optional(),
+        autoCloseTicketOnPRMerge: z.boolean().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
         message: "No updates provided",
@@ -118,13 +119,17 @@ export const updateCardSchema = z
         columnId: z.string().min(1, "Column ID is required").optional(),
         index: z.number().int().min(0).optional(),
         ticketType: ticketTypeSchema,
+        isEnhanced: z.boolean().optional(),
+        disableAutoCloseOnPRMerge: z.boolean().optional(),
     })
     .superRefine((data, ctx) => {
         const hasContent =
             data.title !== undefined ||
             data.description !== undefined ||
             data.dependsOn !== undefined ||
-            data.ticketType !== undefined;
+            data.ticketType !== undefined ||
+            data.isEnhanced !== undefined ||
+            data.disableAutoCloseOnPRMerge !== undefined;
         const wantsMove = data.columnId !== undefined || data.index !== undefined;
 
         if (wantsMove && (data.columnId === undefined || data.index === undefined)) {
