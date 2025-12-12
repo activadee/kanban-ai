@@ -11,10 +11,13 @@ vi.mock('core', () => {
         },
         projectDeps: {
             setDependencies: vi.fn(),
+            listDependencies: vi.fn(),
+            isCardBlocked: vi.fn(),
         },
         tasks: {
             createBoardCard: vi.fn(),
             updateBoardCard: vi.fn(),
+            moveBoardCard: vi.fn(),
             broadcastBoard: vi.fn(),
             getBoardState: vi.fn(),
         },
@@ -178,5 +181,55 @@ describe('PATCH /boards/:boardId/cards/:cardId outbound sync', () => {
             expect.anything(),
         )
         expect(updateGithubIssueForCard).not.toHaveBeenCalled()
+    })
+})
+
+describe('PATCH /boards/:boardId/cards/:cardId move response', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('includes isEnhanced on move responses', async () => {
+        const app = createApp()
+        const core = await import('core' as any)
+
+        core.projectsRepo.getCardById
+            .mockResolvedValueOnce({id: 'card-1', boardId: 'b1', columnId: 'col-1'})
+            .mockResolvedValueOnce({
+                id: 'card-1',
+                boardId: 'b1',
+                columnId: 'col-2',
+                title: 'Test',
+                description: null,
+                ticketKey: 'PRJ-1',
+                ticketType: null,
+                prUrl: null,
+                isEnhanced: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            })
+
+        core.projectsRepo.getColumnById.mockImplementation(async (id: string) => ({
+            id,
+            boardId: 'b1',
+            title: id === 'col-2' ? 'Review' : 'Backlog',
+        }))
+
+        core.projectsRepo.listCardsForColumns.mockResolvedValueOnce([
+            {id: 'card-1', columnId: 'col-2'},
+        ])
+
+        core.projectDeps.listDependencies.mockResolvedValueOnce([])
+        core.tasks.moveBoardCard.mockResolvedValueOnce(undefined)
+
+        const res = await app.request('/boards/b1/cards/card-1', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({columnId: 'col-2', index: 0}),
+        })
+
+        expect(res.status).toBe(200)
+        const body = (await res.json()) as any
+        expect(body.card?.isEnhanced).toBe(true)
     })
 })

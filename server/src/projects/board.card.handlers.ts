@@ -247,6 +247,7 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
                 id: updatedCard.id,
                 ticketKey: updatedCard.ticketKey ?? undefined,
                 ticketType: updatedCard.ticketType ?? null,
+                isEnhanced: updatedCard.isEnhanced ?? false,
                 prUrl: updatedCard.prUrl ?? undefined,
                 title: updatedCard.title,
                 description: updatedCard.description ?? undefined,

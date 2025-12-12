@@ -134,6 +134,7 @@ export function kanbanWebsocketHandlers(boardId: string) {
                             title: msg.payload.title,
                             description: msg.payload.description,
                             ticketType: msg.payload.ticketType,
+                            isEnhanced: msg.payload.isEnhanced,
                         })
                         break
                     case 'delete_card':

@@ -51,16 +51,19 @@ export async function updateCard(
     cardId: string,
     values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null; isEnhanced?: boolean },
 ) {
+    const body: Record<string, unknown> = {
+        title: values.title,
+        dependsOn: values.dependsOn,
+        ticketType: values.ticketType === undefined ? undefined : values.ticketType ?? null,
+        isEnhanced: values.isEnhanced,
+    }
+    if (values.description !== undefined) {
+        body.description = values.description ?? null
+    }
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}`, {
         method: 'PATCH',
         headers: jsonHeaders,
-        body: JSON.stringify({
-            title: values.title,
-            description: values.description ?? null,
-            dependsOn: values.dependsOn,
-            ticketType: values.ticketType === undefined ? undefined : values.ticketType ?? null,
-            isEnhanced: values.isEnhanced,
-        }),
+        body: JSON.stringify(body),
     })
     return parseApiResponse(res)
 }
