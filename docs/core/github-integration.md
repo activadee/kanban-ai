@@ -97,3 +97,13 @@ Additional configuration endpoints:
 - For inline PR summaries (title + body suggestions), the API also exposes:
   - `POST /projects/:projectId/pull-requests/summary` – uses the configured inline agent/profile to summarize the diff between a base and head branch, returning `{summary: {title, body}}` for the Create PR dialog; you can pass `attemptId`/`cardId` so linked GitHub issues are detected and the returned body can append auto-close lines (e.g. `closes #123, fixes #456`).
   - The client caches inline summary results per project + branch so users can trigger a summary, close the PR dialog, and return later to apply the cached suggestion; cancellation is explicit (AbortController) rather than tied to dialog lifecycle.
+
+### Auto‑close tickets on PR merge
+
+- Projects can opt into automatic ticket closure when PRs are merged:
+  - `autoCloseTicketOnPRMerge: boolean` (default `false`).
+- When enabled, a lightweight background scheduler periodically scans cards in the **Review** column that have a linked `prUrl`.
+- If a linked PR is **closed and merged**, the card is automatically moved to the **Done** column.
+- The scheduler currently identifies these columns by title, so your board must contain columns titled **Review** and **Done**.
+- You can disable this on a per‑ticket basis by setting:
+  - `disableAutoCloseOnPRMerge: boolean` on the card (default `false`).

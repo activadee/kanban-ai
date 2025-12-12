@@ -114,6 +114,7 @@ export async function getBoardState(boardId: string): Promise<BoardState> {
             id: card.id,
             ticketKey: card.ticketKey ?? undefined,
             prUrl: card.prUrl ?? undefined,
+            disableAutoCloseOnPRMerge: Boolean(card.disableAutoCloseOnPRMerge),
             ticketType: card.ticketType ?? null,
             isEnhanced: card.isEnhanced ?? false,
             githubIssue: githubIssueMap.get(card.id),

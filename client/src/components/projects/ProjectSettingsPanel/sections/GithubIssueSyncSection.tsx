@@ -13,11 +13,13 @@ type GithubIssueSyncSectionProps = {
     githubIssueSyncState: 'open' | 'all' | 'closed';
     githubIssueSyncIntervalMinutes: number;
     githubIssueAutoCreateEnabled: boolean;
+    autoCloseTicketOnPRMerge: boolean;
     onChange: (patch: Partial<{
         githubIssueSyncEnabled: boolean;
         githubIssueSyncState: 'open' | 'all' | 'closed';
         githubIssueSyncIntervalMinutes: number;
         githubIssueAutoCreateEnabled: boolean;
+        autoCloseTicketOnPRMerge: boolean;
     }>) => void;
 }
 
@@ -28,6 +30,7 @@ export function GithubIssueSyncSection({
                                            githubIssueSyncState,
                                            githubIssueSyncIntervalMinutes,
                                            githubIssueAutoCreateEnabled,
+                                           autoCloseTicketOnPRMerge,
                                            onChange,
                                        }: GithubIssueSyncSectionProps) {
     const githubCheckQuery = useGithubAuthStatus()
@@ -103,6 +106,27 @@ export function GithubIssueSyncSection({
                         </p>
                     </div>
                 </div>
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id="github-pr-auto-close-enabled"
+                        checked={autoCloseTicketOnPRMerge}
+                        disabled={disabled}
+                        onCheckedChange={(checked) =>
+                            onChange({autoCloseTicketOnPRMerge: checked === true})
+                        }
+                    />
+                    <div className="space-y-1">
+                        <Label htmlFor="github-pr-auto-close-enabled">
+                            Auto-close tickets on PR merge
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                            Moves Review cards to Done when their linked PRs are merged.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Requires columns titled Review and Done.
+                        </p>
+                    </div>
+                </div>
                 <div className="space-y-2">
                     <Label htmlFor="github-issue-sync-state">Sync issue state</Label>
                     <Select
@@ -130,7 +154,11 @@ export function GithubIssueSyncSection({
                         min={5}
                         max={1440}
                         value={githubIssueSyncIntervalMinutes.toString()}
-                        disabled={disabled || !githubIssueSyncEnabled}
+                        disabled={
+                            disabled ||
+                            (!githubIssueSyncEnabled &&
+                                !autoCloseTicketOnPRMerge)
+                        }
                         onChange={(e) => handleIntervalChange(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
