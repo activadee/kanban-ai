@@ -104,7 +104,9 @@ export function ActivitySection({
                 ? latestDevAutomation.status === 'succeeded'
                     ? 'succeeded'
                     : latestDevAutomation.status === 'failed'
-                        ? 'failed'
+                        ? latestDevAutomation.allowedFailure
+                            ? 'warning'
+                            : 'failed'
                         : 'idle'
                 : 'idle'
 

@@ -2,7 +2,7 @@ import type {ComponentProps, ReactNode} from 'react'
 import type {Button} from '@/components/ui/button'
 import type {Attempt} from 'shared'
 
-export type ProcessStatus = Attempt['status'] | 'idle'
+export type ProcessStatus = Attempt['status'] | 'idle' | 'warning'
 export type ProcessActionVariant = ComponentProps<typeof Button>['variant']
 
 export type ProcessAction = {
@@ -23,4 +23,3 @@ export type ProcessEntry = {
     meta?: ReactNode
     actions?: ProcessAction[]
 }
-

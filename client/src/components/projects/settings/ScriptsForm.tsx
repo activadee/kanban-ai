@@ -50,7 +50,8 @@ export function ScriptsForm({
                 <div className="space-y-1">
                     <Label htmlFor="allow-scripts-to-fail">Allow scripts to fail</Label>
                     <p className="text-xs text-muted-foreground">
-                        When enabled, setup and copy-file automation failures are treated as warnings and won’t block agent startup.
+                        When enabled, failures from any automation script (copy files, setup, dev, cleanup) are treated as warnings.
+                        Copy/setup won’t block agent startup.
                     </p>
                 </div>
             </div>

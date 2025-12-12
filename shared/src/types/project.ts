@@ -43,8 +43,9 @@ export interface ProjectSettings {
     cleanupScript: string | null
     copyFiles: string | null
     /**
-     * Global toggle: when true, automation script failures are treated as warnings
-     * and do not block agent startup.
+     * Global toggle: when true, failures from any automation stage
+     * (copy/setup/dev/cleanup) are treated as warnings. Startup stages won't
+     * block agent execution.
      */
     allowScriptsToFail: boolean
     /**
