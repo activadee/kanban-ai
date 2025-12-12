@@ -57,14 +57,16 @@ describe("AttemptsSection – thinking blocks", () => {
             />,
         );
 
-        const toggle = screen.getByRole("button", {name: /expand thinking/i});
-        expect(toggle.getAttribute("aria-expanded")).toBe("false");
+        const details = document.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
+        const summary = document.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
+        expect(details).not.toBeNull();
+        expect(summary).not.toBeNull();
+        expect(details?.open).toBe(false);
 
         expect(document.querySelector('[data-slot="thinking-preview"]')).toBeNull();
-        expect(document.querySelector('[data-slot="thinking-content"]')?.className).toContain("opacity-0");
+        expect(document.querySelector('[data-slot="thinking-content"]')).not.toBeNull();
 
-        fireEvent.click(toggle);
-        expect(toggle.getAttribute("aria-expanded")).toBe("true");
-        expect(document.querySelector('[data-slot="thinking-content"]')?.className).toContain("opacity-100");
+        fireEvent.click(summary as HTMLElement);
+        expect(details?.open).toBe(true);
     });
 });
