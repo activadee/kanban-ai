@@ -3,6 +3,7 @@ import {projectsRepo, projectDeps, tasks, projectsService} from "core";
 import {problemJson} from "../http/problem";
 import {log} from "../log";
 import {createGithubIssueForCard} from "../github/export.service";
+import {updateGithubIssueForCard} from "../github/export-update.service";
 
 const {getCardById, getColumnById, listCardsForColumns} = projectsRepo;
 const {
@@ -147,6 +148,22 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
                 },
                 {suppressBroadcast},
             );
+
+            if (body.title !== undefined || body.description !== undefined) {
+                try {
+                    await updateGithubIssueForCard(cardId, {
+                        title: body.title,
+                        description: body.description === undefined ? undefined : body.description ?? null,
+                    })
+                } catch (error) {
+                    log.warn("board:cards", "GitHub issue update failed", {
+                        err: error,
+                        boardId,
+                        cardId,
+                        projectId: project.id,
+                    })
+                }
+            }
         }
 
         if (hasDeps) {

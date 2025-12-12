@@ -138,6 +138,16 @@ export async function updateGithubIssueMapping(id: string, patch: Partial<typeof
     await database.update(githubIssues).set(patch).where(eq(githubIssues.id, id)).run()
 }
 
+export async function findGithubIssueMappingByCardId(cardId: string, executor?: DbExecutor) {
+    const database = resolveDb(executor)
+    const [row] = await database
+        .select()
+        .from(githubIssues)
+        .where(eq(githubIssues.cardId, cardId))
+        .limit(1)
+    return row ?? null
+}
+
 export type GithubIssueDirection = 'imported' | 'exported'
 
 export type GithubIssueStats = {

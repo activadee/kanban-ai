@@ -14,6 +14,7 @@ vi.mock('core', () => {
         },
         tasks: {
             createBoardCard: vi.fn(),
+            updateBoardCard: vi.fn(),
             broadcastBoard: vi.fn(),
             getBoardState: vi.fn(),
         },
@@ -22,12 +23,18 @@ vi.mock('core', () => {
         },
         githubRepo: {
             getGithubConnection: vi.fn(),
+            findGithubIssueMappingByCardId: vi.fn(),
+            updateGithubIssueMapping: vi.fn(),
         },
     }
 })
 
 vi.mock('../src/github/export.service', () => ({
     createGithubIssueForCard: vi.fn(),
+}))
+
+vi.mock('../src/github/export-update.service', () => ({
+    updateGithubIssueForCard: vi.fn(),
 }))
 
 const resolveBoard = async () => ({
@@ -117,5 +124,34 @@ describe('POST /boards/:boardId/cards with GitHub export', () => {
         expect(createGithubIssueForCard).not.toHaveBeenCalled()
         const body = (await res.json()) as any
         expect(body.githubIssueError).toMatch(/disabled/i)
+    })
+})
+
+describe('PATCH /boards/:boardId/cards/:cardId outbound sync', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('updates GitHub issue for exported cards on title/description edit', async () => {
+        const app = createApp()
+        const core = await import('core' as any)
+        const {updateGithubIssueForCard} = await import('../src/github/export-update.service')
+
+        core.projectsRepo.getCardById.mockResolvedValueOnce({id: 'card-1', boardId: 'b1', columnId: 'col-1'})
+        core.projectsRepo.getColumnById.mockResolvedValueOnce({id: 'col-1', boardId: 'b1', title: 'Backlog'})
+        core.tasks.updateBoardCard.mockResolvedValueOnce(undefined)
+        core.tasks.getBoardState.mockResolvedValueOnce({columns: {}, columnOrder: [], cards: {}})
+
+        const res = await app.request('/boards/b1/cards/card-1', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title: 'New', description: 'Body'}),
+        })
+
+        expect(res.status).toBe(200)
+        expect(updateGithubIssueForCard).toHaveBeenCalledWith(
+            'card-1',
+            expect.objectContaining({title: 'New', description: 'Body'}),
+        )
     })
 })

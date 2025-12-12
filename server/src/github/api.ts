@@ -99,3 +99,33 @@ export async function createRepoIssue(params: {
         throw error
     }
 }
+
+export async function updateRepoIssue(params: {
+    owner: string
+    repo: string
+    issueNumber: number
+    title?: string
+    body?: string | null
+}): Promise<GithubIssue> {
+    const token = await requireToken()
+    try {
+        const payload = await githubApiJson<GithubIssue>({
+            path: `/repos/${params.owner}/${params.repo}/issues/${params.issueNumber}`,
+            token,
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                title: params.title,
+                body: params.body,
+            }),
+        })
+        return payload
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub issue update failed'))
+        }
+        throw error
+    }
+}

@@ -56,6 +56,7 @@ Additional configuration endpoints:
 - When **GitHub Issue Creation** is enabled in a project’s settings, the Create Ticket dialog exposes a per‑ticket **Create GitHub Issue** checkbox.
   - If checked, KanbanAI creates a new issue in the project’s origin repository using the ticket title and description.
   - The created issue is stored in `github_issues` with `direction = 'exported'`, so the card displays a clickable `#<issueNumber>` badge.
+  - Subsequent edits to the ticket’s title or description automatically PATCH the exported GitHub issue to stay in sync.
   - If issue creation fails, the ticket is still created and the client shows an error toast.
 
 ### Background Issue Sync
