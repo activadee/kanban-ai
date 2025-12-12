@@ -8,6 +8,11 @@ export type ProjectSettingsFormState = {
     devScript: string;
     cleanupScript: string;
     copyFiles: string;
+    allowScriptsToFail: boolean;
+    allowCopyFilesToFail: boolean;
+    allowSetupScriptToFail: boolean;
+    allowDevScriptToFail: boolean;
+    allowCleanupScriptToFail: boolean;
     defaultAgent: string;
     defaultProfileId: string;
     inlineAgent: string;
@@ -30,6 +35,11 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             devScript: '',
             cleanupScript: '',
             copyFiles: '',
+            allowScriptsToFail: false,
+            allowCopyFilesToFail: false,
+            allowSetupScriptToFail: false,
+            allowDevScriptToFail: false,
+            allowCleanupScriptToFail: false,
             defaultAgent: '',
             defaultProfileId: '',
             inlineAgent: '',
@@ -51,6 +61,11 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         devScript: settings.devScript ?? '',
         cleanupScript: settings.cleanupScript ?? '',
         copyFiles: settings.copyFiles ?? '',
+        allowScriptsToFail: settings.allowScriptsToFail ?? false,
+        allowCopyFilesToFail: settings.allowCopyFilesToFail ?? false,
+        allowSetupScriptToFail: settings.allowSetupScriptToFail ?? false,
+        allowDevScriptToFail: settings.allowDevScriptToFail ?? false,
+        allowCleanupScriptToFail: settings.allowCleanupScriptToFail ?? false,
         defaultAgent: settings.defaultAgent ?? '',
         defaultProfileId: settings.defaultProfileId ?? '',
         inlineAgent: settings.inlineAgent ?? '',
@@ -86,6 +101,35 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if ((form.copyFiles || '') !== (initial.copyFiles ?? '')) {
         payload.copyFiles = form.copyFiles
+    }
+    if (
+        form.allowScriptsToFail !== (initial.allowScriptsToFail ?? false)
+    ) {
+        payload.allowScriptsToFail = form.allowScriptsToFail
+    }
+    if (
+        form.allowCopyFilesToFail !==
+        (initial.allowCopyFilesToFail ?? false)
+    ) {
+        payload.allowCopyFilesToFail = form.allowCopyFilesToFail
+    }
+    if (
+        form.allowSetupScriptToFail !==
+        (initial.allowSetupScriptToFail ?? false)
+    ) {
+        payload.allowSetupScriptToFail = form.allowSetupScriptToFail
+    }
+    if (
+        form.allowDevScriptToFail !==
+        (initial.allowDevScriptToFail ?? false)
+    ) {
+        payload.allowDevScriptToFail = form.allowDevScriptToFail
+    }
+    if (
+        form.allowCleanupScriptToFail !==
+        (initial.allowCleanupScriptToFail ?? false)
+    ) {
+        payload.allowCleanupScriptToFail = form.allowCleanupScriptToFail
     }
     if ((form.defaultAgent || '') !== (initial.defaultAgent ?? '')) {
         payload.defaultAgent = form.defaultAgent || null

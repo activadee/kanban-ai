@@ -168,6 +168,11 @@ export async function startAttempt(
     const copyScript = normalizeAutomationScript(settings.copyFiles)
     const setupScript = normalizeAutomationScript(settings.setupScript)
     const cleanupScript = normalizeAutomationScript(settings.cleanupScript)
+    const allowScriptsToFail = settings.allowScriptsToFail ?? false
+    const allowCopyFilesToFail = settings.allowCopyFilesToFail ?? false
+    const allowSetupScriptToFail = settings.allowSetupScriptToFail ?? false
+    const allowDevScriptToFail = settings.allowDevScriptToFail ?? false
+    const allowCleanupScriptToFail = settings.allowCleanupScriptToFail ?? false
 
     events.publish('attempt.queued', {
         attemptId: id,
@@ -198,6 +203,11 @@ export async function startAttempt(
                 copyScript,
                 setupScript,
                 cleanupScript,
+                allowScriptsToFail,
+                allowCopyFilesToFail,
+                allowSetupScriptToFail,
+                allowDevScriptToFail,
+                allowCleanupScriptToFail,
             },
         },
         events,
@@ -283,6 +293,11 @@ export async function followupAttempt(
     const copyScript = normalizeAutomationScript(settings.copyFiles)
     const setupScript = normalizeAutomationScript(settings.setupScript)
     const cleanupScript = normalizeAutomationScript(settings.cleanupScript)
+    const allowScriptsToFail = settings.allowScriptsToFail ?? false
+    const allowCopyFilesToFail = settings.allowCopyFilesToFail ?? false
+    const allowSetupScriptToFail = settings.allowSetupScriptToFail ?? false
+    const allowDevScriptToFail = settings.allowDevScriptToFail ?? false
+    const allowCleanupScriptToFail = settings.allowCleanupScriptToFail ?? false
     const now = new Date()
     const repoPath = await (async () => {
         const p = await getRepositoryPath(base.boardId)
@@ -337,6 +352,11 @@ export async function followupAttempt(
                 copyScript,
                 setupScript,
                 cleanupScript,
+                allowScriptsToFail,
+                allowCopyFilesToFail,
+                allowSetupScriptToFail,
+                allowDevScriptToFail,
+                allowCleanupScriptToFail,
             },
         },
         events,

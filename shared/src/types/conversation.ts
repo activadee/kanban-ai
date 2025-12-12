@@ -67,6 +67,10 @@ export type ConversationAutomationItem = ConversationItemBase & {
     command: string
     cwd: string
     status: AutomationStatus
+    /**
+     * When true, a failed automation stage was allowed to fail (treated as warning).
+     */
+    allowedFailure?: boolean
     startedAt: string
     completedAt: string
     durationMs: number

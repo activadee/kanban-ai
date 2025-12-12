@@ -111,6 +111,11 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         devScript: row.devScript ?? null,
         cleanupScript: row.cleanupScript ?? null,
         copyFiles: row.copyFiles ?? null,
+        allowScriptsToFail: Boolean(row.allowScriptsToFail),
+        allowCopyFilesToFail: Boolean(row.allowCopyFilesToFail),
+        allowSetupScriptToFail: Boolean(row.allowSetupScriptToFail),
+        allowDevScriptToFail: Boolean(row.allowDevScriptToFail),
+        allowCleanupScriptToFail: Boolean(row.allowCleanupScriptToFail),
         defaultAgent: row.defaultAgent ?? null,
         defaultProfileId: row.defaultProfileId ?? null,
         inlineAgent: row.inlineAgent ?? null,
@@ -154,6 +159,11 @@ export async function ensureProjectSettings(
             devScript: null,
             cleanupScript: null,
             copyFiles: null,
+            allowScriptsToFail: false,
+            allowCopyFilesToFail: false,
+            allowSetupScriptToFail: false,
+            allowDevScriptToFail: false,
+            allowCleanupScriptToFail: false,
             defaultAgent: null,
             defaultProfileId: null,
             inlineAgent: null,
@@ -212,6 +222,16 @@ export async function updateProjectSettings(
         patch.cleanupScript = nn(updates.cleanupScript);
     if (updates.copyFiles !== undefined)
         patch.copyFiles = nn(updates.copyFiles);
+    if (updates.allowScriptsToFail !== undefined)
+        patch.allowScriptsToFail = Boolean(updates.allowScriptsToFail);
+    if (updates.allowCopyFilesToFail !== undefined)
+        patch.allowCopyFilesToFail = Boolean(updates.allowCopyFilesToFail);
+    if (updates.allowSetupScriptToFail !== undefined)
+        patch.allowSetupScriptToFail = Boolean(updates.allowSetupScriptToFail);
+    if (updates.allowDevScriptToFail !== undefined)
+        patch.allowDevScriptToFail = Boolean(updates.allowDevScriptToFail);
+    if (updates.allowCleanupScriptToFail !== undefined)
+        patch.allowCleanupScriptToFail = Boolean(updates.allowCleanupScriptToFail);
     if (updates.defaultAgent !== undefined)
         patch.defaultAgent = nn(updates.defaultAgent);
     if (updates.defaultProfileId !== undefined)

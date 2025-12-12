@@ -5,6 +5,7 @@ import type {
     ConversationAutomationItem,
     AttemptTodoSummary,
     TicketType,
+    AutomationStage,
 } from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {createWorktree} from '../ports/worktree'
@@ -20,6 +21,7 @@ import {
 import {
     createCleanupRunner,
     runAutomationStageInWorktree,
+    isAutomationFailureAllowed,
 } from './automation'
 import {resolveAgentProfile} from './profiles'
 
@@ -50,6 +52,11 @@ export type AttemptAutomationConfig = {
     copyScript: string | null
     setupScript: string | null
     cleanupScript: string | null
+    allowScriptsToFail: boolean
+    allowCopyFilesToFail: boolean
+    allowSetupScriptToFail: boolean
+    allowDevScriptToFail: boolean
+    allowCleanupScriptToFail: boolean
 }
 
 type AttemptWorkerCommonParams = {
@@ -283,8 +290,39 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 }
             }
 
+            const allowFailureConfig = {
+                allowScriptsToFail: automation.allowScriptsToFail,
+                allowCopyFilesToFail: automation.allowCopyFilesToFail,
+                allowSetupScriptToFail: automation.allowSetupScriptToFail,
+                allowDevScriptToFail: automation.allowDevScriptToFail,
+                allowCleanupScriptToFail: automation.allowCleanupScriptToFail,
+            }
+
+            const allowFailuresByStage: Record<AutomationStage, boolean> = {
+                copy_files: isAutomationFailureAllowed(
+                    'copy_files',
+                    allowFailureConfig,
+                ),
+                setup: isAutomationFailureAllowed('setup', allowFailureConfig),
+                dev: isAutomationFailureAllowed('dev', allowFailureConfig),
+                cleanup: isAutomationFailureAllowed('cleanup', allowFailureConfig),
+            }
+
             const automationEmit = async (item: ConversationAutomationItem) => {
-                await emit({type: 'conversation', item})
+                const allowedFailure =
+                    item.status === 'failed' &&
+                    allowFailuresByStage[item.stage]
+                const payloadItem = allowedFailure
+                    ? {...item, allowedFailure: true}
+                    : item
+                await emit({type: 'conversation', item: payloadItem})
+                if (allowedFailure) {
+                    await emit({
+                        type: 'log',
+                        level: 'warn',
+                        message: `[automation:${item.stage}] failed but was allowed to fail; continuing.`,
+                    })
+                }
             }
 
             cleanupRunner = createCleanupRunner(
@@ -299,7 +337,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     automation.copyScript,
                     worktreePath,
                     automationEmit,
-                    {failHard: true},
+                    {failHard: !allowFailuresByStage.copy_files},
                 )
             }
             if (automation.setupScript) {
@@ -308,7 +346,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     automation.setupScript,
                     worktreePath,
                     automationEmit,
-                    {failHard: true},
+                    {failHard: !allowFailuresByStage.setup},
                 )
             }
 

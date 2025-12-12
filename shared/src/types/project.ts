@@ -42,6 +42,19 @@ export interface ProjectSettings {
     devScript: string | null
     cleanupScript: string | null
     copyFiles: string | null
+    /**
+     * Global toggle: when true, automation script failures are treated as warnings
+     * and do not block agent startup.
+     */
+    allowScriptsToFail: boolean
+    /**
+     * Per-script overrides. When true, failures for that script are treated as warnings
+     * even if the global toggle is off.
+     */
+    allowCopyFilesToFail: boolean
+    allowSetupScriptToFail: boolean
+    allowDevScriptToFail: boolean
+    allowCleanupScriptToFail: boolean
     defaultAgent: string | null
     defaultProfileId: string | null
     inlineAgent: string | null
@@ -72,6 +85,11 @@ export interface UpdateProjectSettingsRequest {
     devScript?: string | null
     cleanupScript?: string | null
     copyFiles?: string | null
+    allowScriptsToFail?: boolean
+    allowCopyFilesToFail?: boolean
+    allowSetupScriptToFail?: boolean
+    allowDevScriptToFail?: boolean
+    allowCleanupScriptToFail?: boolean
     defaultAgent?: string | null
     defaultProfileId?: string | null
     inlineAgent?: string | null
