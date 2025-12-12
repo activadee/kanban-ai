@@ -618,11 +618,13 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             'IMPORTANT: Inline ticket enhancement only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
         const prompt = `${basePrompt}\n\n${inlineGuard}`
 
-        enhanceCtx.emit({
-            type: 'log',
-            level: 'info',
-            message: `[opencode:inline] ticketEnhance sending prompt (length=${prompt.length}) for project=${input.projectId} board=${input.boardId}`,
-        })
+        if (profile.debug) {
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode:inline] ticketEnhance sending prompt (length=${prompt.length}) for project=${input.projectId} board=${input.boardId}`,
+            })
+        }
 
         let response: SessionPromptResponse
         try {
@@ -657,29 +659,36 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
 
         const markdown = this.extractPromptMarkdown(response)
-        enhanceCtx.emit({
-            type: 'log',
-            level: 'info',
-            message: `[opencode:inline] ticketEnhance received markdown (length=${markdown.length}) for project=${input.projectId}`,
-        })
-
-        if (!markdown) {
+        if (profile.debug) {
             enhanceCtx.emit({
                 type: 'log',
-                level: 'warn',
-                message: '[opencode:inline] ticketEnhance received empty response, falling back to original title/description',
+                level: 'info',
+                message: `[opencode:inline] ticketEnhance received markdown (length=${markdown.length}) for project=${input.projectId}`,
             })
+        }
+
+        if (!markdown) {
+            if (profile.debug) {
+                enhanceCtx.emit({
+                    type: 'log',
+                    level: 'warn',
+                    message:
+                        '[opencode:inline] ticketEnhance received empty response, falling back to original title/description',
+                })
+            }
             return {
                 title: input.title,
                 description: input.description,
             }
         }
         const result = splitTicketMarkdown(markdown, input.title, input.description)
-        enhanceCtx.emit({
-            type: 'log',
-            level: 'info',
-            message: `[opencode:inline] ticketEnhance final result title="${result.title}" descriptionLength=${result.description.length}`,
-        })
+        if (profile.debug) {
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode:inline] ticketEnhance final result title="${result.title}" descriptionLength=${result.description.length}`,
+            })
+        }
         return result
     }
 
