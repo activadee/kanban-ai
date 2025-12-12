@@ -71,10 +71,13 @@ describe('OpencodeAgent.enhance (inline ticketEnhance)', () => {
             debug: false,
         }
 
-        const expectedPrompt = buildTicketEnhancePrompt(
+        const basePrompt = buildTicketEnhancePrompt(
             input,
             profile.inlineProfile ?? profile.appendPrompt ?? undefined,
         )
+        const inlineGuard =
+            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
+        const expectedPrompt = `${basePrompt}\n\n${inlineGuard}`
 
         const session: SessionCreateResponse = {
             id: 'sess-1',
@@ -174,7 +177,10 @@ describe('OpencodeAgent.enhance (inline ticketEnhance)', () => {
         }
 
         const expectedAppend = profile.inlineProfile
-        const expectedPrompt = buildTicketEnhancePrompt(input, expectedAppend ?? undefined)
+        const basePrompt = buildTicketEnhancePrompt(input, expectedAppend ?? undefined)
+        const inlineGuard =
+            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
+        const expectedPrompt = `${basePrompt}\n\n${inlineGuard}`
 
         const session: SessionCreateResponse = {
             id: 'sess-2',
@@ -332,10 +338,13 @@ describe('OpencodeAgent.summarizePullRequest (inline prSummary)', () => {
             debug: false,
         }
 
-        const expectedPrompt = buildPrSummaryPrompt(
+        const basePrompt = buildPrSummaryPrompt(
             input,
             profile.inlineProfile ?? profile.appendPrompt ?? undefined,
         )
+        const inlineGuard =
+            'IMPORTANT: Inline PR summary only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
+        const expectedPrompt = `${basePrompt}\n\n${inlineGuard}`
 
         const session: SessionCreateResponse = {
             id: 'sess-pr-1',
@@ -482,4 +491,3 @@ describe('OpencodeAgent.summarizePullRequest (inline prSummary)', () => {
         })
     })
 })
-

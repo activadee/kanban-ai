@@ -613,7 +613,10 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const effectiveAppend = this.buildInlineAppendPrompt(profile)
-        const prompt = buildTicketEnhancePrompt(input, effectiveAppend)
+        const basePrompt = buildTicketEnhancePrompt(input, effectiveAppend)
+        const inlineGuard =
+            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
+        const prompt = `${basePrompt}\n\n${inlineGuard}`
 
         enhanceCtx.emit({
             type: 'log',
@@ -630,7 +633,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     agent: profile.agent,
                     model,
                     system,
-                    tools: undefined,
+                    tools: {},
                     parts: prompt
                         ? [
                               {
@@ -735,7 +738,10 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const effectiveAppend = this.buildInlineAppendPrompt(profile)
-        const prompt = buildPrSummaryPrompt(input, effectiveAppend)
+        const basePrompt = buildPrSummaryPrompt(input, effectiveAppend)
+        const inlineGuard =
+            'IMPORTANT: Inline PR summary only. Do not edit or create files, do not run commands, do not use tools. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
+        const prompt = `${basePrompt}\n\n${inlineGuard}`
 
         let response: SessionPromptResponse
         try {
@@ -746,7 +752,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     agent: profile.agent,
                     model,
                     system,
-                    tools: undefined,
+                    tools: {},
                     parts: prompt
                         ? [
                               {
