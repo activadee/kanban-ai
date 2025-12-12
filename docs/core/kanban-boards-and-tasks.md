@@ -52,6 +52,7 @@ Last updated: 2025-11-30
     - Exported issues stay linked on the card, so editing the title/description automatically updates the GitHub issue
       and keeps the badge pointing at the right place.
   - `dependsOn` relationships to other cards on the same board
+  - `isEnhanced` – boolean that flips to `true` when a ticket enhancement suggestion has been accepted; enhanced cards gain a dedicated badge and subtle highlight so you can tell at a glance that the title/description were AI‑refined.
 - On the board itself, cards surface the ticket key (when present) alongside the title and subtle status indicators for blocked/enhancing/PR/agent actions so that key context is visible at a glance, while omitting the full description to keep columns compact.
 - Blocked cards that are still waiting on dependencies wrap the card view in a tooltip listing the blockers so you can see what is pending without opening the inspector.
 - The “card inspector” in the UI lets you edit these fields, with the ticket key surfaced prominently for quick scanning.
@@ -61,6 +62,7 @@ Last updated: 2025-11-30
 - Cards are ordered within a column using an integer index.
 - Moves are performed via a single endpoint:
   - `PATCH /boards/:boardId/cards/:cardId` with `columnId` and `index`.
+  - The update endpoint also accepts `isEnhanced: boolean` so clients can toggle the badge/highlight it mirrors when an enhancement is accepted or reverted.
 - The server:
   - Validates the target column belongs to the board.
   - Updates indices in the source and target columns.
