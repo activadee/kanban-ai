@@ -24,9 +24,13 @@ vi.mock('core', () => {
     const getDashboardOverview = vi.fn(
         async (_timeRange?: DashboardTimeRange): Promise<DashboardOverview> => createFakeOverview(),
     )
+    const setDashboardInboxItemRead = vi.fn(async (_id: string, _isRead: boolean) => {})
+    const markDashboardInboxItemsRead = vi.fn(async (_ids: string[]) => {})
 
     return {
         getDashboardOverview,
+        setDashboardInboxItemRead,
+        markDashboardInboxItemsRead,
     }
 })
 
@@ -162,5 +166,62 @@ describe('GET /dashboard', () => {
         expect(res.status).toBe(400)
         const body = (await res.json()) as any
         expect(body.status).toBe(400)
+    })
+})
+
+describe('PATCH /dashboard/inbox/:id/read', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('marks an individual inbox item read/unread', async () => {
+        const app = createApp()
+        const res = await app.request('/dashboard/inbox/attempt-123/read', {
+            method: 'PATCH',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({isRead: true}),
+        })
+
+        expect(res.status).toBe(200)
+        const {setDashboardInboxItemRead} = await import('core')
+        expect(setDashboardInboxItemRead).toHaveBeenCalledTimes(1)
+        expect(setDashboardInboxItemRead).toHaveBeenCalledWith('attempt-123', true)
+    })
+
+    it('defaults to marking read when body is missing', async () => {
+        const app = createApp()
+        const res = await app.request('/dashboard/inbox/attempt-456/read', {
+            method: 'PATCH',
+        })
+
+        expect(res.status).toBe(200)
+        const {setDashboardInboxItemRead} = await import('core')
+        expect(setDashboardInboxItemRead).toHaveBeenCalledWith('attempt-456', true)
+    })
+})
+
+describe('PATCH /dashboard/inbox/mark-all-read', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('marks all current inbox items read', async () => {
+        const app = createApp()
+        const fakeOverview = createFakeOverview()
+        fakeOverview.inboxItems.review = [
+            {id: 'r1', type: 'review', createdAt: new Date().toISOString()},
+        ] as any
+        fakeOverview.inboxItems.failed = [
+            {id: 'f1', type: 'failed', createdAt: new Date().toISOString(), errorSummary: 'x'},
+        ] as any
+        const {getDashboardOverview} = await import('core')
+        ;(getDashboardOverview as any).mockResolvedValueOnce(fakeOverview)
+
+        const res = await app.request('/dashboard/inbox/mark-all-read', {method: 'PATCH'})
+
+        expect(res.status).toBe(200)
+        const {markDashboardInboxItemsRead} = await import('core')
+        expect(markDashboardInboxItemsRead).toHaveBeenCalledTimes(1)
+        expect(markDashboardInboxItemsRead).toHaveBeenCalledWith(['r1', 'f1'])
     })
 })

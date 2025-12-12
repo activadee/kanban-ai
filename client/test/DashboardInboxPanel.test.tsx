@@ -10,6 +10,13 @@ const attemptsMocks = vi.hoisted(() => ({
 
 vi.mock("@/api/attempts", () => attemptsMocks);
 
+const dashboardMocks = vi.hoisted(() => ({
+    patchInboxItemRead: vi.fn(),
+    markAllInboxRead: vi.fn(),
+}));
+
+vi.mock("@/api/dashboard", () => dashboardMocks);
+
 vi.mock("@/components/ui/toast", () => ({
     toast: vi.fn(),
 }));
@@ -184,6 +191,7 @@ describe("Dashboard InboxPanel", () => {
         cleanup();
         vi.clearAllMocks();
         window.sessionStorage.clear();
+        vi.spyOn(window, "confirm").mockReturnValue(true);
     });
 
     it("renders inbox items grouped by kind with key fields", () => {
@@ -318,5 +326,50 @@ describe("Dashboard InboxPanel", () => {
 
         const inboxList = within(scrollContainer).getByTestId("inbox-list");
         expect(inboxList).toBeTruthy();
+    });
+
+    it("toggles read status for an individual item", async () => {
+        const onReload = vi.fn();
+        dashboardMocks.patchInboxItemRead.mockResolvedValueOnce({ok: true, id: "rev-1", isRead: true});
+
+        renderInboxPanel({onReload});
+
+        const buttons = screen.getAllByLabelText(/Mark read/i);
+        fireEvent.click(buttons[0]);
+
+        await waitFor(() => {
+            expect(dashboardMocks.patchInboxItemRead).toHaveBeenCalledTimes(1);
+        });
+        expect(dashboardMocks.patchInboxItemRead).toHaveBeenCalledWith("rev-1", true);
+        expect(onReload).toHaveBeenCalled();
+    });
+
+    it("filters items by read status tabs", () => {
+        const inbox = createInbox();
+        inbox.review[0].isRead = true;
+        renderInboxPanel({inbox});
+
+        const unreadTab = screen.getByRole("tab", {name: /^Unread$/i});
+        fireEvent.click(unreadTab);
+        expect(screen.getAllByTestId("inbox-row")).toHaveLength(2);
+
+        const readTab = screen.getByRole("tab", {name: /^Read$/i});
+        fireEvent.click(readTab);
+        expect(screen.getAllByTestId("inbox-row")).toHaveLength(1);
+        expect(screen.getByText(/Add login flow/i)).toBeTruthy();
+    });
+
+    it("marks all items as read", async () => {
+        const onReload = vi.fn();
+        dashboardMocks.markAllInboxRead.mockResolvedValueOnce({ok: true, count: 3});
+        renderInboxPanel({onReload});
+
+        const button = screen.getByRole("button", {name: /Mark all read/i});
+        fireEvent.click(button);
+
+        await waitFor(() => {
+            expect(dashboardMocks.markAllInboxRead).toHaveBeenCalledTimes(1);
+        });
+        expect(onReload).toHaveBeenCalled();
     });
 });

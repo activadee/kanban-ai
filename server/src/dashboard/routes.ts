@@ -1,7 +1,11 @@
 import {Hono} from 'hono'
 import type {DashboardTimeRange, DashboardTimeRangePreset} from 'shared'
 import type {AppEnv} from '../env'
-import {getDashboardOverview} from 'core'
+import {
+    getDashboardOverview,
+    markDashboardInboxItemsRead,
+    setDashboardInboxItemRead,
+} from 'core'
 import {problemJson} from '../http/problem'
 import {log} from '../log'
 
@@ -83,6 +87,47 @@ export function createDashboardRouter() {
             hasCustomRange: Boolean(timeRange?.from || timeRange?.to),
         })
         return c.json(overview)
+    })
+
+    router.patch('/inbox/:id/read', async (c) => {
+        const id = c.req.param('id')
+        if (!id) {
+            return problemJson(c, {status: 400, detail: 'Missing inbox item id'})
+        }
+        let body: any = {}
+        try {
+            body = await c.req.json()
+        } catch {
+            body = {}
+        }
+        const isRead =
+            typeof body?.isRead === 'boolean'
+                ? body.isRead
+                : typeof body?.is_read === 'boolean'
+                    ? body.is_read
+                    : true
+        await setDashboardInboxItemRead(id, isRead)
+        return c.json({ok: true, id, isRead})
+    })
+
+    router.patch('/inbox/mark-all-read', async (c) => {
+        const url = new URL(c.req.url)
+        const {timeRange, invalid} = parseTimeRangeFromQuery(url.searchParams)
+        if (invalid) {
+            return problemJson(c, {
+                status: 400,
+                detail:
+                    'Invalid time range; use ISO 8601 from/to, a supported timeRangePreset, or a supported range alias',
+            })
+        }
+        const overview = await getDashboardOverview(timeRange)
+        const inbox = overview.inboxItems
+        const ids: string[] = []
+        ids.push(...(inbox.review ?? []).map((i) => i.id))
+        ids.push(...(inbox.failed ?? []).map((i) => i.id))
+        ids.push(...(inbox.stuck ?? []).map((i) => i.id))
+        await markDashboardInboxItemsRead(ids)
+        return c.json({ok: true, count: ids.length})
     })
 
     return router

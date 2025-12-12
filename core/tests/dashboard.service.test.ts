@@ -80,6 +80,12 @@ async function createTestDb() {
             message TEXT NOT NULL,
             FOREIGN KEY (attempt_id) REFERENCES attempts(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE dashboard_inbox_items (
+            id TEXT PRIMARY KEY,
+            is_read INTEGER NOT NULL DEFAULT 0,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
     `);
 
     const { drizzle } = await import("drizzle-orm/better-sqlite3");

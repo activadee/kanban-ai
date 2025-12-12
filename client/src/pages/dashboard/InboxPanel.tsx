@@ -1,7 +1,7 @@
 import {useEffect, useMemo, useState} from 'react'
 import type {AttemptStatus, DashboardInbox, InboxItem} from 'shared'
 import {Link} from 'react-router-dom'
-import {ArrowUpRight, GitPullRequest, RotateCcw} from 'lucide-react'
+import {ArrowUpRight, CheckCircle2, Circle, GitPullRequest, RotateCcw} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Badge} from '@/components/ui/badge'
 import {Separator} from '@/components/ui/separator'
@@ -12,8 +12,10 @@ import {toast} from '@/components/ui/toast'
 import {startAttemptRequest} from '@/api/attempts'
 import {describeApiError} from '@/api/http'
 import {getProjectCardPath} from '@/lib/routes'
+import {markAllInboxRead, patchInboxItemRead} from '@/api/dashboard'
 
 type InboxFilter = 'all' | 'review' | 'failed' | 'stuck'
+type ReadFilter = 'all' | 'unread' | 'read'
 
 type Props = {
     inbox: DashboardInbox | undefined
@@ -25,6 +27,7 @@ type Props = {
 }
 
 const INBOX_FILTER_STORAGE_KEY = 'dashboard.inboxFilter'
+const INBOX_READ_FILTER_STORAGE_KEY = 'dashboard.inboxReadFilter'
 
 function resolveFilterFromStorage(): InboxFilter {
     if (typeof window === 'undefined') return 'all'
@@ -35,10 +38,26 @@ function resolveFilterFromStorage(): InboxFilter {
     return 'all'
 }
 
+function resolveReadFilterFromStorage(): ReadFilter {
+    if (typeof window === 'undefined') return 'all'
+    const raw = window.sessionStorage.getItem(INBOX_READ_FILTER_STORAGE_KEY)
+    if (raw === 'all' || raw === 'unread' || raw === 'read') return raw
+    return 'all'
+}
+
 function storeFilter(value: InboxFilter) {
     if (typeof window === 'undefined') return
     try {
         window.sessionStorage.setItem(INBOX_FILTER_STORAGE_KEY, value)
+    } catch {
+        // Best-effort persistence; ignore storage errors.
+    }
+}
+
+function storeReadFilter(value: ReadFilter) {
+    if (typeof window === 'undefined') return
+    try {
+        window.sessionStorage.setItem(INBOX_READ_FILTER_STORAGE_KEY, value)
     } catch {
         // Best-effort persistence; ignore storage errors.
     }
@@ -114,11 +133,17 @@ export function InboxPanel({
                                onAttemptNavigate,
                            }: Props) {
     const [filter, setFilter] = useState<InboxFilter>(() => resolveFilterFromStorage())
+    const [readFilter, setReadFilter] = useState<ReadFilter>(() => resolveReadFilterFromStorage())
     const [retryingId, setRetryingId] = useState<string | null>(null)
+    const [optimisticRead, setOptimisticRead] = useState<Record<string, boolean>>({})
 
     useEffect(() => {
         storeFilter(filter)
     }, [filter])
+
+    useEffect(() => {
+        storeReadFilter(readFilter)
+    }, [readFilter])
 
     const reviewItems = inbox?.review ?? []
     const failedItems = inbox?.failed ?? []
@@ -138,18 +163,20 @@ export function InboxPanel({
         return sortByLastActivity(stuckItems)
     }, [filter, allItems, reviewItems, failedItems, stuckItems])
 
+    const filteredByReadState = useMemo<InboxItem[]>(() => {
+        if (readFilter === 'all') return filteredItems
+        if (readFilter === 'unread') {
+            return filteredItems.filter((item) => (optimisticRead[item.id] ?? item.isRead ?? false) === false)
+        }
+        return filteredItems.filter((item) => (optimisticRead[item.id] ?? item.isRead ?? false) === true)
+    }, [filteredItems, readFilter, optimisticRead])
+
     const totalCount = reviewItems.length + failedItems.length + stuckItems.length
-    const filterCount =
-        filter === 'all'
-            ? totalCount
-            : filter === 'review'
-                ? reviewItems.length
-                : filter === 'failed'
-                    ? failedItems.length
-                    : stuckItems.length
+    const viewCount = filteredByReadState.length
 
     const showEmptyMessage = !isLoading && !hasError && totalCount === 0
-    const showFilteredEmptyMessage = !isLoading && !hasError && totalCount > 0 && filteredItems.length === 0
+    const showFilteredEmptyMessage =
+        !isLoading && !hasError && totalCount > 0 && viewCount === 0
 
     const handleRetryClick = async (item: InboxItem) => {
         setRetryingId(item.id)
@@ -212,9 +239,9 @@ export function InboxPanel({
                     </TabsList>
                 </Tabs>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                    {filterCount > 0 ? (
+                    {viewCount > 0 ? (
                         <span>
-                            {filterCount} item{filterCount === 1 ? '' : 's'} in view
+                            {viewCount} item{viewCount === 1 ? '' : 's'} in view
                         </span>
                     ) : null}
                     <Separator orientation="vertical" className="hidden h-4 sm:block"/>
@@ -226,7 +253,70 @@ export function InboxPanel({
                     >
                         Refresh
                     </Button>
+                    <Separator orientation="vertical" className="hidden h-4 sm:block"/>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        disabled={totalCount === 0}
+                        onClick={async () => {
+                            if (totalCount === 0) return
+                            const confirmed = window.confirm(
+                                'Mark all inbox items as read? You can switch to the "Read" filter to revisit them.',
+                            )
+                            if (!confirmed) return
+                            const ids = allItems.map((i) => i.id)
+                            setOptimisticRead((current) => {
+                                const next = {...current}
+                                for (const id of ids) next[id] = true
+                                return next
+                            })
+                            try {
+                                await markAllInboxRead()
+                                toast({
+                                    title: 'Inbox cleared',
+                                    description: 'All items marked as read.',
+                                    variant: 'success',
+                                })
+                                onReload()
+                            } catch (error) {
+                                setOptimisticRead((current) => {
+                                    const next = {...current}
+                                    for (const id of ids) delete next[id]
+                                    return next
+                                })
+                                const problem = describeApiError(error, 'Failed to mark all read')
+                                toast({
+                                    title: problem.title,
+                                    description: problem.description,
+                                    variant: 'destructive',
+                                })
+                            }
+                        }}
+                    >
+                        Mark all read
+                    </Button>
                 </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+                <Tabs
+                    value={readFilter}
+                    onValueChange={(value) => setReadFilter(value as ReadFilter)}
+                    className="flex-1"
+                >
+                    <TabsList aria-label="Filter inbox items by read status" className="h-7">
+                        <TabsTrigger value="all" className="px-2 text-[11px]">
+                            All
+                        </TabsTrigger>
+                        <TabsTrigger value="unread" className="px-2 text-[11px]">
+                            Unread
+                        </TabsTrigger>
+                        <TabsTrigger value="read" className="px-2 text-[11px]">
+                            Read
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
             </div>
 
             {isLoading ? (
@@ -274,7 +364,7 @@ export function InboxPanel({
                     >
                         <TooltipProvider delayDuration={150}>
                             <ul className="space-y-1 p-1" data-testid="inbox-list">
-                                {filteredItems.map((item) => {
+                                {filteredByReadState.map((item) => {
                                     const kind = item.type
                                     const kindLabel = getKindLabel(kind)
                                     const lastActivityTs = getLastActivityTimestamp(item)
@@ -282,13 +372,16 @@ export function InboxPanel({
                                     const hasAttempt = Boolean(item.attemptId)
                                     const hasProject = Boolean(item.projectId)
                                     const isRetrying = retryingId === item.id
+                                    const itemIsRead = optimisticRead[item.id] ?? item.isRead ?? false
                                     const agentLabel =
                                         item.agentName ?? item.agentId ?? 'Unknown agent'
 
                                     return (
                                         <li
                                             key={item.id}
-                                            className="group flex cursor-pointer items-start gap-3 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs hover:bg-muted/40"
+                                            className={`group flex cursor-pointer items-start gap-3 rounded-md border border-border/60 bg-background/40 px-3 py-2 text-xs hover:bg-muted/40 ${
+                                                itemIsRead ? 'opacity-60' : ''
+                                            }`}
                                             role={hasAttempt && onAttemptNavigate ? 'button' : undefined}
                                             tabIndex={hasAttempt && onAttemptNavigate ? 0 : undefined}
                                             onClick={() => {
@@ -329,13 +422,23 @@ export function InboxPanel({
                                                                     item.projectId!,
                                                                     item.cardId ?? undefined,
                                                                 )}
-                                                                className="block max-w-full truncate text-[13px] font-medium text-foreground hover:underline"
+                                                                className={`block max-w-full truncate text-[13px] hover:underline ${
+                                                                    itemIsRead
+                                                                        ? 'font-normal text-muted-foreground'
+                                                                        : 'font-medium text-foreground'
+                                                                }`}
                                                                 onClick={(event) => event.stopPropagation()}
                                                             >
                                                                 {formatTicket(item.cardTitle, item.ticketKey)}
                                                             </Link>
                                                         ) : (
-                                                            <span className="block max-w-full truncate text-[13px] font-medium text-foreground">
+                                                            <span
+                                                                className={`block max-w-full truncate text-[13px] ${
+                                                                    itemIsRead
+                                                                        ? 'font-normal text-muted-foreground'
+                                                                        : 'font-medium text-foreground'
+                                                                }`}
+                                                            >
                                                                 {formatTicket(item.cardTitle, item.ticketKey)}
                                                             </span>
                                                         )}
@@ -374,6 +477,53 @@ export function InboxPanel({
                                             </div>
 
                                             <div className="flex shrink-0 items-center gap-1 pt-0.5 text-[11px]">
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="size-7 text-muted-foreground hover:text-foreground"
+                                                            onClick={async (event) => {
+                                                                event.stopPropagation()
+                                                                const nextRead = !itemIsRead
+                                                                setOptimisticRead((current) => ({
+                                                                    ...current,
+                                                                    [item.id]: nextRead,
+                                                                }))
+                                                                try {
+                                                                    await patchInboxItemRead(item.id, nextRead)
+                                                                    onReload()
+                                                                } catch (error) {
+                                                                    setOptimisticRead((current) => {
+                                                                        const reverted = {...current}
+                                                                        delete reverted[item.id]
+                                                                        return reverted
+                                                                    })
+                                                                    const problem = describeApiError(
+                                                                        error,
+                                                                        'Failed to update read status',
+                                                                    )
+                                                                    toast({
+                                                                        title: problem.title,
+                                                                        description: problem.description,
+                                                                        variant: 'destructive',
+                                                                    })
+                                                                }
+                                                            }}
+                                                            aria-label={itemIsRead ? 'Mark unread' : 'Mark read'}
+                                                        >
+                                                            {itemIsRead ? (
+                                                                <CheckCircle2 className="size-3.5"/>
+                                                            ) : (
+                                                                <Circle className="size-3.5"/>
+                                                            )}
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        {itemIsRead ? 'Mark unread' : 'Mark read'}
+                                                    </TooltipContent>
+                                                </Tooltip>
+
                                                 {hasAttempt && onAttemptNavigate ? (
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>

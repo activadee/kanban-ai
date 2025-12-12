@@ -16,6 +16,7 @@ import {attempts, boards, cards, columns} from '../db/schema'
 import {resolveDb} from '../db/with-tx'
 import {resolveTimeBounds, resolveTimeRange} from './time-range'
 import {buildDashboardInbox} from './inbox'
+import {attachReadStateToInbox, loadDashboardInboxReadMap} from './inbox-read'
 import {buildProjectHealth} from './project-health'
 import {listAgents} from '../agents/registry'
 
@@ -518,7 +519,9 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             resolvedRange,
         ),
     }
-    const inboxItems: DashboardInbox = await buildDashboardInbox(rangeFrom, rangeTo)
+    const inboxItemsRaw: DashboardInbox = await buildDashboardInbox(rangeFrom, rangeTo)
+    const inboxReadMap = await loadDashboardInboxReadMap(inboxItemsRaw, db)
+    const inboxItems: DashboardInbox = attachReadStateToInbox(inboxItemsRaw, inboxReadMap)
     const inboxMeta = inboxItems.meta as {totalReview?: unknown} | undefined
     const reviewItemsCountFromMeta =
         typeof inboxMeta?.totalReview === 'number' ? inboxMeta.totalReview : undefined

@@ -542,6 +542,12 @@ export interface InboxItemBase {
      * Small structured extension bag for future UI needs.
      */
     meta?: Record<string, unknown>
+    /**
+     * Whether the user has marked this inbox item as read.
+     *
+     * Backends SHOULD default this to `false` when no persisted state exists.
+     */
+    isRead?: boolean
 }
 
 /**
