@@ -165,7 +165,6 @@ export const updateCardHandler = async (c: any, ctx: BoardContext) => {
                         body.ticketType === undefined ? undefined : body.ticketType,
                     isEnhanced: body.isEnhanced,
                     disableAutoCloseOnPRMerge: body.disableAutoCloseOnPRMerge,
-                    isEnhanced: body.isEnhanced,
                 },
                 {suppressBroadcast},
             );
