@@ -234,10 +234,19 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 }
             } catch (err) {
                 if (!signal.aborted) {
+                    const message = err instanceof Error ? err.message : String(err)
                     ctx.emit({
                         type: 'log',
-                        level: 'warn',
-                        message: `[opencode] event stream error: ${String(err)}`,
+                        level: 'error',
+                        message: `[opencode] event stream error: ${message}`,
+                    })
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'error',
+                            timestamp: nowIso(),
+                            text: message,
+                        },
                     })
                 }
             } finally {
@@ -274,6 +283,15 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             level: 'info',
             message: `[opencode] created session ${session.id}`,
         })
+
+        if (installation.mode === 'remote' && ctx.images?.length) {
+            ctx.emit({
+                type: 'log',
+                level: 'warn',
+                message:
+                    '[opencode] image attachments are sent as local file references; ensure your remote OpenCode server can access the same worktree path, or use a local OpenCode server.',
+            })
+        }
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
@@ -339,6 +357,15 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     ): Promise<SdkSession> {
         const opencode = client as OpencodeClient
         const stream = await this.openEventStream(opencode, installation, ctx, signal)
+
+        if (installation.mode === 'remote' && ctx.images?.length) {
+            ctx.emit({
+                type: 'log',
+                level: 'warn',
+                message:
+                    '[opencode] image attachments are sent as local file references; ensure your remote OpenCode server can access the same worktree path, or use a local OpenCode server.',
+            })
+        }
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
