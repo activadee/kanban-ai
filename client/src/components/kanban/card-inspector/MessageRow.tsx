@@ -4,6 +4,7 @@ import {Badge} from '@/components/ui/badge'
 import {cn} from '@/lib/utils'
 import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
+import {SERVER_URL} from '@/lib/env'
 import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
 
 export function MessageRow({item}: { item: ConversationItem }) {
@@ -13,8 +14,10 @@ export function MessageRow({item}: { item: ConversationItem }) {
 
     switch (item.type) {
         case 'message': {
-            const {role, text} = item
+            const {role, text, attachments} = item
             const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
+            const apiBase = new URL(`${SERVER_URL.replace(/\/?$/, '')}/`)
+            const apiOrigin = apiBase.origin
             return (
                 <div className="mb-2 rounded bg-background p-2">
                     <div className="mb-1 flex items-center gap-2">
@@ -24,6 +27,41 @@ export function MessageRow({item}: { item: ConversationItem }) {
                             <span className="text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
                     </div>
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
+                    {attachments && attachments.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {attachments.map((img) => {
+                                const raw = img.dataUrl
+                                let src: string | null = null
+                                if (raw.startsWith('data:')) {
+                                    src = raw
+                                } else {
+                                    try {
+                                        const resolved = raw.startsWith('/')
+                                            ? new URL(raw, apiOrigin)
+                                            : raw.startsWith('http://') || raw.startsWith('https://')
+                                                ? new URL(raw)
+                                                : new URL(raw, apiBase)
+
+                                        const protocolOk = resolved.protocol === 'http:' || resolved.protocol === 'https:'
+                                        const originOk = resolved.origin === apiOrigin
+                                        if (protocolOk && originOk) src = resolved.toString()
+                                    } catch {
+                                        // ignore
+                                    }
+                                }
+
+                                if (!src) return null
+                                return (
+                                    <img
+                                        key={img.id ?? img.dataUrl}
+                                        src={src}
+                                        alt={img.name ?? 'attachment'}
+                                        className="h-28 w-28 rounded border object-cover"
+                                    />
+                                )
+                            })}
+                        </div>
+                    ) : null}
                 </div>
             )
         }

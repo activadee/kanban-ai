@@ -2,6 +2,31 @@ export type ConversationTextFormat = 'markdown' | 'plaintext'
 
 export type ConversationRole = 'user' | 'assistant' | 'system'
 
+export type ImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp'
+
+export type ImageAttachment = {
+    /**
+     * Optional stable identifier assigned by the client/server.
+     */
+    id?: string
+    mimeType: ImageMimeType
+    /**
+     * Image location.
+     *
+     * - For new messages from the UI this is typically a `data:` URL (clipboard/file preview).
+     * - For persisted conversation history this may be an API-base-relative URL
+     *   (e.g. `attempts/:id/attachments/<file>`) that the client resolves against `SERVER_URL`.
+     */
+    dataUrl: string
+    /**
+     * Byte size of the decoded image payload.
+     */
+    sizeBytes: number
+    width?: number
+    height?: number
+    name?: string
+}
+
 export type AutomationStage = 'copy_files' | 'setup' | 'dev' | 'cleanup'
 
 export type AutomationStatus = 'running' | 'succeeded' | 'failed'
@@ -20,6 +45,7 @@ export type ConversationMessageItem = ConversationItemBase & {
     role: ConversationRole
     text: string
     format?: ConversationTextFormat
+    attachments?: ImageAttachment[]
     /**
      * When applicable, indicates which profile was used to produce the message.
      */

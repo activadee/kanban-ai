@@ -1,13 +1,70 @@
 import {z} from 'zod'
+import {
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_DATA_URL_LENGTH,
+    MAX_IMAGES_PER_MESSAGE,
+    MAX_TOTAL_IMAGE_BYTES,
+    estimateDecodedBytesFromDataUrl,
+    imageDataUrlPrefix,
+} from 'shared'
 
 export const stopAttemptSchema = z.object({
     status: z.enum(['stopped']),
 })
 
-export const attemptMessageSchema = z.object({
-    prompt: z.string().min(1),
-    profileId: z.string().optional(),
+const imageAttachmentSchema = z.object({
+    id: z.string().optional(),
+    mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+    dataUrl: z.string().trim().min(1).max(MAX_IMAGE_DATA_URL_LENGTH),
+    sizeBytes: z.number().int().positive().max(MAX_IMAGE_BYTES),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    name: z.string().optional(),
+}).superRefine((att, ctx) => {
+    const prefix = imageDataUrlPrefix(att.mimeType)
+    if (!att.dataUrl.startsWith(prefix)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['dataUrl'],
+            message: `Image dataUrl must start with "${prefix}"`,
+        })
+        return
+    }
+    const estimatedBytes = estimateDecodedBytesFromDataUrl(att.dataUrl, prefix.length)
+    if (estimatedBytes > MAX_IMAGE_BYTES) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['dataUrl'],
+            message: `Image exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`,
+        })
+    }
 })
+
+export const attemptMessageSchema = z
+    .object({
+        prompt: z.string().optional().default(''),
+        profileId: z.string().optional(),
+        images: z.array(imageAttachmentSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
+    })
+    .superRefine((data, ctx) => {
+        let totalEstimated = 0
+        for (const img of data.images ?? []) {
+            const prefix = imageDataUrlPrefix(img.mimeType)
+            if (!img.dataUrl.startsWith(prefix)) continue
+            totalEstimated += estimateDecodedBytesFromDataUrl(img.dataUrl, prefix.length)
+        }
+        if (totalEstimated > MAX_TOTAL_IMAGE_BYTES) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['images'],
+                message: `Total image payload exceeds ${Math.round(MAX_TOTAL_IMAGE_BYTES / (1024 * 1024))}MB limit`,
+            })
+        }
+    })
+    .refine(
+        (data) => (data.prompt?.trim().length ?? 0) > 0 || (data.images?.length ?? 0) > 0,
+        {message: 'Provide a prompt or at least one image'},
+    )
 
 export const openEditorSchema = z.object({
     subpath: z.string().optional(),

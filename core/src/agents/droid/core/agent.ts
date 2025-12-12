@@ -193,10 +193,19 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
     }
 
     private emitUserMessage(ctx: AgentContext, text: string) {
-        if (!text.trim()) return
+        const trimmed = text.trim()
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (!trimmed && !attachments?.length) return
         ctx.emit({
             type: 'conversation',
-            item: {type: 'message', timestamp: new Date().toISOString(), role: 'user', text, format: 'markdown'}
+            item: {
+                type: 'message',
+                timestamp: new Date().toISOString(),
+                role: 'user',
+                text: trimmed ? text : attachments ? '[Image attached]' : '',
+                format: 'markdown',
+                attachments,
+            }
         })
     }
 

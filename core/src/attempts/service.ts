@@ -1,4 +1,4 @@
-import type {AutomationStage, ConversationAutomationItem} from 'shared'
+import type {AutomationStage, ConversationAutomationItem, ImageAttachment} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {
     getAttempt as lifecycleGetAttempt,
@@ -57,8 +57,9 @@ export async function followupAttempt(
     attemptId: string,
     prompt: string,
     profileId: string | undefined,
+    attachments: ImageAttachment[] | undefined,
     deps?: AttemptServiceDeps,
 ) {
     const events = requireEvents(deps)
-    return lifecycleFollowupAttempt(attemptId, prompt, profileId, events)
+    return lifecycleFollowupAttempt(attemptId, prompt, profileId, attachments, events)
 }

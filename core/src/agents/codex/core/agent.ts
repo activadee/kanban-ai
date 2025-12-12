@@ -354,7 +354,18 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             prompt_len: typeof prompt === 'string' ? prompt.length : null,
         }))
         const thread = codex.startThread(this.threadOptions(profile, ctx))
-        const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})
+        const effectivePrompt =
+            ctx.images && ctx.images.length && !prompt.trim().length
+                ? 'Please describe the attached image(s).'
+                : prompt
+        const input =
+            ctx.images && ctx.images.length
+                ? [
+                      {type: 'text', text: effectivePrompt},
+                      ...ctx.images.map((img) => ({type: 'local_image', path: img.path})),
+                  ]
+                : effectivePrompt
+        const {events} = await thread.runStreamed(input as any, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
     }
 
@@ -374,7 +385,18 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
             prompt_len: typeof prompt === 'string' ? prompt.length : null,
         }))
         const thread = codex.resumeThread(sessionId, this.threadOptions(profile, ctx))
-        const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})
+        const effectivePrompt =
+            ctx.images && ctx.images.length && !prompt.trim().length
+                ? 'Please describe the attached image(s).'
+                : prompt
+        const input =
+            ctx.images && ctx.images.length
+                ? [
+                      {type: 'text', text: effectivePrompt},
+                      ...ctx.images.map((img) => ({type: 'local_image', path: img.path})),
+                  ]
+                : effectivePrompt
+        const {events} = await thread.runStreamed(input as any, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
     }
 
@@ -594,15 +616,18 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     async run(ctx: AgentContext, profile: CodexProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
         const prompt = this.buildPrompt(profile, ctx)
-        if (prompt) {
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (prompt || attachments?.length) {
+            const text = prompt?.trim().length ? prompt : attachments ? '[Image attached]' : ''
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: new Date().toISOString(),
                     role: 'user',
-                    text: prompt,
+                    text,
                     format: 'markdown',
+                    attachments,
                     profileId: ctx.profileId ?? null,
                 },
             })
@@ -618,15 +643,18 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     async resume(ctx: AgentContext, profile: CodexProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length) {
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (prompt.length || attachments?.length) {
+            const text = prompt.length ? prompt : attachments ? '[Image attached]' : ''
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: new Date().toISOString(),
                     role: 'user',
-                    text: prompt,
+                    text,
                     format: 'markdown',
+                    attachments,
                     profileId: ctx.profileId ?? null,
                 },
             })

@@ -2,7 +2,6 @@ import {Hono} from 'hono'
 import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
 import {
-    attemptMessageSchema,
     gitCommitSchema,
     gitPushSchema,
     openEditorSchema,
@@ -11,6 +10,7 @@ import {
 } from './attempts.schemas'
 import {
     getAttemptHandler,
+    getAttemptAttachmentHandler,
     listAttemptLogsHandler,
     postAttemptMessageHandler,
     runDevAutomationHandler,
@@ -51,6 +51,8 @@ export const createAttemptsRouter = () => {
 
     router.get('/:id/logs', listAttemptLogsHandler)
 
+    router.get('/:id/attachments/:fileName', getAttemptAttachmentHandler)
+
     // Open editor at worktree (or subpath)
     router.post('/:id/open-editor', zValidator('json', openEditorSchema), openEditorHandler)
 
@@ -59,7 +61,7 @@ export const createAttemptsRouter = () => {
 
     router.get('/:id/git/file', gitFileHandler)
 
-    router.post('/:id/messages', zValidator('json', attemptMessageSchema), postAttemptMessageHandler)
+    router.post('/:id/messages', postAttemptMessageHandler)
 
     // Deprecated follow-up path
     router.post('/:id/followup', async (c) => {

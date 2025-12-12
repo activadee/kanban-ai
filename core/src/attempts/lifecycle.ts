@@ -1,4 +1,19 @@
-import type {AttemptStatus, ConversationItem, AttemptTodoSummary} from 'shared'
+import type {
+    AttemptStatus,
+    ConversationItem,
+    AttemptTodoSummary,
+    ImageAttachment,
+    ImageMimeType,
+} from 'shared'
+import {
+    ALLOWED_IMAGE_MIME_TYPES,
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_DATA_URL_LENGTH,
+    MAX_IMAGES_PER_MESSAGE,
+    MAX_TOTAL_IMAGE_BYTES,
+    estimateDecodedBytesFromDataUrl,
+    imageDataUrlPrefix,
+} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -55,6 +70,52 @@ function deserializeConversationItem(row: {
             text: 'Failed to load conversation entry',
         }
     }
+}
+
+function parseImageDataUrl(dataUrl: string): {normalized: string; mimeType: ImageMimeType; base64Start: number} | null {
+    const normalized = dataUrl.trim()
+    if (normalized.length > MAX_IMAGE_DATA_URL_LENGTH) {
+        throw new Error(`Image data URL exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`)
+    }
+    for (const mimeType of ALLOWED_IMAGE_MIME_TYPES as readonly ImageMimeType[]) {
+        const prefix = imageDataUrlPrefix(mimeType)
+        if (normalized.startsWith(prefix)) return {normalized, mimeType, base64Start: prefix.length}
+    }
+    return null
+}
+
+function validateImageAttachments(raw: ImageAttachment[] | undefined): ImageAttachment[] {
+    if (!raw || raw.length === 0) return []
+    if (raw.length > MAX_IMAGES_PER_MESSAGE) {
+        throw new Error(`Too many images attached (max ${MAX_IMAGES_PER_MESSAGE})`)
+    }
+    const validated: ImageAttachment[] = []
+    let totalEstimatedBytes = 0
+    for (const att of raw) {
+        const parsed = parseImageDataUrl(att.dataUrl ?? '')
+        if (!parsed) throw new Error('Unsupported image data URL')
+        const estimatedBytes = estimateDecodedBytesFromDataUrl(parsed.normalized, parsed.base64Start)
+        if (estimatedBytes > MAX_IMAGE_BYTES) {
+            throw new Error(`Image exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`)
+        }
+        totalEstimatedBytes += estimatedBytes
+        if (totalEstimatedBytes > MAX_TOTAL_IMAGE_BYTES) {
+            throw new Error(`Total attached image size exceeds ${Math.round(MAX_TOTAL_IMAGE_BYTES / (1024 * 1024))}MB limit`)
+        }
+        const payload = parsed.normalized.slice(parsed.base64Start)
+        const buf = Buffer.from(payload, 'base64')
+        if (buf.byteLength > MAX_IMAGE_BYTES) {
+            throw new Error(`Image exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`)
+        }
+        const id = att.id?.trim() || `img-${crypto.randomUUID()}`
+        validated.push({
+            ...att,
+            id,
+            mimeType: parsed.mimeType,
+            sizeBytes: buf.byteLength,
+        })
+    }
+    return validated
 }
 
 export async function getLatestAttemptForCard(boardId: string, cardId: string) {
@@ -276,6 +337,7 @@ export async function followupAttempt(
     attemptId: string,
     prompt: string,
     profileId: string | undefined,
+    attachments: ImageAttachment[] | undefined,
     events: AppEventBus,
 ) {
     const base = await getAttemptById(attemptId)
@@ -298,6 +360,7 @@ export async function followupAttempt(
     const allowSetupScriptToFail = settings.allowSetupScriptToFail ?? false
     const allowDevScriptToFail = settings.allowDevScriptToFail ?? false
     const allowCleanupScriptToFail = settings.allowCleanupScriptToFail ?? false
+    const validatedAttachments = validateImageAttachments(attachments)
     const now = new Date()
     const repoPath = await (async () => {
         const p = await getRepositoryPath(base.boardId)
@@ -348,6 +411,7 @@ export async function followupAttempt(
             cardDescription: null,
             sessionId: base.sessionId,
             followupPrompt: prompt,
+            followupAttachments: validatedAttachments,
             automation: {
                 copyScript,
                 setupScript,

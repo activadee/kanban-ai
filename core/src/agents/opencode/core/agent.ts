@@ -5,11 +5,15 @@ import type {
     EventSessionError,
     EventTodoUpdated,
     TextPart,
+    TextPartInput,
     ToolPart,
     ToolState,
     Todo,
     SessionCreateResponse,
     SessionPromptResponse,
+    Part,
+    FilePartInput,
+    ProviderListResponse,
 } from '@opencode-ai/sdk'
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
 import type {
@@ -23,7 +27,7 @@ import type {
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
-import type {AttemptTodoSummary} from 'shared'
+import type {AttemptTodoSummary, ImageAttachment} from 'shared'
 import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
@@ -95,8 +99,13 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     capabilities = {resume: true}
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
+    private readonly imageSupportNotices = new Set<string>()
     private static localServer: ServerHandle | null = null
     private static localServerUrl: string | null = null
+    private static providerListCache = new Map<string, {expiresAt: number; value: ProviderListResponse}>()
+    private static readonly providerListCacheMaxEntries = 16
+    private static readonly providerListCacheTtlMs = 60_000
+    private static readonly imageSupportNoticesMaxEntries = 512
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
@@ -210,6 +219,70 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
     }
 
+    private getProviderCacheKey(installation: OpencodeInstallation): string {
+        if (installation.mode === 'remote' && installation.baseUrl) return `remote:${installation.baseUrl}`
+        if (OpencodeImpl.localServerUrl) return `local:${OpencodeImpl.localServerUrl}`
+        return installation.mode
+    }
+
+    private async getProviderList(
+        opencode: OpencodeClient,
+        installation: OpencodeInstallation,
+        signal: AbortSignal,
+    ): Promise<ProviderListResponse | null> {
+        const cacheKey = this.getProviderCacheKey(installation)
+        const cached = OpencodeImpl.providerListCache.get(cacheKey)
+        if (cached && cached.expiresAt > Date.now()) return cached.value
+
+        try {
+            const fresh = (await opencode.provider.list({
+                query: {directory: installation.directory},
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as ProviderListResponse
+            if (!OpencodeImpl.providerListCache.has(cacheKey)) {
+                while (OpencodeImpl.providerListCache.size >= OpencodeImpl.providerListCacheMaxEntries) {
+                    const oldest = OpencodeImpl.providerListCache.keys().next().value as string | undefined
+                    if (!oldest) break
+                    OpencodeImpl.providerListCache.delete(oldest)
+                }
+            }
+            OpencodeImpl.providerListCache.set(cacheKey, {
+                expiresAt: Date.now() + OpencodeImpl.providerListCacheTtlMs,
+                value: fresh,
+            })
+            return fresh
+        } catch {
+            return null
+        }
+    }
+
+    private async modelSupportsImages(
+        opencode: OpencodeClient,
+        installation: OpencodeInstallation,
+        signal: AbortSignal,
+        providerID: string,
+        modelID: string,
+    ): Promise<boolean | null> {
+        const list = await this.getProviderList(opencode, installation, signal)
+        if (!list) return null
+        const provider = list.all.find((p) => p.id === providerID)
+        if (!provider) return null
+
+        const model =
+            (provider.models as Record<string, unknown>)[modelID] ??
+            Object.values(provider.models as Record<string, unknown>).find((m) => {
+                const id = (m as {id?: unknown} | undefined)?.id
+                return typeof id === 'string' && id === modelID
+            })
+        if (!model || typeof model !== 'object') return null
+
+        const input = (model as {modalities?: {input?: unknown}}).modalities?.input
+        if (!Array.isArray(input)) return false
+        return input.includes('image')
+    }
+
     private async openEventStream(
         client: OpencodeClient,
         installation: OpencodeInstallation,
@@ -233,10 +306,19 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 }
             } catch (err) {
                 if (!signal.aborted) {
+                    const message = err instanceof Error ? err.message : String(err)
                     ctx.emit({
                         type: 'log',
-                        level: 'warn',
-                        message: `[opencode] event stream error: ${String(err)}`,
+                        level: 'error',
+                        message: `[opencode] event stream error: ${message}`,
+                    })
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'error',
+                            timestamp: nowIso(),
+                            text: message,
+                        },
                     })
                 }
             } finally {
@@ -276,29 +358,102 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
-        const parts = prompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: prompt,
-                  },
-              ]
-            : []
+        const trimmed = prompt.trim()
+        const parts: Array<TextPartInput | FilePartInput> = []
 
-        await opencode.session.prompt({
-            path: {id: session.id},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
+        if (trimmed.length > 0) {
+            parts.push({type: 'text', text: trimmed})
+        } else if (attachments?.length) {
+            parts.push({type: 'text', text: 'Please describe the attached image(s).'})
+        }
+        if (attachments?.length) {
+            for (const att of attachments) {
+                parts.push({
+                    type: 'file',
+                    mime: att.mimeType,
+                    filename: att.name,
+                    url: att.dataUrl,
+                })
+            }
+        }
+
+        this.debug(
+            profile,
+            ctx,
+            `prompt parts: ${parts.map((p) => p.type).join(', ')} (image_attachments=${attachments?.length ?? 0})`,
+        )
+
+        let promptResponse: SessionPromptResponse | null = null
+        try {
+            promptResponse = (await opencode.session.prompt({
+                path: {id: session.id},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as SessionPromptResponse
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            ctx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] prompt failed: ${message}`,
+            })
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'error',
+                    timestamp: nowIso(),
+                    text: message,
+                },
+            })
+            throw err
+        }
+
+        const usedProviderID = (promptResponse as {info?: {providerID?: unknown}} | null)?.info?.providerID
+        const usedModelID = (promptResponse as {info?: {modelID?: unknown}} | null)?.info?.modelID
+        if (attachments?.length && typeof usedProviderID === 'string' && typeof usedModelID === 'string') {
+            const supportsImages = await this.modelSupportsImages(
+                opencode,
+                installation,
+                signal,
+                usedProviderID,
+                usedModelID,
+            )
+            if (supportsImages === false) {
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unsupported')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'error',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                        },
+                    })
+                }
+            } else if (supportsImages === null) {
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unknown')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'message',
+                            role: 'system',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}. KanbanAI could not verify whether this model supports image input. If the assistant cannot see your image, set a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                            format: 'markdown',
+                        },
+                    })
+                }
+            }
+        }
 
         return {stream, sessionId: session.id}
     }
@@ -318,31 +473,117 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const parts = trimmedPrompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: trimmedPrompt,
-                  },
-              ]
-            : []
+        const parts: Array<TextPartInput | FilePartInput> = []
 
-        await opencode.session.prompt({
-            path: {id: sessionId},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
+        if (trimmedPrompt.length > 0) {
+            parts.push({type: 'text', text: trimmedPrompt})
+        } else if (attachments?.length) {
+            parts.push({type: 'text', text: 'Please describe the attached image(s).'})
+        }
+        if (attachments?.length) {
+            for (const att of attachments) {
+                parts.push({
+                    type: 'file',
+                    mime: att.mimeType,
+                    filename: att.name,
+                    url: att.dataUrl,
+                })
+            }
+        }
+
+        this.debug(
+            profile,
+            ctx,
+            `prompt parts: ${parts.map((p) => p.type).join(', ')} (image_attachments=${attachments?.length ?? 0})`,
+        )
+
+        let promptResponse: SessionPromptResponse | null = null
+        try {
+            promptResponse = (await opencode.session.prompt({
+                path: {id: sessionId},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as SessionPromptResponse
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
+            ctx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] prompt failed: ${message}`,
+            })
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'error',
+                    timestamp: nowIso(),
+                    text: message,
+                },
+            })
+            throw err
+        }
+
+        const usedProviderID = (promptResponse as {info?: {providerID?: unknown}} | null)?.info?.providerID
+        const usedModelID = (promptResponse as {info?: {modelID?: unknown}} | null)?.info?.modelID
+        if (attachments?.length && typeof usedProviderID === 'string' && typeof usedModelID === 'string') {
+            const supportsImages = await this.modelSupportsImages(
+                opencode,
+                installation,
+                signal,
+                usedProviderID,
+                usedModelID,
+            )
+            if (supportsImages === false) {
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unsupported')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'error',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}, which does not support image input. Choose a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                        },
+                    })
+                }
+            } else if (supportsImages === null) {
+                if (this.shouldEmitImageSupportNotice(ctx, usedProviderID, usedModelID, 'unknown')) {
+                    ctx.emit({
+                        type: 'conversation',
+                        item: {
+                            type: 'message',
+                            role: 'system',
+                            timestamp: nowIso(),
+                            text: `OpenCode is using ${usedProviderID}/${usedModelID}. KanbanAI could not verify whether this model supports image input. If the assistant cannot see your image, set a vision-capable model in your OpenCode profile (modalities.input must include "image").`,
+                            format: 'markdown',
+                        },
+                    })
+                }
+            }
+        }
 
         return {stream, sessionId}
+    }
+
+    private shouldEmitImageSupportNotice(
+        ctx: AgentContext,
+        providerID: string,
+        modelID: string,
+        kind: 'unsupported' | 'unknown',
+    ): boolean {
+        if (this.imageSupportNotices.size >= OpencodeImpl.imageSupportNoticesMaxEntries) {
+            this.imageSupportNotices.clear()
+        }
+        const key = `${ctx.attemptId}:${providerID}/${modelID}:${kind}`
+        if (this.imageSupportNotices.has(key)) return false
+        this.imageSupportNotices.add(key)
+        return true
     }
 
     private getGrouper(ctx: AgentContext): OpencodeGrouper {
@@ -804,15 +1045,18 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     async run(ctx: AgentContext, profile: OpencodeProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
         const prompt = this.buildPrompt(profile, ctx)
-        if (prompt) {
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (prompt || attachments?.length) {
+            const text = prompt?.trim().length ? prompt : attachments ? '[Image attached]' : ''
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text,
                     format: 'markdown',
+                    attachments,
                     profileId: ctx.profileId ?? null,
                 },
             })
@@ -843,15 +1087,18 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length) {
+        const attachments = ctx.attachments && ctx.attachments.length ? ctx.attachments : undefined
+        if (prompt.length || attachments?.length) {
+            const text = prompt.length ? prompt : attachments ? '[Image attached]' : ''
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text,
                     format: 'markdown',
+                    attachments,
                     profileId: ctx.profileId ?? null,
                 },
             })
@@ -863,7 +1110,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             if (grouper) {
                 try {
                     grouper.flush(ctx)
-                } catch {
+                } catch(err) {
+                  console.error('[opencode] error flushing grouper')
+                  console.error(err)
                     // ignore
                 }
                 this.groupers.delete(ctx.attemptId)

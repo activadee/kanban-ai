@@ -19,7 +19,8 @@ Last updated: 2025-11-28
   - `GET /projects/:projectId/cards/:cardId/attempt` – fetch the latest Attempt for a card.
   - `GET /attempts/:id` – detailed Attempt info.
   - `PATCH /attempts/:id` with `{ status: "stopped" }` – request graceful stop.
-  - `POST /attempts/:id/messages` – send follow-up prompts into an existing Attempt.
+  - `POST /attempts/:id/messages` – send follow-up prompts and optional image attachments into an existing Attempt. Requests must include either a non-empty prompt or one or more PNG/JPEG/WebP images (max four, 5 MB each), and an adjustable `KANBANAI_MAX_FOLLOWUP_BODY_BYTES` limit (32 MB default) is enforced before parsing.
+  - `GET /attempts/:id/attachments/:fileName` – fetch a stored attachment by file name (PNG/JPEG/WebP).
   - `GET /attempts/:id/logs` – stream Attempt logs.
 - The underlying runner emits a stream of events:
   - `attempt.queued`
@@ -63,6 +64,11 @@ Last updated: 2025-11-28
 - Follow-up prompts:
   - Sent via `POST /attempts/:id/messages`.
   - Reuse the same Attempt session so the agent can use prior context.
+  - Can include pasted or drag‑dropped image attachments from the UI.
+    - Supported formats: PNG, JPEG, WebP.
+    - Limits: up to 4 images per follow‑up, 5MB each.
+    - Vision‑capable agents (e.g., Codex, OpenCode when using a vision model) receive images for processing; text‑only agents ignore them gracefully.
+  - Persisted attachments are served from `GET /api/v1/attempts/:id/attachments/:fileName`, but conversation history stores them as API-base-relative URLs (`attempts/:id/attachments/<fileName>`) so clients can resolve them against `SERVER_URL` without duplicating `/api/v1`.
 - Stopping Attempts:
   - `PATCH /attempts/:id` with `status: "stopped"` triggers `attempt.stopped`.
   - The runner and listeners update status so the UI shows the Attempt as stopped.

@@ -9,6 +9,7 @@ import type {
     Card as TCard,
     AttemptTodoSummary,
     TicketType,
+    ImageAttachment,
 } from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
@@ -57,6 +58,8 @@ export type CardInspectorAttemptState = {
     followupProfiles: Array<{ id: string; name: string }>
     followup: string
     setFollowup: (value: string) => void
+    followupImages: ImageAttachment[]
+    setFollowupImages: (images: ImageAttachment[]) => void
     sendFollowup: () => Promise<void>
     sendFollowupPending: boolean
     startAttempt: () => Promise<void>
@@ -130,6 +133,7 @@ export function useCardInspectorState({
     const [logs, setLogs] = useState<AttemptLog[]>([])
     const [conversation, setConversation] = useState<ConversationItem[]>([])
     const [followup, setFollowup] = useState('')
+    const [followupImages, setFollowupImages] = useState<ImageAttachment[]>([])
     const [todoSummary, setTodoSummary] = useState<AttemptTodoSummary | null>(null)
 
     const attemptAgent = attempt?.agent ? (attempt.agent as AgentKey) : undefined
@@ -139,6 +143,7 @@ export function useCardInspectorState({
     const followupMutation = useFollowupAttempt({
         onSuccess: async (_res, vars) => {
             setFollowup('')
+            setFollowupImages([])
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(vars.attemptId)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(vars.attemptId)})
             await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
@@ -541,9 +546,16 @@ export function useCardInspectorState({
     }
 
     const sendFollowup = async () => {
-        if (!attempt || !attempt.sessionId || !followup.trim()) return
+        const hasPrompt = followup.trim().length > 0
+        const hasImages = followupImages.length > 0
+        if (!attempt || !attempt.sessionId || (!hasPrompt && !hasImages)) return
         try {
-            await followupMutation.mutateAsync({attemptId: attempt.id, prompt: followup, profileId})
+            await followupMutation.mutateAsync({
+                attemptId: attempt.id,
+                prompt: followup,
+                profileId,
+                images: followupImages,
+            })
         } catch (err) {
             console.error('Follow-up failed', err)
         }
@@ -651,6 +663,8 @@ export function useCardInspectorState({
             ),
             followup,
             setFollowup,
+            followupImages,
+            setFollowupImages,
             sendFollowup,
             sendFollowupPending: followupMutation.isPending,
             startAttempt,

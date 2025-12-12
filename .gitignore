@@ -49,5 +49,6 @@ bun.lockb
 .turbo
 .bun-tmp
 .bun-cache
+.tmp
 
 tsconfig.tsbuildinfo*

@@ -1,5 +1,5 @@
 import type {z} from 'zod'
-import type {ConversationItem, AttemptTodoSummary, TicketType} from 'shared'
+import type {ConversationItem, AttemptTodoSummary, TicketType, ImageAttachment} from 'shared'
 
 export type AgentCapabilities = {
     resume?: boolean
@@ -21,6 +21,17 @@ export type AgentContext = {
     profileId?: string | null
     sessionId?: string
     followupPrompt?: string
+    /**
+     * Optional image attachments provided by the user for this turn.
+     * These are typically provided as `data:` URLs from the UI for the current request.
+     * Conversation history may persist them as `data:` URLs or rewrite them to attachment URLs
+     * served by the API, depending on whether persistence succeeds.
+     */
+    attachments?: ImageAttachment[]
+    /**
+     * Local image inputs materialized on disk for vision-capable agents.
+     */
+    images?: AgentImageInput[]
     signal: AbortSignal
     emit: (
         event:
@@ -30,6 +41,12 @@ export type AgentContext = {
             | { type: 'conversation'; item: ConversationItem }
             | { type: 'todo'; todos: AttemptTodoSummary }
     ) => void
+}
+
+export type AgentImageInput = {
+    path: string
+    mimeType: string
+    sizeBytes: number
 }
 
 export type TicketEnhanceInput = {

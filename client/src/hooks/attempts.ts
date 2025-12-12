@@ -5,6 +5,7 @@ import type {
     ConversationAutomationItem,
     ConversationItem,
     AttemptTodoSummary,
+    ImageAttachment,
 } from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
@@ -90,14 +91,14 @@ export function useStartAttempt(options?: StartAttemptOptions) {
     })
 }
 
-type FollowupAttemptArgs = { attemptId: string; prompt: string; profileId?: string }
+type FollowupAttemptArgs = { attemptId: string; prompt?: string; profileId?: string; images?: ImageAttachment[] }
 
 type FollowupAttemptOptions = UseMutationOptions<void, Error, FollowupAttemptArgs>
 
 export function useFollowupAttempt(options?: FollowupAttemptOptions) {
     return useMutation({
-        mutationFn: ({attemptId, prompt, profileId}: FollowupAttemptArgs) =>
-            followupAttemptRequest(attemptId, {prompt, profileId}),
+        mutationFn: ({attemptId, prompt, profileId, images}: FollowupAttemptArgs) =>
+            followupAttemptRequest(attemptId, {prompt, profileId, images}),
         ...options,
     })
 }
