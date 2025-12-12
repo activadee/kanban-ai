@@ -154,4 +154,29 @@ describe('PATCH /boards/:boardId/cards/:cardId outbound sync', () => {
             expect.objectContaining({title: 'New', description: 'Body'}),
         )
     })
+
+    it('forwards isEnhanced updates without triggering GitHub sync', async () => {
+        const app = createApp()
+        const core = await import('core' as any)
+        const {updateGithubIssueForCard} = await import('../src/github/export-update.service')
+
+        core.projectsRepo.getCardById.mockResolvedValueOnce({id: 'card-1', boardId: 'b1', columnId: 'col-1'})
+        core.projectsRepo.getColumnById.mockResolvedValueOnce({id: 'col-1', boardId: 'b1', title: 'Backlog'})
+        core.tasks.updateBoardCard.mockResolvedValueOnce(undefined)
+        core.tasks.getBoardState.mockResolvedValueOnce({columns: {}, columnOrder: [], cards: {}})
+
+        const res = await app.request('/boards/b1/cards/card-1', {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({isEnhanced: true}),
+        })
+
+        expect(res.status).toBe(200)
+        expect(core.tasks.updateBoardCard).toHaveBeenCalledWith(
+            'card-1',
+            expect.objectContaining({isEnhanced: true}),
+            expect.anything(),
+        )
+        expect(updateGithubIssueForCard).not.toHaveBeenCalled()
+    })
 })

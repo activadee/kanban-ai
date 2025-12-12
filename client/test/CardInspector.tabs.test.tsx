@@ -138,6 +138,7 @@ const baseCard: Card = {
     description: "",
     dependsOn: [],
     ticketKey: "CARD-1",
+    isEnhanced: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
 };

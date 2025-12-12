@@ -476,6 +476,7 @@ export function ProjectBoardPage() {
                             values: {
                                 title: suggestion.title,
                                 description: suggestion.description,
+                                isEnhanced: true,
                             },
                         });
                         clearEnhancement(enhancementDialogCardId);

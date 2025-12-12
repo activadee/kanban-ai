@@ -9,6 +9,7 @@ const baseCard: Card = {
     id: "card-1",
     title: "Test ticket",
     description: "Test description",
+    isEnhanced: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
 };
@@ -47,5 +48,10 @@ describe("KanbanCard – enhancement status", () => {
         fireEvent.click(button);
 
         expect(onEnhancementClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows Enhanced badge when card is enhanced", () => {
+        render(<KanbanCard card={{...baseCard, isEnhanced: true}} />);
+        expect(screen.getByText("Enhanced")).toBeTruthy();
     });
 });
