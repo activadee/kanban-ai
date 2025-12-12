@@ -13,6 +13,7 @@
     - The async runner streams structured JSONL from the agent. Each message is persisted and emitted as an event:
         - `attempt.queued` → `attempt.started` → `attempt.status.changed` updates.
         - `attempt.log.appended`, `attempt.conversation.appended`, `attempt.session.recorded` for telemetry/UI.
+    - Follow-up requests now allow optional image attachments: the handler validates PNG/JPEG/WebP (max four files, 5 MB each), requires either a prompt or at least one image, stores them in the conversation history as data URLs, and materializes matching files under `.kanbanai/attachments/<attemptId>` so agents receive both `ctx.attachments` (for history) and `ctx.images` (file paths for vision-capable runtimes).
     - Worktree creation calls `createWorktree(..., { projectId, attemptId })` which raises `worktree.created`.
 2. **Completion**
     - Runner emits `attempt.completed` with final status. Git auto-commit is delegated via

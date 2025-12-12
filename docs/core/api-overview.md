@@ -48,7 +48,7 @@ For a project-specific view, you can also access board routes under `/api/v1/pro
   - `GET  /api/v1/projects/:projectId/cards/:cardId/attempt` – fetch the latest Attempt for a card.
   - `GET  /api/v1/attempts/:id` – attempt details.
   - `PATCH /api/v1/attempts/:id` – stop an Attempt (`{status:"stopped"}`).
-  - `POST /api/v1/attempts/:id/messages` – send follow-up prompts.
+  - `POST /api/v1/attempts/:id/messages` – send follow-up prompts or image attachments (payload `{prompt?: string, profileId?: string, images?: ImageAttachment[]}`), requiring either a non-empty prompt or at least one image. Attached PNG/JPEG/WebP files are stored as data URLs, limited to 4 images per request and 5 MB each so UI previews and vision-capable agents can consume them.
   - `GET  /api/v1/attempts/:id/logs` – stream logs/messages.
 - Attempt-scoped Git:
   - `GET  /api/v1/attempts/:id/git/status` – branch + file status for the Attempt worktree.
