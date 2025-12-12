@@ -16,6 +16,7 @@ const mockProjectsList = vi.fn();
 const mockGetSettings = vi.fn();
 const mockListColumns = vi.fn();
 const mockListCardsForColumns = vi.fn();
+const mockGetCardById = vi.fn();
 const mockGetGithubConnection = vi.fn();
 const mockMoveBoardCard = vi.fn();
 const mockBroadcastBoard = vi.fn();
@@ -41,6 +42,7 @@ function makeDeps() {
         projectsRepo: {
             listColumnsForBoard: mockListColumns,
             listCardsForColumns: mockListCardsForColumns,
+            getCardById: mockGetCardById,
         },
         githubRepo: {
             getGithubConnection: mockGetGithubConnection,
@@ -66,6 +68,7 @@ describe("github PR auto-close scheduler", () => {
         mockGetSettings.mockReset();
         mockListColumns.mockReset();
         mockListCardsForColumns.mockReset();
+        mockGetCardById.mockReset();
         mockGetGithubConnection.mockReset();
         mockMoveBoardCard.mockReset();
         mockBroadcastBoard.mockReset();
@@ -129,6 +132,30 @@ describe("github PR auto-close scheduler", () => {
                 disableAutoCloseOnPRMerge: true,
             },
         ]);
+
+        mockGetCardById.mockImplementation(async (cardId: string) => {
+            if (cardId === "card-1") {
+                return {
+                    id: "card-1",
+                    boardId: "board-1",
+                    columnId: "col-123",
+                    ticketKey: "PRJ-1",
+                    prUrl: "https://github.com/o/r/pull/12",
+                    disableAutoCloseOnPRMerge: false,
+                };
+            }
+            if (cardId === "card-2") {
+                return {
+                    id: "card-2",
+                    boardId: "board-1",
+                    columnId: "col-123",
+                    ticketKey: "PRJ-2",
+                    prUrl: "https://github.com/o/r/pull/12",
+                    disableAutoCloseOnPRMerge: true,
+                };
+            }
+            return null;
+        });
     });
 
     it("moves review cards to Done when PR is merged", async () => {
@@ -160,6 +187,7 @@ describe("github PR auto-close scheduler", () => {
             "token",
             12,
         );
+        expect(mockGetCardById).toHaveBeenCalledWith("card-1");
         expect(mockMoveBoardCard).toHaveBeenCalledTimes(1);
         expect(mockMoveBoardCard).toHaveBeenCalledWith(
             "card-1",
@@ -239,5 +267,82 @@ describe("github PR auto-close scheduler", () => {
         expect(mockGetPullRequest).not.toHaveBeenCalled();
         expect(mockMoveBoardCard).not.toHaveBeenCalled();
         expect(mockBroadcastBoard).not.toHaveBeenCalled();
+        expect(mockComplete).toHaveBeenCalledWith(
+            "proj-1",
+            "failed",
+            expect.any(Date),
+        );
+    });
+
+    it("does not move cards that changed after initial query", async () => {
+        mockGetPullRequest.mockResolvedValue({
+            number: 12,
+            url: "https://github.com/o/r/pull/12",
+            state: "closed",
+            merged: true,
+        });
+
+        mockGetCardById.mockResolvedValue({
+            id: "card-1",
+            boardId: "board-1",
+            columnId: "col-456",
+            ticketKey: "PRJ-1",
+            prUrl: "https://github.com/o/r/pull/12",
+            disableAutoCloseOnPRMerge: false,
+        });
+        const events = {publish: vi.fn()} as unknown as AppEventBus;
+        const {runGithubPrAutoCloseTick} = await import(
+            "../src/github/pr-auto-close.sync"
+        );
+
+        await runGithubPrAutoCloseTick(events, makeDeps());
+
+        expect(mockGetPullRequest).toHaveBeenCalledTimes(1);
+        expect(mockMoveBoardCard).not.toHaveBeenCalled();
+        expect(mockBroadcastBoard).not.toHaveBeenCalled();
+        expect(events.publish).not.toHaveBeenCalled();
+    });
+
+    it("stops the tick early across projects on GitHub auth/rate errors", async () => {
+        mockProjectsList.mockResolvedValue([
+            {id: "proj-1", boardId: "board-1", repositoryPath: "/repo/p1"},
+            {id: "proj-2", boardId: "board-2", repositoryPath: "/repo/p2"},
+        ]);
+
+        mockGetSettings.mockResolvedValue({
+            autoCloseTicketOnPRMerge: true,
+            githubIssueSyncIntervalMinutes: 1,
+            lastGithubPrAutoCloseAt: null,
+            lastGithubPrAutoCloseStatus: "idle",
+        });
+
+        mockListColumns.mockResolvedValue([
+            {id: "col-123", title: "Review"},
+            {id: "col-456", title: "Done"},
+        ]);
+
+        mockListCardsForColumns.mockResolvedValue([
+            {
+                id: "card-1",
+                boardId: "board-1",
+                columnId: "col-123",
+                ticketKey: "PRJ-1",
+                prUrl: "https://github.com/o/r/pull/12",
+                disableAutoCloseOnPRMerge: false,
+            },
+        ]);
+
+        mockGetPullRequest.mockRejectedValue(new Error("Request failed (401)"));
+
+        const events = {publish: vi.fn()} as unknown as AppEventBus;
+        const {runGithubPrAutoCloseTick} = await import(
+            "../src/github/pr-auto-close.sync"
+        );
+
+        await runGithubPrAutoCloseTick(events, makeDeps());
+
+        expect(mockGetPullRequest).toHaveBeenCalledTimes(1);
+        expect(mockGetSettings).toHaveBeenCalledTimes(1);
+        expect(mockTryStart).toHaveBeenCalledTimes(1);
     });
 });

@@ -34,8 +34,16 @@ function parsePrUrl(
         return (
             host === "github.com" ||
             host === "www.github.com" ||
-            host.endsWith(".github.com")
+            host === "api.github.com"
         );
+    };
+
+    const parsePrNumber = (numStr: string): number | null => {
+        const trimmedNumber = numStr.trim();
+        if (!/^\d+$/.test(trimmedNumber)) return null;
+        const parsed = Number.parseInt(trimmedNumber, 10);
+        if (!Number.isFinite(parsed) || parsed < 1) return null;
+        return parsed;
     };
 
     try {
@@ -70,8 +78,8 @@ function parsePrUrl(
             const kind = (parts[3] ?? "").toLowerCase();
             const numStr = parts[4] ?? "";
             if (kind !== "pull" && kind !== "pulls") return null;
-            const number = Number(numStr);
-            if (!Number.isFinite(number)) return null;
+            const number = parsePrNumber(numStr);
+            if (!number) return null;
             if (!owner || !repo) return null;
             return {owner, repo, number};
         }
@@ -82,12 +90,27 @@ function parsePrUrl(
         const kind = (parts[2] ?? "").toLowerCase();
         const numStr = parts[3] ?? "";
         if (kind !== "pull" && kind !== "pulls") return null;
-        const number = Number(numStr);
-        if (!Number.isFinite(number)) return null;
+        const number = parsePrNumber(numStr);
+        if (!number) return null;
         if (!owner || !repo) return null;
         return {owner, repo, number};
     } catch {
         return null;
+    }
+}
+
+function redactUrlForLog(rawUrl: string): string {
+    try {
+        const url = new URL(rawUrl);
+        const protocol = url.protocol ? `${url.protocol}//` : "";
+        const host = url.host;
+        const path = url.pathname || "";
+        return `${protocol}${host}${path}`;
+    } catch {
+        return rawUrl
+            .replace(/\/\/[^/@]+@/g, "//***@")
+            .replace(/\?.*$/, "")
+            .replace(/#.*$/, "");
     }
 }
 
@@ -125,8 +148,10 @@ export async function runGithubPrAutoCloseTick(
 
         const projects = await services.list();
         const now = new Date();
+        let globalStop = false;
 
         for (const project of projects) {
+            if (globalStop) break;
             const projectId = project.id;
             const boardId = project.boardId;
             try {
@@ -178,7 +203,7 @@ export async function runGithubPrAutoCloseTick(
                             {
                                 projectId,
                                 boardId,
-                                originUrl,
+                                originUrl: redactUrlForLog(originUrl),
                             },
                         );
                         status = "failed";
@@ -201,7 +226,19 @@ export async function runGithubPrAutoCloseTick(
                     const reviewColumnIds = columns
                         .filter(isReviewColumn)
                         .map((c) => c.id);
-                    if (reviewColumnIds.length === 0) continue;
+                    const reviewColumnIdSet = new Set(reviewColumnIds);
+                    if (reviewColumnIds.length === 0) {
+                        log.warn(
+                            "github:pr-auto-close",
+                            "No Review column found; refusing to auto-close (expected title Review)",
+                            {
+                                projectId,
+                                boardId,
+                            },
+                        );
+                        status = "failed";
+                        continue;
+                    }
 
                     const doneColumnId =
                         columns.find(isDoneColumn)?.id ?? null;
@@ -325,10 +362,33 @@ export async function runGithubPrAutoCloseTick(
                                 "tasks.moveBoardCard is not available",
                             );
                         }
+                        if (!repo.getCardById) {
+                            throw new Error(
+                                "projectsRepo.getCardById is not available",
+                            );
+                        }
 
                         for (const card of cardsForPr) {
+                            const latest = await repo.getCardById(card.id);
+                            if (!latest) continue;
+                            if (latest.boardId !== boardId) continue;
+                            if (!reviewColumnIdSet.has(latest.columnId))
+                                continue;
+                            if (latest.disableAutoCloseOnPRMerge) continue;
+                            if (!latest.prUrl) continue;
+                            const parsedLatest = parsePrUrl(latest.prUrl);
+                            if (!parsedLatest) continue;
+                            if (
+                                parsedLatest.owner.toLowerCase() !==
+                                    origin.owner.toLowerCase() ||
+                                parsedLatest.repo.toLowerCase() !==
+                                    origin.repo.toLowerCase()
+                            )
+                                continue;
+                            if (parsedLatest.number !== prNumber) continue;
+
                             await taskSvc.moveBoardCard(
-                                card.id,
+                                latest.id,
                                 doneColumnId,
                                 Number.MAX_SAFE_INTEGER,
                                 {suppressBroadcast: true},
@@ -339,9 +399,9 @@ export async function runGithubPrAutoCloseTick(
                                 {
                                     projectId,
                                     boardId,
-                                    cardId: card.id,
+                                    cardId: latest.id,
                                     prNumber,
-                                    prUrl: card.prUrl!,
+                                    prUrl: latest.prUrl,
                                     ts: new Date().toISOString(),
                                 },
                             );
@@ -351,10 +411,10 @@ export async function runGithubPrAutoCloseTick(
                                 {
                                     projectId,
                                     boardId,
-                                    cardId: card.id,
-                                    ticketKey: card.ticketKey ?? null,
+                                    cardId: latest.id,
+                                    ticketKey: latest.ticketKey ?? null,
                                     prNumber,
-                                    prUrl: card.prUrl,
+                                    prUrl: latest.prUrl,
                                 },
                             );
                         }
@@ -386,6 +446,7 @@ export async function runGithubPrAutoCloseTick(
                                     );
                                     if (shouldStopOnError(error)) {
                                         stop = true;
+                                        globalStop = true;
                                         log.warn(
                                             "github:pr-auto-close",
                                             "Stopping PR auto-close early due to GitHub API error",
