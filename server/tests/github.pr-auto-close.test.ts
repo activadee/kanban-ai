@@ -93,8 +93,8 @@ describe("github PR auto-close scheduler", () => {
 
         mockProjectsList.mockResolvedValue([
             {
-                id: "p1",
-                boardId: "p1",
+                id: "proj-1",
+                boardId: "board-1",
                 repositoryPath: "/repo/p1",
             },
         ]);
@@ -107,23 +107,23 @@ describe("github PR auto-close scheduler", () => {
         });
 
         mockListColumns.mockResolvedValue([
-            {id: "col-review", title: "Review"},
-            {id: "col-done", title: "Done"},
+            {id: "col-123", title: "Review"},
+            {id: "col-456", title: "Done"},
         ]);
 
         mockListCardsForColumns.mockResolvedValue([
             {
                 id: "card-1",
-                boardId: "p1",
-                columnId: "col-review",
+                boardId: "board-1",
+                columnId: "col-123",
                 ticketKey: "PRJ-1",
                 prUrl: "https://github.com/o/r/pull/12",
                 disableAutoCloseOnPRMerge: false,
             },
             {
                 id: "card-2",
-                boardId: "p1",
-                columnId: "col-review",
+                boardId: "board-1",
+                columnId: "col-123",
                 ticketKey: "PRJ-2",
                 prUrl: "https://github.com/o/r/pull/12",
                 disableAutoCloseOnPRMerge: true,
@@ -147,30 +147,35 @@ describe("github PR auto-close scheduler", () => {
         await runGithubPrAutoCloseTick(events, makeDeps());
 
         expect(mockProjectsList).toHaveBeenCalledTimes(1);
-        expect(mockGetSettings).toHaveBeenCalledWith("p1");
+        expect(mockGetSettings).toHaveBeenCalledWith("proj-1");
         expect(mockGetGitOriginUrl).toHaveBeenCalledWith("/repo/p1");
         expect(mockParseGithubOwnerRepo).toHaveBeenCalledWith(
             "https://github.com/o/r.git",
         );
-        expect(mockListColumns).toHaveBeenCalledWith("p1");
-        expect(mockListCardsForColumns).toHaveBeenCalledWith(["col-review"]);
+        expect(mockListColumns).toHaveBeenCalledWith("board-1");
+        expect(mockListCardsForColumns).toHaveBeenCalledWith(["col-123"]);
 
         expect(mockGetPullRequest).toHaveBeenCalledWith(
-            "p1",
+            "proj-1",
             "token",
             12,
         );
         expect(mockMoveBoardCard).toHaveBeenCalledTimes(1);
         expect(mockMoveBoardCard).toHaveBeenCalledWith(
             "card-1",
-            "col-done",
+            "col-456",
             Number.MAX_SAFE_INTEGER,
             {suppressBroadcast: true},
         );
-        expect(mockBroadcastBoard).toHaveBeenCalledWith("p1");
+        expect(mockBroadcastBoard).toHaveBeenCalledWith("board-1");
         expect(events.publish).toHaveBeenCalledWith(
             "github.pr.merged.autoClosed",
-            expect.objectContaining({cardId: "card-1", prNumber: 12}),
+            expect.objectContaining({
+                cardId: "card-1",
+                prNumber: 12,
+                projectId: "proj-1",
+                boardId: "board-1",
+            }),
         );
     });
 
@@ -198,8 +203,8 @@ describe("github PR auto-close scheduler", () => {
         mockListCardsForColumns.mockResolvedValue([
             {
                 id: "card-1",
-                boardId: "p1",
-                columnId: "col-review",
+                boardId: "board-1",
+                columnId: "col-123",
                 ticketKey: "PRJ-1",
                 prUrl: "https://evilgithub.com/o/r/pull/12",
                 disableAutoCloseOnPRMerge: false,
@@ -218,18 +223,11 @@ describe("github PR auto-close scheduler", () => {
         expect(mockBroadcastBoard).not.toHaveBeenCalled();
     });
 
-    it("still works when Review/Done titles are renamed (uses default ids)", async () => {
+    it("skips when Review/Done columns are not present by title", async () => {
         mockListColumns.mockResolvedValue([
-            {id: "col-review", title: "QA"},
-            {id: "col-done", title: "Shipped"},
+            {id: "col-123", title: "QA"},
+            {id: "col-456", title: "Shipped"},
         ]);
-
-        mockGetPullRequest.mockResolvedValue({
-            number: 12,
-            url: "https://github.com/o/r/pull/12",
-            state: "closed",
-            merged: true,
-        });
 
         const events = {publish: vi.fn()} as unknown as AppEventBus;
         const {runGithubPrAutoCloseTick} = await import(
@@ -238,17 +236,8 @@ describe("github PR auto-close scheduler", () => {
 
         await runGithubPrAutoCloseTick(events, makeDeps());
 
-        expect(mockGetPullRequest).toHaveBeenCalledWith(
-            "p1",
-            "token",
-            12,
-        );
-        expect(mockMoveBoardCard).toHaveBeenCalledWith(
-            "card-1",
-            "col-done",
-            Number.MAX_SAFE_INTEGER,
-            {suppressBroadcast: true},
-        );
-        expect(mockBroadcastBoard).toHaveBeenCalledWith("p1");
+        expect(mockGetPullRequest).not.toHaveBeenCalled();
+        expect(mockMoveBoardCard).not.toHaveBeenCalled();
+        expect(mockBroadcastBoard).not.toHaveBeenCalled();
     });
 });

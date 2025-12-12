@@ -192,13 +192,18 @@ export async function updateBoardCard(
     if (updates.title !== undefined) payload.title = updates.title
     if (updates.description !== undefined) payload.description = updates.description ?? null
     if (updates.ticketType !== undefined) payload.ticketType = updates.ticketType ?? null
-    if (updates.disableAutoCloseOnPRMerge !== undefined) {
-        payload.disableAutoCloseOnPRMerge = Boolean(
-            updates.disableAutoCloseOnPRMerge,
-        )
+    const disableAutoCloseOnPRMerge =
+        typeof updates.disableAutoCloseOnPRMerge === 'boolean'
+            ? updates.disableAutoCloseOnPRMerge
+            : undefined
+    const isEnhanced =
+        typeof updates.isEnhanced === 'boolean' ? updates.isEnhanced : undefined
+
+    if (disableAutoCloseOnPRMerge !== undefined) {
+        payload.disableAutoCloseOnPRMerge = disableAutoCloseOnPRMerge
     }
-    if (updates.isEnhanced !== undefined) {
-        payload.isEnhanced = Boolean(updates.isEnhanced)
+    if (isEnhanced !== undefined) {
+        payload.isEnhanced = isEnhanced
     }
 
     await updateCard(cardId, payload)
@@ -211,8 +216,8 @@ export async function updateBoardCard(
                 title: updates.title,
                 description: updates.description ?? null,
                 ticketType: updates.ticketType ?? null,
-                disableAutoCloseOnPRMerge: updates.disableAutoCloseOnPRMerge,
-                isEnhanced: updates.isEnhanced,
+                disableAutoCloseOnPRMerge,
+                isEnhanced,
             },
         })
         if (!opts?.suppressBroadcast) {

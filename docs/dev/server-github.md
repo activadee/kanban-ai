@@ -26,6 +26,7 @@
     - Scheduler started from the server entrypoints, sharing the same tick cadence as issue sync.
     - For projects with `autoCloseTicketOnPRMerge` enabled, periodically checks cards in the **Review** column that have a linked `prUrl`.
     - If the PR is closed and merged, moves the card to **Done** unless `disableAutoCloseOnPRMerge` is set on that card.
+    - Requires columns titled **Review** and **Done** (detected by title).
     - Emits `github.pr.merged.autoClosed` and logs under `github:pr-auto-close`.
 
 ## Key Entry Points

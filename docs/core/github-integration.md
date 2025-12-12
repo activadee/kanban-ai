@@ -104,5 +104,6 @@ Additional configuration endpoints:
   - `autoCloseTicketOnPRMerge: boolean` (default `false`).
 - When enabled, a lightweight background scheduler periodically scans cards in the **Review** column that have a linked `prUrl`.
 - If a linked PR is **closed and merged**, the card is automatically moved to the **Done** column.
+- The scheduler currently identifies these columns by title, so your board must contain columns titled **Review** and **Done**.
 - You can disable this on a per‑ticket basis by setting:
   - `disableAutoCloseOnPRMerge: boolean` on the card (default `false`).

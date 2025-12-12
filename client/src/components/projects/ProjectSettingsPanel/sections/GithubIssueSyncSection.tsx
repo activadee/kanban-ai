@@ -122,6 +122,9 @@ export function GithubIssueSyncSection({
                         <p className="text-xs text-muted-foreground">
                             Moves Review cards to Done when their linked PRs are merged.
                         </p>
+                        <p className="text-xs text-muted-foreground">
+                            Requires columns titled Review and Done.
+                        </p>
                     </div>
                 </div>
                 <div className="space-y-2">

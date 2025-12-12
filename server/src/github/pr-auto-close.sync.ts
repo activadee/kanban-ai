@@ -4,6 +4,8 @@ import {getPullRequest as getPullRequestDefault} from "./pr";
 import {log} from "../log";
 
 const DEFAULT_TICK_INTERVAL_SECONDS = 60;
+const MAX_UNIQUE_PRS_PER_PROJECT = 50;
+const PR_LOOKUP_CONCURRENCY = 3;
 
 export type GithubPrAutoCloseSchedulerOptions = {
     events: AppEventBus;
@@ -118,7 +120,8 @@ export async function runGithubPrAutoCloseTick(
         deps?.parseGithubOwnerRepo ?? core.parseGithubOwnerRepo;
     try {
         const connection = await ghRepo.getGithubConnection();
-        if (!connection?.accessToken) return;
+        const accessToken = connection?.accessToken ?? null;
+        if (!accessToken) return;
 
         const projects = await services.list();
         const now = new Date();
@@ -184,12 +187,16 @@ export async function runGithubPrAutoCloseTick(
 
                     const columns =
                         await repo.listColumnsForBoard(boardId);
-                    const isReviewColumn = (c: {id: string; title?: string}) =>
-                        c.id.trim().toLowerCase() === "col-review" ||
-                        (c.title || "").trim().toLowerCase() === "review";
-                    const isDoneColumn = (c: {id: string; title?: string}) =>
-                        c.id.trim().toLowerCase() === "col-done" ||
-                        (c.title || "").trim().toLowerCase() === "done";
+                    const isReviewColumn = (c: {
+                        title?: string;
+                    }) =>
+                        (c.title || "").trim().toLowerCase() ===
+                        "review";
+                    const isDoneColumn = (c: {
+                        title?: string;
+                    }) =>
+                        (c.title || "").trim().toLowerCase() ===
+                        "done";
 
                     const reviewColumnIds = columns
                         .filter(isReviewColumn)
@@ -201,7 +208,7 @@ export async function runGithubPrAutoCloseTick(
                     if (!doneColumnId) {
                         log.warn(
                             "github:pr-auto-close",
-                            "No Done column found; refusing to auto-close (expected id col-done or title Done)",
+                            "No Done column found; refusing to auto-close (expected title Done)",
                             {
                                 projectId,
                                 boardId,
@@ -253,65 +260,150 @@ export async function runGithubPrAutoCloseTick(
                         byPrNumber.set(parsedPr.number, list);
                     }
 
-                    for (const [prNumber, cardsForPr] of byPrNumber.entries()) {
-                        try {
-                            const pr = await getPullRequest(
+                    const prEntries = Array.from(byPrNumber.entries());
+                    if (prEntries.length > MAX_UNIQUE_PRS_PER_PROJECT) {
+                        hadErrors = true;
+                        log.warn(
+                            "github:pr-auto-close",
+                            "Too many PR-linked cards in Review; capping PR lookups for this tick",
+                            {
                                 projectId,
-                                connection.accessToken,
-                                prNumber,
-                            );
-                            if (pr.state !== "closed" || !pr.merged) continue;
+                                boardId,
+                                totalUniquePrs: prEntries.length,
+                                cappedAt: MAX_UNIQUE_PRS_PER_PROJECT,
+                            },
+                        );
+                        prEntries.length = MAX_UNIQUE_PRS_PER_PROJECT;
+                    }
 
-                            for (const card of cardsForPr) {
-                                if (!taskSvc.moveBoardCard) {
-                                    throw new Error(
-                                        "tasks.moveBoardCard is not available",
-                                    );
-                                }
-                                await taskSvc.moveBoardCard(
-                                    card.id,
-                                    doneColumnId,
-                                    Number.MAX_SAFE_INTEGER,
-                                    {suppressBroadcast: true},
-                                );
-                                movedAny = true;
-                                events.publish(
-                                    "github.pr.merged.autoClosed",
-                                    {
-                                        projectId,
-                                        boardId,
-                                        cardId: card.id,
-                                        prNumber,
-                                        prUrl: card.prUrl!,
-                                        ts: new Date().toISOString(),
-                                    },
-                                );
-                                log.info(
-                                    "github:pr-auto-close",
-                                    "card moved to Done on PR merge",
-                                    {
-                                        projectId,
-                                        boardId,
-                                        cardId: card.id,
-                                        ticketKey: card.ticketKey ?? null,
-                                        prNumber,
-                                        prUrl: card.prUrl,
-                                    },
-                                );
-                            }
-                        } catch (error) {
-                            hadErrors = true;
-                            log.warn(
-                                "github:pr-auto-close",
-                                "PR lookup failed",
+                    const parseGithubStatus = (error: unknown): number | null => {
+                        const message =
+                            error instanceof Error
+                                ? error.message
+                                : String(error);
+                        const match = message.match(/\((\d{3})\)/);
+                        if (!match?.[1]) return null;
+                        const code = Number(match[1]);
+                        return Number.isFinite(code) ? code : null;
+                    };
+
+                    const shouldStopOnError = (error: unknown): boolean => {
+                        const statusCode = parseGithubStatus(error);
+                        if (statusCode === 401 || statusCode === 403 || statusCode === 429) {
+                            return true;
+                        }
+                        if (
+                            error instanceof Error &&
+                            /rate limit/i.test(error.message)
+                        ) {
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    let stop = false;
+                    let cursor = 0;
+
+                    const workerCount = Math.min(
+                        PR_LOOKUP_CONCURRENCY,
+                        prEntries.length,
+                    );
+
+                    const runOne = async (
+                        prNumber: number,
+                        cardsForPr: typeof reviewCardsWithPr,
+                    ) => {
+                        const pr = await getPullRequest(
+                            projectId,
+                            accessToken,
+                            prNumber,
+                        );
+                        if (pr.state !== "closed" || !pr.merged) return;
+
+                        if (!taskSvc.moveBoardCard) {
+                            throw new Error(
+                                "tasks.moveBoardCard is not available",
+                            );
+                        }
+
+                        for (const card of cardsForPr) {
+                            await taskSvc.moveBoardCard(
+                                card.id,
+                                doneColumnId,
+                                Number.MAX_SAFE_INTEGER,
+                                {suppressBroadcast: true},
+                            );
+                            movedAny = true;
+                            events.publish(
+                                "github.pr.merged.autoClosed",
                                 {
-                                    err: error,
                                     projectId,
+                                    boardId,
+                                    cardId: card.id,
                                     prNumber,
+                                    prUrl: card.prUrl!,
+                                    ts: new Date().toISOString(),
+                                },
+                            );
+                            log.info(
+                                "github:pr-auto-close",
+                                "card moved to Done on PR merge",
+                                {
+                                    projectId,
+                                    boardId,
+                                    cardId: card.id,
+                                    ticketKey: card.ticketKey ?? null,
+                                    prNumber,
+                                    prUrl: card.prUrl,
                                 },
                             );
                         }
-                    }
+                    };
+
+                    await Promise.all(
+                        Array.from({length: workerCount}, async () => {
+                            while (!stop) {
+                                const index = cursor++;
+                                const entry = prEntries[index];
+                                if (!entry) return;
+
+                                const prNumber = entry[0];
+                                const cardsForPr = entry[1];
+
+                                try {
+                                    await runOne(prNumber, cardsForPr);
+                                } catch (error) {
+                                    hadErrors = true;
+                                    log.warn(
+                                        "github:pr-auto-close",
+                                        "PR auto-close failed",
+                                        {
+                                            err: error,
+                                            projectId,
+                                            boardId,
+                                            prNumber,
+                                        },
+                                    );
+                                    if (shouldStopOnError(error)) {
+                                        stop = true;
+                                        log.warn(
+                                            "github:pr-auto-close",
+                                            "Stopping PR auto-close early due to GitHub API error",
+                                            {
+                                                projectId,
+                                                boardId,
+                                                prNumber,
+                                                statusCode:
+                                                    parseGithubStatus(
+                                                        error,
+                                                    ),
+                                            },
+                                        );
+                                    }
+                                }
+                            }
+                        }),
+                    );
 
                     if (movedAny) {
                         try {
