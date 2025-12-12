@@ -20,6 +20,7 @@ export function CollapsibleThinkingBlock({
                                             contentClassName,
                                         }: CollapsibleThinkingBlockProps) {
     const contentId = useId()
+    const descriptionId = useId()
     const [open, setOpen] = useState(defaultOpen)
     const actionLabel = open ? `Collapse ${ariaLabel}` : `Expand ${ariaLabel}`
 
@@ -31,40 +32,31 @@ export function CollapsibleThinkingBlock({
                 className,
             )}
             open={open}
+            onToggle={(event) => setOpen(event.currentTarget.open)}
         >
             <summary
                 data-slot="thinking-summary"
                 className="flex cursor-pointer list-none items-center justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 aria-controls={contentId}
                 aria-expanded={open}
-                aria-label={actionLabel}
-                onClick={(event) => {
-                    event.preventDefault()
-                    setOpen((v) => !v)
-                }}
-                onKeyDown={(event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return
-                    event.preventDefault()
-                    setOpen((v) => !v)
-                }}
+                aria-describedby={descriptionId}
             >
                 <div className="flex min-w-0 flex-1 items-center gap-2">
                     {headerLeft}
                 </div>
-                <span data-slot="thinking-toggle" className="text-xs text-muted-foreground">Toggle</span>
+                <span data-slot="thinking-toggle" className="text-xs text-muted-foreground" aria-hidden="true">Toggle</span>
+                <span id={descriptionId} className="sr-only">{actionLabel}</span>
             </summary>
-            {open ? (
-                <div
-                    id={contentId}
-                    data-slot="thinking-content"
-                    className={cn(
-                        'mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground',
-                        contentClassName,
-                    )}
-                >
-                    {text}
-                </div>
-            ) : null}
+            <div
+                id={contentId}
+                data-slot="thinking-content"
+                className={cn(
+                    'mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground',
+                    contentClassName,
+                )}
+            >
+                {text}
+            </div>
         </details>
     )
 }

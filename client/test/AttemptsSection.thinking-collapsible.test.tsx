@@ -1,6 +1,5 @@
-import React from "react";
 import {describe, it, expect, afterEach, vi} from "vitest";
-import {render, screen, fireEvent, cleanup} from "@testing-library/react";
+import {render, fireEvent, cleanup} from "@testing-library/react";
 import type {Attempt, ConversationItem} from "shared";
 
 import {AttemptsSection} from "@/components/kanban/card-inspector/sections/AttemptsSection";
@@ -64,10 +63,10 @@ describe("AttemptsSection – thinking blocks", () => {
         expect(details?.open).toBe(false);
 
         expect(document.querySelector('[data-slot="thinking-preview"]')).toBeNull();
-        expect(document.querySelector('[data-slot="thinking-content"]')).toBeNull();
-
-        fireEvent.click(summary as HTMLElement);
-        expect(details?.open).toBe(true);
         expect(document.querySelector('[data-slot="thinking-content"]')).not.toBeNull();
+
+        details!.open = true;
+        fireEvent(details!, new Event("toggle"));
+        expect(summary?.getAttribute("aria-expanded")).toBe("true");
     });
 });
