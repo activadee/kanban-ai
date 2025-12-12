@@ -285,19 +285,10 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             message: `[opencode] created session ${session.id}`,
         })
 
-        if (installation.mode === 'remote' && ctx.images?.length) {
-            ctx.emit({
-                type: 'log',
-                level: 'warn',
-                message:
-                    '[opencode] image attachments are sent as local file references; ensure your remote OpenCode server can access the same worktree path, or use a local OpenCode server.',
-            })
-        }
-
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmed = prompt.trim()
-        const imageRefs = ctx.images?.length
+        const refs = ctx.images?.length
             ? ctx.images
                   .map((img) => {
                       const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
@@ -305,7 +296,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                   })
                   .join('\n')
             : ''
-        const combinedPrompt = [trimmed, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
+        const combinedPrompt = [trimmed, refs].filter((p) => p && p.trim().length).join('\n\n').trim()
         const parts = combinedPrompt ? [{type: 'text' as const, text: combinedPrompt}] : []
 
         try {
@@ -356,19 +347,10 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const opencode = client as OpencodeClient
         const stream = await this.openEventStream(opencode, installation, ctx, signal)
 
-        if (installation.mode === 'remote' && ctx.images?.length) {
-            ctx.emit({
-                type: 'log',
-                level: 'warn',
-                message:
-                    '[opencode] image attachments are sent as local file references; ensure your remote OpenCode server can access the same worktree path, or use a local OpenCode server.',
-            })
-        }
-
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const imageRefs = ctx.images?.length
+        const refs = ctx.images?.length
             ? ctx.images
                   .map((img) => {
                       const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
@@ -376,7 +358,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                   })
                   .join('\n')
             : ''
-        const combinedPrompt = [trimmedPrompt, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
+        const combinedPrompt = [trimmedPrompt, refs].filter((p) => p && p.trim().length).join('\n\n').trim()
         const parts = combinedPrompt ? [{type: 'text' as const, text: combinedPrompt}] : []
 
         try {
