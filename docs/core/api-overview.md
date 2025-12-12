@@ -73,7 +73,7 @@ These endpoints are used by the Changes dialog, Commit UI, and PR flows in the c
   - `GET  /api/v1/projects/:projectId/pull-requests` – list PRs.
   - `GET  /api/v1/projects/:projectId/pull-requests/:number` – PR details.
   - `POST /api/v1/projects/:projectId/pull-requests` – create a PR, optionally linking `branch`, `attemptId`, and `cardId`.
-  - `POST /api/v1/projects/:projectId/pull-requests/summary` – ask the configured inline agent to generate a PR title/body summary for a base/head branch pair; returns `{summary}` or RFC 7807 errors on failure.
+  - `POST /api/v1/projects/:projectId/pull-requests/summary` – ask the configured inline agent to generate a PR title/body summary for a base/head branch pair; accepts optional `attemptId`/`cardId` so linked GitHub issues can be auto-closed (the response may append `closes #123`/`fixes #456` lines) and returns `{summary}` or RFC 7807 errors on failure.
 
 Legacy `/projects/:projectId/github/pr` routes have been removed; all PR operations go through the project-scoped
 endpoints above.
