@@ -27,7 +27,7 @@ const baseCtx = (): AgentContext => {
 }
 
 describe('OpencodeAgent image input wiring', () => {
-    it('adds @file references to prompt parts when images are present', async () => {
+    it('adds file parts when images are present', async () => {
         const promptSpy = vi.fn().mockResolvedValue({})
         const createSpy = vi.fn().mockResolvedValue({id: 'sess-1'})
         const client = {
@@ -61,7 +61,13 @@ describe('OpencodeAgent image input wiring', () => {
         )
 
         const body = promptSpy.mock.calls[0][0].body
-        expect(body.parts[0].text).toContain('@.kanbanai/attachments/att/img.png')
+        expect(body.parts).toHaveLength(2)
+        expect(body.parts[0]).toMatchObject({type: 'text', text: 'hello'})
+        expect(body.parts[1]).toMatchObject({
+            type: 'file',
+            mime: 'image/png',
+            filename: 'img.png',
+            url: '.kanbanai/attachments/att/img.png',
+        })
     })
 })
-

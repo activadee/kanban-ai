@@ -29,7 +29,7 @@ import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../pr
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
-import {relative} from 'node:path'
+import {relative, basename} from 'node:path'
 
 const nowIso = () => new Date().toISOString()
 
@@ -277,67 +277,35 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
-        const imageRefs = ctx.images?.length
-            ? ctx.images
-                  .map((img) => {
-                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
-                      return `@${rel}`
-                  })
-                  .join('\n')
-            : ''
-        const combinedPrompt = [prompt, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
-        const parts = combinedPrompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: combinedPrompt,
-                  },
-              ]
-            : []
-
-        try {
-            await opencode.session.prompt({
-                path: {id: session.id},
-                query: {directory: installation.directory},
-                body: {
-                    agent: profile.agent,
-                    model,
-                    system,
-                    tools: undefined,
-                    parts,
-                },
-                signal,
-                responseStyle: 'data',
-                throwOnError: true,
-            })
-        } catch (err) {
-            if (imageRefs) {
-                ctx.emit({
-                    type: 'log',
-                    level: 'warn',
-                    message: `[opencode] image attachments failed; retrying without images: ${String(err)}`,
+        const parts: Array<{type: 'text'; text: string} | {type: 'file'; mime: string; filename?: string; url: string}> = []
+        const trimmed = prompt.trim()
+        if (trimmed.length) parts.push({type: 'text', text: trimmed})
+        if (ctx.images?.length) {
+            for (const img of ctx.images) {
+                const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
+                parts.push({
+                    type: 'file',
+                    mime: img.mimeType,
+                    filename: basename(img.path),
+                    url: rel,
                 })
-                const fallbackParts = prompt.trim()
-                    ? [{type: 'text' as const, text: prompt.trim()}]
-                    : []
-                await opencode.session.prompt({
-                    path: {id: session.id},
-                    query: {directory: installation.directory},
-                    body: {
-                        agent: profile.agent,
-                        model,
-                        system,
-                        tools: undefined,
-                        parts: fallbackParts,
-                    },
-                    signal,
-                    responseStyle: 'data',
-                    throwOnError: true,
-                })
-            } else {
-                throw err
             }
         }
+
+        await opencode.session.prompt({
+            path: {id: session.id},
+            query: {directory: installation.directory},
+            body: {
+                agent: profile.agent,
+                model,
+                system,
+                tools: undefined,
+                parts,
+            },
+            signal,
+            responseStyle: 'data',
+            throwOnError: true,
+        })
 
         return {stream, sessionId: session.id}
     }
@@ -357,67 +325,34 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const imageRefs = ctx.images?.length
-            ? ctx.images
-                  .map((img) => {
-                      const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
-                      return `@${rel}`
-                  })
-                  .join('\n')
-            : ''
-        const combinedPrompt = [trimmedPrompt, imageRefs].filter((p) => p && p.trim().length).join('\n\n').trim()
-        const parts = combinedPrompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: combinedPrompt,
-                  },
-              ]
-            : []
-
-        try {
-            await opencode.session.prompt({
-                path: {id: sessionId},
-                query: {directory: installation.directory},
-                body: {
-                    agent: profile.agent,
-                    model,
-                    system,
-                    tools: undefined,
-                    parts,
-                },
-                signal,
-                responseStyle: 'data',
-                throwOnError: true,
-            })
-        } catch (err) {
-            if (imageRefs) {
-                ctx.emit({
-                    type: 'log',
-                    level: 'warn',
-                    message: `[opencode] image attachments failed; retrying without images: ${String(err)}`,
+        const parts: Array<{type: 'text'; text: string} | {type: 'file'; mime: string; filename?: string; url: string}> = []
+        if (trimmedPrompt.length) parts.push({type: 'text', text: trimmedPrompt})
+        if (ctx.images?.length) {
+            for (const img of ctx.images) {
+                const rel = relative(installation.directory, img.path).replace(/\\/g, '/')
+                parts.push({
+                    type: 'file',
+                    mime: img.mimeType,
+                    filename: basename(img.path),
+                    url: rel,
                 })
-                const fallbackParts = trimmedPrompt
-                    ? [{type: 'text' as const, text: trimmedPrompt}]
-                    : []
-                await opencode.session.prompt({
-                    path: {id: sessionId},
-                    query: {directory: installation.directory},
-                    body: {
-                        agent: profile.agent,
-                        model,
-                        system,
-                        tools: undefined,
-                        parts: fallbackParts,
-                    },
-                    signal,
-                    responseStyle: 'data',
-                    throwOnError: true,
-                })
-            } else {
-                throw err
             }
         }
+
+        await opencode.session.prompt({
+            path: {id: sessionId},
+            query: {directory: installation.directory},
+            body: {
+                agent: profile.agent,
+                model,
+                system,
+                tools: undefined,
+                parts,
+            },
+            signal,
+            responseStyle: 'data',
+            throwOnError: true,
+        })
 
         return {stream, sessionId}
     }
