@@ -128,7 +128,7 @@ experimentation.
   - `POST /projects/:projectId/tickets/enhance` (Projects router) is the HTTP surface area: it validates `{title, description?, agent?, profileId?}` payloads, forwards them into `agentEnhanceTicket`, and returns `{ticket}` or RFC 7807 errors so the client can enrich cards without bespoke agent wiring.
 
 - `agentSummarizePullRequest` behavior:
-  - Inputs: `projectId`, required `headBranch`, optional `baseBranch`, optional `agentKey`, optional `profileId`, and an optional `AbortSignal`.
+  - Inputs: `projectId`, required `headBranch`, optional `baseBranch`, optional `agentKey`, optional `profileId`, optional `attemptId`/`cardId` for linked GitHub issues, and an optional `AbortSignal`.
   - Resolves `agentKey` and `profileId` from project settings and inputs using the same rules as ticket enhancement:
     - Uses the explicit `agentKey` / `profileId` when provided.
     - Otherwise consults the per-inline-agent profile mapping for `InlineAgentId = "prSummary"` when configured so PR summaries can use a dedicated profile.
@@ -139,7 +139,7 @@ experimentation.
     - `repositoryPath`, `baseBranch`, `headBranch`, plus optional change summaries in the future.
   - Resolves the agent profile using the shared profile resolution helpers, including support for inline-specific prompts via `inlineProfile`.
   - Builds an `InlineTaskContext` annotated with `profileSource: "inline" | "primary"` so downstream telemetry can distinguish which prompt was used.
-  - Invokes `runInlineTask({agentKey, kind: 'prSummary', input, profile, context, signal})` and returns the resulting `PrSummaryInlineResult` `{title, body}` used to populate PR title/body suggestions in the UI.
+  - Invokes `runInlineTask({agentKey, kind: 'prSummary', input, profile, context, signal})`, appends an auto-close line like `closes #123` when linked GitHub issues exist (or fully-qualified `owner/repo#123` when the PR repo is unknown), and returns the resulting `PrSummaryInlineResult` `{title, body}` used to populate PR title/body suggestions in the UI. When both `cardId` and `attemptId` are supplied, `cardId` wins and mismatches are treated as errors by the server.
 
 ## Profiles: configuration for agents
 

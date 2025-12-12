@@ -55,10 +55,18 @@ export function CreatePrDialog({
 
     const headBranch = branch?.trim() || ''
     const baseBranchTrimmed = baseBranch?.trim() || undefined
+    const attemptIdTrimmed = attemptId?.trim() || undefined
+    const cardIdTrimmed = cardId?.trim() || undefined
 
     const branchLabel = headBranch || 'current branch'
 
-    const summaryQuery = usePrInlineSummaryCache(projectId, headBranch, baseBranchTrimmed)
+    const summaryQuery = usePrInlineSummaryCache(
+        projectId,
+        headBranch,
+        baseBranchTrimmed,
+        cardIdTrimmed,
+        attemptIdTrimmed,
+    )
     const summaryState = summaryQuery.data ?? {status: 'idle', branch: headBranch, base: baseBranchTrimmed}
     const summaryKey = summaryQuery.key
     const summarizing = summaryState.status === 'running'
@@ -147,6 +155,8 @@ export function CreatePrDialog({
                 projectId,
                 branch: headBranch,
                 base: baseBranchTrimmed,
+                attemptId: attemptIdTrimmed,
+                cardId: cardIdTrimmed,
                 signal: controller.signal,
             },
             {

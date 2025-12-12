@@ -95,5 +95,5 @@ Additional configuration endpoints:
   - `cardId` – links the PR back to a board card.
 - The PR helper emits `github.pr.created` so other modules can react (for example, refreshing PR lists or updating activity feeds).
 - For inline PR summaries (title + body suggestions), the API also exposes:
-  - `POST /projects/:projectId/pull-requests/summary` – uses the configured inline agent/profile to summarize the diff between a base and head branch, returning `{summary: {title, body}}` for the Create PR dialog.
+  - `POST /projects/:projectId/pull-requests/summary` – uses the configured inline agent/profile to summarize the diff between a base and head branch, returning `{summary: {title, body}}` for the Create PR dialog; you can pass `attemptId`/`cardId` so linked GitHub issues are detected and the returned body can append auto-close lines (e.g. `closes #123, fixes #456`).
   - The client caches inline summary results per project + branch so users can trigger a summary, close the PR dialog, and return later to apply the cached suggestion; cancellation is explicit (AbortController) rather than tied to dialog lifecycle.
