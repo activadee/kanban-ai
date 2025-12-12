@@ -352,11 +352,12 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const trimmed = prompt.trim()
         const parts: Array<TextPartInput | FilePartInput> = []
 
+        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
         if (trimmed.length > 0) {
             parts.push({type: 'text', text: trimmed})
+        } else if (attachments?.length) {
+            parts.push({type: 'text', text: 'Please describe the attached image(s).'})
         }
-
-        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
         if (attachments?.length) {
             for (const att of attachments) {
                 parts.push({
@@ -465,11 +466,12 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const trimmedPrompt = prompt.trim()
         const parts: Array<TextPartInput | FilePartInput> = []
 
+        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
         if (trimmedPrompt.length > 0) {
             parts.push({type: 'text', text: trimmedPrompt})
+        } else if (attachments?.length) {
+            parts.push({type: 'text', text: 'Please describe the attached image(s).'})
         }
-
-        const attachments: ImageAttachment[] | undefined = ctx.attachments?.length ? ctx.attachments : undefined
         if (attachments?.length) {
             for (const att of attachments) {
                 parts.push({

@@ -11,7 +11,10 @@ export type ImageAttachment = {
     id?: string
     mimeType: ImageMimeType
     /**
-     * Data URL of the image, used for previews/history.
+     * Image location.
+     *
+     * - For new messages from the UI this is typically a `data:` URL (clipboard/file preview).
+     * - For persisted conversation history this may be a server URL (e.g. `/api/v1/attempts/:id/attachments/<file>`).
      */
     dataUrl: string
     /**

@@ -4,6 +4,7 @@ import {Badge} from '@/components/ui/badge'
 import {cn} from '@/lib/utils'
 import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
+import {SERVER_URL} from '@/lib/env'
 
 export function MessageRow({item}: { item: ConversationItem }) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
@@ -25,14 +26,20 @@ export function MessageRow({item}: { item: ConversationItem }) {
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
                     {attachments && attachments.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {attachments.map((img) => (
-                                <img
-                                    key={img.id ?? img.dataUrl}
-                                    src={img.dataUrl}
-                                    alt={img.name ?? 'attachment'}
-                                    className="h-28 w-28 rounded border object-cover"
-                                />
-                            ))}
+                            {attachments.map((img) => {
+                                const src =
+                                    img.dataUrl.startsWith('data:') || img.dataUrl.startsWith('http')
+                                        ? img.dataUrl
+                                        : `${SERVER_URL}${img.dataUrl.startsWith('/') ? '' : '/'}${img.dataUrl}`
+                                return (
+                                    <img
+                                        key={img.id ?? img.dataUrl}
+                                        src={src}
+                                        alt={img.name ?? 'attachment'}
+                                        className="h-28 w-28 rounded border object-cover"
+                                    />
+                                )
+                            })}
                         </div>
                     ) : null}
                 </div>

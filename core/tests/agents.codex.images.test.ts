@@ -57,5 +57,35 @@ describe('CodexAgent image input wiring', () => {
             expect.anything(),
         )
     })
-})
 
+    it('adds a default prompt when prompt is empty but images are present', async () => {
+        const runStreamed = vi.fn().mockResolvedValue({
+            events: (async function* () {})(),
+        })
+        const thread = {runStreamed, id: 'thread-1'}
+        const codex = {
+            startThread: vi.fn(() => thread),
+            resumeThread: vi.fn(() => thread),
+        }
+
+        const ctx = baseCtx()
+        ctx.images = [{path: '/tmp/a.png', mimeType: 'image/png', sizeBytes: 10}]
+
+        await (CodexAgent as any).startSession(
+            codex,
+            '',
+            defaultProfile,
+            ctx,
+            ctx.signal,
+            {executablePath: process.execPath},
+        )
+
+        expect(runStreamed).toHaveBeenCalledWith(
+            [
+                {type: 'text', text: expect.stringContaining('describe')},
+                {type: 'local_image', path: '/tmp/a.png'},
+            ],
+            expect.anything(),
+        )
+    })
+})

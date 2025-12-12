@@ -48,7 +48,8 @@ For a project-specific view, you can also access board routes under `/api/v1/pro
   - `GET  /api/v1/projects/:projectId/cards/:cardId/attempt` – fetch the latest Attempt for a card.
   - `GET  /api/v1/attempts/:id` – attempt details.
   - `PATCH /api/v1/attempts/:id` – stop an Attempt (`{status:"stopped"}`).
-  - `POST /api/v1/attempts/:id/messages` – send follow-up prompts or image attachments (payload `{prompt?: string, profileId?: string, images?: ImageAttachment[]}`), requiring either a non-empty prompt or at least one image. Attached PNG/JPEG/WebP files are stored as data URLs, limited to 4 images per request and 5 MB each so UI previews and vision-capable agents can consume them.
+  - `POST /api/v1/attempts/:id/messages` – send follow-up prompts or image attachments (payload `{prompt?: string, profileId?: string, images?: ImageAttachment[]}`), requiring either a non-empty prompt or at least one image. Attached PNG/JPEG/WebP inputs are limited to 4 images per request and 5 MB each, and the server enforces a request-body size cap (413) before parsing. Images are stored on disk and referenced in conversation history as `/api/v1/attempts/:id/attachments/<file>` URLs (rather than persisting full base64 data URLs).
+  - `GET  /api/v1/attempts/:id/attachments/:fileName` – fetch a persisted attachment by file name (PNG/JPEG/WebP).
   - `GET  /api/v1/attempts/:id/logs` – stream logs/messages.
 - Attempt-scoped Git:
   - `GET  /api/v1/attempts/:id/git/status` – branch + file status for the Attempt worktree.

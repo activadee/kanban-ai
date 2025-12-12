@@ -1,9 +1,7 @@
 import {describe, expect, it} from 'vitest'
+import {MAX_IMAGE_BASE64_LENGTH} from 'shared'
 
 import {attemptMessageSchema} from '../src/attempts/attempts.schemas'
-
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
-const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4
 
 describe('attemptMessageSchema (image attachments)', () => {
     it('accepts prompt-only messages', () => {
@@ -45,4 +43,3 @@ describe('attemptMessageSchema (image attachments)', () => {
         expect(result.success).toBe(false)
     })
 })
-

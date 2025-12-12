@@ -74,6 +74,53 @@ describe('OpencodeAgent image input wiring', () => {
         })
     })
 
+    it('adds a default text part when prompt is empty and only images are provided', async () => {
+        const promptSpy = vi.fn().mockResolvedValue({})
+        const createSpy = vi.fn().mockResolvedValue({id: 'sess-1'})
+        const client = {
+            event: {
+                subscribe: vi.fn().mockResolvedValue({
+                    stream: (async function* () {})(),
+                }),
+            },
+            session: {
+                create: createSpy,
+                prompt: promptSpy,
+            },
+        }
+
+        const ctx = baseCtx()
+        ctx.attachments = [
+            {
+                id: 'img-1',
+                mimeType: 'image/png',
+                dataUrl: 'data:image/png;base64,Zm9v',
+                sizeBytes: 3,
+                name: 'clipboard.png',
+            },
+        ]
+
+        await (OpencodeAgent as any).startSession(
+            client,
+            '',
+            defaultProfile,
+            ctx,
+            ctx.signal,
+            {mode: 'local', directory: ctx.worktreePath},
+        )
+
+        const body = promptSpy.mock.calls[0][0].body
+        expect(body.parts).toHaveLength(2)
+        expect(body.parts[0]).toMatchObject({type: 'text'})
+        expect(body.parts[0].text).toContain('describe')
+        expect(body.parts[1]).toMatchObject({
+            type: 'file',
+            mime: 'image/png',
+            filename: 'clipboard.png',
+            url: 'data:image/png;base64,Zm9v',
+        })
+    })
+
     it('sends file parts even when using a remote server', async () => {
         const promptSpy = vi.fn().mockResolvedValue({})
         const createSpy = vi.fn().mockResolvedValue({id: 'sess-1'})

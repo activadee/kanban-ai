@@ -118,13 +118,17 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     ) {
         const codex = client as Codex
         const thread = codex.startThread(this.threadOptions(profile, ctx))
+        const effectivePrompt =
+            ctx.images && ctx.images.length && !prompt.trim().length
+                ? 'Please describe the attached image(s).'
+                : prompt
         const input =
             ctx.images && ctx.images.length
                 ? [
-                      {type: 'text', text: prompt},
+                      {type: 'text', text: effectivePrompt},
                       ...ctx.images.map((img) => ({type: 'local_image', path: img.path})),
                   ]
-                : prompt
+                : effectivePrompt
         const {events} = await thread.runStreamed(input as any, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
     }
@@ -140,13 +144,17 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     ) {
         const codex = client as Codex
         const thread = codex.resumeThread(sessionId, this.threadOptions(profile, ctx))
+        const effectivePrompt =
+            ctx.images && ctx.images.length && !prompt.trim().length
+                ? 'Please describe the attached image(s).'
+                : prompt
         const input =
             ctx.images && ctx.images.length
                 ? [
-                      {type: 'text', text: prompt},
+                      {type: 'text', text: effectivePrompt},
                       ...ctx.images.map((img) => ({type: 'local_image', path: img.path})),
                   ]
-                : prompt
+                : effectivePrompt
         const {events} = await thread.runStreamed(input as any, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
     }

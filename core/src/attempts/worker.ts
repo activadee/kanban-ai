@@ -1,6 +1,5 @@
-import {existsSync, mkdirSync} from 'fs'
+import {existsSync} from 'fs'
 import {promises as fsp} from 'node:fs'
-import {join} from 'node:path'
 import type {
     AttemptStatus,
     ConversationItem,
@@ -27,6 +26,7 @@ import {
     isAutomationFailureAllowed,
 } from './automation'
 import {resolveAgentProfile} from './profiles'
+import {materializeImageDataUrlToFile} from './attachments-store'
 
 type RunningAttemptMeta = {
     controller: AbortController
@@ -145,12 +145,12 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
         automation,
     } = params
 
-    queueMicrotask(async () => {
-        let cleanupRunner: (() => Promise<void>) | null = null
-        let currentStatus: AttemptStatus = 'running'
-        let attachmentsDir: string | null = null
-        const attachmentMaterializationWarnings: string[] = []
-        try {
+	    queueMicrotask(async () => {
+	        let cleanupRunner: (() => Promise<void>) | null = null
+	        let currentStatus: AttemptStatus = 'running'
+	        const attachmentMaterializationWarnings: string[] = []
+	        const attachmentFilesById = new Map<string, {fileName: string; filePath: string; mimeType: string}>()
+	        try {
             await updateAttempt(attemptId, {
                 status: 'running',
                 startedAt: new Date(),
@@ -189,39 +189,30 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
             let imageInputs: AgentImageInput[] | undefined = undefined
             if (params.mode === 'resume' && params.followupAttachments?.length) {
                 attachments = params.followupAttachments
-                // Only materialize images on disk for agents that require local file access.
-                // (OpenCode receives image data URLs as file parts.)
-                const shouldMaterializeImages = params.agentKey === 'CODEX'
-                if (shouldMaterializeImages) {
-                    attachmentsDir = join(worktreePath, '.kanbanai', 'attachments', attemptId)
-                    mkdirSync(attachmentsDir, {recursive: true})
-                    imageInputs = []
-                    for (const att of attachments) {
-                        try {
-                            const dataUrl = (att.dataUrl ?? '').trim()
-                            const prefix = `data:${att.mimeType};base64,`
-                            if (!dataUrl.startsWith(prefix)) throw new Error('Unsupported image data URL')
-                            const payload = dataUrl.slice(prefix.length)
-                            const buf = Buffer.from(payload, 'base64')
-                            const ext =
-                                att.mimeType === 'image/png'
-                                    ? 'png'
-                                    : att.mimeType === 'image/jpeg'
-                                      ? 'jpg'
-                                      : 'webp'
-                            const rawId = att.id ?? `img-${crypto.randomUUID()}`
-                            const safeId = rawId.replace(/[^a-z0-9_-]/gi, '_')
-                            const filePath = join(attachmentsDir, `${safeId}.${ext}`)
-                            await fsp.writeFile(filePath, buf)
-                            imageInputs.push({
-                                path: filePath,
-                                mimeType: att.mimeType,
-                                sizeBytes: buf.byteLength,
-                            })
-                        } catch (err) {
-                            const idLabel = att.id || att.name || 'unknown'
-                            const message = err instanceof Error ? err.message : String(err)
-                            attachmentMaterializationWarnings.push(
+	                // Only materialize images on disk for agents that require local file access.
+	                // (OpenCode receives image data URLs as file parts.)
+	                const shouldMaterializeImages = params.agentKey === 'CODEX'
+	                if (shouldMaterializeImages) {
+	                    imageInputs = []
+	                    for (const att of attachments) {
+	                        try {
+	                            const rawId = att.id ?? `img-${crypto.randomUUID()}`
+	                            const stored = await materializeImageDataUrlToFile({
+	                                worktreePath,
+	                                attemptId,
+	                                fileStemHint: rawId,
+	                                attachment: att,
+	                            })
+	                            attachmentFilesById.set(rawId, stored)
+	                            imageInputs.push({
+	                                path: stored.filePath,
+	                                mimeType: att.mimeType,
+	                                sizeBytes: att.sizeBytes,
+	                            })
+	                        } catch (err) {
+	                            const idLabel = att.id || att.name || 'unknown'
+	                            const message = err instanceof Error ? err.message : String(err)
+	                            attachmentMaterializationWarnings.push(
                                 `[attachments] failed to materialize image "${idLabel}"; continuing without it. (${message})`,
                             )
                         }
@@ -280,19 +271,66 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                         status: nextStatus,
                         previousStatus: previous,
                     })
-                } else if (evt.type === 'conversation') {
-                    const ts = new Date()
-                    const recordId = `cmsg-${crypto.randomUUID()}`
-                    const payloadItem: ConversationItem = {
-                        ...evt.item,
-                        id: recordId,
-                        timestamp: evt.item.timestamp ?? ts.toISOString(),
-                    }
-                    await insertConversationItem({
-                        id: recordId,
-                        attemptId,
-                        seq: msgSeq++,
-                        ts,
+	                } else if (evt.type === 'conversation') {
+	                    const ts = new Date()
+	                    const recordId = `cmsg-${crypto.randomUUID()}`
+	                    const payloadItem: ConversationItem = {
+	                        ...evt.item,
+	                        id: recordId,
+	                        timestamp: evt.item.timestamp ?? ts.toISOString(),
+	                    }
+	                    if (payloadItem.type === 'message' && payloadItem.attachments && payloadItem.attachments.length) {
+	                        const nextAttachments: ImageAttachment[] = []
+	                        for (const att of payloadItem.attachments) {
+	                            const dataUrl = (att.dataUrl ?? '').trim()
+	                            if (!dataUrl.startsWith('data:')) {
+	                                nextAttachments.push(att)
+	                                continue
+	                            }
+	                            try {
+	                                const rawId = att.id?.trim() || `img-${crypto.randomUUID()}`
+	                                const existing = attachmentFilesById.get(rawId)
+	                                const stored =
+	                                    existing ??
+	                                    (await materializeImageDataUrlToFile({
+	                                        worktreePath,
+	                                        attemptId,
+	                                        fileStemHint: `${rawId}-${recordId}`,
+	                                        attachment: att,
+	                                    }))
+	                                if (!existing) attachmentFilesById.set(rawId, stored)
+	                                nextAttachments.push({
+	                                    ...att,
+	                                    id: stored.fileName,
+	                                    dataUrl: `/api/v1/attempts/${attemptId}/attachments/${stored.fileName}`,
+	                                })
+	                            } catch (err) {
+	                                const message = err instanceof Error ? err.message : String(err)
+	                                const warn = `[attachments] failed to persist image for history; leaving as data URL. (${message})`
+	                                await insertAttemptLog({
+	                                    id: `log-${crypto.randomUUID()}`,
+	                                    attemptId,
+	                                    ts,
+	                                    level: 'warn',
+	                                    message: warn,
+	                                })
+	                                events.publish('attempt.log.appended', {
+	                                    attemptId,
+	                                    boardId,
+	                                    level: 'warn',
+	                                    message: warn,
+	                                    ts: ts.toISOString(),
+	                                })
+	                                nextAttachments.push(att)
+	                            }
+	                        }
+	                        payloadItem.attachments = nextAttachments
+	                    }
+	                    await insertConversationItem({
+	                        id: recordId,
+	                        attemptId,
+	                        seq: msgSeq++,
+	                        ts,
                         itemJson: JSON.stringify(payloadItem),
                     })
                     events.publish('attempt.conversation.appended', {
@@ -589,14 +627,11 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     })
                 }
             } catch {}
-        } finally {
-            if (attachmentsDir) {
-                await fsp.rm(attachmentsDir, {recursive: true, force: true}).catch(() => {})
-            }
-            try {
-                if (cleanupRunner) await cleanupRunner()
-            } catch {}
-            running.delete(attemptId)
-        }
+	        } finally {
+	            try {
+	                if (cleanupRunner) await cleanupRunner()
+	            } catch {}
+	            running.delete(attemptId)
+	        }
     })
 }

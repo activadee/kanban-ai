@@ -5,6 +5,15 @@ import type {
     ImageAttachment,
     ImageMimeType,
 } from 'shared'
+import {
+    ALLOWED_IMAGE_MIME_TYPES,
+    MAX_IMAGE_BYTES,
+    MAX_IMAGE_DATA_URL_LENGTH,
+    MAX_IMAGES_PER_MESSAGE,
+    MAX_TOTAL_IMAGE_BYTES,
+    estimateDecodedBytesFromDataUrl,
+    imageDataUrlPrefix,
+} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -63,43 +72,16 @@ function deserializeConversationItem(row: {
     }
 }
 
-const MAX_IMAGES_PER_MESSAGE = 4
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
-const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4
-const MAX_IMAGE_DATA_URL_LENGTH = 64 + MAX_IMAGE_BASE64_LENGTH
-const ALLOWED_IMAGE_MIME_TYPES: ImageMimeType[] = [
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-]
-
-const IMAGE_DATA_URL_PREFIXES: Record<ImageMimeType, string> = {
-    'image/png': 'data:image/png;base64,',
-    'image/jpeg': 'data:image/jpeg;base64,',
-    'image/webp': 'data:image/webp;base64,',
-}
-
 function parseImageDataUrl(dataUrl: string): {normalized: string; mimeType: ImageMimeType; base64Start: number} | null {
     const normalized = dataUrl.trim()
     if (normalized.length > MAX_IMAGE_DATA_URL_LENGTH) {
         throw new Error(`Image data URL exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`)
     }
-    for (const mimeType of ALLOWED_IMAGE_MIME_TYPES) {
-        const prefix = IMAGE_DATA_URL_PREFIXES[mimeType]
-        if (normalized.startsWith(prefix)) {
-            return {normalized, mimeType, base64Start: prefix.length}
-        }
+    for (const mimeType of ALLOWED_IMAGE_MIME_TYPES as readonly ImageMimeType[]) {
+        const prefix = imageDataUrlPrefix(mimeType)
+        if (normalized.startsWith(prefix)) return {normalized, mimeType, base64Start: prefix.length}
     }
     return null
-}
-
-function estimateDecodedBytesFromDataUrl(normalized: string, base64Start: number): number {
-    const base64Len = Math.max(0, normalized.length - base64Start)
-    let padding = 0
-    if (normalized.endsWith('==')) padding = 2
-    else if (normalized.endsWith('=')) padding = 1
-    const bytes = Math.floor((base64Len * 3) / 4) - padding
-    return bytes < 0 ? 0 : bytes
 }
 
 function validateImageAttachments(raw: ImageAttachment[] | undefined): ImageAttachment[] {
@@ -108,12 +90,17 @@ function validateImageAttachments(raw: ImageAttachment[] | undefined): ImageAtta
         throw new Error(`Too many images attached (max ${MAX_IMAGES_PER_MESSAGE})`)
     }
     const validated: ImageAttachment[] = []
+    let totalEstimatedBytes = 0
     for (const att of raw) {
         const parsed = parseImageDataUrl(att.dataUrl ?? '')
         if (!parsed) throw new Error('Unsupported image data URL')
         const estimatedBytes = estimateDecodedBytesFromDataUrl(parsed.normalized, parsed.base64Start)
         if (estimatedBytes > MAX_IMAGE_BYTES) {
             throw new Error(`Image exceeds ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB limit`)
+        }
+        totalEstimatedBytes += estimatedBytes
+        if (totalEstimatedBytes > MAX_TOTAL_IMAGE_BYTES) {
+            throw new Error(`Total attached image size exceeds ${Math.round(MAX_TOTAL_IMAGE_BYTES / (1024 * 1024))}MB limit`)
         }
         const payload = parsed.normalized.slice(parsed.base64Start)
         const buf = Buffer.from(payload, 'base64')

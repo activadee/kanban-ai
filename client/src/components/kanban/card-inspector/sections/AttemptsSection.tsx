@@ -1,5 +1,13 @@
 import {useEffect, useRef, useState, type ClipboardEvent, type DragEvent} from 'react'
-import type {AgentKey, Attempt, ConversationItem, ImageAttachment} from 'shared'
+import {
+    ALLOWED_IMAGE_MIME_TYPES,
+    MAX_IMAGE_BYTES,
+    MAX_IMAGES_PER_MESSAGE,
+    type AgentKey,
+    type Attempt,
+    type ConversationItem,
+    type ImageAttachment,
+} from 'shared'
 import {Label} from '@/components/ui/label'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
@@ -26,10 +34,6 @@ export type AttemptsSectionProps = {
     onProfileSelect: (value: string) => void
     followupProfiles: Array<{ id: string; name: string }>
 }
-
-const MAX_IMAGES_PER_MESSAGE = 4
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024
-const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const
 
 export function AttemptsSection({
                                     attempt,
@@ -76,8 +80,8 @@ export function AttemptsSection({
         const nextFiles = files.slice(0, remaining)
         const newAttachments: ImageAttachment[] = []
         for (const file of nextFiles) {
-            const mimeType = file.type as (typeof ALLOWED_IMAGE_TYPES)[number]
-            if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+            const mimeType = file.type as (typeof ALLOWED_IMAGE_MIME_TYPES)[number]
+            if (!ALLOWED_IMAGE_MIME_TYPES.includes(mimeType)) {
                 toast({
                     title: 'Unsupported image format',
                     description: 'Only PNG, JPEG, and WebP are supported.',
