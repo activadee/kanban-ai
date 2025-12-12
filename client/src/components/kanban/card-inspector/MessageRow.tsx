@@ -4,6 +4,7 @@ import {Badge} from '@/components/ui/badge'
 import {cn} from '@/lib/utils'
 import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
+import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
 
 export function MessageRow({item}: { item: ConversationItem }) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
@@ -27,15 +28,21 @@ export function MessageRow({item}: { item: ConversationItem }) {
             )
         }
         case 'thinking': {
+            const firstLine = item.text.split('\n')[0]?.trim()
+            const summaryLabel = item.title?.trim() || firstLine || 'thinking'
+            const ariaLabel = item.title ? `thinking · ${item.title}` : 'thinking'
             return (
-                <div className="mb-2 rounded border border-dashed border-border/60 bg-muted/20 p-2">
-                    <div className="mb-1 flex items-center gap-2">
-                        <Badge className="text-[10px]" variant="outline">thinking</Badge>
-                        <span className="text-xs text-muted-foreground">{time}</span>
-                        {item.title ? <span className="text-xs font-semibold">{item.title}</span> : null}
-                    </div>
-                    <div className="whitespace-pre-wrap text-xs text-muted-foreground">{item.text}</div>
-                </div>
+                <CollapsibleThinkingBlock
+                    ariaLabel={ariaLabel}
+                    headerLeft={(
+                        <>
+                            <Badge className="text-[10px]" variant="outline">thinking</Badge>
+                            <span className="min-w-0 flex-1 truncate text-xs font-medium">{summaryLabel}</span>
+                            <span className="text-xs text-muted-foreground">{time}</span>
+                        </>
+                    )}
+                    text={item.text}
+                />
             )
         }
         case 'tool': {

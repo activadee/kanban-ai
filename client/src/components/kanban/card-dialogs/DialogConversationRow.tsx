@@ -1,4 +1,5 @@
 import type {ConversationItem} from 'shared'
+import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
 
 export function DialogConversationRow({item}: { item: ConversationItem }) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
@@ -17,15 +18,23 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
     }
 
     if (item.type === 'thinking') {
+        const firstLine = item.text.split('\n')[0]?.trim()
+        const summaryLabel = item.title?.trim() || firstLine || 'thinking'
+        const ariaLabel = item.title ? `thinking · ${item.title}` : 'thinking'
         return (
-            <div
-                className="mb-2 rounded border border-dashed border-border/50 bg-muted/20 p-2 text-xs text-muted-foreground">
-                <div className="mb-1 flex items-center justify-between">
-                    <span>thinking{item.title ? ` · ${item.title}` : ''}</span>
-                    <span>{time}</span>
-                </div>
-                <div className="whitespace-pre-wrap">{item.text}</div>
-            </div>
+            <CollapsibleThinkingBlock
+                ariaLabel={ariaLabel}
+                className="text-xs"
+                headerLeft={
+                    <>
+                        <span className="text-[10px] uppercase text-muted-foreground">thinking</span>
+                        <span className="min-w-0 flex-1 truncate text-xs font-medium">{summaryLabel}</span>
+                        <span className="text-xs text-muted-foreground">{time}</span>
+                    </>
+                }
+                contentClassName="text-xs text-muted-foreground"
+                text={item.text}
+            />
         )
     }
 
