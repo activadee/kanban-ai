@@ -93,7 +93,7 @@ Project-related APIs are rooted under `/api/v1`:
 - `POST /projects` – create a project (existing or blank repository).
 - `GET /projects/:projectId` – fetch a project and its board metadata.
 - `GET /projects/:projectId/settings` – load per-project settings (ensuring defaults).
-- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags, and the failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`). Unspecified mapping keys keep existing/fallback behavior.
+- `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags, the failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and the GitHub issue toggle `githubIssueAutoCreateEnabled`). Unspecified mapping keys keep existing/fallback behavior.
 - `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card’s title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
 - `GET /projects/:projectId/github/origin` – inspect GitHub origin information for the project repository.
 
