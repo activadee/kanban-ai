@@ -66,6 +66,33 @@ export type AutomationConversationEmitter = (
     item: ConversationAutomationItem,
 ) => Promise<void> | void
 
+type AllowFailureConfig = {
+    allowScriptsToFail: boolean
+    allowCopyFilesToFail: boolean
+    allowSetupScriptToFail: boolean
+    allowDevScriptToFail: boolean
+    allowCleanupScriptToFail: boolean
+}
+
+export function isAutomationFailureAllowed(
+    stage: AutomationStage,
+    config: AllowFailureConfig,
+): boolean {
+    if (config.allowScriptsToFail) return true
+    switch (stage) {
+        case 'copy_files':
+            return config.allowCopyFilesToFail
+        case 'setup':
+            return config.allowSetupScriptToFail
+        case 'dev':
+            return config.allowDevScriptToFail
+        case 'cleanup':
+            return config.allowCleanupScriptToFail
+        default:
+            return false
+    }
+}
+
 export async function runAutomationStageInWorktree(
     stage: AutomationStage,
     script: string | null,
@@ -153,15 +180,28 @@ export async function runAttemptAutomation(
             'Worktree is missing; start a new attempt before running automation',
         )
     }
+    const allowFailureConfig: AllowFailureConfig = {
+        allowScriptsToFail: settings.allowScriptsToFail ?? false,
+        allowCopyFilesToFail: settings.allowCopyFilesToFail ?? false,
+        allowSetupScriptToFail: settings.allowSetupScriptToFail ?? false,
+        allowDevScriptToFail: settings.allowDevScriptToFail ?? false,
+        allowCleanupScriptToFail: settings.allowCleanupScriptToFail ?? false,
+    }
     const item = await runAutomationCommand({
         stage,
         command: script,
         cwd: worktreePath,
     })
+    const allowedFailure =
+        item.status === 'failed' &&
+        isAutomationFailureAllowed(stage, allowFailureConfig)
+    const payloadItem = allowedFailure
+        ? {...item, allowedFailure: true}
+        : item
     const saved = await appendAutomationConversationItem(
         attemptId,
         attempt.boardId,
-        item,
+        payloadItem,
         events,
     )
     return saved

@@ -104,7 +104,9 @@ export function ActivitySection({
                 ? latestDevAutomation.status === 'succeeded'
                     ? 'succeeded'
                     : latestDevAutomation.status === 'failed'
-                        ? 'failed'
+                        ? latestDevAutomation.allowedFailure
+                            ? 'warning'
+                            : 'failed'
                         : 'idle'
                 : 'idle'
 
@@ -116,7 +118,12 @@ export function ActivitySection({
         if (!devScriptConfigured) return 'Configure a dev script in Project Settings.'
         if (!attempt) return 'Start an attempt to provision a worktree.'
         if (!latestDevAutomation) return 'Ready to launch.'
-        const prefix = latestDevAutomation.status === 'succeeded' ? 'Succeeded' : 'Failed'
+        const prefix =
+            latestDevAutomation.status === 'succeeded'
+                ? 'Succeeded'
+                : latestDevAutomation.allowedFailure
+                    ? 'Warning'
+                    : 'Failed'
         return devRelative ? `${prefix} ${devRelative}` : prefix
     })()
 

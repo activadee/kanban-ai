@@ -19,6 +19,11 @@ describe('projects/settings/github-sync', () => {
             devScript: null,
             cleanupScript: null,
             copyFiles: null,
+            allowScriptsToFail: false,
+            allowCopyFilesToFail: false,
+            allowSetupScriptToFail: false,
+            allowDevScriptToFail: false,
+            allowCleanupScriptToFail: false,
             defaultAgent: null,
             defaultProfileId: null,
             inlineAgent: null,
@@ -52,4 +57,3 @@ describe('projects/settings/github-sync', () => {
         expect(sync.isGithubIssueSyncDue(old, now)).toBe(true)
     })
 })
-

@@ -45,6 +45,11 @@ export const updateProjectSettingsHandler = async (c: any) => {
         devScript?: string | null;
         cleanupScript?: string | null;
         copyFiles?: string | null;
+        allowScriptsToFail?: boolean;
+        allowCopyFilesToFail?: boolean;
+        allowSetupScriptToFail?: boolean;
+        allowDevScriptToFail?: boolean;
+        allowCleanupScriptToFail?: boolean;
         defaultAgent?: string | null;
         defaultProfileId?: string | null;
         inlineAgent?: string | null;
@@ -159,6 +164,21 @@ export const updateProjectSettingsHandler = async (c: any) => {
     if (cleanupScript !== undefined) updates.cleanupScript = cleanupScript;
     const copyFiles = normalizeNullable(body.copyFiles);
     if (copyFiles !== undefined) updates.copyFiles = copyFiles;
+    if (body.allowScriptsToFail !== undefined) {
+        updates.allowScriptsToFail = body.allowScriptsToFail;
+    }
+    if (body.allowCopyFilesToFail !== undefined) {
+        updates.allowCopyFilesToFail = body.allowCopyFilesToFail;
+    }
+    if (body.allowSetupScriptToFail !== undefined) {
+        updates.allowSetupScriptToFail = body.allowSetupScriptToFail;
+    }
+    if (body.allowDevScriptToFail !== undefined) {
+        updates.allowDevScriptToFail = body.allowDevScriptToFail;
+    }
+    if (body.allowCleanupScriptToFail !== undefined) {
+        updates.allowCleanupScriptToFail = body.allowCleanupScriptToFail;
+    }
     if (body.defaultAgent !== undefined) {
         updates.defaultAgent =
             agentKey ?? (body.defaultAgent === null ? null : undefined);

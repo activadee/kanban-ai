@@ -52,15 +52,20 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
             dev: 'Dev',
             cleanup: 'Cleanup',
         }
+        const isAllowedFailure =
+            item.status === 'failed' && item.allowedFailure === true
         const statusClass = item.status === 'succeeded'
             ? 'text-emerald-500'
-            : item.status === 'failed'
-                ? 'text-destructive'
-                : undefined
+            : isAllowedFailure
+                ? 'text-amber-500'
+                : item.status === 'failed'
+                    ? 'text-destructive'
+                    : undefined
+        const statusLabel = isAllowedFailure ? 'warning' : item.status
         return (
             <div className="mb-2 rounded border border-border/60 bg-background p-2 text-xs">
                 <div className="mb-1 flex items-center justify-between text-muted-foreground">
-                    <span className={statusClass}>{stageLabels[item.stage]} · {item.status}</span>
+                    <span className={statusClass}>{stageLabels[item.stage]} · {statusLabel}</span>
                     <span>{time}</span>
                 </div>
                 <div className="space-y-1 text-muted-foreground">

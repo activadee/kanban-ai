@@ -5,11 +5,21 @@ type ScriptsSectionProps = {
     devScript: string;
     cleanupScript: string;
     copyFiles: string;
+    allowScriptsToFail: boolean;
+    allowCopyFilesToFail: boolean;
+    allowSetupScriptToFail: boolean;
+    allowDevScriptToFail: boolean;
+    allowCleanupScriptToFail: boolean;
     onChange: (patch: Partial<{
         setupScript: string;
         devScript: string;
         cleanupScript: string;
         copyFiles: string;
+        allowScriptsToFail: boolean;
+        allowCopyFilesToFail: boolean;
+        allowSetupScriptToFail: boolean;
+        allowDevScriptToFail: boolean;
+        allowCleanupScriptToFail: boolean;
     }>) => void;
 }
 
@@ -18,6 +28,11 @@ export function ScriptsSection({
                                    devScript,
                                    cleanupScript,
                                    copyFiles,
+                                   allowScriptsToFail,
+                                   allowCopyFilesToFail,
+                                   allowSetupScriptToFail,
+                                   allowDevScriptToFail,
+                                   allowCleanupScriptToFail,
                                    onChange,
                                }: ScriptsSectionProps) {
     return (
@@ -26,8 +41,12 @@ export function ScriptsSection({
             devScript={devScript}
             cleanupScript={cleanupScript}
             copyFiles={copyFiles}
+            allowScriptsToFail={allowScriptsToFail}
+            allowCopyFilesToFail={allowCopyFilesToFail}
+            allowSetupScriptToFail={allowSetupScriptToFail}
+            allowDevScriptToFail={allowDevScriptToFail}
+            allowCleanupScriptToFail={allowCleanupScriptToFail}
             update={onChange}
         />
     )
 }
-

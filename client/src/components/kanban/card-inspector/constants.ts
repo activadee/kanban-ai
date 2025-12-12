@@ -7,6 +7,7 @@ export const PROCESS_STATUS_LABELS: Record<ProcessStatus, string> = {
     succeeded: 'Succeeded',
     failed: 'Failed',
     stopped: 'Stopped',
+    warning: 'Warning',
     idle: 'Idle',
 }
 
@@ -17,6 +18,6 @@ export const PROCESS_STATUS_STYLES: Record<ProcessStatus, string> = {
     succeeded: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200',
     failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200',
     stopped: 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-200',
+    warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200',
     idle: 'bg-muted text-muted-foreground',
 }
-

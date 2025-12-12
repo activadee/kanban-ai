@@ -208,6 +208,11 @@ export function ProjectSettingsPanel({
                                     devScript={form.devScript}
                                     cleanupScript={form.cleanupScript}
                                     copyFiles={form.copyFiles}
+                                    allowScriptsToFail={form.allowScriptsToFail}
+                                    allowCopyFilesToFail={form.allowCopyFilesToFail}
+                                    allowSetupScriptToFail={form.allowSetupScriptToFail}
+                                    allowDevScriptToFail={form.allowDevScriptToFail}
+                                    allowCleanupScriptToFail={form.allowCleanupScriptToFail}
                                     onChange={(patch) => updateForm(patch)}
                                 />
 
