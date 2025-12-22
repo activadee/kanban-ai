@@ -364,9 +364,9 @@ export function Board({
                                     className="h-full min-h-0"
                                 >
                                     <ResizablePanel
-                                        order={1}
-                                        minSize={Math.max(10, 100 - inspectorSize.maxSize)}
-                                        defaultSize={Math.max(15, 100 - inspectorSize.defaultSize)}
+                                        id="kanban-board"
+                                        minSize={`${Math.max(10, 100 - inspectorSize.maxSize)}`}
+                                        defaultSize={`${Math.max(15, 100 - inspectorSize.defaultSize)}`}
                                     >
                                         {boardContent}
                                     </ResizablePanel>
@@ -375,10 +375,10 @@ export function Board({
                                         className="bg-border/70 w-1"
                                     />
                                     <ResizablePanel
-                                        order={2}
-                                        minSize={inspectorSize.minSize}
-                                        maxSize={inspectorSize.maxSize}
-                                        defaultSize={inspectorSize.defaultSize}
+                                        id="kanban-inspector"
+                                        minSize={`${inspectorSize.minSize}`}
+                                        maxSize={`${inspectorSize.maxSize}`}
+                                        defaultSize={`${inspectorSize.defaultSize}`}
                                     >
                                         <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4 shadow-xl">
                                             <CardInspector
