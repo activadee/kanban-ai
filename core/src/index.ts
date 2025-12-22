@@ -69,7 +69,6 @@ export {getDashboardOverview} from './dashboard/service'
 export {
     setDashboardInboxItemRead,
     markDashboardInboxItemsRead,
-    markAllDashboardInboxItemsRead,
 } from './dashboard/inbox-read'
 export * as onboardingRepo from './onboarding/repo'
 export {onboardingService} from './onboarding/service'

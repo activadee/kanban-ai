@@ -156,6 +156,38 @@ export function InboxPanel({
     const failedItems = inbox?.failed ?? []
     const stuckItems = inbox?.stuck ?? []
 
+    useEffect(() => {
+        if (!inbox) {
+            setOptimisticRead({})
+            return
+        }
+        const currentItems = [...reviewItems, ...failedItems, ...stuckItems]
+        const currentIds = new Set(currentItems.map((item) => item.id))
+        setOptimisticRead((current) => {
+            const next: Record<string, boolean> = {}
+            for (const item of currentItems) {
+                const optimisticValue = current[item.id]
+                if (optimisticValue === undefined) continue
+                const serverValue = item.isRead ?? false
+                if (optimisticValue !== serverValue) {
+                    next[item.id] = optimisticValue
+                }
+            }
+            // Drop optimistic entries for items no longer present.
+            if (Object.keys(next).length === Object.keys(current).length) {
+                let unchanged = true
+                for (const id of Object.keys(current)) {
+                    if (!currentIds.has(id) || next[id] !== current[id]) {
+                        unchanged = false
+                        break
+                    }
+                }
+                if (unchanged) return current
+            }
+            return next
+        })
+    }, [inbox, reviewItems, failedItems, stuckItems])
+
     const allItems = useMemo<InboxItem[]>(() => {
         if (!inbox) return []
         const combined: InboxItem[] = []

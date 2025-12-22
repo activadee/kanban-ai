@@ -3,7 +3,10 @@ import type {DashboardInbox, InboxItem} from 'shared'
 import {dashboardInboxItems} from '../db/schema/dashboard-inbox'
 import {resolveDb, withTx} from '../db/with-tx'
 
+// Stay below SQLite's 999 parameter limit for IN clauses.
 const SQLITE_IN_CHUNK_SIZE = 900
+// Inserts bind ~2 params per row (id, isRead). Use a smaller chunk.
+const SQLITE_INSERT_CHUNK_SIZE = 400
 
 function dedupeIds(ids: string[]): string[] {
     const seen = new Set<string>()
@@ -127,7 +130,7 @@ export async function markDashboardInboxItemsRead(
         }
 
         const toInsert = uniqueIds.filter((id) => !existingIds.has(id))
-        for (const insertChunk of chunkIds(toInsert, SQLITE_IN_CHUNK_SIZE)) {
+        for (const insertChunk of chunkIds(toInsert, SQLITE_INSERT_CHUNK_SIZE)) {
             if (insertChunk.length === 0) continue
             await tx.insert(dashboardInboxItems).values(
                 insertChunk.map((id) => ({id, isRead: true})),
@@ -152,16 +155,4 @@ export async function markDashboardInboxItemsRead(
     }
 
     await withTx(run)
-}
-
-export async function markAllDashboardInboxItemsRead(
-    executor?: any,
-): Promise<number> {
-    const db = resolveDb(executor)
-    const result = await db
-        .update(dashboardInboxItems)
-        .set({isRead: true, updatedAt: sql`CURRENT_TIMESTAMP`})
-        .where(and(eq(dashboardInboxItems.isRead, false), sql`1 = 1`))
-    // Drizzle bun-sqlite returns changes on .run(). For update builder, try to read changes if present.
-    return (result as any)?.changes ?? 0
 }
