@@ -1,3 +1,35 @@
+## [0.19.0](https://github.com/activadee/kanban-ai/compare/v0.18.0...v0.19.0) (2025-12-22)
+
+### Features
+
+* add enhanced ticket indicator with is_enhanced field ([#285](https://github.com/activadee/kanban-ai/issues/285)) ([37a1b97](https://github.com/activadee/kanban-ai/commit/37a1b978f5ec9114a7c5cba76192c5fbec5a798f))
+* **codex:** enhance debug logging with configurable verbosity and structured output ([#289](https://github.com/activadee/kanban-ai/issues/289)) ([41add12](https://github.com/activadee/kanban-ai/commit/41add12a55aa006eb40aa84fd5238ea807ec858a))
+* implement auto-close GitHub tickets on PR merge ([#283](https://github.com/activadee/kanban-ai/issues/283)) ([bc32115](https://github.com/activadee/kanban-ai/commit/bc321159f10037e0106a51a1a658921a0067c866))
+* make thinking blocks collapsible with improved styling ([#293](https://github.com/activadee/kanban-ai/issues/293)) ([8ed3277](https://github.com/activadee/kanban-ai/commit/8ed3277e9016a7b6edba8227d659b7af6ba750bd))
+* **pr-summary:** auto-link GitHub issues in PR summaries ([#286](https://github.com/activadee/kanban-ai/issues/286)) ([334c704](https://github.com/activadee/kanban-ai/commit/334c704563fe7afcca4ce63db7368d80d4e9ec1c))
+
+### Bug Fixes
+
+* **client:** unblock client build in CI ([ee681b9](https://github.com/activadee/kanban-ai/commit/ee681b9e2655fd671d93b884bbda707bdea3abec))
+
+### Refactors
+
+* **client:** unify page headers across application ([#292](https://github.com/activadee/kanban-ai/issues/292)) ([cca65a1](https://github.com/activadee/kanban-ai/commit/cca65a1c762e096d8d13078c228f4675c9f35549))
+
+### Build
+
+* **deps:** bump @openai/codex-sdk from 0.71.0 to 0.77.0 ([#312](https://github.com/activadee/kanban-ai/issues/312)) ([ecd2d7c](https://github.com/activadee/kanban-ai/commit/ecd2d7ccbe9137af7f9a96de5d4f5f5926f09adf))
+* **deps:** bump @openai/codex-sdk from 0.71.0 to 0.77.0 in /core ([#313](https://github.com/activadee/kanban-ai/issues/313)) ([ae64f36](https://github.com/activadee/kanban-ai/commit/ae64f368161cc9211a645d394a5ac6a652df2d2b))
+* **deps:** bump lucide-react from 0.560.0 to 0.562.0 ([#307](https://github.com/activadee/kanban-ai/issues/307)) ([8dcaf97](https://github.com/activadee/kanban-ai/commit/8dcaf97e3c218849a2de19c146ca87203013c38e))
+* **deps:** bump lucide-react from 0.560.0 to 0.562.0 in /client ([#305](https://github.com/activadee/kanban-ai/issues/305)) ([b191fef](https://github.com/activadee/kanban-ai/commit/b191fefba8ad426cb8a03cf18ea4e67491e87fab))
+* **deps:** bump react-resizable-panels from 3.0.6 to 4.0.14 ([#310](https://github.com/activadee/kanban-ai/issues/310)) ([a484f88](https://github.com/activadee/kanban-ai/commit/a484f8892bad932d6eddb4e48b68310b0392836e))
+* **deps:** bump react-resizable-panels from 3.0.6 to 4.0.14 in /client ([#311](https://github.com/activadee/kanban-ai/issues/311)) ([d256088](https://github.com/activadee/kanban-ai/commit/d2560887f303956384aacca12b2a807c4c7c457e))
+
+### CI
+
+* **review:** change to high reasoning in review ([b6a57b0](https://github.com/activadee/kanban-ai/commit/b6a57b08791188d4888de72c933e3a1b77af85db))
+* **review:** use gpt-5.2 xhigh for reviews ([#277](https://github.com/activadee/kanban-ai/issues/277)) ([e1e9fd0](https://github.com/activadee/kanban-ai/commit/e1e9fd0739fc3632fbe3a62dfa0861b4e3d84ecd))
+
 ## [0.18.0](https://github.com/activadee/kanban-ai/compare/v0.17.0...v0.18.0) (2025-12-12)
 
 ### Features
