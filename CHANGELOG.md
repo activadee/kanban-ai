@@ -1,3 +1,9 @@
+## [0.19.1](https://github.com/activadee/kanban-ai/compare/v0.19.0...v0.19.1) (2025-12-22)
+
+### Bug Fixes
+
+* **opencode:** restore thinking blocks in UI ([a63e097](https://github.com/activadee/kanban-ai/commit/a63e0979b8f049da0ddfc184b80df7e0d049f46e))
+
 ## [0.19.0](https://github.com/activadee/kanban-ai/compare/v0.18.0...v0.19.0) (2025-12-22)
 
 ### Features
