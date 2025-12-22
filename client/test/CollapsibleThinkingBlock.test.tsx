@@ -1,12 +1,12 @@
 import {describe, it, expect, afterEach} from "vitest";
-import {render, screen, fireEvent, cleanup} from "@testing-library/react";
+import {render, screen, fireEvent, cleanup, waitFor} from "@testing-library/react";
 
 import {CollapsibleThinkingBlock} from "@/components/kanban/conversation/CollapsibleThinkingBlock";
 
 describe("CollapsibleThinkingBlock", () => {
     afterEach(() => cleanup());
 
-    it("defaults to collapsed", () => {
+    it("defaults to collapsed and keeps content mounted", () => {
         const {container} = render(
             <CollapsibleThinkingBlock
                 headerLeft={<span>thinking</span>}
@@ -17,19 +17,20 @@ describe("CollapsibleThinkingBlock", () => {
         const details = container.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
         expect(details).not.toBeNull();
         expect(details?.open).toBe(false);
+        expect(details?.hasAttribute("open")).toBe(false);
 
-        expect(document.querySelector('[data-slot="thinking-preview"]')).toBeNull();
         expect(screen.getByText("Toggle")).not.toBeNull();
 
         const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
         expect(content).not.toBeNull();
+        expect(content?.textContent).toContain("first line");
 
         const summary = container.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
-        expect(summary?.getAttribute("aria-expanded")).toBe("false");
-        expect(summary?.getAttribute("aria-describedby")).toBeTruthy();
+        expect(summary).not.toBeNull();
+        expect(summary?.getAttribute("aria-expanded")).toBe(null);
     });
 
-    it("toggles expanded/collapsed and updates aria-expanded", () => {
+    it("lets the <details> element control open state", () => {
         const {container} = render(
             <CollapsibleThinkingBlock
                 headerLeft={<span>thinking</span>}
@@ -38,32 +39,42 @@ describe("CollapsibleThinkingBlock", () => {
         );
 
         const details = container.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
-        const summary = container.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
+        const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
         expect(details).not.toBeNull();
-        expect(summary).not.toBeNull();
+        expect(content).not.toBeNull();
+
+        const contentNode = content;
 
         details!.open = true;
         fireEvent(details!, new Event("toggle"));
-        expect(summary?.getAttribute("aria-expanded")).toBe("true");
+        expect(details!.open).toBe(true);
+        expect(container.querySelector('[data-slot="thinking-content"]')).toBe(contentNode);
 
         details!.open = false;
         fireEvent(details!, new Event("toggle"));
-        expect(summary?.getAttribute("aria-expanded")).toBe("false");
+        expect(details!.open).toBe(false);
+        expect(container.querySelector('[data-slot="thinking-content"]')).toBe(contentNode);
     });
 
-    it("keeps a11y hint without overriding visible label", () => {
+    it("supports defaultOpen without controlling future toggles", async () => {
         const {container} = render(
             <CollapsibleThinkingBlock
-                headerLeft={<span>thinking · Plan</span>}
+                headerLeft={<span>thinking</span>}
                 text={"first line\nsecond line"}
+                defaultOpen={true}
             />,
         );
 
-        const summary = container.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
-        expect(summary).not.toBeNull();
-        expect(summary?.getAttribute("aria-label")).toBe(null);
-        expect(summary?.getAttribute("aria-describedby")).toBeTruthy();
-        expect(container.querySelector('[data-slot="thinking-toggle"]')?.getAttribute("aria-hidden")).toBe("true");
+        const details = container.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
+        expect(details).not.toBeNull();
+
+        await waitFor(() => {
+            expect(details?.open).toBe(true);
+        });
+
+        details!.open = false;
+        fireEvent(details!, new Event("toggle"));
+        expect(details!.open).toBe(false);
     });
 
     it("keeps key styling hooks stable", () => {
@@ -83,6 +94,7 @@ describe("CollapsibleThinkingBlock", () => {
         expect(block?.className).toContain("border");
         expect(summary?.className).toContain("justify-between");
         expect(toggleText?.className).toContain("text-muted-foreground");
+        expect(content?.className).toContain("mt-2");
         expect(content?.className).toContain("whitespace-pre-wrap");
     });
 });

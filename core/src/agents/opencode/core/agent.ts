@@ -4,6 +4,7 @@ import type {
     EventMessageUpdated,
     EventSessionError,
     EventTodoUpdated,
+    ReasoningPart,
     TextPart,
     ToolPart,
     ToolState,
@@ -429,6 +430,30 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 `text part ${textPart.sessionID}/${textPart.messageID}/${textPart.id}: ${textPart.text.slice(0, 120)}`,
             )
             grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text)
+            return
+        }
+
+        if (part.type === 'reasoning') {
+            const reasoningPart = part as ReasoningPart
+            const completed = typeof reasoningPart.time?.end === 'number'
+            this.debug(
+                profile,
+                ctx,
+                `reasoning part ${reasoningPart.sessionID}/${reasoningPart.messageID}/${reasoningPart.id}: ${reasoningPart.text.slice(0, 120)}`,
+            )
+            grouper.recordReasoningPart(
+                reasoningPart.sessionID,
+                reasoningPart.messageID,
+                reasoningPart.id,
+                reasoningPart.text,
+                completed,
+            )
+            grouper.emitThinkingIfCompleted(
+                ctx,
+                reasoningPart.sessionID,
+                reasoningPart.messageID,
+                reasoningPart.id,
+            )
             return
         }
 

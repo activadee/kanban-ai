@@ -7,6 +7,8 @@ import type {
     AssistantMessage,
     EventMessagePartUpdated,
     EventMessageUpdated,
+    OpencodeClient,
+    ReasoningPart,
     TextPart,
     EventTodoUpdated,
     Todo,
@@ -18,7 +20,7 @@ const baseCtx = (): AgentContext & {events: RecordedEvent[]} => {
     const controller = new AbortController()
     const events: RecordedEvent[] = []
     const emit: AgentContext['emit'] = (evt) => {
-        events.push({type: evt.type, ...evt})
+        events.push({...evt})
     }
     return {
         attemptId: 'att-opencode',
@@ -42,14 +44,18 @@ const baseCtx = (): AgentContext & {events: RecordedEvent[]} => {
 
 class TestOpencodeAgent extends OpencodeImpl {
     lastPrompt: string | null = null
-    streamEvents: Array<EventMessagePartUpdated | EventTodoUpdated> = []
+    streamEvents: Array<EventMessageUpdated | EventMessagePartUpdated | EventTodoUpdated> = []
 
     protected override async detectInstallation(_profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         return {mode: 'remote', directory: ctx.worktreePath, baseUrl: 'http://example', apiKey: 'test-key'}
     }
 
-    protected override async createClient(): Promise<unknown> {
-        return {}
+    protected override async createClient(
+        _profile: OpencodeProfile,
+        _ctx: AgentContext,
+        _installation: OpencodeInstallation,
+    ): Promise<OpencodeClient> {
+        return {} as OpencodeClient
     }
 
     protected override async startSession(
@@ -176,6 +182,59 @@ describe('OpencodeAgent event mapping', () => {
         expect(assistantMessages.length).toBe(1)
         const text = (assistantMessages[0] as {item?: {text?: string}}).item?.text
         expect(text).toContain('Hello from OpenCode')
+    })
+
+    it('converts reasoning parts into thinking conversation items', async () => {
+        const agent = new TestOpencodeAgent()
+        const ctx = baseCtx()
+        ctx.sessionId = 'sess-1'
+
+        const assistantMessage: AssistantMessage = {
+            id: 'msg-1',
+            sessionID: 'sess-1',
+            role: 'assistant',
+            time: {created: Date.now()},
+            parentID: 'user-1',
+            modelID: 'model',
+            providerID: 'provider',
+            mode: 'default',
+            path: {cwd: ctx.worktreePath, root: ctx.worktreePath},
+            cost: 0,
+            tokens: {
+                input: 0,
+                output: 0,
+                reasoning: 0,
+                cache: {read: 0, write: 0},
+            },
+        }
+        const updatedEvent: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: assistantMessage},
+        }
+
+        const part: ReasoningPart = {
+            id: 'part-r1',
+            sessionID: 'sess-1',
+            messageID: 'msg-1',
+            type: 'reasoning',
+            text: 'Some private reasoning',
+            time: {start: Date.now(), end: Date.now()},
+        }
+        const event: EventMessagePartUpdated = {
+            type: 'message.part.updated',
+            properties: {part},
+        }
+
+        agent.streamEvents = [updatedEvent, event]
+        const code = await agent.run(ctx, {appendPrompt: null})
+        expect(code).toBe(0)
+
+        const thinkingItems = ctx.events.filter(
+            (e) => e.type === 'conversation' && (e as {item?: {type?: string}}).item?.type === 'thinking',
+        )
+        expect(thinkingItems.length).toBe(1)
+        const text = (thinkingItems[0] as {item?: {text?: string}}).item?.text
+        expect(text).toContain('Some private reasoning')
     })
 
     it('maps todo.updated events into AttemptTodoSummary', async () => {

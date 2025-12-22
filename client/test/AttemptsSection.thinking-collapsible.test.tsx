@@ -7,7 +7,7 @@ import {AttemptsSection} from "@/components/kanban/card-inspector/sections/Attem
 describe("AttemptsSection – thinking blocks", () => {
     afterEach(() => cleanup());
 
-    it("renders thinking blocks collapsed by default and toggles expanded", () => {
+    it("renders thinking blocks collapsed by default and relies on native <details> toggling", () => {
         const attempt: Attempt = {
             id: "att-1",
             cardId: "card-1",
@@ -58,15 +58,16 @@ describe("AttemptsSection – thinking blocks", () => {
 
         const details = document.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
         const summary = document.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
+        const content = document.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
+
         expect(details).not.toBeNull();
         expect(summary).not.toBeNull();
+        expect(content).not.toBeNull();
         expect(details?.open).toBe(false);
-
-        expect(document.querySelector('[data-slot="thinking-preview"]')).toBeNull();
-        expect(document.querySelector('[data-slot="thinking-content"]')).not.toBeNull();
 
         details!.open = true;
         fireEvent(details!, new Event("toggle"));
-        expect(summary?.getAttribute("aria-expanded")).toBe("true");
+        expect(details!.open).toBe(true);
+        expect(document.querySelector('[data-slot="thinking-content"]')).toBe(content);
     });
 });

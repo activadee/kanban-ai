@@ -14,10 +14,20 @@ type MessageState = {
     parts: Map<string, string>;
 };
 
+type ReasoningState = {
+    completed: boolean;
+    text: string;
+};
+
 export class OpencodeGrouper {
     private readonly messageStates = new Map<string, MessageState>();
     private readonly messageOrder: string[] = [];
     private readonly emittedMessages = new Set<string>();
+
+    private readonly reasoningStates = new Map<string, ReasoningState>();
+    private readonly reasoningOrder: string[] = [];
+    private readonly emittedReasoning = new Set<string>();
+
     private emittedSessionId = false;
 
     constructor(private readonly worktreePath: string) {
@@ -53,6 +63,39 @@ export class OpencodeGrouper {
         state.parts.set(partId, text);
     }
 
+    recordReasoningPart(
+        sessionId: string,
+        messageId: string,
+        partId: string,
+        text: string,
+        completed: boolean,
+    ) {
+        const key = this.reasoningKey(sessionId, messageId, partId);
+        let state = this.reasoningStates.get(key);
+        if (!state) {
+            state = {completed: false, text: ""};
+            this.reasoningStates.set(key, state);
+            this.reasoningOrder.push(key);
+        }
+        state.text = text;
+        if (completed) state.completed = true;
+    }
+
+    emitThinkingIfCompleted(
+        ctx: AgentContext,
+        sessionId: string,
+        messageId: string,
+        partId: string,
+    ) {
+        const key = this.reasoningKey(sessionId, messageId, partId);
+        if (this.emittedReasoning.has(key)) return;
+
+        const state = this.reasoningStates.get(key);
+        if (!state || !state.completed) return;
+
+        this.emitThinking(ctx, key, state.text);
+    }
+
     handleToolEvent(ctx: AgentContext, payload: ShareToolContent) {
         const status = payload.state?.status;
         if (!status || (status !== "completed" && status !== "error")) return;
@@ -61,6 +104,12 @@ export class OpencodeGrouper {
     }
 
     flush(ctx: AgentContext) {
+        for (const reasoningKey of this.reasoningOrder) {
+            const state = this.reasoningStates.get(reasoningKey);
+            if (!state) continue;
+            this.emitThinking(ctx, reasoningKey, state.text);
+        }
+
         for (const messageKey of this.messageOrder) {
             if (this.emittedMessages.has(messageKey)) continue;
             const state = this.messageStates.get(messageKey);
@@ -98,8 +147,29 @@ export class OpencodeGrouper {
         return state;
     }
 
+    private reasoningKey(sessionId: string, messageId: string, partId: string) {
+        return `${sessionId}:${messageId}:${partId}`;
+    }
+
     private messageKey(sessionId: string, messageId: string) {
         return `${sessionId}:${messageId}`;
+    }
+
+    private emitThinking(ctx: AgentContext, key: string, text: string) {
+        if (this.emittedReasoning.has(key)) return;
+
+        const cleaned = text.trim();
+        if (!cleaned.length) return;
+        if (cleaned.includes("[REDACTED]")) return;
+
+        const item: ConversationItem = {
+            type: "thinking",
+            timestamp: nowIso(),
+            text: cleaned,
+            format: "markdown",
+        };
+        ctx.emit({type: "conversation", item});
+        this.emittedReasoning.add(key);
     }
 
     private buildToolConversationItem(payload: ShareToolContent): ConversationItem | null {
