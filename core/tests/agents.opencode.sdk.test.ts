@@ -489,7 +489,6 @@ describe('OpencodeAgent streaming behavior', () => {
         }
 
         upstream.push(partEvent)
-        await new Promise((r) => setTimeout(r, 0))
 
         const assistantMessagesBeforeRole = ctx.events.filter(
             (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',

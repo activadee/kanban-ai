@@ -120,7 +120,8 @@ export class OpencodeGrouper {
 
     flush(ctx: AgentContext) {
         for (const state of this.messages.values()) {
-            if (state.role !== 'assistant') continue
+            const role = state.role ?? 'assistant'
+            if (role !== 'assistant') continue
             for (const partId of state.order) {
                 if (state.emittedPartIds.has(partId)) continue
                 const text = state.parts.get(partId) ?? ''
