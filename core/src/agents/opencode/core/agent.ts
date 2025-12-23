@@ -53,7 +53,16 @@ class AsyncQueue<T> implements AsyncIterable<T> {
         reject: (err: unknown) => void
     }> = []
     private closed = false
+    private ended = false
     private error: unknown | null = null
+
+    constructor(private readonly onEnd?: () => void) {}
+
+    private notifyEnd() {
+        if (this.ended) return
+        this.ended = true
+        this.onEnd?.()
+    }
 
     push(value: T) {
         if (this.closed) return
@@ -73,6 +82,7 @@ class AsyncQueue<T> implements AsyncIterable<T> {
             const pending = this.resolvers.shift()
             if (pending) pending.reject(err)
         }
+        this.notifyEnd()
     }
 
     close() {
@@ -82,6 +92,7 @@ class AsyncQueue<T> implements AsyncIterable<T> {
             const pending = this.resolvers.shift()
             if (pending) pending.resolve({value: undefined as unknown as T, done: true})
         }
+        this.notifyEnd()
     }
 
     [Symbol.asyncIterator](): AsyncIterator<T> {
@@ -233,18 +244,23 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         signal: AbortSignal,
         sessionId?: string,
     ): Promise<AsyncQueue<SessionEvent>> {
+        const eventController = new AbortController()
+        const onAbort = () => eventController.abort()
+        if (signal.aborted) onAbort()
+        else signal.addEventListener('abort', onAbort, {once: true})
+
+        const queue = new AsyncQueue<SessionEvent>(() => eventController.abort())
         const events = await client.event.subscribe({
             query: {directory: installation.directory},
-            signal,
+            signal: eventController.signal,
         })
-        const queue = new AsyncQueue<SessionEvent>()
 
         const pump = (async () => {
             try {
                 for await (const raw of events.stream) {
                     const ev = raw as SessionEvent
                     const evSessionId = this.extractSessionId(ev)
-                    if (sessionId && evSessionId !== sessionId) continue
+                    if (sessionId && evSessionId && evSessionId !== sessionId) continue
 
                     queue.push(ev)
                     if (ev.type === 'session.idle' && (!sessionId || evSessionId === sessionId)) {
@@ -252,7 +268,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     }
                 }
             } catch (err) {
-                if (!signal.aborted) {
+                if (!signal.aborted && !eventController.signal.aborted) {
                     ctx.emit({
                         type: 'log',
                         level: 'warn',
@@ -457,12 +473,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const grouper = this.getGrouper(ctx)
         grouper.ensureSession(message.sessionID, ctx)
         grouper.recordMessageRole(message.sessionID, message.id, message.role)
-
-        const completed =
-            typeof (message as {time?: {completed?: unknown}}).time?.completed === 'number' ||
-            typeof (message as {finish?: unknown}).finish === 'string'
-        grouper.recordMessageCompleted(message.sessionID, message.id, completed)
-        grouper.emitMessageIfCompleted(ctx, message.sessionID, message.id)
+        grouper.emitMessagePartsIfReady(ctx, message.sessionID, message.id)
     }
 
     private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
@@ -476,8 +487,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 ctx,
                 `text part ${textPart.sessionID}/${textPart.messageID}/${textPart.id}: ${textPart.text.slice(0, 120)}`,
             )
-            grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text)
-            grouper.emitMessageIfCompleted(ctx, textPart.sessionID, textPart.messageID)
+            const completed = typeof textPart.time?.end === 'number'
+            grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text, completed)
+            grouper.emitMessagePartsIfReady(ctx, textPart.sessionID, textPart.messageID)
             return
         }
 
@@ -581,7 +593,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const targetSessionId = ctx.sessionId
         const eventSessionId = this.extractSessionId(ev)
-        if (targetSessionId && eventSessionId !== targetSessionId) return
+        if (targetSessionId && eventSessionId && targetSessionId !== eventSessionId) return
 
         this.debug(profile, ctx, `event ${ev.type}${eventSessionId ? ` session=${eventSessionId}` : ''}`)
 
