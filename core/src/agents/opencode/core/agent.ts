@@ -46,47 +46,6 @@ type ServerHandle = {
     close: () => void
 }
 
-class AsyncQueue<T> implements AsyncIterable<T> {
-    private readonly values: T[] = []
-    private readonly resolvers: Array<(result: IteratorResult<T>) => void> = []
-    private closed = false
-
-    push(value: T) {
-        if (this.closed) return
-        const resolver = this.resolvers.shift()
-        if (resolver) {
-            resolver({value, done: false})
-        } else {
-            this.values.push(value)
-        }
-    }
-
-    close() {
-        if (this.closed) return
-        this.closed = true
-        while (this.resolvers.length) {
-            const resolve = this.resolvers.shift()
-            if (resolve) resolve({value: undefined as unknown as T, done: true})
-        }
-    }
-
-    [Symbol.asyncIterator](): AsyncIterator<T> {
-        return {
-            next: () => {
-                if (this.values.length) {
-                    const value = this.values.shift() as T
-                    return Promise.resolve({value, done: false})
-                }
-                if (this.closed) {
-                    return Promise.resolve({value: undefined as unknown as T, done: true})
-                }
-                return new Promise<IteratorResult<T>>((resolve) => {
-                    this.resolvers.push(resolve)
-                })
-            },
-        }
-    }
-}
 
 export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation> {
     key = 'OPENCODE' as const
@@ -211,42 +170,139 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
     }
 
-    private async openEventStream(
-        client: OpencodeClient,
+    private async createSessionStream(
+        opencode: OpencodeClient,
         installation: OpencodeInstallation,
+        profile: OpencodeProfile,
         ctx: AgentContext,
         signal: AbortSignal,
-    ): Promise<AsyncQueue<SessionEvent>> {
-        const events = await client.event.subscribe({
-            query: {directory: installation.directory},
-            signal,
-        })
-        const queue = new AsyncQueue<SessionEvent>()
+        sessionId: string,
+        prompt: string,
+    ): Promise<AsyncIterable<SessionEvent>> {
+        const controller = new AbortController()
+        const onAbort = () => controller.abort()
+        if (signal.aborted) onAbort()
+        else signal.addEventListener('abort', onAbort, {once: true})
 
-        const pump = (async () => {
+        const events = await opencode.event.subscribe({
+            query: {directory: installation.directory},
+            signal: controller.signal,
+        })
+
+        const system = this.buildSystemPrompt(profile)
+        const model = this.buildModelConfig(profile)
+        const trimmedPrompt = prompt.trim()
+        const parts = trimmedPrompt
+            ? [
+                  {
+                      type: 'text' as const,
+                      text: trimmedPrompt,
+                  },
+              ]
+            : []
+
+        const grouper = this.getGrouper(ctx)
+        const debug = (message: string) => this.debug(profile, ctx, message)
+        const POST_PROMPT_IDLE_TIMEOUT_MS = 60_000
+
+        let promptDone = false
+        let promptError: unknown | null = null
+        let idleSeen = false
+        let sawTargetSession = false
+        let timedOut = false
+
+        let postPromptTimer: ReturnType<typeof setTimeout> | null = null
+        const resetPostPromptTimer = () => {
+            if (postPromptTimer) clearTimeout(postPromptTimer)
+            postPromptTimer = setTimeout(() => {
+                timedOut = true
+                controller.abort()
+            }, POST_PROMPT_IDLE_TIMEOUT_MS)
+        }
+
+        const promptPromise = opencode.session.prompt({
+            path: {id: sessionId},
+            query: {directory: installation.directory},
+            body: {
+                agent: profile.agent,
+                model,
+                system,
+                tools: undefined,
+                parts,
+            },
+            signal: controller.signal,
+            responseStyle: 'data',
+            throwOnError: true,
+        })
+
+        void promptPromise
+            .then(() => {
+                promptDone = true
+                if (!idleSeen) resetPostPromptTimer()
+            })
+            .catch((err) => {
+                promptDone = true
+                const aborted =
+                    signal.aborted ||
+                    controller.signal.aborted ||
+                    (err as {name?: unknown} | null)?.name === 'AbortError'
+                if (aborted) return
+                promptError = err
+                controller.abort()
+            })
+
+        const extractSessionId = (event: SessionEvent) => this.extractSessionId(event)
+
+        async function* stream() {
             try {
                 for await (const raw of events.stream) {
                     const ev = raw as SessionEvent
-                    queue.push(ev)
+                    const evSessionId = extractSessionId(ev)
+
                     if (ev.type === 'session.idle') {
-                        break
+                        if (evSessionId === sessionId || (!evSessionId && sawTargetSession && promptDone)) {
+                            idleSeen = true
+                            yield ev
+                            break
+                        }
+                        debug(`dropping session.idle${evSessionId ? ` session=${evSessionId}` : ''}`)
+                        continue
                     }
+
+                    if (!evSessionId) {
+                        debug(`dropping event ${ev.type} (missing session id)`)
+                        continue
+                    }
+                    if (evSessionId !== sessionId) continue
+
+                    sawTargetSession = true
+                    yield ev
+                    if (promptDone && !idleSeen) resetPostPromptTimer()
                 }
             } catch (err) {
-                if (!signal.aborted) {
-                    ctx.emit({
-                        type: 'log',
-                        level: 'warn',
-                        message: `[opencode] event stream error: ${String(err)}`,
-                    })
-                }
+                const aborted =
+                    signal.aborted ||
+                    controller.signal.aborted ||
+                    (err as {name?: unknown} | null)?.name === 'AbortError'
+                if (!aborted) throw err
             } finally {
-                queue.close()
+                if (postPromptTimer) clearTimeout(postPromptTimer)
+                signal.removeEventListener('abort', onAbort)
+                controller.abort()
+                grouper.flush(ctx)
             }
-        })()
-        void pump
 
-        return queue
+            await Promise.resolve()
+
+            if (signal.aborted) throw new Error('aborted')
+            if (timedOut) throw new Error('[opencode] timed out waiting for session.idle')
+            if (promptError) throw promptError
+            if (!idleSeen && !promptDone) {
+                throw new Error('[opencode] event stream ended before completion')
+            }
+        }
+
+        return stream()
     }
 
     protected async startSession(
@@ -258,7 +314,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<SdkSession> {
         const opencode = client as OpencodeClient
-        const stream = await this.openEventStream(opencode, installation, ctx, signal)
 
         const session = (await opencode.session.create({
             query: {directory: installation.directory},
@@ -275,32 +330,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             message: `[opencode] created session ${session.id}`,
         })
 
-        const system = this.buildSystemPrompt(profile)
-        const model = this.buildModelConfig(profile)
-        const parts = prompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: prompt,
-                  },
-              ]
-            : []
-
-        await opencode.session.prompt({
-            path: {id: session.id},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
-
+        const stream = await this.createSessionStream(opencode, installation, profile, ctx, signal, session.id, prompt)
         return {stream, sessionId: session.id}
     }
 
@@ -314,35 +344,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<SdkSession> {
         const opencode = client as OpencodeClient
-        const stream = await this.openEventStream(opencode, installation, ctx, signal)
-
-        const system = this.buildSystemPrompt(profile)
-        const model = this.buildModelConfig(profile)
-        const trimmedPrompt = prompt.trim()
-        const parts = trimmedPrompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: trimmedPrompt,
-                  },
-              ]
-            : []
-
-        await opencode.session.prompt({
-            path: {id: sessionId},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
-
+        const stream = await this.createSessionStream(opencode, installation, profile, ctx, signal, sessionId, prompt)
         return {stream, sessionId}
     }
 
@@ -367,15 +369,18 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     private extractSessionId(event: SessionEvent): string | undefined {
         const properties = (event as {properties?: unknown}).properties
         if (!properties || typeof properties !== 'object') return undefined
-        const props = properties as {sessionID?: unknown; info?: unknown; part?: unknown}
+        const props = properties as {sessionID?: unknown; sessionId?: unknown; info?: unknown; part?: unknown}
 
-        if (typeof props.sessionID === 'string') return props.sessionID
+        const direct = props.sessionID ?? props.sessionId
+        if (typeof direct === 'string') return direct
 
-        const info = props.info as {sessionID?: unknown} | undefined
-        if (info && typeof info.sessionID === 'string') return info.sessionID
+        const info = props.info as {sessionID?: unknown; sessionId?: unknown} | undefined
+        const infoId = info?.sessionID ?? info?.sessionId
+        if (typeof infoId === 'string') return infoId
 
-        const part = props.part as {sessionID?: unknown} | undefined
-        if (part && typeof part.sessionID === 'string') return part.sessionID
+        const part = props.part as {sessionID?: unknown; sessionId?: unknown} | undefined
+        const partId = part?.sessionID ?? part?.sessionId
+        if (typeof partId === 'string') return partId
 
         return undefined
     }
@@ -415,7 +420,12 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const message = event.properties.info
         const grouper = this.getGrouper(ctx)
         grouper.ensureSession(message.sessionID, ctx)
-        grouper.recordMessageRole(message.sessionID, message.id, message.role)
+        grouper.recordMessageRole(message.sessionID, message.id, message.role, ctx)
+
+        const completed =
+            typeof (message as {time?: {completed?: unknown}}).time?.completed === 'number' ||
+            typeof (message as {finish?: unknown}).finish === 'string'
+        grouper.recordMessageCompleted(message.sessionID, message.id, completed, ctx)
     }
 
     private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
@@ -429,7 +439,8 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 ctx,
                 `text part ${textPart.sessionID}/${textPart.messageID}/${textPart.id}: ${textPart.text.slice(0, 120)}`,
             )
-            grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text)
+            const completed = typeof textPart.time?.end === 'number'
+            grouper.recordTextPart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text, completed, ctx)
             return
         }
 
@@ -447,12 +458,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 reasoningPart.id,
                 reasoningPart.text,
                 completed,
-            )
-            grouper.emitThinkingIfCompleted(
                 ctx,
-                reasoningPart.sessionID,
-                reasoningPart.messageID,
-                reasoningPart.id,
             )
             return
         }
@@ -525,6 +531,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 text: message,
             },
         })
+        throw new Error(message)
     }
 
     protected handleEvent(event: unknown, ctx: AgentContext, profile: OpencodeProfile): void {
@@ -533,7 +540,16 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const targetSessionId = ctx.sessionId
         const eventSessionId = this.extractSessionId(ev)
-        if (targetSessionId && eventSessionId && targetSessionId !== eventSessionId) return
+        if (targetSessionId) {
+            if (!eventSessionId) {
+                this.debug(profile, ctx, `dropping event ${ev.type} (missing session id)`)
+                return
+            }
+            if (targetSessionId !== eventSessionId) {
+                this.debug(profile, ctx, `dropping event ${ev.type} session=${eventSessionId} (expected ${targetSessionId})`)
+                return
+            }
+        }
 
         this.debug(profile, ctx, `event ${ev.type}${eventSessionId ? ` session=${eventSessionId}` : ''}`)
 
@@ -845,15 +861,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         try {
             return await super.run(ctx, profile)
         } finally {
-            const grouper = this.groupers.get(ctx.attemptId)
-            if (grouper) {
-                try {
-                    grouper.flush(ctx)
-                } catch {
-                    // ignore
-                }
-                this.groupers.delete(ctx.attemptId)
-            }
+            this.groupers.delete(ctx.attemptId)
         }
     }
 
@@ -884,15 +892,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         try {
             return await super.resume(ctx, profile)
         } finally {
-            const grouper = this.groupers.get(ctx.attemptId)
-            if (grouper) {
-                try {
-                    grouper.flush(ctx)
-                } catch {
-                    // ignore
-                }
-                this.groupers.delete(ctx.attemptId)
-            }
+            this.groupers.delete(ctx.attemptId)
         }
     }
 }
