@@ -14,9 +14,9 @@
         "baseline-browser-mapping": "^2.8.32",
         "bun-types": "latest",
         "conventional-changelog-conventionalcommits": "^9.1.0",
-        "semantic-release": "^25.0.2",
         "jsdom": "^27.2.0",
-        "turbo": "^2.6.1",
+        "semantic-release": "^25.0.2",
+        "turbo": "^2.7.1",
         "vitest": "^4.0.14"
     },
     "peerDependencies": {
