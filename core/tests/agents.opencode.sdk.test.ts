@@ -204,11 +204,12 @@ describe('OpencodeAgent event mapping', () => {
         const ctx = baseCtx()
         ctx.sessionId = 'sess-1'
 
+        const createdAt = Date.now()
         const assistantMessage: AssistantMessage = {
             id: 'msg-1',
             sessionID: 'sess-1',
             role: 'assistant',
-            time: {created: Date.now()},
+            time: {created: createdAt},
             parentID: 'user-1',
             modelID: 'model',
             providerID: 'provider',
@@ -226,6 +227,10 @@ describe('OpencodeAgent event mapping', () => {
             type: 'message.updated',
             properties: {info: assistantMessage},
         }
+        const updatedEventCompleted: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: {...assistantMessage, time: {created: createdAt, completed: createdAt + 1}}},
+        }
 
         const part: TextPart = {
             id: 'part-1',
@@ -240,7 +245,7 @@ describe('OpencodeAgent event mapping', () => {
             properties: {part},
         }
 
-        agent.streamEvents = [updatedEvent, event]
+        agent.streamEvents = [updatedEvent, event, updatedEventCompleted]
         const code = await agent.run(ctx, {appendPrompt: null})
         expect(code).toBe(0)
 
@@ -376,15 +381,24 @@ describe('OpencodeAgent streaming behavior', () => {
 
         const agent = new StreamingTestAgent()
         const ctx = baseCtx()
+        const assistantEmitted = defer<void>()
+        const originalEmit = ctx.emit
+        ctx.emit = (evt) => {
+            originalEmit(evt)
+            if (evt.type !== 'conversation') return
+            const role = (evt as {item?: {role?: string}}).item?.role
+            if (role === 'assistant') assistantEmitted.resolve(undefined)
+        }
 
         const runPromise = agent.run(ctx, {appendPrompt: null})
         await promptCalled.promise
 
+        const createdAt = Date.now()
         const assistantMessage: AssistantMessage = {
             id: 'msg-1',
             sessionID: 'sess-opencode',
             role: 'assistant',
-            time: {created: Date.now()},
+            time: {created: createdAt},
             parentID: 'user-1',
             modelID: 'model',
             providerID: 'provider',
@@ -403,6 +417,10 @@ describe('OpencodeAgent streaming behavior', () => {
             type: 'message.updated',
             properties: {info: assistantMessage},
         }
+        const updatedEventCompleted: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: {...assistantMessage, time: {created: createdAt, completed: createdAt + 1}}},
+        }
 
         const part: TextPart = {
             id: 'part-1',
@@ -420,9 +438,9 @@ describe('OpencodeAgent streaming behavior', () => {
 
         upstream.push(updatedEvent)
         upstream.push(partEvent)
+        upstream.push(updatedEventCompleted)
 
-        await new Promise((r) => setTimeout(r, 0))
-        await new Promise((r) => setTimeout(r, 0))
+        await assistantEmitted.promise
 
         const assistantMessages = ctx.events.filter(
             (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',

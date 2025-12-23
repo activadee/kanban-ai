@@ -55,7 +55,6 @@ export class OpencodeGrouper {
         messageId: string,
         partId: string,
         text: string,
-        completed?: boolean,
     ) {
         const key = this.messageKey(sessionId, messageId);
         const state = this.getMessageState(key);
@@ -63,7 +62,17 @@ export class OpencodeGrouper {
             state.order.push(partId);
         }
         state.parts.set(partId, text);
-        if (completed) state.completed = true;
+    }
+
+    recordMessageCompleted(
+        sessionId: string,
+        messageId: string,
+        completed: boolean,
+    ) {
+        if (!completed) return;
+        const key = this.messageKey(sessionId, messageId);
+        const state = this.getMessageState(key);
+        state.completed = true;
     }
 
     recordReasoningPart(
