@@ -1,5 +1,14 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getLatestRelease, getReleaseByVersion } from "./github";
+import {
+    getLatestRelease,
+    getReleaseByVersion,
+    GithubRateLimitError,
+    resolveLatestReleaseAssetViaRedirect,
+    resolveReleaseAssetViaRedirect,
+} from "./github";
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
@@ -96,6 +105,237 @@ describe("GitHub helpers", () => {
 
         await expect(getLatestRelease("owner/repo")).rejects.toThrow(
             /GitHub API request failed: 404 Not Found/,
+        );
+    });
+
+    it("caches latest release responses on disk with TTL", async () => {
+        const tmpDir = await fs.promises.mkdtemp(
+            path.join(os.tmpdir(), "kanban-ai-cli-github-"),
+        );
+
+        try {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                headers: {
+                    get: (name: string) =>
+                        name.toLowerCase() === "etag" ? "\"etag\"" : null,
+                },
+                json: async () => ({
+                    tag_name: "v1.2.3",
+                    assets: [],
+                }),
+                text: async () => "",
+            } as any);
+
+            globalThis.fetch = fetchMock as any;
+
+            const first = await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 60_000, now: 1_000 },
+            });
+            const second = await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 60_000, now: 2_000 },
+            });
+
+            expect(first.version).toBe("1.2.3");
+            expect(second.version).toBe("1.2.3");
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+        } finally {
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    it("uses If-None-Match and reuses cached body on 304", async () => {
+        const tmpDir = await fs.promises.mkdtemp(
+            path.join(os.tmpdir(), "kanban-ai-cli-github-"),
+        );
+
+        try {
+            const fetchMock = vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    headers: {
+                        get: (name: string) =>
+                            name.toLowerCase() === "etag" ? "\"etag\"" : null,
+                    },
+                    json: async () => ({
+                        tag_name: "v1.2.3",
+                        assets: [],
+                    }),
+                    text: async () => "",
+                } as any)
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 304,
+                    statusText: "Not Modified",
+                    headers: {
+                        get: (name: string) =>
+                            name.toLowerCase() === "etag" ? "\"etag\"" : null,
+                    },
+                    json: async () => ({}),
+                    text: async () => "",
+                } as any);
+
+            globalThis.fetch = fetchMock as any;
+
+            await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 1, now: 0 },
+            });
+
+            const second = await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 1, now: 10 },
+            });
+
+            expect(second.version).toBe("1.2.3");
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+
+            const [, options] = fetchMock.mock.calls[1];
+            expect(options.headers["If-None-Match"]).toBe("\"etag\"");
+        } finally {
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    it("returns cached data with a warning when rate-limited", async () => {
+        const tmpDir = await fs.promises.mkdtemp(
+            path.join(os.tmpdir(), "kanban-ai-cli-github-"),
+        );
+
+        try {
+            const fetchMock = vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    status: 200,
+                    statusText: "OK",
+                    headers: {
+                        get: (name: string) =>
+                            name.toLowerCase() === "etag" ? "\"etag\"" : null,
+                    },
+                    json: async () => ({
+                        tag_name: "v1.2.3",
+                        assets: [],
+                    }),
+                    text: async () => "",
+                } as any)
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 403,
+                    statusText: "Forbidden",
+                    headers: {
+                        get: (name: string) => {
+                            const key = name.toLowerCase();
+                            if (key === "x-ratelimit-remaining") return "0";
+                            if (key === "x-ratelimit-reset") return "9999999999";
+                            return null;
+                        },
+                    },
+                    json: async () => ({}),
+                    text: async () => "API rate limit exceeded",
+                } as any);
+
+            globalThis.fetch = fetchMock as any;
+
+            await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 1, now: 0 },
+            });
+
+            const second = await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 1, now: 10 },
+            });
+
+            expect(second.version).toBe("1.2.3");
+            expect(second.meta?.source).toBe("stale-cache");
+            expect(second.meta?.warning).toMatch(/GITHUB_TOKEN|GH_TOKEN/);
+        } finally {
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    it("throws GithubRateLimitError when rate-limited without cache", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: false,
+            status: 403,
+            statusText: "Forbidden",
+            headers: {
+                get: (name: string) => {
+                    const key = name.toLowerCase();
+                    if (key === "x-ratelimit-remaining") return "0";
+                    if (key === "x-ratelimit-reset") return "9999999999";
+                    return null;
+                },
+            },
+            json: async () => ({}),
+            text: async () => "API rate limit exceeded",
+        } as any);
+
+        globalThis.fetch = fetchMock as any;
+
+        await expect(getLatestRelease("owner/repo")).rejects.toBeInstanceOf(
+            GithubRateLimitError,
+        );
+    });
+
+    it("resolves latest release asset URL via redirect", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                status: 404,
+                headers: { get: () => null },
+            } as any)
+            .mockResolvedValueOnce({
+                status: 302,
+                headers: {
+                    get: (name: string) =>
+                        name.toLowerCase() === "location"
+                            ? "https://github.com/owner/repo/releases/download/v9.9.9/asset"
+                            : null,
+                },
+            } as any);
+
+        globalThis.fetch = fetchMock as any;
+
+        const resolved = await resolveLatestReleaseAssetViaRedirect(
+            "owner/repo",
+            ["missing", "asset"],
+        );
+
+        expect(resolved.tag).toBe("v9.9.9");
+        expect(resolved.version).toBe("9.9.9");
+        expect(resolved.assetName).toBe("asset");
+        expect(resolved.url).toBe(
+            "https://github.com/owner/repo/releases/download/v9.9.9/asset",
+        );
+    });
+
+    it("resolves a tagged release asset URL via redirect", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                status: 404,
+                headers: { get: () => null },
+            } as any)
+            .mockResolvedValueOnce({
+                status: 302,
+                headers: { get: () => null },
+            } as any);
+
+        globalThis.fetch = fetchMock as any;
+
+        const resolved = await resolveReleaseAssetViaRedirect("owner/repo", "1.2.3", [
+            "missing",
+            "asset",
+        ]);
+
+        expect(resolved.tag).toBe("v1.2.3");
+        expect(resolved.version).toBe("1.2.3");
+        expect(resolved.assetName).toBe("asset");
+        expect(resolved.url).toBe(
+            "https://github.com/owner/repo/releases/download/v1.2.3/asset",
         );
     });
 });
