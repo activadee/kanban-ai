@@ -405,6 +405,108 @@ describe('OpencodeAgent event mapping', () => {
 })
 
 describe('OpencodeAgent streaming behavior', () => {
+    it('does not emit assistant text before role is known', async () => {
+        const promptCalled = defer<void>()
+        const promptHold = defer<unknown>()
+        const upstream = createPushableAsyncIterable<unknown>()
+
+        const client = {
+            event: {
+                subscribe: async () => ({stream: upstream}),
+            },
+            session: {
+                create: async () => ({id: 'sess-opencode'}),
+                prompt: async () => {
+                    promptCalled.resolve(undefined)
+                    return promptHold.promise as any
+                },
+            },
+        } as unknown as OpencodeClient
+
+        class StreamingTestAgent extends OpencodeImpl {
+            protected override async detectInstallation(_profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
+                return {mode: 'remote', directory: ctx.worktreePath, baseUrl: 'http://example', apiKey: 'test-key'}
+            }
+
+            protected override async createClient(
+                _profile: OpencodeProfile,
+                _ctx: AgentContext,
+                _installation: OpencodeInstallation,
+            ): Promise<OpencodeClient> {
+                return client
+            }
+        }
+
+        const agent = new StreamingTestAgent()
+        const ctx = baseCtx()
+        const assistantEmitted = defer<void>()
+        const originalEmit = ctx.emit
+        ctx.emit = (evt) => {
+            originalEmit(evt)
+            if (evt.type !== 'conversation') return
+            const role = (evt as {item?: {role?: string}}).item?.role
+            if (role === 'assistant') assistantEmitted.resolve(undefined)
+        }
+
+        const runPromise = agent.run(ctx, {appendPrompt: null})
+        await promptCalled.promise
+
+        const createdAt = Date.now()
+        const assistantMessage: AssistantMessage = {
+            id: 'msg-1',
+            sessionID: 'sess-opencode',
+            role: 'assistant',
+            time: {created: createdAt},
+            parentID: 'user-1',
+            modelID: 'model',
+            providerID: 'provider',
+            mode: 'default',
+            path: {cwd: ctx.worktreePath, root: ctx.worktreePath},
+            cost: 0,
+            tokens: {
+                input: 0,
+                output: 0,
+                reasoning: 0,
+                cache: {read: 0, write: 0},
+            },
+        }
+        const updatedEvent: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: assistantMessage},
+        }
+
+        const part: TextPart = {
+            id: 'part-1',
+            sessionID: 'sess-opencode',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Hello from OpenCode',
+            time: {start: Date.now(), end: Date.now()},
+        }
+        const partEvent: EventMessagePartUpdated = {
+            type: 'message.part.updated',
+            properties: {part},
+        }
+
+        upstream.push(partEvent)
+        await new Promise((r) => setTimeout(r, 0))
+
+        const assistantMessagesBeforeRole = ctx.events.filter(
+            (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',
+        )
+        expect(assistantMessagesBeforeRole.length).toBe(0)
+
+        upstream.push(updatedEvent)
+        await assistantEmitted.promise
+
+        upstream.push({type: 'session.idle', properties: {sessionID: 'sess-opencode'}})
+        upstream.close()
+        promptHold.resolve({})
+
+        const code = await runPromise
+        expect(code).toBe(0)
+    })
+
     it('emits completed assistant messages before the prompt resolves', async () => {
         const promptCalled = defer<void>()
         const promptHold = defer<unknown>()

@@ -186,7 +186,7 @@ export class OpencodeGrouper {
         let state = this.messages.get(messageKey)
         if (!state) {
             state = {
-                role: 'assistant',
+                role: undefined,
                 order: [],
                 parts: new Map(),
                 completedPartIds: new Set(),
