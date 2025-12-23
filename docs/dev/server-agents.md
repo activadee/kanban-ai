@@ -17,6 +17,9 @@
 3. **Runners**
     - Agents implement `Agent.run` / `resume` (Codex now via the Codex SDK and `SdkAgent`).
     - The attempts service calls into the agent and forwards streamed events via `emit`, which becomes attempt events.
+    - OpenCode's runner orchestrates streaming via `core/src/agents/opencode/core/agent.ts`:
+        - `createSessionStream` ties the prompt to `opencode.event.subscribe`, filters every incoming event by `sessionID`/`sessionId`, watches for the `session.idle` signal, and fails the Attempt if the stream errors unexpectedly instead of silently logging.
+        - `OpencodeGrouper` now emits each assistant text part as soon as it reports `time.end`, surfaces reasoning parts as `thinking` conversation items immediately when they complete, and publishes tool invocations only once when their status reaches `completed` or `error`, so the UI sees partial results even while the prompt is still running.
 
 ## Key Entry Points
 
