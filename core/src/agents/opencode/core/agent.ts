@@ -48,16 +48,30 @@ type ServerHandle = {
 
 class AsyncQueue<T> implements AsyncIterable<T> {
     private readonly values: T[] = []
-    private readonly resolvers: Array<(result: IteratorResult<T>) => void> = []
+    private readonly resolvers: Array<{
+        resolve: (result: IteratorResult<T>) => void
+        reject: (err: unknown) => void
+    }> = []
     private closed = false
+    private error: unknown | null = null
 
     push(value: T) {
         if (this.closed) return
         const resolver = this.resolvers.shift()
         if (resolver) {
-            resolver({value, done: false})
+            resolver.resolve({value, done: false})
         } else {
             this.values.push(value)
+        }
+    }
+
+    fail(err: unknown) {
+        if (this.closed) return
+        this.error = err
+        this.closed = true
+        while (this.resolvers.length) {
+            const pending = this.resolvers.shift()
+            if (pending) pending.reject(err)
         }
     }
 
@@ -65,14 +79,15 @@ class AsyncQueue<T> implements AsyncIterable<T> {
         if (this.closed) return
         this.closed = true
         while (this.resolvers.length) {
-            const resolve = this.resolvers.shift()
-            if (resolve) resolve({value: undefined as unknown as T, done: true})
+            const pending = this.resolvers.shift()
+            if (pending) pending.resolve({value: undefined as unknown as T, done: true})
         }
     }
 
     [Symbol.asyncIterator](): AsyncIterator<T> {
         return {
             next: () => {
+                if (this.error) return Promise.reject(this.error)
                 if (this.values.length) {
                     const value = this.values.shift() as T
                     return Promise.resolve({value, done: false})
@@ -80,8 +95,8 @@ class AsyncQueue<T> implements AsyncIterable<T> {
                 if (this.closed) {
                     return Promise.resolve({value: undefined as unknown as T, done: true})
                 }
-                return new Promise<IteratorResult<T>>((resolve) => {
-                    this.resolvers.push(resolve)
+                return new Promise<IteratorResult<T>>((resolve, reject) => {
+                    this.resolvers.push({resolve, reject})
                 })
             },
         }
@@ -216,6 +231,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
         ctx: AgentContext,
         signal: AbortSignal,
+        sessionId?: string,
     ): Promise<AsyncQueue<SessionEvent>> {
         const events = await client.event.subscribe({
             query: {directory: installation.directory},
@@ -227,8 +243,11 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             try {
                 for await (const raw of events.stream) {
                     const ev = raw as SessionEvent
+                    const evSessionId = this.extractSessionId(ev)
+                    if (sessionId && evSessionId && evSessionId !== sessionId) continue
+
                     queue.push(ev)
-                    if (ev.type === 'session.idle') {
+                    if (ev.type === 'session.idle' && (!sessionId || evSessionId === sessionId)) {
                         break
                     }
                 }
@@ -258,7 +277,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<SdkSession> {
         const opencode = client as OpencodeClient
-        const stream = await this.openEventStream(opencode, installation, ctx, signal)
 
         const session = (await opencode.session.create({
             query: {directory: installation.directory},
@@ -275,6 +293,8 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             message: `[opencode] created session ${session.id}`,
         })
 
+        const stream = await this.openEventStream(opencode, installation, ctx, signal, session.id)
+
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const parts = prompt
@@ -286,20 +306,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
               ]
             : []
 
-        await opencode.session.prompt({
-            path: {id: session.id},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        void opencode.session
+            .prompt({
+                path: {id: session.id},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })
+            .catch((err) => {
+                stream.fail(err)
+            })
 
         return {stream, sessionId: session.id}
     }
@@ -314,7 +338,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<SdkSession> {
         const opencode = client as OpencodeClient
-        const stream = await this.openEventStream(opencode, installation, ctx, signal)
+        const stream = await this.openEventStream(opencode, installation, ctx, signal, sessionId)
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
@@ -328,20 +352,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
               ]
             : []
 
-        await opencode.session.prompt({
-            path: {id: sessionId},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
+        void opencode.session
+            .prompt({
+                path: {id: sessionId},
+                query: {directory: installation.directory},
+                body: {
+                    agent: profile.agent,
+                    model,
+                    system,
+                    tools: undefined,
+                    parts,
+                },
+                signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })
+            .catch((err) => {
+                stream.fail(err)
+            })
 
         return {stream, sessionId}
     }
@@ -416,6 +444,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const grouper = this.getGrouper(ctx)
         grouper.ensureSession(message.sessionID, ctx)
         grouper.recordMessageRole(message.sessionID, message.id, message.role)
+        grouper.emitMessageIfCompleted(ctx, message.sessionID, message.id)
     }
 
     private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
@@ -424,12 +453,14 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         if (part.type === 'text') {
             const textPart = part as TextPart
+            const completed = typeof textPart.time?.end === 'number'
             this.debug(
                 profile,
                 ctx,
                 `text part ${textPart.sessionID}/${textPart.messageID}/${textPart.id}: ${textPart.text.slice(0, 120)}`,
             )
-            grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text)
+            grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text, completed)
+            if (completed) grouper.emitMessageIfCompleted(ctx, textPart.sessionID, textPart.messageID)
             return
         }
 

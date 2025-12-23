@@ -42,6 +42,73 @@ const baseCtx = (): AgentContext & {events: RecordedEvent[]} => {
     }
 }
 
+type Deferred<T> = {
+    promise: Promise<T>
+    resolve: (value: T) => void
+    reject: (reason?: unknown) => void
+}
+
+const defer = <T>(): Deferred<T> => {
+    let resolve!: (value: T) => void
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res
+        reject = rej
+    })
+    return {promise, resolve, reject}
+}
+
+type PushableAsyncIterable<T> = AsyncIterable<T> & {
+    push: (value: T) => void
+    close: () => void
+}
+
+const createPushableAsyncIterable = <T>(): PushableAsyncIterable<T> => {
+    const values: T[] = []
+    const resolvers: Array<(result: IteratorResult<T>) => void> = []
+    let closed = false
+
+    const push = (value: T) => {
+        if (closed) return
+        const resolve = resolvers.shift()
+        if (resolve) {
+            resolve({value, done: false})
+        } else {
+            values.push(value)
+        }
+    }
+
+    const close = () => {
+        if (closed) return
+        closed = true
+        while (resolvers.length) {
+            const resolve = resolvers.shift()
+            if (resolve) resolve({value: undefined as unknown as T, done: true})
+        }
+    }
+
+    return {
+        push,
+        close,
+        [Symbol.asyncIterator](): AsyncIterator<T> {
+            return {
+                next: () => {
+                    if (values.length) {
+                        const value = values.shift() as T
+                        return Promise.resolve({value, done: false})
+                    }
+                    if (closed) {
+                        return Promise.resolve({value: undefined as unknown as T, done: true})
+                    }
+                    return new Promise<IteratorResult<T>>((resolve) => {
+                        resolvers.push(resolve)
+                    })
+                },
+            }
+        },
+    }
+}
+
 class TestOpencodeAgent extends OpencodeImpl {
     lastPrompt: string | null = null
     streamEvents: Array<EventMessageUpdated | EventMessagePartUpdated | EventTodoUpdated> = []
@@ -166,6 +233,7 @@ describe('OpencodeAgent event mapping', () => {
             messageID: 'msg-1',
             type: 'text',
             text: 'Hello from OpenCode',
+            time: {start: Date.now(), end: Date.now()},
         }
         const event: EventMessagePartUpdated = {
             type: 'message.part.updated',
@@ -175,6 +243,16 @@ describe('OpencodeAgent event mapping', () => {
         agent.streamEvents = [updatedEvent, event]
         const code = await agent.run(ctx, {appendPrompt: null})
         expect(code).toBe(0)
+
+        const completedStatusIndex = ctx.events.findIndex(
+            (e) => e.type === 'status' && (e as {status?: string}).status === 'completed',
+        )
+        const assistantMessageIndex = ctx.events.findIndex(
+            (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',
+        )
+        expect(completedStatusIndex).toBeGreaterThan(-1)
+        expect(assistantMessageIndex).toBeGreaterThan(-1)
+        expect(assistantMessageIndex).toBeLessThan(completedStatusIndex)
 
         const assistantMessages = ctx.events.filter(
             (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',
@@ -260,5 +338,107 @@ describe('OpencodeAgent event mapping', () => {
         const payload = todoEvents[0] as {todos?: {total: number; completed: number}}
         expect(payload.todos?.total).toBe(2)
         expect(payload.todos?.completed).toBe(1)
+    })
+})
+
+describe('OpencodeAgent streaming behavior', () => {
+    it('emits completed assistant messages before the prompt resolves', async () => {
+        const promptCalled = defer<void>()
+        const promptHold = defer<unknown>()
+        const upstream = createPushableAsyncIterable<unknown>()
+
+        const client = {
+            event: {
+                subscribe: async () => ({stream: upstream}),
+            },
+            session: {
+                create: async () => ({id: 'sess-opencode'}),
+                prompt: async () => {
+                    promptCalled.resolve(undefined)
+                    return promptHold.promise as any
+                },
+            },
+        } as unknown as OpencodeClient
+
+        class StreamingTestAgent extends OpencodeImpl {
+            protected override async detectInstallation(_profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
+                return {mode: 'remote', directory: ctx.worktreePath, baseUrl: 'http://example', apiKey: 'test-key'}
+            }
+
+            protected override async createClient(
+                _profile: OpencodeProfile,
+                _ctx: AgentContext,
+                _installation: OpencodeInstallation,
+            ): Promise<OpencodeClient> {
+                return client
+            }
+        }
+
+        const agent = new StreamingTestAgent()
+        const ctx = baseCtx()
+
+        const runPromise = agent.run(ctx, {appendPrompt: null})
+        await promptCalled.promise
+
+        const assistantMessage: AssistantMessage = {
+            id: 'msg-1',
+            sessionID: 'sess-opencode',
+            role: 'assistant',
+            time: {created: Date.now()},
+            parentID: 'user-1',
+            modelID: 'model',
+            providerID: 'provider',
+            mode: 'default',
+            path: {cwd: ctx.worktreePath, root: ctx.worktreePath},
+            cost: 0,
+            tokens: {
+                input: 0,
+                output: 0,
+                reasoning: 0,
+                cache: {read: 0, write: 0},
+            },
+        }
+
+        const updatedEvent: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: assistantMessage},
+        }
+
+        const part: TextPart = {
+            id: 'part-1',
+            sessionID: 'sess-opencode',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Hello from OpenCode',
+            time: {start: Date.now(), end: Date.now()},
+        }
+
+        const partEvent: EventMessagePartUpdated = {
+            type: 'message.part.updated',
+            properties: {part},
+        }
+
+        upstream.push(updatedEvent)
+        upstream.push(partEvent)
+
+        await new Promise((r) => setTimeout(r, 0))
+        await new Promise((r) => setTimeout(r, 0))
+
+        const assistantMessages = ctx.events.filter(
+            (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',
+        )
+        expect(assistantMessages.length).toBe(1)
+
+        const completedStatusSeen = ctx.events.some(
+            (e) => e.type === 'status' && (e as {status?: string}).status === 'completed',
+        )
+        expect(completedStatusSeen).toBe(false)
+
+        upstream.push({type: 'session.idle', properties: {sessionID: 'sess-opencode'}})
+        upstream.close()
+        promptHold.resolve({})
+
+        const code = await runPromise
+        expect(code).toBe(0)
     })
 })
