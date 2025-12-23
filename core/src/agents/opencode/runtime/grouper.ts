@@ -24,7 +24,7 @@ type ReasoningState = {
 export class OpencodeGrouper {
     private readonly messageStates = new Map<string, MessageState>();
     private readonly messageOrder: string[] = [];
-    private readonly emittedMessageParts = new Set<string>();
+    private readonly emittedMessages = new Set<string>();
 
     private readonly reasoningStates = new Map<string, ReasoningState>();
     private readonly reasoningOrder: string[] = [];
@@ -121,39 +121,11 @@ export class OpencodeGrouper {
         if (item) ctx.emit({type: "conversation", item});
     }
 
-    emitMessagePartsIfReady(ctx: AgentContext, sessionId: string, messageId: string) {
+    emitMessageIfCompleted(ctx: AgentContext, sessionId: string, messageId: string) {
         const key = this.messageKey(sessionId, messageId);
         const state = this.messageStates.get(key);
         if (!state) return;
-        this.emitReadyMessageParts(ctx, key, state);
-    }
-
-    private emitReadyMessageParts(ctx: AgentContext, messageKey: string, state: MessageState) {
-        const role = normalizeRole(state.role);
-        if (!role || role === "user") return;
-        for (const partId of state.order) {
-            const partKey = `${messageKey}:${partId}`;
-            if (this.emittedMessageParts.has(partKey)) continue;
-            if (!state.completedPartIds.has(partId)) break;
-            this.emitTextPart(ctx, role, state.parts.get(partId) ?? "", partKey);
-        }
-    }
-
-    private emitTextPart(ctx: AgentContext, role: ConversationRole, text: string, partKey: string) {
-        if (!text.trim()) {
-            this.emittedMessageParts.add(partKey);
-            return;
-        }
-        const item: ConversationItem = {
-            type: "message",
-            timestamp: nowIso(),
-            role,
-            text,
-            format: "markdown",
-            profileId: ctx.profileId ?? null,
-        };
-        ctx.emit({type: "conversation", item});
-        this.emittedMessageParts.add(partKey);
+        this.emitMessage(ctx, key, state, false);
     }
 
     flush(ctx: AgentContext) {
@@ -166,18 +138,42 @@ export class OpencodeGrouper {
         for (const messageKey of this.messageOrder) {
             const state = this.messageStates.get(messageKey);
             if (!state) continue;
-            this.emitAllMessageParts(ctx, messageKey, state);
+            this.emitMessage(ctx, messageKey, state, true);
         }
     }
 
-    private emitAllMessageParts(ctx: AgentContext, messageKey: string, state: MessageState) {
+    private emitMessage(
+        ctx: AgentContext,
+        messageKey: string,
+        state: MessageState,
+        force: boolean,
+    ) {
+        if (this.emittedMessages.has(messageKey)) return;
         const role = normalizeRole(state.role);
         if (!role || role === "user") return;
-        for (const partId of state.order) {
-            const partKey = `${messageKey}:${partId}`;
-            if (this.emittedMessageParts.has(partKey)) continue;
-            this.emitTextPart(ctx, role, state.parts.get(partId) ?? "", partKey);
-        }
+        if (!state.order.length) return;
+
+        const completed =
+            force ||
+            state.messageCompleted ||
+            state.order.every((partId) => state.completedPartIds.has(partId));
+        if (!completed) return;
+
+        const text = state.order
+            .map((partId) => state.parts.get(partId) ?? "")
+            .join("");
+        if (!text.trim()) return;
+
+        const item: ConversationItem = {
+            type: "message",
+            timestamp: nowIso(),
+            role,
+            text,
+            format: "markdown",
+            profileId: ctx.profileId ?? null,
+        };
+        ctx.emit({type: "conversation", item});
+        this.emittedMessages.add(messageKey);
     }
 
     private getMessageState(key: string): MessageState {

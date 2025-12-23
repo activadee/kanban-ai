@@ -257,7 +257,10 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         if (signal.aborted) onAbort()
         else signal.addEventListener('abort', onAbort, {once: true})
 
-        const queue = new AsyncQueue<SessionEvent>(() => eventController.abort())
+        const queue = new AsyncQueue<SessionEvent>(() => {
+            signal.removeEventListener('abort', onAbort)
+            eventController.abort()
+        })
         const events = await client.event.subscribe({
             query: {directory: installation.directory},
             signal: eventController.signal,
@@ -265,12 +268,21 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const pump = (async () => {
             try {
+                let sawTargetSession = false
                 for await (const raw of events.stream) {
                     const ev = raw as SessionEvent
                     const evSessionId = this.extractSessionId(ev)
 
                     if (ev.type === 'session.idle') {
-                        if (!sessionId || !evSessionId || evSessionId === sessionId) {
+                        if (!sessionId) {
+                            queue.push(ev)
+                            break
+                        }
+                        if (evSessionId === sessionId) {
+                            queue.push(ev)
+                            break
+                        }
+                        if (!evSessionId && sawTargetSession) {
                             queue.push(ev)
                             break
                         }
@@ -280,6 +292,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     if (sessionId) {
                         if (!evSessionId) continue
                         if (evSessionId !== sessionId) continue
+                        sawTargetSession = true
                     }
 
                     queue.push(ev)
@@ -310,12 +323,20 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         stream: AsyncIterable<SessionEvent>,
         promptPromise: Promise<unknown>,
     ): AsyncIterable<SessionEvent> {
+        let streamError: unknown | null = null
         try {
             for await (const ev of stream) {
                 yield ev
             }
+        } catch (err) {
+            streamError = err
+            throw err
         } finally {
-            await promptPromise
+            if (streamError) {
+                void promptPromise.catch(() => {})
+            } else {
+                await promptPromise
+            }
         }
     }
 
@@ -503,7 +524,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             typeof (message as {time?: {completed?: unknown}}).time?.completed === 'number' ||
             typeof (message as {finish?: unknown}).finish === 'string'
         grouper.recordMessageCompleted(message.sessionID, message.id, completed)
-        grouper.emitMessagePartsIfReady(ctx, message.sessionID, message.id)
+        grouper.emitMessageIfCompleted(ctx, message.sessionID, message.id)
     }
 
     private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
@@ -519,7 +540,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             )
             const completed = typeof textPart.time?.end === 'number'
             grouper.recordMessagePart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text, completed)
-            grouper.emitMessagePartsIfReady(ctx, textPart.sessionID, textPart.messageID)
+            grouper.emitMessageIfCompleted(ctx, textPart.sessionID, textPart.messageID)
             return
         }
 
