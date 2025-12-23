@@ -1,3 +1,9 @@
+## [0.19.2](https://github.com/activadee/kanban-ai/compare/v0.19.1...v0.19.2) (2025-12-23)
+
+### Bug Fixes
+
+* **opencode:** stream messages while running ([#314](https://github.com/activadee/kanban-ai/issues/314)) ([cf1f612](https://github.com/activadee/kanban-ai/commit/cf1f612a977b591995aed2854142e0fa96f40ed7))
+
 ## [0.19.1](https://github.com/activadee/kanban-ai/compare/v0.19.0...v0.19.1) (2025-12-22)
 
 ### Bug Fixes
