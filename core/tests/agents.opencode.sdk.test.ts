@@ -267,6 +267,64 @@ describe('OpencodeAgent event mapping', () => {
         expect(text).toContain('Hello from OpenCode')
     })
 
+    it('emits assistant output when message completes without part time.end', async () => {
+        const agent = new TestOpencodeAgent()
+        const ctx = baseCtx()
+        ctx.sessionId = 'sess-1'
+
+        const createdAt = Date.now()
+        const assistantMessage: AssistantMessage = {
+            id: 'msg-1',
+            sessionID: 'sess-1',
+            role: 'assistant',
+            time: {created: createdAt},
+            parentID: 'user-1',
+            modelID: 'model',
+            providerID: 'provider',
+            mode: 'default',
+            path: {cwd: ctx.worktreePath, root: ctx.worktreePath},
+            cost: 0,
+            tokens: {
+                input: 0,
+                output: 0,
+                reasoning: 0,
+                cache: {read: 0, write: 0},
+            },
+        }
+        const updatedEvent: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: assistantMessage},
+        }
+        const updatedEventCompleted: EventMessageUpdated = {
+            type: 'message.updated',
+            properties: {info: {...assistantMessage, time: {created: createdAt, completed: createdAt + 1}}},
+        }
+
+        const part: TextPart = {
+            id: 'part-1',
+            sessionID: 'sess-1',
+            messageID: 'msg-1',
+            type: 'text',
+            text: 'Hello without end time',
+            time: {start: Date.now()},
+        }
+        const event: EventMessagePartUpdated = {
+            type: 'message.part.updated',
+            properties: {part},
+        }
+
+        agent.streamEvents = [updatedEvent, event, updatedEventCompleted]
+        const code = await agent.run(ctx, {appendPrompt: null})
+        expect(code).toBe(0)
+
+        const assistantMessages = ctx.events.filter(
+            (e) => e.type === 'conversation' && (e as {item?: {role?: string}}).item?.role === 'assistant',
+        )
+        expect(assistantMessages.length).toBe(1)
+        const text = (assistantMessages[0] as {item?: {text?: string}}).item?.text
+        expect(text).toContain('Hello without end time')
+    })
+
     it('converts reasoning parts into thinking conversation items', async () => {
         const agent = new TestOpencodeAgent()
         const ctx = baseCtx()

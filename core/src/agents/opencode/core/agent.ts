@@ -201,11 +201,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
               ]
             : []
 
+        const grouper = this.getGrouper(ctx)
+        const debug = (message: string) => this.debug(profile, ctx, message)
+        const POST_PROMPT_IDLE_TIMEOUT_MS = 60_000
+
         let promptDone = false
         let promptError: unknown | null = null
         let idleSeen = false
+        let sawTargetSession = false
+        let timedOut = false
 
-        let abortTimer: ReturnType<typeof setTimeout> | null = null
+        let postPromptTimer: ReturnType<typeof setTimeout> | null = null
+        const resetPostPromptTimer = () => {
+            if (postPromptTimer) clearTimeout(postPromptTimer)
+            postPromptTimer = setTimeout(() => {
+                timedOut = true
+                controller.abort()
+            }, POST_PROMPT_IDLE_TIMEOUT_MS)
+        }
 
         const promptPromise = opencode.session.prompt({
             path: {id: sessionId},
@@ -225,11 +238,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         void promptPromise
             .then(() => {
                 promptDone = true
-                if (!idleSeen) {
-                    abortTimer = setTimeout(() => {
-                        if (!idleSeen) controller.abort()
-                    }, 10000)
-                }
+                if (!idleSeen) resetPostPromptTimer()
             })
             .catch((err) => {
                 promptDone = true
@@ -249,13 +258,26 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 for await (const raw of events.stream) {
                     const ev = raw as SessionEvent
                     const evSessionId = extractSessionId(ev)
-                    if (evSessionId && evSessionId !== sessionId) continue
-                    if (!evSessionId) continue
-                    yield ev
+
                     if (ev.type === 'session.idle') {
-                        idleSeen = true
-                        break
+                        if (evSessionId === sessionId || (!evSessionId && sawTargetSession && promptDone)) {
+                            idleSeen = true
+                            yield ev
+                            break
+                        }
+                        debug(`dropping session.idle${evSessionId ? ` session=${evSessionId}` : ''}`)
+                        continue
                     }
+
+                    if (!evSessionId) {
+                        debug(`dropping event ${ev.type} (missing session id)`)
+                        continue
+                    }
+                    if (evSessionId !== sessionId) continue
+
+                    sawTargetSession = true
+                    yield ev
+                    if (promptDone && !idleSeen) resetPostPromptTimer()
                 }
             } catch (err) {
                 const aborted =
@@ -264,12 +286,16 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                     (err as {name?: unknown} | null)?.name === 'AbortError'
                 if (!aborted) throw err
             } finally {
-                if (abortTimer) clearTimeout(abortTimer)
+                if (postPromptTimer) clearTimeout(postPromptTimer)
                 signal.removeEventListener('abort', onAbort)
                 controller.abort()
+                grouper.flush(ctx)
             }
 
+            await Promise.resolve()
+
             if (signal.aborted) throw new Error('aborted')
+            if (timedOut) throw new Error('[opencode] timed out waiting for session.idle')
             if (promptError) throw promptError
             if (!idleSeen && !promptDone) {
                 throw new Error('[opencode] event stream ended before completion')
@@ -395,6 +421,11 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const grouper = this.getGrouper(ctx)
         grouper.ensureSession(message.sessionID, ctx)
         grouper.recordMessageRole(message.sessionID, message.id, message.role, ctx)
+
+        const completed =
+            typeof (message as {time?: {completed?: unknown}}).time?.completed === 'number' ||
+            typeof (message as {finish?: unknown}).finish === 'string'
+        grouper.recordMessageCompleted(message.sessionID, message.id, completed, ctx)
     }
 
     private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
@@ -509,7 +540,16 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const targetSessionId = ctx.sessionId
         const eventSessionId = this.extractSessionId(ev)
-        if (targetSessionId && (!eventSessionId || targetSessionId !== eventSessionId)) return
+        if (targetSessionId) {
+            if (!eventSessionId) {
+                this.debug(profile, ctx, `dropping event ${ev.type} (missing session id)`)
+                return
+            }
+            if (targetSessionId !== eventSessionId) {
+                this.debug(profile, ctx, `dropping event ${ev.type} session=${eventSessionId} (expected ${targetSessionId})`)
+                return
+            }
+        }
 
         this.debug(profile, ctx, `event ${ev.type}${eventSessionId ? ` session=${eventSessionId}` : ''}`)
 

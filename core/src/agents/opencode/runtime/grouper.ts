@@ -11,6 +11,7 @@ type MessageState = {
     parts: Map<string, string>
     completedPartIds: Set<string>
     emittedPartIds: Set<string>
+    messageCompleted: boolean
 }
 
 type ReasoningState = {
@@ -38,7 +39,19 @@ export class OpencodeGrouper {
     recordMessageRole(sessionId: string, messageId: string, role: string | undefined, ctx: AgentContext) {
         const messageKey = this.messageKey(sessionId, messageId)
         const state = this.getMessageState(messageKey)
-        state.role = normalizeRole(role)
+        const normalized = normalizeRole(role)
+        if (normalized) state.role = normalized
+        this.emitReadyTextParts(ctx, state)
+    }
+
+    recordMessageCompleted(sessionId: string, messageId: string, completed: boolean, ctx: AgentContext) {
+        if (!completed) return
+        const messageKey = this.messageKey(sessionId, messageId)
+        const state = this.getMessageState(messageKey)
+        state.messageCompleted = true
+        for (const partId of state.order) {
+            state.completedPartIds.add(partId)
+        }
         this.emitReadyTextParts(ctx, state)
     }
 
@@ -54,7 +67,7 @@ export class OpencodeGrouper {
         const state = this.getMessageState(messageKey)
         if (!state.order.includes(partId)) state.order.push(partId)
         state.parts.set(partId, text)
-        if (completed) state.completedPartIds.add(partId)
+        if (completed || state.messageCompleted) state.completedPartIds.add(partId)
         this.emitReadyTextParts(ctx, state)
     }
 
@@ -105,6 +118,46 @@ export class OpencodeGrouper {
         }
     }
 
+    flush(ctx: AgentContext) {
+        for (const state of this.messages.values()) {
+            if (state.role !== 'assistant') continue
+            for (const partId of state.order) {
+                if (state.emittedPartIds.has(partId)) continue
+                const text = state.parts.get(partId) ?? ''
+                if (!text.trim()) continue
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'message',
+                        timestamp: nowIso(),
+                        role: 'assistant',
+                        text,
+                        format: 'markdown',
+                        profileId: ctx.profileId ?? null,
+                    },
+                })
+                state.emittedPartIds.add(partId)
+            }
+        }
+
+        for (const [key, state] of this.reasoningParts) {
+            if (state.emitted) continue
+            const cleaned = state.text.trim()
+            if (!cleaned.length || cleaned.includes('[REDACTED]')) continue
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'thinking',
+                    timestamp: nowIso(),
+                    text: cleaned,
+                    format: 'markdown',
+                },
+            })
+            state.emitted = true
+            this.reasoningParts.set(key, state)
+        }
+    }
+
     private emitReadyTextParts(ctx: AgentContext, state: MessageState) {
         if (state.role !== 'assistant') return
         for (const partId of state.order) {
@@ -133,11 +186,12 @@ export class OpencodeGrouper {
         let state = this.messages.get(messageKey)
         if (!state) {
             state = {
-                role: undefined,
+                role: 'assistant',
                 order: [],
                 parts: new Map(),
                 completedPartIds: new Set(),
                 emittedPartIds: new Set(),
+                messageCompleted: false,
             }
             this.messages.set(messageKey, state)
         }
