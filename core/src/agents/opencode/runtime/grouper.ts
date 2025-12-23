@@ -13,6 +13,7 @@ type MessageState = {
     order: string[];
     parts: Map<string, string>;
     completedPartIds: Set<string>;
+    messageCompleted: boolean;
 };
 
 type ReasoningState = {
@@ -63,9 +64,22 @@ export class OpencodeGrouper {
             state.order.push(partId);
         }
         state.parts.set(partId, text);
-        if (completed) state.completedPartIds.add(partId);
+        if (completed || state.messageCompleted) state.completedPartIds.add(partId);
     }
 
+    recordMessageCompleted(
+        sessionId: string,
+        messageId: string,
+        completed: boolean,
+    ) {
+        if (!completed) return;
+        const key = this.messageKey(sessionId, messageId);
+        const state = this.getMessageState(key);
+        state.messageCompleted = true;
+        for (const partId of state.order) {
+            state.completedPartIds.add(partId);
+        }
+    }
 
     recordReasoningPart(
         sessionId: string,
@@ -174,6 +188,7 @@ export class OpencodeGrouper {
                 order: [],
                 parts: new Map(),
                 completedPartIds: new Set(),
+                messageCompleted: false,
             };
             this.messageStates.set(key, state);
             this.messageOrder.push(key);
