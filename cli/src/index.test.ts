@@ -76,14 +76,17 @@ vi.mock("./github", () => {
             }),
         getReleaseByVersion: () =>
             Promise.resolve({
-                tag_name: "v1.0.0",
-                body: "Test changelog body",
-                assets: [
-                    {
-                        name: "kanban-ai-linux-x64",
-                        browser_download_url: "https://example.com/bin",
-                    },
-                ],
+                version: "1.0.0",
+                release: {
+                    tag_name: "v1.0.0",
+                    body: "Test changelog body",
+                    assets: [
+                        {
+                            name: "kanban-ai-linux-x64",
+                            browser_download_url: "https://example.com/bin",
+                        },
+                    ],
+                },
             }),
         resolveLatestReleaseAssetViaRedirect: (
             repo: string,

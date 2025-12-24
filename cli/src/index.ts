@@ -76,11 +76,17 @@ export async function runCli(): Promise<void> {
         } else {
             targetVersion = explicitVersion;
             try {
-                release = await getReleaseByVersion(
+                const resolved = await getReleaseByVersion(
                     effectiveEnv.githubRepo,
                     explicitVersion,
                     { cache: githubApiCache },
                 );
+
+                if (resolved.meta?.warning) {
+                    process.stderr.write(`${resolved.meta.warning}\n`);
+                }
+
+                release = resolved.release;
             } catch (err) {
                 if (err instanceof GithubRateLimitError) {
                     // eslint-disable-next-line no-console
@@ -200,11 +206,17 @@ export async function runCli(): Promise<void> {
                 release = latestRelease;
             } else {
                 try {
-                    release = await getReleaseByVersion(
+                    const resolved = await getReleaseByVersion(
                         effectiveEnv.githubRepo,
                         targetVersion,
                         { cache: githubApiCache },
                     );
+
+                    if (resolved.meta?.warning) {
+                        process.stderr.write(`${resolved.meta.warning}\n`);
+                    }
+
+                    release = resolved.release;
                 } catch (err) {
                     if (err instanceof GithubRateLimitError) {
                         // eslint-disable-next-line no-console

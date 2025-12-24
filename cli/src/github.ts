@@ -76,7 +76,7 @@ function nowMs(cache?: GithubCacheOptions): number {
 }
 
 function resolveTtlMs(cache?: GithubCacheOptions): number {
-    if (!cache?.ttlMs) return DEFAULT_CACHE_TTL_MS
+    if (cache?.ttlMs === undefined) return DEFAULT_CACHE_TTL_MS
     return cache.ttlMs
 }
 
@@ -106,11 +106,50 @@ async function readCacheEntry<T>(filePath: string): Promise<GithubApiCacheEntry<
     }
 }
 
+async function tryUnlink(filePath: string): Promise<boolean> {
+    try {
+        await fs.promises.unlink(filePath)
+        return true
+    } catch {
+        return false
+    }
+}
+
+async function tryRename(from: string, to: string): Promise<boolean> {
+    try {
+        await fs.promises.rename(from, to)
+        return true
+    } catch {
+        return false
+    }
+}
+
+async function tryCopyFile(from: string, to: string): Promise<boolean> {
+    try {
+        await fs.promises.copyFile(from, to)
+        return true
+    } catch {
+        return false
+    }
+}
+
 async function writeCacheEntry<T>(filePath: string, entry: GithubApiCacheEntry<T>): Promise<void> {
-    await fs.promises.mkdir(path.dirname(filePath), {recursive: true})
     const tmpPath = `${filePath}.tmp-${process.pid}-${Date.now()}`
-    await fs.promises.writeFile(tmpPath, JSON.stringify(entry), 'utf8')
-    await fs.promises.rename(tmpPath, filePath)
+
+    try {
+        await fs.promises.mkdir(path.dirname(filePath), {recursive: true})
+        await fs.promises.writeFile(tmpPath, JSON.stringify(entry), 'utf8')
+
+        if (await tryRename(tmpPath, filePath)) return
+        if (await tryCopyFile(tmpPath, filePath)) return
+
+        await tryUnlink(filePath)
+        await tryRename(tmpPath, filePath)
+    } catch {
+        return
+    } finally {
+        await tryUnlink(tmpPath)
+    }
 }
 
 function parseRateLimitInfo(res: Response): RateLimitInfo {
@@ -153,6 +192,24 @@ function formatRateLimitMessage(info: RateLimitInfo, now: number): string {
 
 function isRedirectStatus(status: number): boolean {
     return status === 301 || status === 302 || status === 303 || status === 307 || status === 308
+}
+
+function assertAllowedRedirectUrl(url: string): void {
+    const parsed = new URL(url)
+
+    if (parsed.protocol !== 'https:') {
+        throw new Error(`Unexpected redirect protocol: ${parsed.protocol}`)
+    }
+
+    if (parsed.hostname === 'github.com') {
+        return
+    }
+
+    if (parsed.hostname.endsWith('.githubusercontent.com')) {
+        return
+    }
+
+    throw new Error(`Unexpected redirect host: ${parsed.hostname}`)
 }
 
 function extractTagFromDownloadUrl(url: string): string | null {
@@ -273,14 +330,15 @@ export async function getLatestRelease(repo: string, options?: GithubRequestOpti
     return {version, release: result.data, meta: result.meta}
 }
 
-export async function getReleaseByVersion(repo: string, version: string, options?: GithubRequestOptions): Promise<GithubRelease> {
+export async function getReleaseByVersion(repo: string, version: string, options?: GithubRequestOptions): Promise<GithubReleaseResult> {
     const tag = version.startsWith('v') ? version : `v${version}`
     const result = await githubFetchJson<GithubRelease>(
         repo,
         `/repos/${repo}/releases/tags/${encodeURIComponent(tag)}`,
         options,
     )
-    return result.data
+    const resolvedVersion = cleanVersionTag(result.data.tag_name)
+    return {version: resolvedVersion, release: result.data, meta: result.meta}
 }
 
 export type GithubReleaseRedirect = {
@@ -295,26 +353,40 @@ export async function resolveLatestReleaseAssetViaRedirect(
     assetNameCandidates: string[],
 ): Promise<GithubReleaseRedirect> {
     for (const assetName of assetNameCandidates) {
-        const url = `https://github.com/${repo}/releases/latest/download/${assetName}`
-        const res = await fetch(url, {redirect: 'manual'})
+        const latestUrl = `https://github.com/${repo}/releases/latest/download/${assetName}`
+        const res = await fetch(latestUrl, {redirect: 'manual', method: 'HEAD'})
 
         if (!isRedirectStatus(res.status)) {
             continue
         }
 
-        const location = res.headers.get('location')
-        if (!location) continue
-
-        const resolved = new URL(location, url).toString()
-        const tag = extractTagFromDownloadUrl(resolved)
-        if (!tag) continue
-
-        return {
-            tag,
-            version: cleanVersionTag(tag),
-            assetName,
-            url: resolved,
+        const firstLocation = res.headers.get('location')
+        if (!firstLocation) {
+            continue
         }
+
+        const releaseUrl = new URL(firstLocation, latestUrl).toString()
+        assertAllowedRedirectUrl(releaseUrl)
+
+        const tag = extractTagFromDownloadUrl(releaseUrl)
+        if (!tag) {
+            continue
+        }
+
+        const res2 = await fetch(releaseUrl, {redirect: 'manual', method: 'HEAD'})
+        if (!isRedirectStatus(res2.status)) {
+            return {tag, version: cleanVersionTag(tag), assetName, url: releaseUrl}
+        }
+
+        const secondLocation = res2.headers.get('location')
+        if (!secondLocation) {
+            continue
+        }
+
+        const assetUrl = new URL(secondLocation, releaseUrl).toString()
+        assertAllowedRedirectUrl(assetUrl)
+
+        return {tag, version: cleanVersionTag(tag), assetName, url: assetUrl}
     }
 
     throw new Error(
@@ -330,18 +402,35 @@ export async function resolveReleaseAssetViaRedirect(
     const tag = version.startsWith('v') ? version : `v${version}`
 
     for (const assetName of assetNameCandidates) {
-        const url = `https://github.com/${repo}/releases/download/${tag}/${assetName}`
-        const res = await fetch(url, {redirect: 'manual'})
+        const releaseUrl = `https://github.com/${repo}/releases/download/${tag}/${assetName}`
+        const res = await fetch(releaseUrl, {redirect: 'manual', method: 'HEAD'})
 
         if (!isRedirectStatus(res.status)) {
+            if (res.status >= 200 && res.status < 300) {
+                return {
+                    tag,
+                    version: cleanVersionTag(tag),
+                    assetName,
+                    url: releaseUrl,
+                }
+            }
+
             continue
         }
+
+        const location = res.headers.get('location')
+        if (!location) {
+            continue
+        }
+
+        const assetUrl = new URL(location, releaseUrl).toString()
+        assertAllowedRedirectUrl(assetUrl)
 
         return {
             tag,
             version: cleanVersionTag(tag),
             assetName,
-            url,
+            url: assetUrl,
         }
     }
 
