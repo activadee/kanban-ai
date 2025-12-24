@@ -34,6 +34,20 @@ Last updated: 2025-11-30
 - For higher GitHub rate limits, the wrapper also respects:
   - `GITHUB_TOKEN` / `GH_TOKEN` – used when contacting the GitHub Releases API.
 
+### GitHub release lookups
+
+- Release metadata fetched from the GitHub API is now cached on disk under `github-api` next to the binary cache (e.g.
+  `~/.kanbanAI/github-api` when using the defaults). Cached entries use ETags/`If-None-Match` headers, respect a 30‑minute TTL,
+  and are refreshed transparently when the release data changes.
+- When the API returns `304 Not Modified` or requests are made within the TTL, the CLI reads the stored JSON instead of counting
+  against your rate limit.
+- If a rate-limit error (`403`/`429`) occurs, the CLI logs a warning (the same message suggests providing `GITHUB_TOKEN`/`GH_TOKEN`
+  for higher limits), keeps using the cached metadata if available, and continues the flow. Without cached data, it falls back to
+  resolving the release download URL through GitHub’s `releases/download` redirect, which still succeeds even when the
+  API is temporarily blocked.
+- The same redirect-based fallback happens when a pinned release lookup (`--binary-version`) hits the rate limit: the CLI
+  follows the download redirect for the requested version and proceeds with that asset to avoid an unnecessary failure.
+
 ## Production server entrypoint
 
 - The production server entrypoint lives at `server/src/entry/prod.ts`.

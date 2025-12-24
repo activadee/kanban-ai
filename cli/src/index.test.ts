@@ -36,33 +36,86 @@ vi.mock("./args", () => ({
     parseCliArgs: vi.fn(() => ({ ...defaultCliOptions })),
 }));
 
-vi.mock("./github", () => ({
-    getLatestRelease: () =>
-        Promise.resolve({
-            version: "1.0.0",
-            release: {
-                tag_name: "v1.0.0",
-                body: "Test changelog body",
-                assets: [
-                    {
-                        name: "kanban-ai-linux-x64",
-                        browser_download_url: "https://example.com/bin",
-                    },
-                ],
+vi.mock("./github", () => {
+    class GithubRateLimitError extends Error {
+        status: number;
+        retryAfterSeconds?: number;
+        rateLimitResetSeconds?: number;
+
+        constructor(
+            message: string,
+            options?: {
+                status?: number;
+                retryAfterSeconds?: number;
+                rateLimitResetSeconds?: number;
             },
-        }),
-    getReleaseByVersion: () =>
-        Promise.resolve({
-            tag_name: "v1.0.0",
-            body: "Test changelog body",
-            assets: [
-                {
-                    name: "kanban-ai-linux-x64",
-                    browser_download_url: "https://example.com/bin",
+        ) {
+            super(message);
+            this.name = "GithubRateLimitError";
+            this.status = options?.status ?? 403;
+            this.retryAfterSeconds = options?.retryAfterSeconds;
+            this.rateLimitResetSeconds = options?.rateLimitResetSeconds;
+        }
+    }
+
+    return {
+        GithubRateLimitError,
+        getLatestRelease: () =>
+            Promise.resolve({
+                version: "1.0.0",
+                release: {
+                    tag_name: "v1.0.0",
+                    body: "Test changelog body",
+                    assets: [
+                        {
+                            name: "kanban-ai-linux-x64",
+                            browser_download_url: "https://example.com/bin",
+                        },
+                    ],
                 },
-            ],
-        }),
-}));
+            }),
+        getReleaseByVersion: () =>
+            Promise.resolve({
+                version: "1.0.0",
+                release: {
+                    tag_name: "v1.0.0",
+                    body: "Test changelog body",
+                    assets: [
+                        {
+                            name: "kanban-ai-linux-x64",
+                            browser_download_url: "https://example.com/bin",
+                        },
+                    ],
+                },
+            }),
+        resolveLatestReleaseAssetViaRedirect: (
+            repo: string,
+            assetNameCandidates: string[],
+        ) => {
+            const assetName = assetNameCandidates[0] ?? "kanban-ai-linux-x64";
+            return Promise.resolve({
+                tag: "v1.0.0",
+                version: "1.0.0",
+                assetName,
+                url: `https://github.com/${repo}/releases/download/v1.0.0/${assetName}`,
+            });
+        },
+        resolveReleaseAssetViaRedirect: (
+            repo: string,
+            version: string,
+            assetNameCandidates: string[],
+        ) => {
+            const tag = version.startsWith("v") ? version : `v${version}`;
+            const assetName = assetNameCandidates[0] ?? "kanban-ai-linux-x64";
+            return Promise.resolve({
+                tag,
+                version: tag.replace(/^v/, ""),
+                assetName,
+                url: `https://github.com/${repo}/releases/download/${tag}/${assetName}`,
+            });
+        },
+    };
+});
 
 vi.mock("./updates", () => ({
     decideVersionToUse: vi.fn(async (opts: any) => {
@@ -216,6 +269,65 @@ describe("runCli", () => {
         }
     });
 
+    it("prints a fallback message when no changelog is available", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const githubModule = await import("./github");
+        const getLatestReleaseSpy = vi
+            .spyOn(githubModule, "getLatestRelease")
+            .mockResolvedValueOnce({
+                version: "1.0.0",
+                release: {
+                    tag_name: "v1.0.0",
+                    body: "",
+                    assets: [
+                        {
+                            name: "kanban-ai-linux-x64",
+                            browser_download_url: "https://example.com/bin",
+                        },
+                    ],
+                },
+            } as any);
+
+        const updatesModule = await import("./updates");
+        const decideMock =
+            updatesModule.decideVersionToUse as unknown as ReturnType<
+                typeof vi.fn
+            >;
+        (decideMock as any).mockImplementationOnce(async (opts: any) => {
+            if (opts && typeof opts.onNewVersionAvailable === "function") {
+                await opts.onNewVersionAvailable({
+                    latestRemoteVersion: opts.latestRemoteVersion ?? "1.0.0",
+                    latestCachedVersion: undefined as any,
+                });
+            }
+
+            return { versionToUse: "1.0.0", fromCache: false };
+        });
+
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await runCli();
+
+            expect(
+                logSpy.mock.calls.some((call) =>
+                    String(call[0]).includes(
+                        "No changelog was provided for this release.",
+                    ),
+                ),
+            ).toBe(true);
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            logSpy.mockRestore();
+            getLatestReleaseSpy.mockRestore();
+        }
+    });
+
     it("uses cached version path when decideVersionToUse returns fromCache=true", async () => {
         const exitSpy = vi.fn();
         const originalExit = process.exit as unknown;
@@ -268,11 +380,51 @@ describe("runCli", () => {
             expect(getReleaseByVersionSpy).toHaveBeenCalledWith(
                 "owner/repo",
                 "0.9.0",
+                expect.objectContaining({
+                    cache: expect.any(Object),
+                }),
             );
         } finally {
             // @ts-expect-error restore original
             process.exit = originalExit;
             getReleaseByVersionSpy.mockRestore();
+        }
+    });
+
+    it("throws when release lookup fails and no cached versions exist", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const updatesModule = await import("./updates");
+        const decideMock =
+            updatesModule.decideVersionToUse as unknown as ReturnType<typeof vi.fn>;
+        (decideMock as any).mockReturnValueOnce(
+            Promise.resolve({ versionToUse: "0.9.0", fromCache: false }),
+        );
+
+        const githubModule = await import("./github");
+        const getReleaseByVersionSpy = vi
+            .spyOn(githubModule, "getReleaseByVersion")
+            .mockRejectedValueOnce(new Error("boom"));
+
+        const cacheModule = await import("./cache");
+        const getCachedVersionsSpy = vi
+            .spyOn(cacheModule, "getCachedVersionsForPlatform")
+            .mockReturnValueOnce([]);
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            await expect(runCli()).rejects.toThrow("boom");
+            expect(getReleaseByVersionSpy).toHaveBeenCalled();
+            expect(getCachedVersionsSpy).toHaveBeenCalled();
+            expect(exitSpy).not.toHaveBeenCalled();
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            getReleaseByVersionSpy.mockRestore();
+            getCachedVersionsSpy.mockRestore();
         }
     });
 
@@ -340,6 +492,109 @@ describe("runCli", () => {
             // @ts-expect-error restore original
             process.exit = originalExit;
             logSpy.mockRestore();
+            ensureBinaryDownloadedMock.mockClear();
+        }
+    });
+
+    it("falls back to redirect when update check is rate-limited and no binaries are cached", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const githubModule = await import("./github");
+        const getLatestReleaseSpy = vi
+            .spyOn(githubModule, "getLatestRelease")
+            .mockRejectedValueOnce(
+                new githubModule.GithubRateLimitError("rate limited", { status: 403 }),
+            );
+
+        const redirectSpy = vi.spyOn(
+            githubModule,
+            "resolveLatestReleaseAssetViaRedirect",
+        );
+
+        const cacheModule = await import("./cache");
+        const getCachedVersionsSpy = vi
+            .spyOn(cacheModule, "getCachedVersionsForPlatform")
+            .mockReturnValueOnce([]);
+
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            ensureBinaryDownloadedMock.mockClear();
+            await runCli();
+
+            expect(getLatestReleaseSpy).toHaveBeenCalled();
+            expect(getCachedVersionsSpy).toHaveBeenCalled();
+            expect(redirectSpy).toHaveBeenCalled();
+            expect(ensureBinaryDownloadedMock).toHaveBeenCalledWith(
+                expect.objectContaining({ version: "1.0.0" }),
+            );
+            expect(exitSpy).toHaveBeenCalled();
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            getLatestReleaseSpy.mockRestore();
+            redirectSpy.mockRestore();
+            getCachedVersionsSpy.mockRestore();
+            errorSpy.mockRestore();
+            ensureBinaryDownloadedMock.mockClear();
+        }
+    });
+
+    it("falls back to redirect download when pinned release lookup is rate-limited", async () => {
+        const exitSpy = vi.fn();
+        const originalExit = process.exit as unknown;
+
+        const argsModule = await import("./args");
+        const parseCliArgsMock =
+            argsModule.parseCliArgs as unknown as ReturnType<typeof vi.fn>;
+        (parseCliArgsMock as any).mockReturnValueOnce({
+            ...defaultCliOptions,
+            binaryVersion: "v1.2.3",
+        });
+
+        const githubModule = await import("./github");
+        const getReleaseByVersionSpy = vi
+            .spyOn(githubModule, "getReleaseByVersion")
+            .mockRejectedValueOnce(
+                new githubModule.GithubRateLimitError("rate limited", { status: 403 }),
+            );
+
+        const redirectSpy = vi.spyOn(
+            githubModule,
+            "resolveReleaseAssetViaRedirect",
+        );
+
+        const existsSpy = vi.spyOn(fs, "existsSync").mockReturnValueOnce(false);
+        const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        // @ts-expect-error override for tests
+        process.exit = exitSpy;
+
+        try {
+            ensureBinaryDownloadedMock.mockClear();
+            await runCli();
+
+            expect(getReleaseByVersionSpy).toHaveBeenCalled();
+            expect(redirectSpy).toHaveBeenCalledWith(
+                "owner/repo",
+                "1.2.3",
+                expect.any(Array),
+            );
+            expect(ensureBinaryDownloadedMock).toHaveBeenCalledWith(
+                expect.objectContaining({ version: "1.2.3" }),
+            );
+            expect(exitSpy).toHaveBeenCalled();
+        } finally {
+            // @ts-expect-error restore original
+            process.exit = originalExit;
+            getReleaseByVersionSpy.mockRestore();
+            redirectSpy.mockRestore();
+            existsSpy.mockRestore();
+            errorSpy.mockRestore();
             ensureBinaryDownloadedMock.mockClear();
         }
     });

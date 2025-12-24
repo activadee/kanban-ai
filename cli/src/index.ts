@@ -6,11 +6,19 @@ import fs from "node:fs";
 import { resolveEnvOptions } from "./env";
 import { detectPlatformArch, resolveBinaryInfo } from "./platform";
 import { parseCliArgs } from "./args";
-import { getLatestRelease, getReleaseByVersion, GithubRelease } from "./github";
+import {
+    getLatestRelease,
+    getReleaseByVersion,
+    GithubRateLimitError,
+    resolveLatestReleaseAssetViaRedirect,
+    resolveReleaseAssetViaRedirect,
+    type GithubRelease,
+} from "./github";
 import { decideVersionToUse } from "./updates";
 import { ensureBinaryDownloaded } from "./download";
 import { getBinaryPath, getCachedVersionsForPlatform } from "./cache";
 import { printHelp } from "./help";
+import { cleanVersionTag } from "./version";
 
 export async function runCli(): Promise<void> {
     const env = resolveEnvOptions();
@@ -46,7 +54,13 @@ export async function runCli(): Promise<void> {
         platformArch.arch,
     );
 
-    const explicitVersion = cliOptions.binaryVersion;
+    const githubApiCache = {
+        dir: path.join(path.dirname(effectiveEnv.baseCacheDir), "github-api"),
+    };
+
+    const explicitVersion = cliOptions.binaryVersion
+        ? cleanVersionTag(cliOptions.binaryVersion)
+        : undefined;
     let targetVersion: string;
     let binaryPath: string | undefined;
     let release: any;
@@ -64,10 +78,41 @@ export async function runCli(): Promise<void> {
             binaryPath = candidatePath;
         } else {
             targetVersion = explicitVersion;
-            release = await getReleaseByVersion(
-                effectiveEnv.githubRepo,
-                explicitVersion,
-            );
+            try {
+                const resolved = await getReleaseByVersion(
+                    effectiveEnv.githubRepo,
+                    explicitVersion,
+                    { cache: githubApiCache },
+                );
+
+                if (resolved.meta?.warning) {
+                    process.stderr.write(`${resolved.meta.warning}\n`);
+                }
+
+                targetVersion = resolved.version;
+                release = resolved.release;
+            } catch (err) {
+                if (err instanceof GithubRateLimitError) {
+                    // eslint-disable-next-line no-console
+                    console.error(err.message);
+                    const fallback = await resolveReleaseAssetViaRedirect(
+                        effectiveEnv.githubRepo,
+                        explicitVersion,
+                        binaryInfo.assetNameCandidates,
+                    );
+                    release = {
+                        tag_name: fallback.tag,
+                        assets: [
+                            {
+                                name: fallback.assetName,
+                                browser_download_url: fallback.url,
+                            },
+                        ],
+                    };
+                } else {
+                    throw err;
+                }
+            }
         }
     } else if (effectiveEnv.noUpdateCheck || effectiveEnv.assumeNo) {
         // No-update mode: use latest cached version if available, without contacting GitHub.
@@ -85,17 +130,52 @@ export async function runCli(): Promise<void> {
                 binaryInfo,
             );
         } else {
-            // No cached versions yet: fall back to a one-time fetch of the latest release.
-            const { version: latestRemoteVersion, release: latestRelease } =
-                await getLatestRelease(effectiveEnv.githubRepo);
-            targetVersion = latestRemoteVersion;
-            release = latestRelease;
+            try {
+                const latest = await getLatestRelease(
+                    effectiveEnv.githubRepo,
+                    { cache: githubApiCache },
+                );
+
+                if (latest.meta?.warning) {
+                    // eslint-disable-next-line no-console
+                    console.error(latest.meta.warning);
+                }
+
+                targetVersion = latest.version;
+                release = latest.release;
+            } catch (err) {
+                if (err instanceof GithubRateLimitError) {
+                    // eslint-disable-next-line no-console
+                    console.error(err.message);
+                    const fallback = await resolveLatestReleaseAssetViaRedirect(
+                        effectiveEnv.githubRepo,
+                        binaryInfo.assetNameCandidates,
+                    );
+                    targetVersion = fallback.version;
+                    release = {
+                        tag_name: fallback.tag,
+                        assets: [
+                            {
+                                name: fallback.assetName,
+                                browser_download_url: fallback.url,
+                            },
+                        ],
+                    };
+                } else {
+                    throw err;
+                }
+            }
         }
     } else {
         // Default behavior: consult GitHub to pick the appropriate version, then use cache or download.
         try {
-            const { version: latestRemoteVersion, release: latestRelease } =
-                await getLatestRelease(effectiveEnv.githubRepo);
+            const { version: latestRemoteVersion, release: latestRelease, meta } =
+                await getLatestRelease(effectiveEnv.githubRepo, { cache: githubApiCache });
+
+            if (meta?.warning) {
+                // eslint-disable-next-line no-console
+                console.error(meta.warning);
+            }
             const decision = await decideVersionToUse({
                 env: effectiveEnv,
                 platformArch,
@@ -129,10 +209,41 @@ export async function runCli(): Promise<void> {
             } else if (targetVersion === latestRemoteVersion) {
                 release = latestRelease;
             } else {
-                release = await getReleaseByVersion(
-                    effectiveEnv.githubRepo,
-                    targetVersion,
-                );
+                try {
+                    const resolved = await getReleaseByVersion(
+                        effectiveEnv.githubRepo,
+                        targetVersion,
+                        { cache: githubApiCache },
+                    );
+
+                    if (resolved.meta?.warning) {
+                        process.stderr.write(`${resolved.meta.warning}\n`);
+                    }
+
+                    targetVersion = resolved.version;
+                    release = resolved.release;
+                } catch (err) {
+                    if (err instanceof GithubRateLimitError) {
+                        // eslint-disable-next-line no-console
+                        console.error(err.message);
+                        const fallback = await resolveReleaseAssetViaRedirect(
+                            effectiveEnv.githubRepo,
+                            targetVersion,
+                            binaryInfo.assetNameCandidates,
+                        );
+                        release = {
+                            tag_name: fallback.tag,
+                            assets: [
+                                {
+                                    name: fallback.assetName,
+                                    browser_download_url: fallback.url,
+                                },
+                            ],
+                        };
+                    } else {
+                        throw err;
+                    }
+                }
             }
         } catch (err) {
             const cachedVersions = getCachedVersionsForPlatform(
@@ -152,6 +263,23 @@ export async function runCli(): Promise<void> {
                 console.error(
                     `Could not check for updates on GitHub (${(err as Error).message}). Using cached KanbanAI ${targetVersion}.`,
                 );
+            } else if (err instanceof GithubRateLimitError) {
+                // eslint-disable-next-line no-console
+                console.error(err.message);
+                const fallback = await resolveLatestReleaseAssetViaRedirect(
+                    effectiveEnv.githubRepo,
+                    binaryInfo.assetNameCandidates,
+                );
+                targetVersion = fallback.version;
+                release = {
+                    tag_name: fallback.tag,
+                    assets: [
+                        {
+                            name: fallback.assetName,
+                            browser_download_url: fallback.url,
+                        },
+                    ],
+                };
             } else {
                 throw err;
             }
