@@ -1,3 +1,9 @@
+## [0.19.3](https://github.com/activadee/kanban-ai/compare/v0.19.2...v0.19.3) (2025-12-24)
+
+### Bug Fixes
+
+* **cli:** avoid hard fail on GitHub rate limits ([#316](https://github.com/activadee/kanban-ai/issues/316)) ([d0a21dd](https://github.com/activadee/kanban-ai/commit/d0a21ddc3669efa7848aeca93e69da439a1b42c9))
+
 ## [0.19.2](https://github.com/activadee/kanban-ai/compare/v0.19.1...v0.19.2) (2025-12-23)
 
 ### Bug Fixes
