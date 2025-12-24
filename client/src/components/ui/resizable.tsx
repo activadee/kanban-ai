@@ -6,20 +6,69 @@ import {cn} from "@/lib/utils"
 
 type Direction = "horizontal" | "vertical"
 
+const RESIZABLE_PANELS_STORAGE_KEY_PREFIX = "react-resizable-panels:"
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+export function sanitizeResizablePanelsLayoutString(key: string, value: string | null) {
+    if (value === null) return null
+    if (!key.startsWith(RESIZABLE_PANELS_STORAGE_KEY_PREFIX)) return value
+
+    let parsed: unknown
+    try {
+        parsed = JSON.parse(value)
+    } catch {
+        return null
+    }
+
+    if (!isObjectRecord(parsed)) return null
+
+    let didCoerce = false
+    const coercedLayout: Record<string, number> = {}
+
+    for (const [panelId, rawSize] of Object.entries(parsed)) {
+        if (typeof rawSize === "number") {
+            if (!Number.isFinite(rawSize)) return null
+            coercedLayout[panelId] = rawSize
+        } else if (typeof rawSize === "string") {
+            const coerced = Number(rawSize)
+            if (!Number.isFinite(coerced)) return null
+            coercedLayout[panelId] = coerced
+            didCoerce = true
+        } else {
+            return null
+        }
+    }
+
+    return didCoerce ? JSON.stringify(coercedLayout) : value
+}
+
 type StorageLike = Pick<Storage, "getItem" | "setItem">
 
 function useSafeStorage(): StorageLike {
     const memoryStore = React.useRef(new Map<string, string>())
 
     return React.useMemo(() => {
-        if (typeof window !== "undefined" && window.localStorage) {
-            return window.localStorage
-        }
+        const backingStorage: StorageLike =
+            typeof window !== "undefined" && window.localStorage
+                ? window.localStorage
+                : {
+                      getItem: (key: string) => memoryStore.current.get(key) ?? null,
+                      setItem: (key: string, value: string) => {
+                          memoryStore.current.set(key, value)
+                      },
+                  }
 
         return {
-            getItem: (key: string) => memoryStore.current.get(key) ?? null,
+            getItem: (key: string) =>
+                sanitizeResizablePanelsLayoutString(
+                    key,
+                    backingStorage.getItem(key),
+                ),
             setItem: (key: string, value: string) => {
-                memoryStore.current.set(key, value)
+                backingStorage.setItem(key, value)
             },
         }
     }, [])
