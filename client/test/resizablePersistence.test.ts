@@ -38,6 +38,71 @@ describe("sanitizeResizablePanelsLayoutString", () => {
         ).toBe(JSON.stringify({a: 50, b: 50}));
     });
 
+    it("trims whitespace around numeric strings", () => {
+        const raw = JSON.stringify({a: " 50 ", b: "\n50\t"});
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                raw,
+            ),
+        ).toBe(JSON.stringify({a: 50, b: 50}));
+    });
+
+    it("returns null for empty or whitespace-only size strings", () => {
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                JSON.stringify({a: "", b: "50"}),
+            ),
+        ).toBeNull();
+
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                JSON.stringify({a: "   ", b: "50"}),
+            ),
+        ).toBeNull();
+    });
+
+    it("returns null for out-of-range sizes", () => {
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                JSON.stringify({a: 101, b: 50}),
+            ),
+        ).toBeNull();
+
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                JSON.stringify({a: -1, b: 50}),
+            ),
+        ).toBeNull();
+    });
+
+    it("returns null for forbidden layout keys", () => {
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                "{\"__proto__\":50,\"a\":50}",
+            ),
+        ).toBeNull();
+
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                "{\"constructor\":50,\"a\":50}",
+            ),
+        ).toBeNull();
+
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                "{\"prototype\":50,\"a\":50}",
+            ),
+        ).toBeNull();
+    });
+
     it("returns null for non-numeric values", () => {
         expect(
             sanitizeResizablePanelsLayoutString(

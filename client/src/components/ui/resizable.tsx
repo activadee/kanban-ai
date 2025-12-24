@@ -8,8 +8,14 @@ type Direction = "horizontal" | "vertical"
 
 const RESIZABLE_PANELS_STORAGE_KEY_PREFIX = "react-resizable-panels:"
 
+const FORBIDDEN_LAYOUT_KEYS = new Set(["__proto__", "prototype", "constructor"])
+
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
     return !!value && typeof value === "object" && !Array.isArray(value)
+}
+
+function isValidLayoutSize(size: number) {
+    return Number.isFinite(size) && size >= 0 && size <= 100
 }
 
 export function sanitizeResizablePanelsLayoutString(key: string, value: string | null) {
@@ -26,15 +32,21 @@ export function sanitizeResizablePanelsLayoutString(key: string, value: string |
     if (!isObjectRecord(parsed)) return null
 
     let didCoerce = false
-    const coercedLayout: Record<string, number> = {}
+    const coercedLayout: Record<string, number> = Object.create(null)
 
     for (const [panelId, rawSize] of Object.entries(parsed)) {
+        if (FORBIDDEN_LAYOUT_KEYS.has(panelId)) return null
+
         if (typeof rawSize === "number") {
-            if (!Number.isFinite(rawSize)) return null
+            if (!isValidLayoutSize(rawSize)) return null
             coercedLayout[panelId] = rawSize
         } else if (typeof rawSize === "string") {
-            const coerced = Number(rawSize)
-            if (!Number.isFinite(coerced)) return null
+            const trimmed = rawSize.trim()
+            if (trimmed === "") return null
+
+            const coerced = Number(trimmed)
+            if (!isValidLayoutSize(coerced)) return null
+
             coercedLayout[panelId] = coerced
             didCoerce = true
         } else {
@@ -51,22 +63,52 @@ function useSafeStorage(): StorageLike {
     const memoryStore = React.useRef(new Map<string, string>())
 
     return React.useMemo(() => {
-        const backingStorage: StorageLike =
-            typeof window !== "undefined" && window.localStorage
-                ? window.localStorage
-                : {
-                      getItem: (key: string) => memoryStore.current.get(key) ?? null,
-                      setItem: (key: string, value: string) => {
-                          memoryStore.current.set(key, value)
-                      },
-                  }
+        const memoryStorage: StorageLike = {
+            getItem: (key: string) => memoryStore.current.get(key) ?? null,
+            setItem: (key: string, value: string) => {
+                memoryStore.current.set(key, value)
+            },
+        }
+
+        const localStorageBacking: StorageLike | null = (() => {
+            try {
+                if (typeof window === "undefined") return null
+                const localStorage = window.localStorage
+
+                return {
+                    getItem: (key: string) => {
+                        try {
+                            return localStorage.getItem(key)
+                        } catch {
+                            return memoryStorage.getItem(key)
+                        }
+                    },
+                    setItem: (key: string, value: string) => {
+                        try {
+                            localStorage.setItem(key, value)
+                        } catch {
+                            memoryStorage.setItem(key, value)
+                        }
+                    },
+                }
+            } catch {
+                return null
+            }
+        })()
+
+        const backingStorage = localStorageBacking ?? memoryStorage
 
         return {
-            getItem: (key: string) =>
-                sanitizeResizablePanelsLayoutString(
-                    key,
-                    backingStorage.getItem(key),
-                ),
+            getItem: (key: string) => {
+                const rawValue = backingStorage.getItem(key)
+                const sanitized = sanitizeResizablePanelsLayoutString(key, rawValue)
+
+                if (sanitized !== rawValue && sanitized !== null) {
+                    backingStorage.setItem(key, sanitized)
+                }
+
+                return sanitized
+            },
             setItem: (key: string, value: string) => {
                 backingStorage.setItem(key, value)
             },
