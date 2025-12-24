@@ -18,6 +18,7 @@ import { decideVersionToUse } from "./updates";
 import { ensureBinaryDownloaded } from "./download";
 import { getBinaryPath, getCachedVersionsForPlatform } from "./cache";
 import { printHelp } from "./help";
+import { cleanVersionTag } from "./version";
 
 export async function runCli(): Promise<void> {
     const env = resolveEnvOptions();
@@ -57,7 +58,9 @@ export async function runCli(): Promise<void> {
         dir: path.join(path.dirname(effectiveEnv.baseCacheDir), "github-api"),
     };
 
-    const explicitVersion = cliOptions.binaryVersion;
+    const explicitVersion = cliOptions.binaryVersion
+        ? cleanVersionTag(cliOptions.binaryVersion)
+        : undefined;
     let targetVersion: string;
     let binaryPath: string | undefined;
     let release: any;
@@ -86,6 +89,7 @@ export async function runCli(): Promise<void> {
                     process.stderr.write(`${resolved.meta.warning}\n`);
                 }
 
+                targetVersion = resolved.version;
                 release = resolved.release;
             } catch (err) {
                 if (err instanceof GithubRateLimitError) {
@@ -216,6 +220,7 @@ export async function runCli(): Promise<void> {
                         process.stderr.write(`${resolved.meta.warning}\n`);
                     }
 
+                    targetVersion = resolved.version;
                     release = resolved.release;
                 } catch (err) {
                     if (err instanceof GithubRateLimitError) {

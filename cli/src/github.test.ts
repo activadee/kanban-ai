@@ -295,6 +295,86 @@ describe("GitHub helpers", () => {
         }
     });
 
+    it("keeps cache writes within cache dir for invalid repo names", async () => {
+        const tmpDir = await fs.promises.mkdtemp(
+            path.join(os.tmpdir(), "kanban-ai-cli-github-"),
+        );
+
+        const writeSpy = vi.spyOn(fs.promises, "writeFile");
+
+        try {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                headers: {
+                    get: (name: string) =>
+                        name.toLowerCase() === "etag" ? "\"etag\"" : null,
+                },
+                json: async () => ({
+                    tag_name: "v1.2.3",
+                    assets: [],
+                }),
+                text: async () => "",
+            } as any);
+
+            globalThis.fetch = fetchMock as any;
+
+            await getLatestRelease("..", {
+                cache: { dir: tmpDir, ttlMs: 60_000, now: 0 },
+            });
+
+            expect(writeSpy).toHaveBeenCalled();
+            const cacheWritePath = String(writeSpy.mock.calls[0]?.[0]);
+            const resolvedTmpDir = path.resolve(tmpDir);
+            expect(
+                path.resolve(cacheWritePath).startsWith(
+                    `${resolvedTmpDir}${path.sep}`,
+                ),
+            ).toBe(true);
+        } finally {
+            writeSpy.mockRestore();
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        }
+    });
+
+    it("treats future cache timestamps as stale", async () => {
+        const tmpDir = await fs.promises.mkdtemp(
+            path.join(os.tmpdir(), "kanban-ai-cli-github-"),
+        );
+
+        try {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                headers: {
+                    get: (name: string) =>
+                        name.toLowerCase() === "etag" ? "\"etag\"" : null,
+                },
+                json: async () => ({
+                    tag_name: "v1.2.3",
+                    assets: [],
+                }),
+                text: async () => "",
+            } as any);
+
+            globalThis.fetch = fetchMock as any;
+
+            await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 60_000, now: 1_000 },
+            });
+
+            await getLatestRelease("owner/repo", {
+                cache: { dir: tmpDir, ttlMs: 60_000, now: 0 },
+            });
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        } finally {
+            await fs.promises.rm(tmpDir, { recursive: true, force: true });
+        }
+    });
+
     it("returns cached data with a warning when rate-limited", async () => {
         const tmpDir = await fs.promises.mkdtemp(
             path.join(os.tmpdir(), "kanban-ai-cli-github-"),
@@ -413,6 +493,58 @@ describe("GitHub helpers", () => {
         expect(resolved.assetName).toBe("asset");
         expect(resolved.url).toBe(
             "https://objects.githubusercontent.com/github-production-release-asset-2e65be/asset",
+        );
+    });
+
+    it("does not return a failing release URL in latest redirect flow", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                status: 302,
+                headers: {
+                    get: (name: string) =>
+                        name.toLowerCase() === "location"
+                            ? "https://github.com/owner/repo/releases/download/v9.9.9/asset"
+                            : null,
+                },
+            } as any)
+            .mockResolvedValueOnce({
+                status: 404,
+                headers: { get: () => null },
+            } as any);
+
+        globalThis.fetch = fetchMock as any;
+
+        await expect(
+            resolveLatestReleaseAssetViaRedirect("owner/repo", ["asset"]),
+        ).rejects.toThrow(/Could not resolve latest release download URL/);
+    });
+
+    it("returns the GitHub release download URL when no redirect occurs", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce({
+                status: 302,
+                headers: {
+                    get: (name: string) =>
+                        name.toLowerCase() === "location"
+                            ? "https://github.com/owner/repo/releases/download/v9.9.9/asset"
+                            : null,
+                },
+            } as any)
+            .mockResolvedValueOnce({
+                status: 200,
+                headers: { get: () => null },
+            } as any);
+
+        globalThis.fetch = fetchMock as any;
+
+        const resolved = await resolveLatestReleaseAssetViaRedirect("owner/repo", [
+            "asset",
+        ]);
+
+        expect(resolved.url).toBe(
+            "https://github.com/owner/repo/releases/download/v9.9.9/asset",
         );
     });
 

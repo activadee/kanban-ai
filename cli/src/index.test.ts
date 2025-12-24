@@ -553,7 +553,7 @@ describe("runCli", () => {
             argsModule.parseCliArgs as unknown as ReturnType<typeof vi.fn>;
         (parseCliArgsMock as any).mockReturnValueOnce({
             ...defaultCliOptions,
-            binaryVersion: "1.2.3",
+            binaryVersion: "v1.2.3",
         });
 
         const githubModule = await import("./github");

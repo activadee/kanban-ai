@@ -81,16 +81,29 @@ function resolveTtlMs(cache?: GithubCacheOptions): number {
 }
 
 function isFresh(entry: GithubApiCacheEntry<unknown>, ttlMs: number, now: number): boolean {
+    if (entry.fetchedAt > now) return false
     return now - entry.fetchedAt < ttlMs
 }
 
 function cacheFilePath(cacheDir: string, repo: string, apiPath: string): string {
-    const repoSafe = repo.replace(/[^a-zA-Z0-9._-]+/g, '__')
+    const baseDir = path.resolve(cacheDir)
+    const repoKey = repo.replace(/[^a-zA-Z0-9._-]+/g, '__')
+    const repoHash = createHash('sha256').update(repo).digest('hex').slice(0, 12)
+    const repoSafe = repoKey === '' || repoKey === '.' || repoKey === '..' ? `repo-${repoHash}` : repoKey
+
     const key = createHash('sha256')
         .update(`${GITHUB_API_BASE}${apiPath}`)
         .digest('hex')
         .slice(0, 32)
-    return path.join(cacheDir, repoSafe, `${key}.json`)
+
+    const fileName = `${key}.json`
+    const candidate = path.resolve(baseDir, repoSafe, fileName)
+
+    if (!candidate.startsWith(`${baseDir}${path.sep}`)) {
+        return path.join(baseDir, `repo-${repoHash}`, fileName)
+    }
+
+    return candidate
 }
 
 async function readCacheEntry<T>(filePath: string): Promise<GithubApiCacheEntry<T> | null> {
@@ -375,7 +388,11 @@ export async function resolveLatestReleaseAssetViaRedirect(
 
         const res2 = await fetch(releaseUrl, {redirect: 'manual', method: 'HEAD'})
         if (!isRedirectStatus(res2.status)) {
-            return {tag, version: cleanVersionTag(tag), assetName, url: releaseUrl}
+            if (res2.status >= 200 && res2.status < 300) {
+                return {tag, version: cleanVersionTag(tag), assetName, url: releaseUrl}
+            }
+
+            continue
         }
 
         const secondLocation = res2.headers.get('location')
