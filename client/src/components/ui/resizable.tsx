@@ -31,10 +31,14 @@ export function sanitizeResizablePanelsLayoutString(key: string, value: string |
 
     if (!isObjectRecord(parsed)) return null
 
+    const nestedLayout = parsed["layout"]
+    const layoutCandidate = isObjectRecord(nestedLayout) ? nestedLayout : parsed
+    const shouldReserialize = layoutCandidate !== parsed
+
     let didCoerce = false
     const coercedLayout: Record<string, number> = Object.create(null)
 
-    for (const [panelId, rawSize] of Object.entries(parsed)) {
+    for (const [panelId, rawSize] of Object.entries(layoutCandidate)) {
         if (FORBIDDEN_LAYOUT_KEYS.has(panelId)) return null
 
         if (typeof rawSize === "number") {
@@ -54,7 +58,7 @@ export function sanitizeResizablePanelsLayoutString(key: string, value: string |
         }
     }
 
-    return didCoerce ? JSON.stringify(coercedLayout) : value
+    return didCoerce || shouldReserialize ? JSON.stringify(coercedLayout) : value
 }
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">
@@ -101,13 +105,7 @@ function useSafeStorage(): StorageLike {
         return {
             getItem: (key: string) => {
                 const rawValue = backingStorage.getItem(key)
-                const sanitized = sanitizeResizablePanelsLayoutString(key, rawValue)
-
-                if (sanitized !== rawValue && sanitized !== null) {
-                    backingStorage.setItem(key, sanitized)
-                }
-
-                return sanitized
+                return sanitizeResizablePanelsLayoutString(key, rawValue)
             },
             setItem: (key: string, value: string) => {
                 backingStorage.setItem(key, value)
@@ -131,6 +129,33 @@ function ResizablePanelGroup({
     ...props
 }: ResizablePanelGroupProps) {
     const storage = useSafeStorage()
+
+    React.useEffect(() => {
+        if (!autoSaveId) return
+        if (typeof window === "undefined") return
+
+        const storageKey = `${RESIZABLE_PANELS_STORAGE_KEY_PREFIX}${autoSaveId}`
+
+        try {
+            const localStorage = window.localStorage
+            const rawValue = localStorage.getItem(storageKey)
+
+            if (rawValue === null) return
+
+            const sanitized = sanitizeResizablePanelsLayoutString(storageKey, rawValue)
+
+            if (sanitized === null) {
+                localStorage.removeItem(storageKey)
+                return
+            }
+
+            if (sanitized !== rawValue) {
+                localStorage.setItem(storageKey, sanitized)
+            }
+        } catch {
+            return
+        }
+    }, [autoSaveId])
 
     const persistedLayout = ResizablePrimitive.useDefaultLayout({
         id: autoSaveId ?? "resizable-panel-group",

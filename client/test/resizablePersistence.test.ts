@@ -129,6 +129,16 @@ describe("sanitizeResizablePanelsLayoutString", () => {
         ).toBe(raw);
     });
 
+    it("flattens nested layout objects", () => {
+        const raw = JSON.stringify({layout: {a: 50, b: 50}});
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                raw,
+            ),
+        ).toBe(JSON.stringify({a: 50, b: 50}));
+    });
+
     it("passes through values for unrelated keys", () => {
         expect(sanitizeResizablePanelsLayoutString("other:key", "{not-json")).toBe(
             "{not-json",
