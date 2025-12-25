@@ -12,8 +12,11 @@ The Card Inspector is opened by clicking a card on the board. On desktop it now 
 horizontal split: the board stays in the first panel while the inspector sits to the right, and a built-in handle
 lets you repartition the width between them. You can adjust the inspector width relative to the viewport
 (approximately 22 %–65 %, defaulting near 35 %) and the layout state is persisted under the `kanban-board-inspector`
-auto-save key so reopening the board restores your preferred size. On mobile the inspector still opens as a full-height
-sheet that slides in from the side, keeping the focus on the tapped card.
+auto-save key so reopening the board restores your preferred size. Storage uses a safe wrapper that clamps saved
+percentages to the 0–100 range, sanitizes malformed values (including string payloads with whitespace), filters known
+prototype keys, and falls back to in-memory storage when `localStorage` isn’t available, so a corrupted value simply
+resets to a valid proportion instead of breaking the split. On mobile the inspector still opens as a full-height sheet
+that slides in from the side, keeping the focus on the tapped card.
 
 Its layout consists of:
 

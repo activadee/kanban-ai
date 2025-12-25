@@ -55,7 +55,9 @@ You can also create cards directly in a column using column-specific controls (e
       overlaying it, and the handle resizes the panels side-by-side.
     - Drag the vertical handle to repartition the board/inspector widths (roughly 22 %–65 % of the viewport) and
       the layout state is stored under the `kanban-board-inspector` auto-save key so reopening the board restores the
-      same ratio.
+      same ratio. The storage layer sanitizes saved layouts (clamping percentages to 0–100, trimming whitespace,
+      and filtering prototype keys) and falls back to memory when `localStorage` is blocked, so even malformed values
+      simply reset to a valid size instead of breaking the split.
   - On mobile:
     - The inspector still opens as a full-height sheet that slides in from the side, keeping the focus on the tapped card.
   - The board page accepts a `cardId` query parameter (for example `/projects/<projectId>?cardId=<cardId>`) so dashboard cards, side panels, and activity lists can deep link directly to a task and open the inspector without an extra click.
