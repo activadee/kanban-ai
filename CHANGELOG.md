@@ -1,3 +1,9 @@
+## [0.19.4](https://github.com/activadee/kanban-ai/compare/v0.19.3...v0.19.4) (2025-12-25)
+
+### Bug Fixes
+
+* **client:** prevent resizable panel layout crash ([#317](https://github.com/activadee/kanban-ai/issues/317)) ([db1bf18](https://github.com/activadee/kanban-ai/commit/db1bf1852a482ada8a108b8114912d75851a6d56))
+
 ## [0.19.3](https://github.com/activadee/kanban-ai/compare/v0.19.2...v0.19.3) (2025-12-24)
 
 ### Bug Fixes

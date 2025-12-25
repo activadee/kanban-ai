@@ -1,6 +1,6 @@
 {
     "name": "kanban-ai",
-    "version": "0.19.3",
+    "version": "0.19.4",
     "author": "Patryk Kalwak",
     "devDependencies": {
         "@semantic-release/changelog": "^6.0.3",
