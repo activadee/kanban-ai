@@ -60,11 +60,15 @@ const computeInspectorSize = () => {
     const vw = window.innerWidth || 1440;
     const toPercent = (px: number) => Math.min(95, Math.max(5, (px / vw) * 100));
 
-    return {
-        defaultSize: toPercent(DEFAULT_INSPECTOR_WIDTH),
-        minSize: toPercent(MIN_INSPECTOR_WIDTH),
-        maxSize: toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9)),
-    } as const;
+    let minSize = toPercent(MIN_INSPECTOR_WIDTH);
+    let maxSize = toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9));
+    let defaultSize = toPercent(DEFAULT_INSPECTOR_WIDTH);
+
+    // Normalize constraints: ensure maxSize >= minSize, then clamp defaultSize
+    maxSize = Math.max(minSize, maxSize);
+    defaultSize = Math.min(maxSize, Math.max(minSize, defaultSize));
+
+    return { defaultSize, minSize, maxSize } as const;
 };
 
 const clampPanelSizePercent = (value: number, fallback: number) => {
