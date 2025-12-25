@@ -60,20 +60,11 @@ const computeInspectorSize = () => {
     const vw = window.innerWidth || 1440;
     const toPercent = (px: number) => Math.min(95, Math.max(5, (px / vw) * 100));
 
-    let minSize = toPercent(MIN_INSPECTOR_WIDTH);
-    let maxSize = toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9));
-    let defaultSize = toPercent(DEFAULT_INSPECTOR_WIDTH);
-
-    // Normalize constraints: ensure maxSize >= minSize, then clamp defaultSize
-    maxSize = Math.max(minSize, maxSize);
-    defaultSize = Math.min(maxSize, Math.max(minSize, defaultSize));
-
-    return { defaultSize, minSize, maxSize } as const;
-};
-
-const clampPanelSizePercent = (value: number, fallback: number) => {
-    if (!Number.isFinite(value)) return fallback;
-    return Math.min(100, Math.max(0, value));
+    return {
+        defaultSize: toPercent(DEFAULT_INSPECTOR_WIDTH),
+        minSize: toPercent(MIN_INSPECTOR_WIDTH),
+        maxSize: toPercent(Math.min(MAX_INSPECTOR_WIDTH, vw * 0.9)),
+    } as const;
 };
 
 type Props = {
@@ -374,8 +365,8 @@ export function Board({
                                 >
                                     <ResizablePanel
                                         id="kanban-board"
-                                        minSize={clampPanelSizePercent(Math.max(10, 100 - inspectorSize.maxSize), 10)}
-                                        defaultSize={clampPanelSizePercent(Math.max(15, 100 - inspectorSize.defaultSize), 15)}
+                                        minSize={Math.max(10, 100 - inspectorSize.maxSize)}
+                                        defaultSize={Math.max(15, 100 - inspectorSize.defaultSize)}
                                     >
                                         {boardContent}
                                     </ResizablePanel>
@@ -385,9 +376,9 @@ export function Board({
                                     />
                                     <ResizablePanel
                                         id="kanban-inspector"
-                                        minSize={clampPanelSizePercent(inspectorSize.minSize, FALLBACK_INSPECTOR_SIZE.minSize)}
-                                        maxSize={clampPanelSizePercent(inspectorSize.maxSize, FALLBACK_INSPECTOR_SIZE.maxSize)}
-                                        defaultSize={clampPanelSizePercent(inspectorSize.defaultSize, FALLBACK_INSPECTOR_SIZE.defaultSize)}
+                                        minSize={inspectorSize.minSize}
+                                        maxSize={inspectorSize.maxSize}
+                                        defaultSize={inspectorSize.defaultSize}
                                     >
                                         <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4 shadow-xl">
                                             <CardInspector
