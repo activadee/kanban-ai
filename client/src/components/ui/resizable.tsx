@@ -37,9 +37,11 @@ export function sanitizeResizablePanelsLayoutString(key: string, value: string |
 
     let didCoerce = false
     const coercedLayout: Record<string, number> = Object.create(null)
+    let entryCount = 0
 
     for (const [panelId, rawSize] of Object.entries(layoutCandidate)) {
         if (FORBIDDEN_LAYOUT_KEYS.has(panelId)) return null
+        entryCount++
 
         if (typeof rawSize === "number") {
             if (!isValidLayoutSize(rawSize)) return null
@@ -57,6 +59,8 @@ export function sanitizeResizablePanelsLayoutString(key: string, value: string |
             return null
         }
     }
+
+    if (entryCount === 0) return null
 
     return didCoerce || shouldReserialize ? JSON.stringify(coercedLayout) : value
 }

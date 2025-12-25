@@ -139,6 +139,15 @@ describe("sanitizeResizablePanelsLayoutString", () => {
         ).toBe(JSON.stringify({a: 50, b: 50}));
     });
 
+    it("returns null for empty layout objects", () => {
+        expect(
+            sanitizeResizablePanelsLayoutString(
+                "react-resizable-panels:test",
+                JSON.stringify({}),
+            ),
+        ).toBeNull();
+    });
+
     it("passes through values for unrelated keys", () => {
         expect(sanitizeResizablePanelsLayoutString("other:key", "{not-json")).toBe(
             "{not-json",
