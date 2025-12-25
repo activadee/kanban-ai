@@ -1,4 +1,4 @@
-name: Codex Code Review
+name: OpenCode Review
 
 on:
   pull_request:
@@ -11,13 +11,9 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: write
+  id-token: write
 
 jobs:
   review:
-    if: github.event.pull_request.draft == false
-    uses: activadee/codex-shared-workflows/.github/workflows/codex-review.yml@main
+    uses: activadee/opencode-shared-workflows/.github/workflows/opencode-review.yml@main
     secrets: inherit
-    with: 
-      model: "gpt-5.2"
-      effort: "high"
