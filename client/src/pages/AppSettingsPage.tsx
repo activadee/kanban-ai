@@ -9,6 +9,7 @@ import {GeneralSettingsSection} from './app-settings/GeneralSettingsSection'
 import {EditorSettingsSection} from './app-settings/EditorSettingsSection'
 import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
+import {OpencodeAgentSettingsSection} from './app-settings/OpencodeAgentSettingsSection'
 import {GithubAppCredentialsFields} from '@/components/github/GithubAppCredentialsFields'
 import {describeApiError} from '@/api/http'
 import {PageHeader} from '@/components/layout/PageHeader'
@@ -278,6 +279,8 @@ export function AppSettingsPage() {
                                 ghPrTitleTemplate: form.ghPrTitleTemplate,
                                 ghPrBodyTemplate: form.ghPrBodyTemplate
                             }} onChange={(p) => setForm({...form, ...p})}/>
+                            <OpencodeAgentSettingsSection form={{opencodePort: form.opencodePort}}
+                                                           onChange={(p) => setForm({...form, ...p})}/>
                         </div>
                         {appCredForm ? (
                             <div className="rounded-md border p-6">

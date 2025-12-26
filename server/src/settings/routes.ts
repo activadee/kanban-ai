@@ -20,6 +20,7 @@ const updateSchema = z.object({
     ghPrTitleTemplate: z.string().nullable().optional(),
     ghPrBodyTemplate: z.string().nullable().optional(),
     ghAutolinkTickets: z.boolean().optional(),
+    opencodePort: z.number().int().min(1).max(65535).optional(),
 })
 
 export function createAppSettingsRouter() {

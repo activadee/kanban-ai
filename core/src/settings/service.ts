@@ -139,6 +139,11 @@ export async function updateAppSettings(
             : v === undefined
               ? undefined
               : (v as any);
+    if (payload.opencodePort !== undefined) {
+        if (!Number.isInteger(payload.opencodePort) || payload.opencodePort < 1 || payload.opencodePort > 65535) {
+            throw new Error("Invalid port: must be an integer between 1 and 65535");
+        }
+    }
     const updates = {
         theme: payload.theme,
         language: payload.language,
