@@ -8,7 +8,7 @@ import {
     updateAppSettingsRow,
 } from "./repo";
 
-// Supported editor types - used to normalize legacy values
+// Supported editor types - used to validate new values
 const SUPPORTED_EDITORS = new Set([
     "VS_CODE",
     "VS_CODE_INSURANCE",
@@ -26,6 +26,9 @@ const SUPPORTED_EDITORS = new Set([
     "VSCodium",
     "VSCodium_Insiders",
 ] as const);
+
+// Type alias for the literal values in SUPPORTED_EDITORS
+type EditorTypeLiteral = typeof SUPPORTED_EDITORS extends Set<infer T> ? T : never;
 
 let cache: SharedAppSettings | null = null;
 
@@ -62,9 +65,8 @@ function toIso(v: Date | number | string | null | undefined): string {
 
 /**
  * Normalize editor settings from database row.
- * Validates editorType against supported list and normalizes legacy values.
  * For supported editors, command is set to null (uses executable discovery).
- * For legacy/unknown editors, coerces to VS_CODE with null command.
+ * For legacy/unknown editors, preserves the original type and command.
  */
 function normalizeEditor(
     rowType: unknown,
@@ -74,20 +76,23 @@ function normalizeEditor(
     editorCommand: string | null;
 } {
     const type = (rowType as string | undefined) ?? "VS_CODE";
-    // For now, always set command to null since we use executable discovery
-    // This maintains backwards compatibility with the old behavior
+    const cleanedCommand =
+        typeof rowCommand === "string" && rowCommand.trim() ? rowCommand : null;
+
+    // For supported editors, use executable discovery (command = null)
     if (SUPPORTED_EDITORS.has(type as EditorTypeLiteral)) {
         return {
             editorType: type as SharedAppSettings["editorType"],
             editorCommand: null,
         };
     }
-    // Legacy or unknown editors are coerced to default
-    return { editorType: "VS_CODE", editorCommand: null };
-}
 
-// Type alias for the literal values in SUPPORTED_EDITORS
-type EditorTypeLiteral = typeof SUPPORTED_EDITORS extends Set<infer T> ? T : never;
+    // For legacy or unknown editors, preserve original type and command
+    return {
+        editorType: type as SharedAppSettings["editorType"],
+        editorCommand: cleanedCommand,
+    };
+}
 
 function mapRow(row: any): SharedAppSettings {
     const { editorType, editorCommand } = normalizeEditor(
