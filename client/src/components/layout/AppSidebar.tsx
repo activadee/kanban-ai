@@ -153,7 +153,7 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
 
                     <div className="my-4 h-px bg-border/60"/>
 
-                    <div className="flex items-center justify-end px-1">
+                    <div className="flex items-center justify-end px-3">
                         <Button
                             type="button"
                             variant="ghost"
