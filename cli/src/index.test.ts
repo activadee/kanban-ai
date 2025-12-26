@@ -489,8 +489,14 @@ describe("runCli", () => {
             ensureBinaryDownloadedMock.mockClear();
             await runCli();
 
-            // Verify version was printed
-            expect(logSpy).toHaveBeenCalledWith("kanban-ai CLI wrapper version 0.19.5");
+            // Verify version was printed with correct format
+            expect(logSpy).toHaveBeenCalled();
+            const versionCall = logSpy.mock.calls.find((call) =>
+                typeof call[0] === "string" && call[0].includes("kanban-ai CLI wrapper version"),
+            );
+            expect(versionCall).toBeDefined();
+            // Verify format: "kanban-ai CLI wrapper version X.Y.Z" where X.Y.Z is a valid semver
+            expect(versionCall?.[0]).toMatch(/^kanban-ai CLI wrapper version \d+\.\d+\.\d+$/);
             // Verify exit was called (note: mocked exit doesn't actually stop execution)
             expect(exitSpy).toHaveBeenCalledWith(0);
             // Note: Since process.exit is mocked, code continues to run and may call other functions

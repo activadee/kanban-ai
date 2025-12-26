@@ -14,6 +14,8 @@ export type BrowseDirectoryOptions = {
   path?: string
   showHidden?: boolean
   executablesOnly?: boolean
+  /** Additional paths that are allowed for browsing (besides home directory) */
+  allowedPaths?: string[]
 }
 
 export type BrowseDirectoryResult = {
@@ -22,10 +24,32 @@ export type BrowseDirectoryResult = {
   parentPath: string | null
 }
 
+/**
+ * Validate that the target path is within allowed directories to prevent path traversal attacks.
+ */
+function validatePath(targetPath: string, allowedPaths: string[]): void {
+  const resolvedPath = path.resolve(targetPath);
+
+  // Check if resolved path is within any allowed directory
+  for (const allowed of allowedPaths) {
+    const allowedAbsolute = path.resolve(allowed);
+    // Check if resolvedPath starts with allowedAbsolute (is a subdirectory)
+    if (resolvedPath.startsWith(allowedAbsolute + path.sep) || resolvedPath === allowedAbsolute) {
+      return; // Path is valid
+    }
+  }
+
+  throw new Error(`Access to path '${targetPath}' is not allowed`);
+}
+
 export async function browseDirectory(options?: BrowseDirectoryOptions): Promise<BrowseDirectoryResult> {
   const targetPath = options?.path || os.homedir();
   const showHidden = options?.showHidden ?? false;
   const executablesOnly = options?.executablesOnly ?? false;
+  const allowedPaths = options?.allowedPaths ?? [os.homedir()];
+
+  // Validate path before proceeding to prevent directory traversal
+  validatePath(targetPath, allowedPaths);
 
   const absolutePath = path.resolve(targetPath);
   const entries = await fs.readdir(absolutePath, { withFileTypes: true });
@@ -63,6 +87,7 @@ export async function browseDirectory(options?: BrowseDirectoryOptions): Promise
         const stats = await fs.stat(fullPath);
         size = stats.size;
       } catch {
+        // Silently ignore stat failures for individual files
       }
     }
 

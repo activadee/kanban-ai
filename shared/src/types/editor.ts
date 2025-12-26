@@ -7,5 +7,4 @@ export type EditorSuggestion = {
 export type EditorValidationResult = {
   valid: boolean
   error?: string
-  version?: string
 }

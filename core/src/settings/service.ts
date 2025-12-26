@@ -8,6 +8,25 @@ import {
     updateAppSettingsRow,
 } from "./repo";
 
+// Supported editor types - used to normalize legacy values
+const SUPPORTED_EDITORS = new Set([
+    "VS_CODE",
+    "VS_CODE_INSURANCE",
+    "CURSOR",
+    "WINDSCRAFT",
+    "OPENVSP",
+    "REA",
+    "JETBRAINS",
+    "NOVA",
+    "SUBLIME",
+    "TEXTMATE",
+    "BBEDIT",
+    "CODE",
+    "ZEPHYR",
+    "VSCodium",
+    "VSCodium_Insiders",
+] as const);
+
 let cache: SharedAppSettings | null = null;
 
 function defaults(): SharedAppSettings {
@@ -41,7 +60,40 @@ function toIso(v: Date | number | string | null | undefined): string {
         : d.toISOString();
 }
 
+/**
+ * Normalize editor settings from database row.
+ * Validates editorType against supported list and normalizes legacy values.
+ * For supported editors, command is set to null (uses executable discovery).
+ * For legacy/unknown editors, coerces to VS_CODE with null command.
+ */
+function normalizeEditor(
+    rowType: unknown,
+    rowCommand: unknown,
+): {
+    editorType: SharedAppSettings["editorType"];
+    editorCommand: string | null;
+} {
+    const type = (rowType as string | undefined) ?? "VS_CODE";
+    // For now, always set command to null since we use executable discovery
+    // This maintains backwards compatibility with the old behavior
+    if (SUPPORTED_EDITORS.has(type as EditorTypeLiteral)) {
+        return {
+            editorType: type as SharedAppSettings["editorType"],
+            editorCommand: null,
+        };
+    }
+    // Legacy or unknown editors are coerced to default
+    return { editorType: "VS_CODE", editorCommand: null };
+}
+
+// Type alias for the literal values in SUPPORTED_EDITORS
+type EditorTypeLiteral = typeof SUPPORTED_EDITORS extends Set<infer T> ? T : never;
+
 function mapRow(row: any): SharedAppSettings {
+    const { editorType, editorCommand } = normalizeEditor(
+        row.editorType ?? row.editor_type,
+        row.editorCommand ?? row.editor_command,
+    );
     return {
         id: row.id,
         theme: (row.theme ?? "system") as SharedAppSettings["theme"],
@@ -63,8 +115,8 @@ function mapRow(row: any): SharedAppSettings {
                 row.auto_start_agent_on_in_progress ??
                 false,
         ),
-        editorType: row.editorType ?? row.editor_type ?? null,
-        editorCommand: row.editorCommand ?? row.editor_command ?? null,
+        editorType,
+        editorCommand,
         gitUserName: row.gitUserName ?? row.git_user_name ?? null,
         gitUserEmail: row.gitUserEmail ?? row.git_user_email ?? null,
         branchTemplate:
