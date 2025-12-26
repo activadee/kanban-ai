@@ -27,7 +27,8 @@ const hooksMocks = vi.hoisted(() => ({
     useMoveCard: vi.fn(),
 
     useAppSettings: vi.fn(),
-    useEditors: vi.fn(),
+    useEditorSuggestions: vi.fn(),
+    useValidateEditorPath: vi.fn(),
     useGithubAppConfig: vi.fn(),
     useSaveGithubAppConfig: vi.fn(),
     useUpdateAppSettings: vi.fn(),
@@ -61,7 +62,8 @@ vi.mock('@/hooks', async (importOriginal) => {
         useMoveCard: hooksMocks.useMoveCard,
 
         useAppSettings: hooksMocks.useAppSettings,
-        useEditors: hooksMocks.useEditors,
+        useEditorSuggestions: hooksMocks.useEditorSuggestions,
+        useValidateEditorPath: hooksMocks.useValidateEditorPath,
         useGithubAppConfig: hooksMocks.useGithubAppConfig,
         useSaveGithubAppConfig: hooksMocks.useSaveGithubAppConfig,
         useUpdateAppSettings: hooksMocks.useUpdateAppSettings,
@@ -128,7 +130,7 @@ vi.mock('@/pages/OnboardingPage/useOnboardingState', () => ({
                 notificationsAgentCompletionSound: false,
                 notificationsDesktop: false,
                 autoStartAgentOnInProgress: false,
-                editorType: '',
+                editorCommand: null,
                 gitUserName: '',
                 gitUserEmail: '',
                 branchTemplate: '',
@@ -137,7 +139,7 @@ vi.mock('@/pages/OnboardingPage/useOnboardingState', () => ({
                 ghAutolinkTickets: false,
             },
             appCredForm: null,
-            installedEditors: [],
+            editorValidationStatus: null,
             connected: false,
             connectedUsername: null,
             onboardingCompleted: false,
@@ -295,7 +297,8 @@ describe('Page headers are unified across pages', () => {
         hooksMocks.useMoveCard.mockReturnValue({mutateAsync: vi.fn(), isPending: false})
 
         hooksMocks.useAppSettings.mockReturnValue({data: null, isLoading: false})
-        hooksMocks.useEditors.mockReturnValue({data: []})
+        hooksMocks.useEditorSuggestions.mockReturnValue({data: []})
+        hooksMocks.useValidateEditorPath.mockReturnValue({mutate: vi.fn(), isPending: false})
         hooksMocks.useGithubAppConfig.mockReturnValue({data: undefined})
         hooksMocks.useSaveGithubAppConfig.mockReturnValue({mutate: vi.fn(), isPending: false})
         hooksMocks.useUpdateAppSettings.mockReturnValue({mutate: vi.fn(), isPending: false})

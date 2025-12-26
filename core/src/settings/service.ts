@@ -41,37 +41,7 @@ function toIso(v: Date | number | string | null | undefined): string {
         : d.toISOString();
 }
 
-const SUPPORTED_EDITORS = new Set<SharedAppSettings["editorType"]>([
-    "VS_CODE",
-    "WEBSTORM",
-    "ZED",
-]);
-
-function normalizeEditor(
-    rowType: unknown,
-    rowCommand: unknown,
-): {
-    editorType: SharedAppSettings["editorType"];
-    editorCommand: string | null;
-} {
-    const type = (rowType as string | undefined) ?? "VS_CODE";
-    const cleanedCommand =
-        typeof rowCommand === "string" && rowCommand.trim() ? rowCommand : null;
-    if (SUPPORTED_EDITORS.has(type as SharedAppSettings["editorType"])) {
-        return {
-            editorType: type as SharedAppSettings["editorType"],
-            editorCommand: null,
-        };
-    }
-    // Legacy or unknown editors are coerced to default; drop custom command support
-    return { editorType: "VS_CODE", editorCommand: null };
-}
-
 function mapRow(row: any): SharedAppSettings {
-    const { editorType, editorCommand } = normalizeEditor(
-        row.editorType ?? row.editor_type,
-        row.editorCommand ?? row.editor_command,
-    );
     return {
         id: row.id,
         theme: (row.theme ?? "system") as SharedAppSettings["theme"],
@@ -93,8 +63,8 @@ function mapRow(row: any): SharedAppSettings {
                 row.auto_start_agent_on_in_progress ??
                 false,
         ),
-        editorType,
-        editorCommand,
+        editorType: row.editorType ?? row.editor_type ?? null,
+        editorCommand: row.editorCommand ?? row.editor_command ?? null,
         gitUserName: row.gitUserName ?? row.git_user_name ?? null,
         gitUserEmail: row.gitUserEmail ?? row.git_user_email ?? null,
         branchTemplate:

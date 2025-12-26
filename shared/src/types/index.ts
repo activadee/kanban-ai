@@ -1,5 +1,7 @@
 export * from './github'
 export * from './filesystem'
+export * from './fs'
+export * from './editor'
 export * from './project'
 export * from './runner'
 export * from './conversation'
