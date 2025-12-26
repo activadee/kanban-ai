@@ -8,93 +8,18 @@ type Direction = "horizontal" | "vertical"
 
 type StorageLike = Pick<Storage, "getItem" | "setItem">
 
-const STORAGE_KEY_PREFIX = "react-resizable-panels:"
-const FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"])
-
-function isValidSize(size: number): boolean {
-    return Number.isFinite(size) && size >= 0 && size <= 100
-}
-
-export function sanitizeResizablePanelsLayoutString(key: string, value: string | null): string | null {
-    if (value === null) return null
-    if (!key.startsWith(STORAGE_KEY_PREFIX)) return value
-
-    let parsed: unknown
-    try {
-        parsed = JSON.parse(value)
-    } catch {
-        return null
-    }
-
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        return null
-    }
-
-    const record = parsed as Record<string, unknown>
-    const nestedLayout = record["layout"]
-    const layoutCandidate = (
-        typeof nestedLayout === "object" && nestedLayout !== null && !Array.isArray(nestedLayout)
-    ) ? nestedLayout as Record<string, unknown> : record
-    const shouldReserialize = layoutCandidate !== record
-
-    let didCoerce = false
-    const result: Record<string, number> = Object.create(null)
-    let entryCount = 0
-
-    for (const [panelId, rawSize] of Object.entries(layoutCandidate)) {
-        if (FORBIDDEN_KEYS.has(panelId)) return null
-        entryCount++
-
-        if (typeof rawSize === "number") {
-            if (!isValidSize(rawSize)) return null
-            result[panelId] = rawSize
-        } else if (typeof rawSize === "string") {
-            const trimmed = rawSize.trim()
-            if (trimmed === "") return null
-            const num = Number(trimmed)
-            if (!isValidSize(num)) return null
-            result[panelId] = num
-            didCoerce = true
-        } else {
-            return null
-        }
-    }
-
-    if (entryCount === 0) return null
-
-    return didCoerce || shouldReserialize ? JSON.stringify(result) : value
-}
-
 function useSafeStorage(): StorageLike {
     const memoryStore = React.useRef(new Map<string, string>())
 
     return React.useMemo(() => {
-        const memoryStorage: StorageLike = {
-            getItem: (key: string) => memoryStore.current.get(key) ?? null,
-            setItem: (key: string, value: string) => {
-                memoryStore.current.set(key, value)
-            },
-        }
-
-        if (typeof window === "undefined" || !window.localStorage) {
-            return memoryStorage
+        if (typeof window !== "undefined" && window.localStorage) {
+            return window.localStorage
         }
 
         return {
-            getItem: (key: string) => {
-                try {
-                    const raw = window.localStorage.getItem(key)
-                    return sanitizeResizablePanelsLayoutString(key, raw)
-                } catch {
-                    return memoryStorage.getItem(key)
-                }
-            },
+            getItem: (key: string) => memoryStore.current.get(key) ?? null,
             setItem: (key: string, value: string) => {
-                try {
-                    window.localStorage.setItem(key, value)
-                } catch {
-                    memoryStorage.setItem(key, value)
-                }
+                memoryStore.current.set(key, value)
             },
         }
     }, [])

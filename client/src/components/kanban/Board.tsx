@@ -280,7 +280,7 @@ export function Board({
                         </div>
                         <div className="space-y-1">
                             <h2 className="text-xl font-semibold">
-                                Let’s create your first ticket
+                                Let's create your first ticket
                             </h2>
                             <p className="text-sm text-muted-foreground">
                                 Drag and drop tickets between columns to track
@@ -365,8 +365,8 @@ export function Board({
                                 >
                                     <ResizablePanel
                                         id="kanban-board"
-                                        minSize={Math.max(10, 100 - inspectorSize.maxSize)}
-                                        defaultSize={Math.max(15, 100 - inspectorSize.defaultSize)}
+                                        minSize={`${Math.max(10, 100 - inspectorSize.maxSize)}`}
+                                        defaultSize={`${Math.max(15, 100 - inspectorSize.defaultSize)}`}
                                     >
                                         {boardContent}
                                     </ResizablePanel>
@@ -376,9 +376,9 @@ export function Board({
                                     />
                                     <ResizablePanel
                                         id="kanban-inspector"
-                                        minSize={inspectorSize.minSize}
-                                        maxSize={inspectorSize.maxSize}
-                                        defaultSize={inspectorSize.defaultSize}
+                                        minSize={`${inspectorSize.minSize}`}
+                                        maxSize={`${inspectorSize.maxSize}`}
+                                        defaultSize={`${inspectorSize.defaultSize}`}
                                     >
                                         <div className="flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4 shadow-xl">
                                             <CardInspector
