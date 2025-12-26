@@ -1,6 +1,6 @@
 import {useMemo, useState} from 'react'
 import {useLocation, useNavigate, useParams} from 'react-router-dom'
-import {LayoutDashboard, Kanban, Settings, RefreshCw, Plus} from 'lucide-react'
+import {LayoutDashboard, Kanban, Settings, RefreshCw, Plus, PanelLeftClose, PanelRight} from 'lucide-react'
 import {useProjectsNav} from '@/contexts/useProjectsNav'
 import {Button} from '@/components/ui/button'
 //
@@ -15,6 +15,7 @@ import {AgentsSection} from './sidebar/AgentsSection'
 import {GitHubAccountBox} from './sidebar/GitHubAccountBox'
 import {ProjectsList} from './sidebar/ProjectsList'
 import {describeApiError} from '@/api/http'
+import {useLocalStorage} from '@/hooks/useLocalStorage'
 
 // NavButton moved to './sidebar/NavButton'
 
@@ -29,78 +30,166 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
 
+    // Persist sidebar collapsed state in localStorage
+    const [isCollapsed, setIsCollapsed] = useLocalStorage('app-sidebar-collapsed', false)
+
     const activeProjectId = params.projectId ?? null
 
     const groupedProjects = useMemo(() => projects, [projects])
     const agentsQuery = useAgents()
 
+    const toggleSidebar = () => {
+        setIsCollapsed((prev: boolean) => !prev)
+    }
+
     return (
-        <aside className="flex h-full w-64 flex-col border-r border-border/60 bg-muted/20 px-3 py-4">
-            <div className="mb-4 flex items-center justify-between px-1">
-                <div className="text-sm font-semibold text-muted-foreground">KanbanAI</div>
-                <Button variant="ghost" size="icon" className="size-7" onClick={refresh} title="Refresh projects"
-                        disabled={loading}>
-                    <RefreshCw className={cn('size-4', loading && 'animate-spin')}/>
-                </Button>
-            </div>
-
-            <div className="space-y-1">
-                <NavButton
-                    icon={LayoutDashboard}
-                    label="Dashboard"
-                    active={location.pathname === '/dashboard'}
-                    onClick={() => navigate('/dashboard')}
-                />
-                <NavButton
-                    icon={Kanban}
-                    label="Projects"
-                    active={location.pathname === '/' || location.pathname === '/projects'}
-                    onClick={() => navigate('/')}
-                />
-            </div>
-
-            <div className="my-4 h-px bg-border/60"/>
-
-            <div className="flex items-center gap-2">
+        <aside
+            className={cn(
+                'flex h-full flex-col border-r border-border/60 bg-muted/20 transition-all duration-300 ease-in-out',
+                isCollapsed ? 'w-16' : 'w-64'
+            )}
+            aria-expanded={!isCollapsed}
+        >
+            {/* Header with toggle button */}
+            <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center' : 'justify-between')}>
+                {!isCollapsed && (
+                    <div className="text-sm font-semibold text-muted-foreground">KanbanAI</div>
+                )}
                 <Button
-                    type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-6 ml-auto"
-                    onClick={() => onCreateProject?.()}
-                    title="Create project"
+                    className={cn('size-7 transition-transform duration-200', isCollapsed ? 'mx-auto' : 'ml-auto')}
+                    onClick={toggleSidebar}
+                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-expanded={!isCollapsed}
                 >
-                    <Plus className="size-4"/>
+                    {isCollapsed ? (
+                        <PanelRight className="size-4"/>
+                    ) : (
+                        <PanelLeftClose className="size-4"/>
+                    )}
                 </Button>
             </div>
-            <ProjectsList
-                projects={groupedProjects}
-                activeProjectId={activeProjectId}
-                loading={loading}
-                onOpenSettings={(p) => setSettingsProject(p)}
-                onDelete={(p) => {
-                    setDeleteProject(p);
-                    setDeleteError(null)
-                }}
-            />
 
-            {/* Agents section */}
-            <div className="my-4 h-px bg-border/60"/>
-            <AgentsSection agents={agentsQuery.data?.agents ?? []}/>
+            {/* Collapsed state - show only icons */}
+            {isCollapsed ? (
+                <div className="flex flex-col items-center gap-2 px-2 py-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => navigate('/dashboard')}
+                        title="Dashboard"
+                        aria-label="Dashboard"
+                    >
+                        <LayoutDashboard className="size-5"/>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => navigate('/')}
+                        title="Projects"
+                        aria-label="Projects"
+                    >
+                        <Kanban className="size-5"/>
+                    </Button>
+                    <div className="h-px w-8 bg-border/60 my-1"/>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onCreateProject?.()}
+                        title="Create project"
+                        aria-label="Create project"
+                    >
+                        <Plus className="size-5"/>
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => navigate('/settings')}
+                        title="Settings"
+                        aria-label="Settings"
+                    >
+                        <Settings className="size-5"/>
+                    </Button>
+                    <div className="mt-auto h-px w-8 bg-border/60 my-1"/>
+                    <GitHubAccountBox collapsed={true}/>
+                </div>
+            ) : (
+                /* Expanded state - full sidebar content */
+                <>
+                    <div className="mb-4 flex items-center justify-between px-1">
+                        <div className="text-sm font-semibold text-muted-foreground">KanbanAI</div>
+                        <Button variant="ghost" size="icon" className="size-7" onClick={refresh} title="Refresh projects"
+                                disabled={loading}>
+                            <RefreshCw className={cn('size-4', loading && 'animate-spin')}/>
+                        </Button>
+                    </div>
 
-            {/* GitHub account */}
-            <div className="mt-auto space-y-3 pt-4">
-                <GitHubAccountBox/>
-                <div className="h-px bg-border/60"/>
+                    <div className="space-y-1">
+                        <NavButton
+                            icon={LayoutDashboard}
+                            label="Dashboard"
+                            active={location.pathname === '/dashboard'}
+                            onClick={() => navigate('/dashboard')}
+                        />
+                        <NavButton
+                            icon={Kanban}
+                            label="Projects"
+                            active={location.pathname === '/' || location.pathname === '/projects'}
+                            onClick={() => navigate('/')}
+                        />
+                    </div>
 
-                {/* App settings entry */}
-                <NavButton
-                    icon={Settings}
-                    label="Settings"
-                    active={location.pathname.startsWith('/settings')}
-                    onClick={() => navigate('/settings')}
-                />
-            </div>
+                    <div className="my-4 h-px bg-border/60"/>
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-6 ml-auto"
+                            onClick={() => onCreateProject?.()}
+                            title="Create project"
+                        >
+                            <Plus className="size-4"/>
+                        </Button>
+                    </div>
+                    <ProjectsList
+                        projects={groupedProjects}
+                        activeProjectId={activeProjectId}
+                        loading={loading}
+                        onOpenSettings={(p) => setSettingsProject(p)}
+                        onDelete={(p) => {
+                            setDeleteProject(p);
+                            setDeleteError(null)
+                        }}
+                    />
+
+                    {/* Agents section */}
+                    <div className="my-4 h-px bg-border/60"/>
+                    <AgentsSection agents={agentsQuery.data?.agents ?? []}/>
+
+                    {/* GitHub account */}
+                    <div className="mt-auto space-y-3 pt-4">
+                        <GitHubAccountBox/>
+                        <div className="h-px bg-border/60"/>
+
+                        {/* App settings entry */}
+                        <NavButton
+                            icon={Settings}
+                            label="Settings"
+                            active={location.pathname.startsWith('/settings')}
+                            onClick={() => navigate('/settings')}
+                        />
+                    </div>
+                </>
+            )}
+
             <ProjectSettingsDrawer
                 projectId={settingsProject?.id ?? null}
                 open={Boolean(settingsProject)}
