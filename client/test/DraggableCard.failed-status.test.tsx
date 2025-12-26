@@ -1,20 +1,18 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DraggableCard } from "@/components/kanban/DraggableCard";
 import type { Card } from "shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-const useSortableMock = vi.hoisted(() => vi.fn(() => ({
-    attributes: {},
-    listeners: {},
-    setNodeRef: vi.fn(),
-    transform: null,
-    transition: null,
-    isDragging: false,
-})));
-
 vi.mock("@dnd-kit/sortable", () => ({
-    useSortable: useSortableMock,
+    useSortable: vi.fn(() => ({
+        attributes: {},
+        listeners: {},
+        setNodeRef: vi.fn(),
+        transform: null,
+        transition: null,
+        isDragging: false,
+    })),
     verticalListSortingStrategy: {},
 }));
 
@@ -40,33 +38,11 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe("DraggableCard – failed status", () => {
-    it("disables drag listeners when status is failed", () => {
-        useSortableMock.mockReturnValue({
-            attributes: {},
-            listeners: { onMouseDown: vi.fn() },
-            setNodeRef: vi.fn(),
-            transform: null,
-            transition: null,
-            isDragging: false,
-        });
-
-        const { container } = render(
-            <DraggableCard
-                card={baseCard}
-                columnId="col-1"
-                projectId="proj-1"
-                lane="inProgress"
-                attemptStatus="failed"
-            />,
-            { wrapper }
-        );
-
-        const cardWrapper = container.firstChild as HTMLElement;
-        expect(cardWrapper.className).toContain("cursor-not-allowed");
-        expect(cardWrapper.className).toContain("opacity-70");
+    beforeEach(() => {
+        vi.clearAllMocks();
     });
 
-    it("prevents click propagation/callback when failed", () => {
+    it("allows clicking on failed tickets to open and retry", () => {
         const onSelect = vi.fn();
         render(
             <DraggableCard
@@ -83,7 +59,31 @@ describe("DraggableCard – failed status", () => {
         const cardElement = screen.getByText("Test ticket");
         fireEvent.click(cardElement);
 
-        expect(onSelect).not.toHaveBeenCalled();
+        // Failed cards should allow clicking to open and retry
+        expect(onSelect).toHaveBeenCalledWith(baseCard.id);
+    });
+
+    it("allows opening failed tickets for inspection and retry", () => {
+        const onSelect = vi.fn();
+        const onEdit = vi.fn();
+        render(
+            <DraggableCard
+                card={baseCard}
+                columnId="col-1"
+                projectId="proj-1"
+                lane="inProgress"
+                attemptStatus="failed"
+                onSelect={onSelect}
+                onEdit={onEdit}
+            />,
+            { wrapper }
+        );
+
+        const cardElement = screen.getByText("Test ticket");
+        fireEvent.click(cardElement);
+
+        // Click should trigger onSelect to open the inspector
+        expect(onSelect).toHaveBeenCalledWith(baseCard.id);
     });
 
     it("allows click when not failed", () => {

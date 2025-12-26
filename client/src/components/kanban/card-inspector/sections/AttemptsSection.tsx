@@ -17,6 +17,8 @@ export type AttemptsSectionProps = {
     sendPending: boolean
     stopping: boolean
     onStopAttempt: () => void
+    onRetryAttempt?: () => void
+    retrying?: boolean
     attemptAgent?: AgentKey
     profileId?: string
     onProfileSelect: (value: string) => void
@@ -34,6 +36,8 @@ export function AttemptsSection({
                                     sendPending,
                                     stopping,
                                     onStopAttempt,
+                                    onRetryAttempt,
+                                    retrying,
                                     attemptAgent,
                                     profileId,
                                     onProfileSelect,
@@ -112,6 +116,16 @@ export function AttemptsSection({
                                     disabled={stopping || attempt.status === 'stopping'}
                                 >
                                     {stopping || attempt.status === 'stopping' ? 'Stopping…' : 'Stop'}
+                                </Button>
+                            ) : null}
+                            {attempt.status === 'failed' && onRetryAttempt ? (
+                                <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={onRetryAttempt}
+                                    disabled={retrying}
+                                >
+                                    {retrying ? 'Retrying…' : 'Retry'}
                                 </Button>
                             ) : null}
                             <Button
