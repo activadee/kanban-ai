@@ -27,6 +27,7 @@ type FormState = {
     ghPrTitleTemplate: string
     ghPrBodyTemplate: string
     ghAutolinkTickets: boolean
+    opencodePort: number
 }
 
 type GithubAppForm = {
@@ -64,6 +65,7 @@ export function AppSettingsPage() {
             ghPrTitleTemplate: data.ghPrTitleTemplate ?? '',
             ghPrBodyTemplate: data.ghPrBodyTemplate ?? '',
             ghAutolinkTickets: data.ghAutolinkTickets,
+            opencodePort: data.opencodePort,
         } satisfies FormState
     }, [data])
 
@@ -109,6 +111,7 @@ export function AppSettingsPage() {
                 ghPrTitleTemplate: result.ghPrTitleTemplate ?? '',
                 ghPrBodyTemplate: result.ghPrBodyTemplate ?? '',
                 ghAutolinkTickets: result.ghAutolinkTickets,
+                opencodePort: result.opencodePort,
             }
             setForm(next)
         },
@@ -154,6 +157,7 @@ export function AppSettingsPage() {
             ghPrTitleTemplate: form.ghPrTitleTemplate.trim() || null,
             ghPrBodyTemplate: form.ghPrBodyTemplate.trim() || null,
             ghAutolinkTickets: form.ghAutolinkTickets,
+            opencodePort: form.opencodePort,
         }
         updateSettings.mutate(payload)
     }

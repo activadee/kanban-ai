@@ -17,6 +17,7 @@ export const appSettings = sqliteTable('app_settings', {
     ghPrTitleTemplate: text('gh_pr_title_template'),
     ghPrBodyTemplate: text('gh_pr_body_template'),
     ghAutolinkTickets: integer('gh_autolink_tickets', {mode: 'boolean'}).notNull().default(true),
+    opencodePort: integer('opencode_port').notNull().default(4097),
     createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
 })

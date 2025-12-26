@@ -36,6 +36,7 @@ export type AgentProfileFieldBase = {
 export type AgentProfileField =
     | (AgentProfileFieldBase & { type: 'string' })
     | (AgentProfileFieldBase & { type: 'boolean' })
+    | (AgentProfileFieldBase & { type: 'number' })
     | (AgentProfileFieldBase & { type: 'enum'; options: string[] })
     | (AgentProfileFieldBase & { type: 'string_array' })
 

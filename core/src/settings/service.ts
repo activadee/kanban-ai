@@ -28,6 +28,7 @@ function defaults(): SharedAppSettings {
         ghPrTitleTemplate: null,
         ghPrBodyTemplate: null,
         ghAutolinkTickets: true,
+        opencodePort: 4097,
         createdAt: now,
         updatedAt: now,
     };
@@ -108,6 +109,7 @@ function mapRow(row: any): SharedAppSettings {
         ghAutolinkTickets: Boolean(
             row.ghAutolinkTickets ?? row.gh_autolink_tickets ?? true,
         ),
+        opencodePort: Number(row.opencodePort ?? row.opencode_port ?? 4097),
         createdAt: toIso(row.createdAt ?? row.created_at),
         updatedAt: toIso(row.updatedAt ?? row.updated_at),
     };
@@ -153,6 +155,7 @@ export async function updateAppSettings(
         ghPrTitleTemplate: nn(payload.ghPrTitleTemplate),
         ghPrBodyTemplate: nn(payload.ghPrBodyTemplate),
         ghAutolinkTickets: payload.ghAutolinkTickets,
+        opencodePort: payload.opencodePort,
     };
     await updateAppSettingsRow(updates as any);
     cache = await ensureAppSettings();
