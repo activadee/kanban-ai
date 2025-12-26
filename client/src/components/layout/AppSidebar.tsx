@@ -153,12 +153,12 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
 
                     <div className="my-4 h-px bg-border/60"/>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-end px-1">
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-6 ml-auto"
+                            className="size-7"
                             onClick={() => onCreateProject?.()}
                             title="Create project"
                         >
