@@ -36,13 +36,16 @@ export function collectAntigravityCommandCandidates(): string[] {
 
         // Common Windows installation paths for Antigravity
         if (localAppData) {
-            addWin(nodePath.join(localAppData, 'Programs', 'Google Antigravity', 'antigravity.exe'))
+            addWin(nodePath.join(localAppData, 'Programs', 'Antigravity', 'antigravity.exe'))
+            addWin(nodePath.join(localAppData, 'Programs', 'Antigravity', 'Antigravity.exe'))
         }
         if (programFiles) {
-            addWin(nodePath.join(programFiles, 'Google Antigravity', 'antigravity.exe'))
+            addWin(nodePath.join(programFiles, 'Antigravity', 'antigravity.exe'))
+            addWin(nodePath.join(programFiles, 'Antigravity', 'Antigravity.exe'))
         }
         if (programFilesX86) {
-            addWin(nodePath.join(programFilesX86, 'Google Antigravity', 'antigravity.exe'))
+            addWin(nodePath.join(programFilesX86, 'Antigravity', 'antigravity.exe'))
+            addWin(nodePath.join(programFilesX86, 'Antigravity', 'Antigravity.exe'))
         }
     }
 
