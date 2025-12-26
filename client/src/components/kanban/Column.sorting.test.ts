@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Card } from 'shared'
+import { sortCardsByDate } from '@/lib/sortOrder'
 
 describe('Card sorting logic', () => {
     const mockCard = (id: string, createdAt: string): Card => ({
@@ -9,14 +10,6 @@ describe('Card sorting logic', () => {
         createdAt,
         updatedAt: createdAt
     })
-
-    const sortCardsByDate = (cards: Card[], sortOrder: 'newest-first' | 'oldest-first'): Card[] => {
-        return [...cards].sort((a, b) => {
-            const dateA = new Date(a.createdAt).getTime()
-            const dateB = new Date(b.createdAt).getTime()
-            return sortOrder === 'newest-first' ? dateB - dateA : dateA - dateB
-        })
-    }
 
     it('sorts cards by newest first (descending)', () => {
         const cards = [
@@ -79,7 +72,7 @@ describe('Card sorting logic', () => {
             mockCard('3', '2025-01-02T10:00:00Z')
         ]
 
-        const customOrder = cards
+        const customOrder = sortCardsByDate(cards, 'custom')
         expect(customOrder[0].id).toBe('1')
         expect(customOrder[1].id).toBe('2')
         expect(customOrder[2].id).toBe('3')

@@ -6,7 +6,7 @@ import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {DraggableCard} from './DraggableCard'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
-import type {CardSortOrder} from '@/lib/sortOrder'
+import {sortCardsByDate, type CardSortOrder} from '@/lib/sortOrder'
 
 type Props = {
     column: TColumn
@@ -36,17 +36,7 @@ export function Column({
     const cards = useMemo(
         () => {
             const allCards = column.cardIds.map((id) => state.cards[id]).filter(Boolean);
-
-            if (sortOrder === 'custom') {
-                return allCards;
-            }
-
-            return [...allCards].sort((a, b) => {
-                const dateA = new Date(a.createdAt).getTime();
-                const dateB = new Date(b.createdAt).getTime();
-
-                return sortOrder === 'newest-first' ? dateB - dateA : dateA - dateB;
-            });
+            return sortCardsByDate(allCards, sortOrder);
         },
         [column.cardIds, state.cards, sortOrder]
     )
