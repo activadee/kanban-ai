@@ -46,6 +46,41 @@ type ServerHandle = {
     close: () => void
 }
 
+type ServerInstance = ServerHandle & {
+    url: string
+    port: number
+}
+
+// Default port for OpenCode server
+const DEFAULT_OPENCODE_PORT = 4097
+
+// Reserved ports that should not be used
+const RESERVED_PORTS = new Set([80, 443, 22, 25, 53, 110, 143, 993, 995, 3306, 5432, 6379, 8080, 8443])
+
+/**
+ * Validates that a port number is within valid range and not reserved.
+ * @param port - The port number to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidPort(port: number | null | undefined): boolean {
+    if (port === null || port === undefined) return true // Default is allowed
+    return Number.isInteger(port) && port >= 1 && port <= 65535 && !RESERVED_PORTS.has(port)
+}
+
+/**
+ * Gets the effective port to use from profile configuration.
+ * @param profile - The OpenCode profile
+ * @returns The port number to use (default if not specified or invalid)
+ */
+export function getEffectivePort(profile: OpencodeProfile): number {
+    if (!isValidPort(profile.port)) {
+        return DEFAULT_OPENCODE_PORT
+    }
+    return profile.port ?? DEFAULT_OPENCODE_PORT
+}
+
+export {DEFAULT_OPENCODE_PORT}
+
 
 export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation> {
     key = 'OPENCODE' as const
@@ -55,8 +90,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     capabilities = {resume: true}
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
-    private static localServer: ServerHandle | null = null
-    private static localServerUrl: string | null = null
+    private static readonly serversByPort = new Map<number, ServerInstance>()
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
@@ -86,7 +120,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     }
 
     protected async createClient(
-        _profile: OpencodeProfile,
+        profile: OpencodeProfile,
         ctx: AgentContext,
         installation: OpencodeInstallation,
     ): Promise<OpencodeClient> {
@@ -110,25 +144,41 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             })
         }
 
-        if (!OpencodeImpl.localServerUrl) {
-            const server = await createOpencodeServer()
-            OpencodeImpl.localServer = {close: server.close}
-            OpencodeImpl.localServerUrl = server.url
+        // Get the configured port (default to 4097 if not specified or invalid)
+        const port = getEffectivePort(profile)
+
+        // Check if we already have a server running on this port
+        const existingServer = OpencodeImpl.serversByPort.get(port)
+
+        if (existingServer) {
             ctx.emit({
                 type: 'log',
                 level: 'info',
-                message: `[opencode] local server listening at ${server.url}`,
+                message: `[opencode] reusing local server at ${existingServer.url} on port ${port}`,
             })
-        } else {
-            ctx.emit({
-                type: 'log',
-                level: 'info',
-                message: `[opencode] reusing local server at ${OpencodeImpl.localServerUrl}`,
+            return createOpencodeClient({
+                baseUrl: existingServer.url,
+                directory: installation.directory,
             })
         }
 
+        // No existing server on this port, start a new one
+        const server = await createOpencodeServer({port})
+        const serverInstance: ServerInstance = {
+            close: server.close,
+            url: server.url,
+            port,
+        }
+        OpencodeImpl.serversByPort.set(port, serverInstance)
+
+        ctx.emit({
+            type: 'log',
+            level: 'info',
+            message: `[opencode] local server listening at ${server.url} on port ${port}`,
+        })
+
         return createOpencodeClient({
-            baseUrl: OpencodeImpl.localServerUrl as string,
+            baseUrl: server.url,
             directory: installation.directory,
         })
     }
