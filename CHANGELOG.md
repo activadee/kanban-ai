@@ -1,3 +1,15 @@
+## [0.20.0](https://github.com/activadee/kanban-ai/compare/v0.19.5...v0.20.0) (2025-12-26)
+
+### Features
+
+* add antigravity IDE adapter ([#320](https://github.com/activadee/kanban-ai/issues/320)) ([09ba4fd](https://github.com/activadee/kanban-ai/commit/09ba4fd8df23790cb9c11df6202cbc6a5df83fee))
+* mark failed attempts on kanban cards ([#323](https://github.com/activadee/kanban-ai/issues/323)) ([42aefa8](https://github.com/activadee/kanban-ai/commit/42aefa83272c2effa3f36f0560052f2e8d987393)), closes [#322](https://github.com/activadee/kanban-ai/issues/322)
+* sort tickets on the board by creation date ([#321](https://github.com/activadee/kanban-ai/issues/321)) ([7b52e1b](https://github.com/activadee/kanban-ai/commit/7b52e1b702e3b45afa251f19662d2d59d3375c8f)), closes [#319](https://github.com/activadee/kanban-ai/issues/319)
+
+### Refactors
+
+* OpenCode agent server port and lifecycle management ([#324](https://github.com/activadee/kanban-ai/issues/324)) ([5358e97](https://github.com/activadee/kanban-ai/commit/5358e97a84f92471fb191191e91e07d98ea73d31))
+
 ## [0.19.5](https://github.com/activadee/kanban-ai/compare/v0.19.4...v0.19.5) (2025-12-26)
 
 ### Bug Fixes
