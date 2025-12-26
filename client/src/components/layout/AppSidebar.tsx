@@ -50,12 +50,17 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
             )}
             aria-expanded={!isCollapsed}
         >
-            {/* Header with toggle button */}
+            {/* Header with toggle button and branding */}
             <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center' : 'justify-between')}>
+                {!isCollapsed && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-muted-foreground">KanbanAI</span>
+                    </div>
+                )}
                 <Button
                     variant="ghost"
                     size="icon"
-                    className={cn('size-7 transition-transform duration-200', isCollapsed ? 'mx-auto' : 'ml-auto')}
+                    className={cn('size-7 transition-transform duration-200', isCollapsed ? 'mx-auto' : '')}
                     onClick={toggleSidebar}
                     title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                     aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -67,6 +72,18 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
                         <PanelLeftClose className="size-4"/>
                     )}
                 </Button>
+                {isCollapsed && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7"
+                        onClick={refresh}
+                        title="Refresh projects"
+                        disabled={loading}
+                    >
+                        <RefreshCw className={cn('size-4', loading && 'animate-spin')}/>
+                    </Button>
+                )}
             </div>
 
             {/* Collapsed state - show only icons */}
@@ -119,14 +136,6 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
             ) : (
                 /* Expanded state - full sidebar content */
                 <>
-                    <div className="mb-4 flex items-center justify-between px-1">
-                        <div className="text-sm font-semibold text-muted-foreground">KanbanAI</div>
-                        <Button variant="ghost" size="icon" className="size-7" onClick={refresh} title="Refresh projects"
-                                disabled={loading}>
-                            <RefreshCw className={cn('size-4', loading && 'animate-spin')}/>
-                        </Button>
-                    </div>
-
                     <div className="space-y-1">
                         <NavButton
                             icon={LayoutDashboard}
