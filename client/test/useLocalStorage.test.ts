@@ -1,5 +1,5 @@
 import {describe, it, expect, vi, beforeEach, afterEach} from 'vitest'
-import {renderHook, cleanup} from '@testing-library/react'
+import {renderHook, cleanup, act} from '@testing-library/react'
 import {useLocalStorage} from '@/hooks/useLocalStorage'
 
 describe('useLocalStorage Hook', () => {
@@ -34,7 +34,9 @@ describe('useLocalStorage Hook', () => {
             const {result} = renderHook(() => useLocalStorage('test-key', 'default-value'))
             const [, setValue] = result.current
 
-            setValue('new-value')
+            act(() => {
+                setValue('new-value')
+            })
 
             expect(result.current[0]).toBe('new-value')
             expect(localStorage.getItem('test-key')).toBe(JSON.stringify('new-value'))
@@ -44,7 +46,9 @@ describe('useLocalStorage Hook', () => {
             const {result, rerender} = renderHook(() => useLocalStorage('test-key', 'default-value'))
             const [, setValue] = result.current
 
-            setValue('new-value')
+            act(() => {
+                setValue('new-value')
+            })
 
             // Re-render the hook
             rerender()
@@ -90,7 +94,11 @@ describe('useLocalStorage Hook', () => {
             const [value, setValue] = result.current
 
             expect(typeof value).toBe('string')
-            setValue('updated')
+
+            act(() => {
+                setValue('updated')
+            })
+
             expect(result.current[0]).toBe('updated')
         })
 
@@ -99,7 +107,11 @@ describe('useLocalStorage Hook', () => {
             const [value, setValue] = result.current
 
             expect(typeof value).toBe('boolean')
-            setValue(true)
+
+            act(() => {
+                setValue(true)
+            })
+
             expect(result.current[0]).toBe(true)
         })
 
@@ -109,7 +121,11 @@ describe('useLocalStorage Hook', () => {
 
             expect(typeof value).toBe('object')
             expect(value).toEqual({foo: 'bar'})
-            setValue({foo: 'baz'})
+
+            act(() => {
+                setValue({foo: 'baz'})
+            })
+
             expect(result.current[0]).toEqual({foo: 'baz'})
         })
 
@@ -119,7 +135,11 @@ describe('useLocalStorage Hook', () => {
 
             expect(Array.isArray(value)).toBe(true)
             expect(value).toEqual([1, 2, 3])
-            setValue([4, 5, 6])
+
+            act(() => {
+                setValue([4, 5, 6])
+            })
+
             expect(result.current[0]).toEqual([4, 5, 6])
         })
     })
@@ -129,10 +149,16 @@ describe('useLocalStorage Hook', () => {
             const {result} = renderHook(() => useLocalStorage('func-key', 10))
             const [, setValue] = result.current
 
-            setValue((prev: number) => prev + 5)
+            act(() => {
+                setValue((prev: number) => prev + 5)
+            })
+
             expect(result.current[0]).toBe(15)
 
-            setValue((prev: number) => prev * 2)
+            act(() => {
+                setValue((prev: number) => prev * 2)
+            })
+
             expect(result.current[0]).toBe(30)
         })
     })

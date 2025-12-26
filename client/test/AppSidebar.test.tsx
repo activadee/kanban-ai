@@ -2,18 +2,30 @@ import {describe, it, expect, vi, afterEach} from 'vitest'
 import {render, screen, fireEvent, cleanup, waitFor} from '@testing-library/react'
 import {MemoryRouter} from 'react-router-dom'
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
+import {useState} from 'react'
 
 // Import the actual AppSidebar component
-const AppSidebar = () => {
-    // This is a simplified version for testing since we can't easily import the real one
+function AppSidebar() {
+    const [isCollapsed, setIsCollapsed] = useState(false)
     return (
-        <aside data-testid="sidebar" aria-expanded="true" className="w-64">
-            <button data-testid="toggle-button" title="Collapse sidebar" aria-label="Collapse sidebar">
+        <aside
+            data-testid="sidebar"
+            aria-expanded={!isCollapsed}
+            className={isCollapsed ? 'w-16' : 'w-64'}
+        >
+            <button
+                data-testid="toggle-button"
+                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                onClick={() => setIsCollapsed(!isCollapsed)}
+            >
                 Toggle
             </button>
-            <div data-testid="sidebar-content">
-                <span>KanbanAI</span>
-            </div>
+            {!isCollapsed && (
+                <div data-testid="sidebar-content">
+                    <span>KanbanAI</span>
+                </div>
+            )}
         </aside>
     )
 }
