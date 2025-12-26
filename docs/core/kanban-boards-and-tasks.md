@@ -56,7 +56,7 @@ Last updated: 2025-11-30
   - `disableAutoCloseOnPRMerge` – per-card boolean that opt-outs this card from automatic Review→Done transitions when the project has auto-close-on-PR-merge enabled.
 - On the board itself, cards surface the ticket key (when present) alongside the title and subtle status indicators for blocked/enhancing/failed/PR/agent actions so that key context is visible at a glance, while omitting the full description to keep columns compact.
 - Blocked cards that are still waiting on dependencies wrap the card view in a tooltip listing the blockers so you can see what is pending without opening the inspector.
-- Cards with failed Attempts display a "Failed" badge and destructive styling (red border and background) to make issues immediately identifiable.
+- Cards with failed Attempts display a "Failed" badge and destructive styling (red border and background) to make issues immediately identifiable. Failed cards can be clicked to open the Card Inspector, where you can review the failure and retry the Attempt.
 - The “card inspector” in the UI lets you edit these fields, with the ticket key surfaced prominently for quick scanning.
 
 ### Ordering and moves
