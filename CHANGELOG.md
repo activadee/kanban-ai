@@ -1,3 +1,13 @@
+## [0.21.0](https://github.com/activadee/kanban-ai/compare/v0.20.0...v0.21.0) (2025-12-26)
+
+### Features
+
+* allow opening and editing failed tickets ([#329](https://github.com/activadee/kanban-ai/issues/329)) ([281daa2](https://github.com/activadee/kanban-ai/commit/281daa2f861d08e7082d83d771b500f5886f14a1)), closes [#326](https://github.com/activadee/kanban-ai/issues/326)
+
+### Refactors
+
+* improve IDE detection and file system integration ([#330](https://github.com/activadee/kanban-ai/issues/330)) ([f87696a](https://github.com/activadee/kanban-ai/commit/f87696a76963438871ede4769deda3b77d3eae11)), closes [#325](https://github.com/activadee/kanban-ai/issues/325)
+
 ## [0.20.0](https://github.com/activadee/kanban-ai/compare/v0.19.5...v0.20.0) (2025-12-26)
 
 ### Features
