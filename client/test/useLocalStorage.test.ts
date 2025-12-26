@@ -9,7 +9,6 @@ describe('useLocalStorage Hook', () => {
 
     afterEach(() => {
         cleanup()
-        vi.restoreAllMocks()
         localStorage.clear()
     })
 
@@ -60,21 +59,15 @@ describe('useLocalStorage Hook', () => {
     describe('Error Handling', () => {
         it('handles localStorage errors gracefully', () => {
             // Mock localStorage to throw an error
-            const originalGetItem = global.localStorage.getItem
-            const originalSetItem = global.localStorage.setItem
-
-            vi.spyOn(global.localStorage, 'getItem').mockImplementation(() => {
+            const getItemMock = vi.fn(() => {
                 throw new Error('localStorage error')
             })
+            global.localStorage.getItem = getItemMock
 
             const {result} = renderHook(() => useLocalStorage('test-key', 'default-value'))
             const [value] = result.current
 
             expect(value).toBe('default-value')
-
-            // Restore
-            vi.spyOn(global.localStorage, 'getItem').mockImplementation(originalGetItem)
-            vi.spyOn(global.localStorage, 'setItem').mockImplementation(originalSetItem)
         })
 
         it('handles invalid JSON in localStorage', () => {
