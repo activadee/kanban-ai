@@ -3,7 +3,14 @@
 ## Purpose
 
 - Detect available editors, build launch commands, and open worktree paths for attempts.
-- Emit editor open events so the UI can reflect success or failure.
+- Emit editor open events so that UI can reflect success or failure.
+
+## Supported Editors
+
+- **VS Code** (`VS_CODE`) – The standard Visual Studio Code editor
+- **WebStorm** (`WEBSTORM`) – JetBrains WebStorm for web development
+- **Zed** (`ZED`) – High-performance, native code editor
+- **Google Antigravity** (`ANTIGRAVITY`) – Google's AI-powered development platform
 
 ## Data & Event Flow
 
