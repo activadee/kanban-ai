@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {Bot, EllipsisVertical, GitPullRequest, Sparkles, Loader2} from 'lucide-react'
-import type {Card as TCard} from 'shared'
+import type {Card as TCard, AttemptStatus} from 'shared'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
 import {formatTicketType, ticketTypeBadgeClass} from '@/lib/ticketTypes'
@@ -44,6 +44,7 @@ type Props = {
     blocked?: boolean
     blockers?: string[]
     enhancementStatus?: CardEnhancementStatus
+    attemptStatus?: AttemptStatus
     onEnhancementClick?: () => void
     disabled?: boolean
     menuContext?: KanbanCardMenuContext
@@ -56,16 +57,36 @@ export function KanbanCard({
                                blocked = false,
                                blockers = [],
                                enhancementStatus,
+                               attemptStatus,
                                onEnhancementClick,
                                disabled = false,
                                menuContext,
                            }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
-    const isCardDisabled = disabled || isEnhancing
+    const isFailed = attemptStatus === 'failed'
+    const isCardDisabled = disabled || isEnhancing || isFailed
     const showType = card.ticketType !== undefined && card.ticketType !== null
     const hasGithubIssue = Boolean(card.githubIssue)
     const isEnhanced = card.isEnhanced
+
+    const cardClassName = useMemo(() => {
+        const baseClasses = isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
+        
+        if (isFailed) {
+            return `${baseClasses} border-destructive/70 bg-red-50/80 dark:bg-red-950/20 ring-1 ring-destructive/40`
+        }
+        
+        if (blocked && !done) {
+            return `${baseClasses} border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10`
+        }
+        
+        if (isEnhanced) {
+            return `${baseClasses} border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15`
+        }
+        
+        return baseClasses
+    }, [isCardDisabled, isFailed, blocked, done, isEnhanced])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -75,21 +96,13 @@ export function KanbanCard({
         hasGithubIssue ||
         blocked ||
         isEnhancing ||
+        isFailed ||
         isReady ||
         isEnhanced ||
         Boolean(menuContext)
 
     const cardInner = (
-        <UICard
-            className={`${
-                isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
-            } ${
-                blocked && !done
-                    ? 'border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10'
-                    : isEnhanced
-                        ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15'
-                        : ''
-            }`}>
+        <UICard className={cardClassName}>
             <CardContent className="flex h-full flex-col gap-2 overflow-hidden p-3">
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">
@@ -140,6 +153,11 @@ export function KanbanCard({
                                 <Badge variant="outline" className="flex items-center gap-1 text-xs">
                                     <Loader2 className="size-3 animate-spin"/>
                                     Enhancing
+                                </Badge>
+                            ) : null}
+                            {isFailed ? (
+                                <Badge variant="outline" className="border-destructive/70 text-destructive">
+                                    Failed
                                 </Badge>
                             ) : null}
                         </div>

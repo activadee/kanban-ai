@@ -33,7 +33,8 @@ Last updated: 2025-11-28
   - `attempt.autocommit.requested`
   - `attempt.stopped`
 - WebSocket listeners subscribe to these events and forward them to connected clients so the board, Attempts panel,
-  messages, and logs stay in sync.
+  messages, and logs stay in sync. When an Attempt status changes to `failed`, the board displays a "Failed" badge with
+  destructive styling on the associated card to make issues immediately visible.
 
 ## Worktrees and isolation
 
@@ -66,6 +67,10 @@ Last updated: 2025-11-28
 - Stopping Attempts:
   - `PATCH /attempts/:id` with `status: "stopped"` triggers `attempt.stopped`.
   - The runner and listeners update status so the UI shows the Attempt as stopped.
+- Retrying failed Attempts:
+  - Failed Attempts can be retried directly from the Card Inspector's **Attempts** tab.
+  - The Retry button re-queues the Attempt using the same agent and profile configuration.
+  - This allows users to quickly retry failed work without recreating the ticket or manually starting a new Attempt.
 
 ## Git & PR integration for Attempts
 

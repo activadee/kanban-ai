@@ -231,6 +231,7 @@ export async function stopAttempt(id: string, events: AppEventBus) {
             events.publish('attempt.status.changed', {
                 attemptId: id,
                 boardId: meta.boardId,
+                cardId: attempt.cardId,
                 status: 'stopping',
                 previousStatus: 'running',
                 endedAt: null,
@@ -254,6 +255,7 @@ export async function stopAttempt(id: string, events: AppEventBus) {
             events.publish('attempt.status.changed', {
                 attemptId: id,
                 boardId: attempt.boardId,
+                cardId: attempt.cardId,
                 status: 'stopped',
                 previousStatus: attempt.status as AttemptStatus,
                 endedAt: now.toISOString(),

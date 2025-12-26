@@ -31,6 +31,15 @@ Its layout consists of:
 
 Switching cards recalculates which top-level tab should be active: cards without Attempts fall back to **Ticket**, while cards with Attempts open on **Attempts** (and its inner tabs). Navigating between Attempts, or when a new Attempt is detected, still resets the inner tab back to **Messages**, so you always start from the same view when focusing on new work.
 
+## Retrying failed Attempts
+
+When an Attempt has failed:
+- The **Attempts** tab shows the failed Attempt's status, conversation, and logs.
+- A **Retry** button appears next to the controls, allowing you to re-run the Attempt without recreating the card.
+- Clicking **Retry** re-queues the agent with the same configuration, and the Attempt status resets to `queued` then `running`.
+
+Use this feature to quickly retry failed work after diagnosing the issue from logs or messages, without having to recreate the ticket.
+
 ## Starting an Attempt
 
 - If the card has no active Attempt:

@@ -1,7 +1,7 @@
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type UiLanguage = 'browser' | 'en' | 'ja'
 
-export type EditorType = 'VS_CODE' | 'WEBSTORM' | 'ZED'
+export type EditorType = 'VS_CODE' | 'WEBSTORM' | 'ZED' | 'ANTIGRAVITY'
 
 export interface AppSettings {
     id: string

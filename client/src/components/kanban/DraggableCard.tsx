@@ -2,6 +2,7 @@ import type {CSSProperties} from 'react'
 import {useSortable} from '@dnd-kit/sortable'
 import {CSS} from '@dnd-kit/utilities'
 import type {Card as TCard} from 'shared'
+import type {AttemptStatus} from 'shared'
 import {KanbanCard} from './Card'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
@@ -17,6 +18,7 @@ type Props = {
     blockers?: string[]
     onSelect?: (cardId: string) => void
     enhancementStatus?: CardEnhancementStatus
+    attemptStatus?: AttemptStatus
     onCardEnhancementClick?: (cardId: string) => void
     onEdit?: (cardId: string) => void
     onEnhance?: (cardId: string) => void
@@ -33,11 +35,13 @@ export function DraggableCard({
                                   blockers,
                                   onSelect,
                                   enhancementStatus,
+                                  attemptStatus,
                                   onCardEnhancementClick,
                                   onEdit,
                                   onEnhance,
                               }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
+    const isFailed = attemptStatus === 'failed'
     const {
         attributes,
         listeners,
@@ -48,7 +52,7 @@ export function DraggableCard({
     } = useSortable({
         id: card.id,
         data: {type: 'card', cardId: card.id, columnId},
-        disabled: isEnhancing,
+        disabled: isEnhancing || isFailed,
     })
 
     const style: CSSProperties = {
@@ -62,8 +66,10 @@ export function DraggableCard({
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...(!isEnhancing ? listeners : undefined)}
+            {...(!(isEnhancing || isFailed) ? listeners : undefined)}
             onClick={(e) => {
+                // Allow clicking to select even when failed, so users can open and edit/retry
+                if (isEnhancing) return
                 e.stopPropagation()
                 onSelect?.(card.id)
             }}
@@ -76,6 +82,7 @@ export function DraggableCard({
                 blocked={blocked}
                 blockers={blockers}
                 enhancementStatus={enhancementStatus}
+                attemptStatus={attemptStatus}
                 onEnhancementClick={
                     enhancementStatus === 'ready' && onCardEnhancementClick
                         ? () => onCardEnhancementClick(card.id)

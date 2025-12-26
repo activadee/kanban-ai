@@ -189,6 +189,8 @@ export function CardInspector({
                                             sendPending={attempt.sendFollowupPending}
                                             stopping={attempt.stopping}
                                             onStopAttempt={attempt.stopAttempt}
+                                            onRetryAttempt={attempt.attempt?.status === 'failed' ? attempt.retryAttempt : undefined}
+                                            retrying={attempt.retrying}
                                             attemptAgent={attempt.attemptAgent}
                                             profileId={attempt.profileId}
                                             onProfileSelect={attempt.handleProfileSelect}

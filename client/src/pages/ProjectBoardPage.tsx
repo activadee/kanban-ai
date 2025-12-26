@@ -21,6 +21,7 @@ import {
 import type { CardEnhancementStatus } from "@/hooks/tickets";
 import type { MoveCardResponse } from "@/api/board";
 import type { BoardState } from "shared";
+import type { AttemptStatus } from "shared";
 import { boardKeys } from "@/hooks/board";
 import { useKanbanWS } from "@/lib/ws";
 import { toast } from "@/components/ui/toast.tsx";
@@ -56,6 +57,7 @@ export function ProjectBoardPage() {
         state: socketState,
     } = useKanbanWS(boardId ?? null);
     const [importOpen, setImportOpen] = useState(false);
+    const [attemptStatusByCardId, setAttemptStatusByCardId] = useState<Record<string, AttemptStatus>>({});
 
     const invalidateBoard = () => {
         if (!boardId) return;
@@ -149,6 +151,39 @@ export function ProjectBoardPage() {
         });
     }, []);
 
+    // Track attempt status for failed cards visualization
+    useEffect(() => {
+        const offStatus = eventBus.on("attempt_status", (p) => {
+            if (!boardState) return;
+
+            // Use direct cardId if available (robust)
+            let cardId = p.cardId;
+
+            // Fallback to extraction from attemptId (fragile, but kept for legacy/compatibility)
+            // Assumes attemptId starts with cardId (e.g. {cardId}-{timestamp})
+            if (!cardId && p.attemptId) {
+                const parts = p.attemptId.split("-");
+                if (parts.length > 1) {
+                    const potentialCardId = parts[0];
+                    if (boardState.cards[potentialCardId]) {
+                        cardId = potentialCardId;
+                    }
+                }
+            }
+
+            if (!cardId) return;
+
+            setAttemptStatusByCardId((prev) => ({
+                ...prev,
+                [cardId]: p.status as AttemptStatus,
+            }));
+        });
+
+        return () => {
+            offStatus();
+        };
+    }, [boardState]);
+
     useEffect(() => {
         if (boardId && socketState) {
             queryClient.setQueryData<BoardState | undefined>(
@@ -229,6 +264,7 @@ export function ProjectBoardPage() {
                         enhancementStatusByCardId={
                             enhancementStatusByCardId
                         }
+                        attemptStatusByCardId={attemptStatusByCardId}
                         onCardEnhancementClick={(cardId) =>
                             setEnhancementDialogCardId(cardId)
                         }

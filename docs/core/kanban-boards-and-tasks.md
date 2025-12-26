@@ -54,8 +54,9 @@ Last updated: 2025-11-30
   - `dependsOn` relationships to other cards on the same board
   - `isEnhanced` – boolean that flips to `true` when a ticket enhancement suggestion has been accepted; enhanced cards gain a dedicated badge and subtle highlight so you can tell at a glance that the title/description were AI‑refined.
   - `disableAutoCloseOnPRMerge` – per-card boolean that opt-outs this card from automatic Review→Done transitions when the project has auto-close-on-PR-merge enabled.
-- On the board itself, cards surface the ticket key (when present) alongside the title and subtle status indicators for blocked/enhancing/PR/agent actions so that key context is visible at a glance, while omitting the full description to keep columns compact.
+- On the board itself, cards surface the ticket key (when present) alongside the title and subtle status indicators for blocked/enhancing/failed/PR/agent actions so that key context is visible at a glance, while omitting the full description to keep columns compact.
 - Blocked cards that are still waiting on dependencies wrap the card view in a tooltip listing the blockers so you can see what is pending without opening the inspector.
+- Cards with failed Attempts display a "Failed" badge and destructive styling (red border and background) to make issues immediately identifiable. Failed cards can be clicked to open the Card Inspector, where you can review the failure and retry the Attempt.
 - The “card inspector” in the UI lets you edit these fields, with the ticket key surfaced prominently for quick scanning.
 
 ### Ordering and moves
@@ -89,7 +90,7 @@ Last updated: 2025-11-30
   - `attempt.started` → Tasks listener moves the card into **In Progress**.
   - `attempt.completed`:
     - If status is `succeeded` → card moves into **Review**.
-    - If status is `failed` or `stopped` → card moves back to **In Progress**.
+    - If status is `failed` or `stopped` → card moves back to **In Progress** and the card displays a "Failed" badge with red styling on the board.
 - When a card is moved into **Done`**:
   - A Tasks listener triggers workspace cleanup for the associated Attempt (removing its worktree and branch).
 

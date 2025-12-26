@@ -59,7 +59,9 @@ export type CardInspectorAttemptState = {
     sendFollowup: () => Promise<void>
     sendFollowupPending: boolean
     startAttempt: () => Promise<void>
+    retryAttempt: () => Promise<void>
     starting: boolean
+    retrying: boolean
     stopAttempt: () => Promise<void>
     stopping: boolean
     handleAgentSelect: (value: AgentKey) => void
@@ -640,6 +642,8 @@ export function useCardInspectorState({
             sendFollowupPending: followupMutation.isPending,
             startAttempt,
             starting,
+            retryAttempt: startAttempt, // Retry uses the same logic as start attempt
+            retrying: starting, // Use starting state for retrying as well
             stopAttempt,
             stopping,
             handleAgentSelect,

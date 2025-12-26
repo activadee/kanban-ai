@@ -24,6 +24,7 @@ export interface AttemptStartedEvent {
 export interface AttemptStatusChangedEvent {
     attemptId: string
     boardId: string
+    cardId?: string
     status: AttemptStatus
     previousStatus?: AttemptStatus
     endedAt?: string | null
