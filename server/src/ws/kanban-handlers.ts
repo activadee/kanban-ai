@@ -68,7 +68,11 @@ export function kanbanWebsocketHandlers(boardId: string) {
                 for (const attempt of recent) {
                     ws.send(serialize({
                         type: 'attempt_status',
-                        payload: {attemptId: attempt.id, status: attempt.status as AttemptStatus}
+                        payload: {
+                            attemptId: attempt.id,
+                            cardId: attempt.cardId,
+                            status: attempt.status as AttemptStatus
+                        }
                     }))
                 }
             } catch {

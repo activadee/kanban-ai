@@ -1,6 +1,7 @@
 import {useMemo} from 'react'
 import {Card as UICard, CardHeader, CardTitle, CardContent} from '@/components/ui/card'
 import type {BoardState, Column as TColumn} from 'shared'
+import type {AttemptStatus} from 'shared'
 import {useDroppable} from '@dnd-kit/core'
 import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {DraggableCard} from './DraggableCard'
@@ -13,6 +14,7 @@ type Props = {
     state: BoardState
     onSelectCard: (cardId: string) => void
     enhancementStatusByCardId?: Record<string, CardEnhancementStatus>
+    attemptStatusByCardId?: Record<string, AttemptStatus>
     onCardEnhancementClick?: (cardId: string) => void
     onEditCard: (cardId: string) => void
     onEnhanceCard: (cardId: string) => void
@@ -26,6 +28,7 @@ export function Column({
                            state,
                            onSelectCard,
                            enhancementStatusByCardId,
+                           attemptStatusByCardId,
                            onCardEnhancementClick,
                            onEditCard,
                            onEnhanceCard,
@@ -96,6 +99,7 @@ export function Column({
                                 blocked={blocked}
                                 blockers={blockerLabels}
                                 enhancementStatus={enhancementStatusByCardId?.[c.id]}
+                                attemptStatus={attemptStatusByCardId?.[c.id]}
                                 onCardEnhancementClick={onCardEnhancementClick}
                                 onSelect={onSelectCard}
                                 onEdit={onEditCard}

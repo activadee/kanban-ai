@@ -4,7 +4,7 @@ type Handler<T> = (payload: T) => void
 
 type Events = {
     attempt_started: { attemptId: string; cardId: string }
-    attempt_status: { attemptId: string; status: string }
+    attempt_status: { attemptId: string; cardId?: string; status: string }
     attempt_log: { attemptId: string; level: 'info' | 'warn' | 'error'; message: string; ts: string }
     conversation_item: { attemptId: string; item: ConversationItem }
     attempt_session: { attemptId: string; sessionId: string }

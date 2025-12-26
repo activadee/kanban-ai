@@ -153,6 +153,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
             events.publish('attempt.status.changed', {
                 attemptId,
                 boardId,
+                cardId,
                 status: 'running',
                 previousStatus,
             })
@@ -226,6 +227,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     events.publish('attempt.status.changed', {
                         attemptId,
                         boardId,
+                        cardId,
                         status: nextStatus,
                         previousStatus: previous,
                     })
