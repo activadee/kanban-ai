@@ -32,6 +32,9 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
 - Settings include:
   - Theme and language.
   - Telemetry and notification preferences.
+  - Editor defaults (used by the Editor module when opening worktrees).
+  - Git defaults (e.g. preferred author configuration and auto-start behavior).
+  - OpenCode agent default port (used when no port is specified in profiles).
   - Editor defaults – path to editor executable (used by the Editor module when opening worktrees).
   - Git defaults – preferred author configuration and auto-start behavior.
 

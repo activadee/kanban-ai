@@ -1,0 +1,1 @@
+ALTER TABLE app_settings ADD COLUMN opencode_port INTEGER NOT NULL DEFAULT 4097;

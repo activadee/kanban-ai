@@ -30,6 +30,7 @@ projects and Attempts.
 - OpenCode profiles can also configure their server targets:
   - `baseUrl` overrides the bundled `opencode serve` process and can also be supplied via `OPENCODE_BASE_URL`, switching the agent into remote mode.
   - `apiKey` is mirrored into `OPENCODE_API_KEY` when the SDK launches the local server, letting credentials stay in the profile even without manual environment setup.
+  - `port` specifies the local server port (default: 4097). When a server is already running on the configured port, it will be reused instead of starting a new instance. Valid ports are 1-65535, excluding reserved ports (80, 443, 22, 25, 53, 110, 143, 993, 995, 3306, 5432, 6379, 8080, 8443).
 - Prompt fields are capped at 4,000 characters when creating or updating profiles (both project-scoped and global).
   Attempts to save longer prompts return an RFC 7807 error describing the offending field so callers can trim the text.
 

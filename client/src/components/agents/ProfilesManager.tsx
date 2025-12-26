@@ -108,7 +108,7 @@ export function ProfilesManager({open, onOpenChange, onChanged}: {
                                 {schema.fields.map((field) => {
                                     const value = formValues[field.key]
                                     switch (field.type) {
-                                        case 'string':
+                                        case 'string': {
                                             return (
                                                 <div key={field.key} className="space-y-2">
                                                     <Label>{field.label}</Label>
@@ -118,6 +118,22 @@ export function ProfilesManager({open, onOpenChange, onChanged}: {
                                                     />
                                                 </div>
                                             )
+                                        }
+                                        case 'number': {
+                                            return (
+                                                <div key={field.key} className="space-y-2">
+                                                    <Label>{field.label}</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={typeof value === 'number' ? value : ''}
+                                                        onChange={(e) => {
+                                                            const numValue = e.target.value ? parseInt(e.target.value, 10) : (field.optional ? undefined : 0)
+                                                            updateField(field.key, numValue)
+                                                        }}
+                                                    />
+                                                </div>
+                                            )
+                                        }
                                         case 'boolean':
                                             return (
                                                 <div key={field.key} className="flex items-center gap-2">

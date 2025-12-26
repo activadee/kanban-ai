@@ -23,6 +23,8 @@ export interface AppSettings {
     ghPrTitleTemplate: string | null
     ghPrBodyTemplate: string | null
     ghAutolinkTickets: boolean
+    // OpenCode Agent
+    opencodePort: number
     createdAt: string
     updatedAt: string
 }
@@ -44,6 +46,7 @@ export type UpdateAppSettingsRequest = Partial<
         | 'ghPrTitleTemplate'
         | 'ghPrBodyTemplate'
         | 'ghAutolinkTickets'
+        | 'opencodePort'
     >
 >
 

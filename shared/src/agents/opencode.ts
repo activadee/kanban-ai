@@ -30,9 +30,17 @@ export type OpencodeProfile = {
      * server via baseUrl.
      */
     apiKey?: string | null
+    /**
+     * Optional port number for the local OpenCode server.
+     * Must be between 1 and 65535. Default is 4097.
+     * When a server is already running on the specified port,
+     * it will be reused instead of starting a new instance.
+     */
+    port?: number | null
     debug?: boolean
 }
 
 export const defaultOpencodeProfile: OpencodeProfile = {
     debug: false,
+    port: 4097,
 }
