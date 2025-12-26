@@ -11,6 +11,7 @@ import {
     followupAttemptRequest,
     getAttempt,
     getAttemptDetailForCard,
+    getAttemptDetailForCardByKind,
     getAttemptLogs,
     openAttemptEditor,
     startAttemptRequest,
@@ -25,16 +26,23 @@ type CardAttemptResult = {
     todos?: AttemptTodoSummary | null;
 }
 
-type CardAttemptOptions = Partial<UseQueryOptions<CardAttemptResult>>
+type CardAttemptKind = 'implementation' | 'planning'
+
+type CardAttemptOptions = Partial<UseQueryOptions<CardAttemptResult>> & { kind?: CardAttemptKind }
 
 export function useCardAttempt(projectId: string | undefined, cardId: string | undefined, options?: CardAttemptOptions) {
+    const kind = options?.kind ?? 'implementation'
+    const {kind: _kind, ...queryOptions} = options ?? {}
     const enabled = Boolean(projectId && cardId)
-    const key = enabled ? cardAttemptKeys.detail(projectId!, cardId!) : (['card-attempt', 'disabled'] as const)
+    const key = enabled ? cardAttemptKeys.detail(projectId!, cardId!, kind) : (['card-attempt', 'disabled'] as const)
     return useQuery({
         queryKey: key,
-        queryFn: () => getAttemptDetailForCard(projectId!, cardId!),
+        queryFn: () =>
+            kind === 'planning'
+                ? getAttemptDetailForCardByKind(projectId!, cardId!, 'planning')
+                : getAttemptDetailForCard(projectId!, cardId!),
         enabled,
-        ...options,
+        ...queryOptions,
     })
 }
 

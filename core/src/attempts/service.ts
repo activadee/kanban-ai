@@ -31,6 +31,10 @@ export async function getLatestAttemptForCard(boardId: string, cardId: string) {
     return lifecycleGetLatestAttemptForCard(boardId, cardId)
 }
 
+export async function getLatestPlanningAttemptForCard(boardId: string, cardId: string) {
+    return lifecycleGetLatestAttemptForCard(boardId, cardId, {isPlanningAttempt: true})
+}
+
 export async function startAttempt(
     input: StartAttemptInput,
     deps?: AttemptServiceDeps,

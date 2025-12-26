@@ -34,6 +34,26 @@ export async function getAttemptDetailForCard(projectId: string, cardId: string)
     }>(res)
 }
 
+export async function getAttemptDetailForCardByKind(
+    projectId: string,
+    cardId: string,
+    kind: 'planning' | 'implementation',
+): Promise<{
+    attempt: Attempt;
+    logs: AttemptLog[];
+    conversation: ConversationItem[];
+    todos?: AttemptTodoSummary | null;
+}> {
+    const query = kind === 'planning' ? '?kind=planning' : ''
+    const res = await fetch(`${SERVER_URL}/projects/${projectId}/cards/${cardId}/attempt${query}`)
+    return parseApiResponse<{
+        attempt: Attempt;
+        logs: AttemptLog[];
+        conversation: ConversationItem[];
+        todos?: AttemptTodoSummary | null;
+    }>(res)
+}
+
 export async function startAttemptRequest(params: {
     projectId: string;
     cardId: string;

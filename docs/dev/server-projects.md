@@ -29,6 +29,7 @@
 4. **Boards, Cards & Attempts (`board.routes.ts` + `board.*.handlers.ts`)**
     - `/projects/:projectId/board/*` and `/boards/:boardId/*` provide board state, card CRUD/move, attempts, GitHub imports, and
       `/boards/:boardId/github/issues/stats` exposes lightweight linked issue counts (`imported`, `exported`, `total`).
+    - Card attempt detail endpoints support `?kind=planning` to fetch the Planning Attempt for a card; the default (no query) returns the Implementation Attempt.
     - Planning mode stores one plan per card via:
       - `GET|POST|DELETE /projects/:projectId/cards/:cardId/plan` (and the board-scoped equivalents under `/boards/:boardId/cards/:cardId/plan`).
       - When starting a non-planning Attempt, the saved plan (if present) is prepended to the card description passed to the agent.

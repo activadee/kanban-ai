@@ -9,6 +9,7 @@ import {settingsService} from '../settings/service'
 import {
     getAttemptById,
     getAttemptForCard,
+    getPlanningAttemptForCard,
     insertAttempt,
     updateAttempt,
     listAttemptLogs as repoListAttemptLogs,
@@ -58,8 +59,14 @@ function deserializeConversationItem(row: {
     }
 }
 
-export async function getLatestAttemptForCard(boardId: string, cardId: string) {
-    const selected = await getAttemptForCard(boardId, cardId)
+export async function getLatestAttemptForCard(
+    boardId: string,
+    cardId: string,
+    opts?: {isPlanningAttempt?: boolean},
+) {
+    const selected = opts?.isPlanningAttempt === true
+        ? await getPlanningAttemptForCard(boardId, cardId)
+        : await getAttemptForCard(boardId, cardId)
     if (!selected) return null
     const logs = await repoListAttemptLogs(selected.id)
     const items = await repoListConversationItems(selected.id)
@@ -94,14 +101,19 @@ export async function startAttempt(
     events: AppEventBus,
 ) {
     const now = new Date()
+    const isPlanningAttempt = input.isPlanningAttempt === true
     const repoPath = await (async () => {
         const p = await getRepositoryPath(input.boardId)
         if (!p) throw new Error('Board not found')
         return p
     })()
     const settings = await ensureProjectSettings(input.boardId)
-    const existing = await getAttemptForCard(input.boardId, input.cardId)
-    const isPlanningAttempt = input.isPlanningAttempt === true
+    const existing = isPlanningAttempt
+        ? await getPlanningAttemptForCard(input.boardId, input.cardId)
+        : await getAttemptForCard(input.boardId, input.cardId)
+    const planningAttemptForCollisionCheck = !isPlanningAttempt
+        ? await getPlanningAttemptForCard(input.boardId, input.cardId)
+        : null
     const cardRow = await getCardById(input.cardId)
     const boardRow = await getBoardById(input.boardId)
     let id = existing?.id ?? `att-${crypto.randomUUID()}`
@@ -126,14 +138,32 @@ export async function startAttempt(
             type: cardRow?.ticketType ?? undefined,
         })
     }
+    if (isPlanningAttempt && branch && !branch.startsWith('plan/')) {
+        branch = `plan/${branch}`
+    }
     if (!branch) branch = `kanbanai/${Math.random().toString(36).slice(2, 8)}`
-    const defaultWorktreePath = boardRow
-        ? getWorktreePathByNames(
-              boardRow.name,
-              cardRow?.title ?? `card-${input.cardId}`,
-          )
-        : getWorktreePath(input.boardId, id)
-    const worktreePath = existing?.worktreePath ?? defaultWorktreePath
+    const defaultWorktreePath = isPlanningAttempt
+        ? getWorktreePath(input.boardId, id)
+        : boardRow
+            ? getWorktreePathByNames(
+                boardRow.name,
+                cardRow?.title ?? `card-${input.cardId}`,
+            )
+            : getWorktreePath(input.boardId, id)
+    let worktreePath = isPlanningAttempt ? defaultWorktreePath : (existing?.worktreePath ?? defaultWorktreePath)
+
+    if (!isPlanningAttempt && planningAttemptForCollisionCheck) {
+        const status = planningAttemptForCollisionCheck.status as AttemptStatus
+        const planningIsActive = status === 'queued' || status === 'running' || status === 'stopping'
+        if (planningIsActive) {
+            if (planningAttemptForCollisionCheck.branchName === branch && !branch.startsWith('impl/')) {
+                branch = `impl/${branch}`
+            }
+            if (planningAttemptForCollisionCheck.worktreePath && planningAttemptForCollisionCheck.worktreePath === worktreePath) {
+                worktreePath = getWorktreePath(input.boardId, id)
+            }
+        }
+    }
     const profileId = input.profileId ?? settings.defaultProfileId ?? undefined
 
     const previousStatus: AttemptStatus =
@@ -186,6 +216,7 @@ export async function startAttempt(
         baseBranch: base,
         branchName: branch,
         profileId,
+        isPlanningAttempt,
     })
 
     startAttemptWorker(
@@ -337,6 +368,7 @@ export async function followupAttempt(
         branchName: base.branchName,
         baseBranch: base.baseBranch,
         profileId: effectiveProfileId ?? undefined,
+        isPlanningAttempt: base.isPlanningAttempt ?? false,
     })
 
     startFollowupAttemptWorker(

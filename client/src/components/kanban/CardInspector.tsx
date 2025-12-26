@@ -12,8 +12,9 @@ import {useCardInspectorState, type InspectorTab} from './card-inspector/useCard
 import type {CardFormValues} from './CardDialogs'
 import {AttemptToolbar} from './card-inspector/AttemptToolbar'
 import {usePlan} from '@/hooks/plans'
+import {usePlanningAttemptState, type PlanningAttemptTab} from './card-inspector/usePlanningAttemptState'
 
-type TopLevelTab = 'ticket' | 'attempts'
+type TopLevelTab = 'ticket' | 'implementation' | 'plan'
 
 export function CardInspector({
                                   projectId,
@@ -58,34 +59,55 @@ export function CardInspector({
     const planQuery = usePlan(projectId, card.id)
     const plan = planQuery.data ?? null
 
+    const planningAttempt = usePlanningAttemptState({projectId, cardId: card.id})
+
     const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('ticket')
-    const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
+    const [activeImplementationTab, setActiveImplementationTab] = useState<InspectorTab>('messages')
+    const [activePlanningTab, setActivePlanningTab] = useState<PlanningAttemptTab>('messages')
+
+    const implementationAttemptForCard =
+        attempt.attempt && attempt.attempt.cardId === card.id ? attempt.attempt : null
+    const planningAttemptForCard =
+        planningAttempt.attempt && planningAttempt.attempt.cardId === card.id ? planningAttempt.attempt : null
 
     useEffect(() => {
-        const attemptForCard = attempt.attempt && attempt.attempt.cardId === card.id ? attempt.attempt : null
         const cardChanged = previousCardIdRef.current !== card.id
-        const desiredTopLevel: TopLevelTab = attemptForCard ? 'attempts' : 'ticket'
+        const desiredTopLevel: TopLevelTab = implementationAttemptForCard
+            ? 'implementation'
+            : plan || planningAttemptForCard
+                ? 'plan'
+                : 'ticket'
 
         if (cardChanged) {
             previousCardIdRef.current = card.id
             userSetTopLevelTabRef.current = false
             setActiveTopLevelTab(desiredTopLevel)
-            setActiveAttemptTab('messages')
+            setActiveImplementationTab('messages')
+            setActivePlanningTab('messages')
             return
         }
 
         if (!userSetTopLevelTabRef.current && activeTopLevelTab !== desiredTopLevel) {
             setActiveTopLevelTab(desiredTopLevel)
         }
-    }, [card.id, attempt.attempt?.id, attempt.attempt?.cardId, activeTopLevelTab])
+    }, [card.id, implementationAttemptForCard?.id, planningAttemptForCard?.id, plan?.id, activeTopLevelTab])
 
     useEffect(() => {
-        const currentAttemptId = attempt.attempt?.id
+        const currentAttemptId = implementationAttemptForCard?.id
         if (previousAttemptIdRef.current !== currentAttemptId) {
-            setActiveAttemptTab('messages')
+            setActiveImplementationTab('messages')
             previousAttemptIdRef.current = currentAttemptId
         }
-    }, [attempt.attempt?.id])
+    }, [implementationAttemptForCard?.id])
+
+    const previousPlanningAttemptIdRef = useRef<string | undefined>(undefined)
+    useEffect(() => {
+        const currentAttemptId = planningAttemptForCard?.id
+        if (previousPlanningAttemptIdRef.current !== currentAttemptId) {
+            setActivePlanningTab('messages')
+            previousPlanningAttemptIdRef.current = currentAttemptId
+        }
+    }, [planningAttemptForCard?.id])
 
     return (
         <div className="flex h-full flex-col gap-3">
@@ -98,9 +120,9 @@ export function CardInspector({
                 plan={plan}
                 onClose={onClose}
                 actions={
-                    attempt.attempt ? (
+                    implementationAttemptForCard ? (
                         <AttemptToolbar
-                            attempt={attempt.attempt}
+                            attempt={implementationAttemptForCard}
                             openButtonDisabledReason={git.openButtonDisabledReason}
                             onOpenEditor={git.handleOpenEditor}
                             todoSummary={git.todoSummary}
@@ -122,7 +144,8 @@ export function CardInspector({
             >
                 <TabsList>
                     <TabsTrigger value="ticket">Ticket</TabsTrigger>
-                    <TabsTrigger value="attempts">Attempts</TabsTrigger>
+                    <TabsTrigger value="implementation">Implementation</TabsTrigger>
+                    <TabsTrigger value="plan">Plan</TabsTrigger>
                 </TabsList>
                 <TabsContent value="ticket" className="flex min-h-0 flex-1 flex-col gap-3">
                     <DetailsSection
@@ -151,31 +174,31 @@ export function CardInspector({
                         deleting={details.deleting}
                     />
                 </TabsContent>
-                <TabsContent value="attempts" className="flex min-h-0 flex-1 flex-col gap-3">
-                    {!attempt.attempt && (
+                <TabsContent value="implementation" className="flex min-h-0 flex-1 flex-col gap-3">
+                    {!implementationAttemptForCard && (
                         <AttemptCreateForm
+                            kind="implementation"
                             agents={attempt.agents}
                             agent={attempt.agent}
                             onAgentChange={attempt.handleAgentSelect}
                             availableProfiles={attempt.availableProfiles}
                             profileId={attempt.profileId}
                             onProfileChange={(id) => attempt.handleProfileSelect(id ?? '__default__')}
-                            onStart={attempt.startAttempt}
-                            planExists={Boolean(plan)}
+                            onStart={() => attempt.startAttempt()}
                             locked={locked}
                             blocked={blocked}
                             starting={attempt.starting}
                         />
                     )}
-                    {attempt.attempt && (
+                    {implementationAttemptForCard && (
                         <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/60 p-3">
                             <div className="flex min-h-0 flex-1 flex-col gap-2">
                                 <div className="text-xs text-muted-foreground">
-                                    Attempt {attempt.attempt.id} — Status: {attempt.attempt.status}
+                                    Attempt {implementationAttemptForCard.id} — Status: {implementationAttemptForCard.status}
                                 </div>
                                 <Tabs
-                                    value={activeAttemptTab}
-                                    onValueChange={(value) => setActiveAttemptTab(value as InspectorTab)}
+                                    value={activeImplementationTab}
+                                    onValueChange={(value) => setActiveImplementationTab(value as InspectorTab)}
                                     className="flex min-h-0 flex-1 flex-col"
                                 >
                                     <TabsList>
@@ -185,7 +208,7 @@ export function CardInspector({
                                     </TabsList>
                                     <TabsContent value="messages" className="flex min-h-0 flex-1 flex-col">
                                         <AttemptsSection
-                                            attempt={attempt.attempt}
+                                            attempt={implementationAttemptForCard}
                                             projectId={projectId}
                                             cardId={card.id}
                                             locked={locked}
@@ -197,7 +220,7 @@ export function CardInspector({
                                             sendPending={attempt.sendFollowupPending}
                                             stopping={attempt.stopping}
                                             onStopAttempt={attempt.stopAttempt}
-                                            onRetryAttempt={attempt.attempt?.status === 'failed' ? attempt.retryAttempt : undefined}
+                                            onRetryAttempt={implementationAttemptForCard.status === 'failed' ? attempt.retryAttempt : undefined}
                                             retrying={attempt.retrying}
                                             attemptAgent={attempt.attemptAgent}
                                             profileId={attempt.profileId}
@@ -207,7 +230,7 @@ export function CardInspector({
                                     </TabsContent>
                                     <TabsContent value="processes" className="flex min-h-0 flex-1 flex-col">
                                         <ActivitySection
-                                            attempt={attempt.attempt}
+                                            attempt={implementationAttemptForCard}
                                             agent={attempt.agent}
                                             stopping={attempt.stopping}
                                             onStopAttempt={attempt.stopAttempt}
@@ -215,7 +238,7 @@ export function CardInspector({
                                             devScriptConfigured={activity.devScriptConfigured}
                                             devAutomationPending={activity.devAutomationPending}
                                             onRunDevScript={activity.runDevScript}
-                                            onViewLogs={() => setActiveAttemptTab('logs')}
+                                            onViewLogs={() => setActiveImplementationTab('logs')}
                                         />
                                     </TabsContent>
                                     <TabsContent value="logs" className="flex min-h-0 flex-1 flex-col">
@@ -226,11 +249,85 @@ export function CardInspector({
                         </div>
                     )}
                 </TabsContent>
+                <TabsContent value="plan" className="flex min-h-0 flex-1 flex-col gap-3">
+                    {planQuery.isLoading ? (
+                        <div className="rounded-lg border border-border/60 p-3 text-sm text-muted-foreground">
+                            Loading plan…
+                        </div>
+                    ) : plan ? (
+                        <div className="rounded-lg border border-border/60 p-3">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <div className="text-sm font-medium">Plan (locked)</div>
+                                <div className="text-xs text-muted-foreground">
+                                    Updated {new Date(plan.updatedAt).toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="whitespace-pre-wrap text-sm">{plan.planMarkdown}</div>
+                        </div>
+                    ) : !planningAttemptForCard ? (
+                        <AttemptCreateForm
+                            kind="planning"
+                            agents={planningAttempt.agents}
+                            agent={planningAttempt.agent}
+                            onAgentChange={planningAttempt.handleAgentSelect}
+                            availableProfiles={planningAttempt.availableProfiles}
+                            profileId={planningAttempt.profileId}
+                            onProfileChange={(id) => planningAttempt.handleProfileSelect(id ?? '__default__')}
+                            onStart={planningAttempt.startAttempt}
+                            locked={locked}
+                            blocked={blocked}
+                            starting={planningAttempt.starting}
+                        />
+                    ) : (
+                        <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-border/60 p-3">
+                            <div className="flex min-h-0 flex-1 flex-col gap-2">
+                                <div className="text-xs text-muted-foreground">
+                                    Planning attempt {planningAttemptForCard.id} — Status: {planningAttemptForCard.status}
+                                </div>
+                                <Tabs
+                                    value={activePlanningTab}
+                                    onValueChange={(value) => setActivePlanningTab(value as PlanningAttemptTab)}
+                                    className="flex min-h-0 flex-1 flex-col"
+                                >
+                                    <TabsList>
+                                        <TabsTrigger value="messages">Messages</TabsTrigger>
+                                        <TabsTrigger value="logs">Logs</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="messages" className="flex min-h-0 flex-1 flex-col">
+                                        <AttemptsSection
+                                            attempt={planningAttemptForCard}
+                                            projectId={projectId}
+                                            cardId={card.id}
+                                            locked={locked}
+                                            conversation={planningAttempt.conversation}
+                                            plan={plan}
+                                            followup={planningAttempt.followup}
+                                            onFollowupChange={planningAttempt.setFollowup}
+                                            onSendFollowup={planningAttempt.sendFollowup}
+                                            sendPending={planningAttempt.sendFollowupPending}
+                                            stopping={planningAttempt.stopping}
+                                            onStopAttempt={planningAttempt.stopAttempt}
+                                            onRetryAttempt={planningAttemptForCard.status === 'failed' ? planningAttempt.retryAttempt : undefined}
+                                            retrying={planningAttempt.retrying}
+                                            attemptAgent={planningAttempt.attemptAgent}
+                                            profileId={planningAttempt.profileId}
+                                            onProfileSelect={planningAttempt.handleProfileSelect}
+                                            followupProfiles={planningAttempt.followupProfiles}
+                                        />
+                                    </TabsContent>
+                                    <TabsContent value="logs" className="flex min-h-0 flex-1 flex-col">
+                                        <LogsPane logs={planningAttempt.logs}/>
+                                    </TabsContent>
+                                </Tabs>
+                            </div>
+                        </div>
+                    )}
+                </TabsContent>
             </Tabs>
             <GitSection
                 projectId={projectId}
                 card={card}
-                attempt={attempt.attempt}
+                attempt={implementationAttemptForCard}
                 changesOpen={git.changesOpen}
                 onChangesOpenChange={git.setChangesOpen}
                 commitOpen={git.commitOpen}

@@ -11,10 +11,11 @@ export const getCardAttemptForBoardHandler = async (
 ) => {
     const {boardId} = ctx;
     try {
-        const data = await attempts.getLatestAttemptForCard(
-            boardId,
-            c.req.param("cardId"),
-        );
+        const kind = (c.req.query('kind') || '').trim().toLowerCase()
+        const cardId = c.req.param("cardId")
+        const data = kind === 'planning'
+            ? await attempts.getLatestPlanningAttemptForCard(boardId, cardId)
+            : await attempts.getLatestAttemptForCard(boardId, cardId)
         if (!data) {
             return problemJson(c, {status: 404, detail: "Attempt not found"});
         }

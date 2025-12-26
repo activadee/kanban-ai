@@ -11,9 +11,14 @@ describe('buildPlanningAttemptDescription', () => {
         expect(out).toContain('Do X and Y.')
     })
 
+    it('includes the agent profile prompt when provided', () => {
+        const out = buildPlanningAttemptDescription('Do X.', 'Follow the house rules.')
+        expect(out).toContain('### Agent Profile Prompt')
+        expect(out).toContain('Follow the house rules.')
+    })
+
     it('handles missing descriptions', () => {
         const out = buildPlanningAttemptDescription(null)
         expect(out).toContain('(No description provided.)')
     })
 })
-

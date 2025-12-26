@@ -170,6 +170,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 baseBranch,
                 worktreePath,
                 profileId,
+                isPlanningAttempt,
             })
 
             let worktreeCreated = false
@@ -297,27 +298,6 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 }
             }
 
-            if (params.mode === 'run') {
-                if (isPlanningAttempt) {
-                    effectiveCardDescription = buildPlanningAttemptDescription(cardDescription)
-                } else {
-                    try {
-                        const plan = await getPlanForCard(cardId)
-                        const planMarkdown = plan?.planMarkdown?.trim()
-                        if (planMarkdown) {
-                            const original = effectiveCardDescription ?? ''
-                            effectiveCardDescription = `## Plan\n\n${planMarkdown}\n\n---\n\n## Original Description\n\n${original}`
-                        }
-                    } catch (error) {
-                        await emit({
-                            type: 'log',
-                            level: 'warn',
-                            message: `[plans] failed to load plan: ${error instanceof Error ? error.message : String(error ?? 'unknown error')}`,
-                        })
-                    }
-                }
-            }
-
             const allowFailureConfig = {
                 allowScriptsToFail: automation.allowScriptsToFail,
                 allowCopyFilesToFail: automation.allowCopyFilesToFail,
@@ -397,6 +377,48 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 profileId,
                 log,
             )
+            let effectiveProfile: unknown = profile
+
+            if (params.mode === 'run') {
+                if (isPlanningAttempt) {
+                    const profileAppendPrompt = (() => {
+                        if (!profile || typeof profile !== 'object') return ''
+                        const value = (profile as Record<string, unknown>).appendPrompt
+                        return typeof value === 'string' ? value.trim() : ''
+                    })()
+
+                    effectiveCardDescription = buildPlanningAttemptDescription(
+                        cardDescription,
+                        profileAppendPrompt || undefined,
+                    )
+
+                    if (profileAppendPrompt && profile && typeof profile === 'object') {
+                        const base = profile as Record<string, unknown>
+                        const inline = base.inlineProfile
+                        const hasInline = typeof inline === 'string' && inline.trim().length > 0
+                        const patch: Record<string, unknown> = {appendPrompt: null}
+                        if (agentKey === 'OPENCODE' && !hasInline) {
+                            patch.inlineProfile = profileAppendPrompt
+                        }
+                        effectiveProfile = {...base, ...patch}
+                    }
+                } else {
+                    try {
+                        const plan = await getPlanForCard(cardId)
+                        const planMarkdown = plan?.planMarkdown?.trim()
+                        if (planMarkdown) {
+                            const original = effectiveCardDescription ?? ''
+                            effectiveCardDescription = `## Plan\n\n${planMarkdown}\n\n---\n\n## Original Description\n\n${original}`
+                        }
+                    } catch (error) {
+                        await emit({
+                            type: 'log',
+                            level: 'warn',
+                            message: `[plans] failed to load plan: ${error instanceof Error ? error.message : String(error ?? 'unknown error')}`,
+                        })
+                    }
+                }
+            }
 
             if (params.mode === 'run') {
                 const code =
@@ -417,7 +439,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                                   emit,
                                   profileId: profileId ?? null,
                               } as any,
-                              profile as any,
+                              effectiveProfile as any,
                           )
                         : 1
                 await log('info', `[runner] agent exited with code ${code}`)
@@ -447,13 +469,14 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     status: final,
                     worktreePath,
                     profileId: profileId ?? undefined,
+                    isPlanningAttempt,
                 })
             } else {
-                if (typeof agent.resume !== 'function') {
-                    throw new Error('Agent does not support follow-up')
-                }
-                try {
-                    const code = await agent.resume(
+                    if (typeof agent.resume !== 'function') {
+                        throw new Error('Agent does not support follow-up')
+                    }
+                    try {
+                        const code = await agent.resume(
                         {
                             attemptId,
                             boardId,
@@ -471,7 +494,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                             followupPrompt: params.followupPrompt,
                             profileId: profileId ?? null,
                         } as any,
-                        profile as any,
+                        effectiveProfile as any,
                     )
                     await emit({
                         type: 'log',
@@ -520,6 +543,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     status: finalStatus,
                     worktreePath,
                     profileId: profileId ?? undefined,
+                    isPlanningAttempt,
                 })
             }
         } catch (err) {
@@ -552,6 +576,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                         status: 'failed',
                         worktreePath,
                         profileId: profileId ?? undefined,
+                        isPlanningAttempt,
                     })
                 } else {
                     await updateAttempt(attemptId, {

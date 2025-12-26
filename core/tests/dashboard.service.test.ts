@@ -62,6 +62,7 @@ async function createTestDb() {
             status TEXT NOT NULL,
             base_branch TEXT NOT NULL,
             branch_name TEXT NOT NULL,
+            is_planning_attempt integer NOT NULL DEFAULT 0,
             worktree_path TEXT,
             session_id TEXT,
             created_at INTEGER NOT NULL,
@@ -241,6 +242,25 @@ function insertFixtureData(sqlite: any, baseTime: Date) {
         baseTs - 2 * day,
         baseTs - 2 * day,
         null
+    );
+
+    // Planning attempts should not affect dashboard metrics.
+    sqlite.prepare(
+        `INSERT INTO attempts (id, board_id, card_id, agent, status, base_branch, branch_name, is_planning_attempt, worktree_path, session_id, created_at, updated_at, started_at, ended_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, ?)`,
+    ).run(
+        "a-plan-1",
+        "board-1",
+        "card-1",
+        "AGENT",
+        "queued",
+        "main",
+        "plan/branch-a1",
+        1,
+        baseTs - 1 * day + 600,
+        baseTs - 1 * day + 600,
+        baseTs - 1 * day + 600,
+        null,
     );
 }
 

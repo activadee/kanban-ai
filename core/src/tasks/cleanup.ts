@@ -1,5 +1,5 @@
 import simpleGit from 'simple-git'
-import {getAttemptForCard, updateAttempt} from '../attempts/repo'
+import {getAttemptForCardByKind, updateAttempt} from '../attempts/repo'
 import {getRepositoryPath} from '../projects/repo'
 import {removeWorktree} from '../ports/worktree'
 import type {AttemptStatus} from 'shared'
@@ -10,22 +10,20 @@ export type CleanupResult = {
     skipped?: 'no_attempt' | 'no_repo' | 'in_progress'
 }
 
-/**
- * Remove the git worktree and local branch associated with a card's attempt.
- * Intended to run when a ticket is moved to the Done column.
- */
-export async function cleanupCardWorkspace(boardId: string, cardId: string): Promise<CleanupResult> {
-    const attempt = await getAttemptForCard(boardId, cardId)
-    if (!attempt) return {worktreeRemoved: false, branchRemoved: false, skipped: 'no_attempt'}
+type AttemptForCleanup = {
+    id: string
+    status: string
+    branchName: string
+    baseBranch: string
+    worktreePath: string | null
+}
 
-    const status = attempt.status as AttemptStatus
-    if (status === 'queued' || status === 'running' || status === 'stopping') {
-        return {worktreeRemoved: false, branchRemoved: false, skipped: 'in_progress'}
-    }
-
-    const repoPath = await getRepositoryPath(boardId)
-    if (!repoPath) return {worktreeRemoved: false, branchRemoved: false, skipped: 'no_repo'}
-
+async function cleanupAttemptWorkspace(
+    repoPath: string,
+    boardId: string,
+    cardId: string,
+    attempt: AttemptForCleanup,
+): Promise<{worktreeRemoved: boolean; branchRemoved: boolean}> {
     let worktreeRemoved = false
     let branchRemoved = false
 
@@ -42,7 +40,7 @@ export async function cleanupCardWorkspace(boardId: string, cardId: string): Pro
     // Delete the attempt branch as long as it is not the base branch.
     const branchName = attempt.branchName?.trim()
     const baseBranch = attempt.baseBranch?.trim()
-    if (branchName && branchName !== baseBranch) {
+    if (branchName && baseBranch && branchName !== baseBranch) {
         try {
             const git = simpleGit({baseDir: repoPath})
             const branches = await git.branchLocal()
@@ -75,6 +73,47 @@ export async function cleanupCardWorkspace(boardId: string, cardId: string): Pro
         } catch (error) {
             console.error('[tasks:cleanup] failed to update attempt after cleanup', error)
         }
+    }
+
+    return {worktreeRemoved, branchRemoved}
+}
+
+/**
+ * Remove the git worktree and local branch associated with a card's attempt.
+ * Intended to run when a ticket is moved to the Done column.
+ */
+export async function cleanupCardWorkspace(boardId: string, cardId: string): Promise<CleanupResult> {
+    const implementationAttempt = await getAttemptForCardByKind(boardId, cardId, false)
+    const planningAttempt = await getAttemptForCardByKind(boardId, cardId, true)
+
+    const attempts = [implementationAttempt, planningAttempt].filter((item): item is NonNullable<typeof item> => Boolean(item))
+    if (attempts.length === 0) return {worktreeRemoved: false, branchRemoved: false, skipped: 'no_attempt'}
+
+    const inProgress = attempts.some((attempt) => {
+        const status = attempt.status as AttemptStatus
+        return status === 'queued' || status === 'running' || status === 'stopping'
+    })
+
+    if (inProgress) {
+        return {worktreeRemoved: false, branchRemoved: false, skipped: 'in_progress'}
+    }
+
+    const repoPath = await getRepositoryPath(boardId)
+    if (!repoPath) return {worktreeRemoved: false, branchRemoved: false, skipped: 'no_repo'}
+
+    let worktreeRemoved = false
+    let branchRemoved = false
+
+    for (const attempt of attempts) {
+        const res = await cleanupAttemptWorkspace(repoPath, boardId, cardId, {
+            id: attempt.id,
+            status: attempt.status,
+            branchName: attempt.branchName,
+            baseBranch: attempt.baseBranch,
+            worktreePath: attempt.worktreePath,
+        })
+        worktreeRemoved = worktreeRemoved || res.worktreeRemoved
+        branchRemoved = branchRemoved || res.branchRemoved
     }
 
     return {worktreeRemoved, branchRemoved}

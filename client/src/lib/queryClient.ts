@@ -40,7 +40,9 @@ export const attemptKeys = {
 
 export const cardAttemptKeys = {
     all: ['card-attempt'] as const,
-    detail: (projectId: string, cardId: string) => [...cardAttemptKeys.all, projectId, cardId] as const,
+    card: (projectId: string, cardId: string) => [...cardAttemptKeys.all, projectId, cardId] as const,
+    detail: (projectId: string, cardId: string, kind: 'implementation' | 'planning' = 'implementation') =>
+        [...cardAttemptKeys.all, projectId, cardId, kind] as const,
 }
 
 export const planKeys = {

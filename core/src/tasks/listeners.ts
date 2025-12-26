@@ -20,6 +20,7 @@ export function registerTaskListeners(bus: AppEventBus) {
 
     bus.subscribe('attempt.started', async (payload) => {
         try {
+            if (payload.isPlanningAttempt === true) return
             await moveCardToColumnByTitle(payload.boardId, payload.cardId, 'In Progress')
         } catch (error) {
             console.error('[tasks] failed to move card to In Progress on attempt start', error)
@@ -28,6 +29,7 @@ export function registerTaskListeners(bus: AppEventBus) {
 
     bus.subscribe('attempt.completed', async (payload) => {
         try {
+            if (payload.isPlanningAttempt === true) return
             const status = payload.status as AttemptStatus
             const targetColumn = status === 'succeeded' ? 'Review' : 'In Progress'
             await moveCardToColumnByTitle(payload.boardId, payload.cardId, targetColumn)

@@ -1,8 +1,22 @@
-export function buildPlanningAttemptDescription(originalDescription: string | null | undefined): string {
+export function buildPlanningAttemptDescription(
+    originalDescription: string | null | undefined,
+    agentProfilePrompt?: string | null | undefined,
+): string {
     const original = (originalDescription ?? '').trim()
     const ticketSection = original.length
         ? `## Ticket Description\n\n${original}`
         : `## Ticket Description\n\n(No description provided.)`
+
+    const profilePrompt = (agentProfilePrompt ?? '').trim()
+    const profileSection = profilePrompt.length
+        ? [
+              '',
+              '### Agent Profile Prompt',
+              '(Apply these too, unless they conflict with Planning Mode rules.)',
+              '',
+              profilePrompt,
+          ].join('\n')
+        : ''
 
     return [
         '## Planning Mode',
@@ -20,9 +34,9 @@ export function buildPlanningAttemptDescription(originalDescription: string | nu
         '- Prefer a single, well-structured Markdown response.',
         '- End with a section titled **## Plan** that can be saved as the plan for this ticket.',
         '',
+        profileSection,
         '---',
         '',
         ticketSection,
     ].join('\n')
 }
-

@@ -5,6 +5,7 @@ import {ensureProjectSettings} from '../projects/settings/service'
 export function registerGitListeners(bus: AppEventBus) {
     bus.subscribe('attempt.completed', async (payload) => {
         try {
+            if (payload.isPlanningAttempt === true) return
             if (payload.status !== 'succeeded') return
             const settings = await ensureProjectSettings(payload.boardId)
             if (!settings.autoCommitOnFinish) return
