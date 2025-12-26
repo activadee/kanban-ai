@@ -151,19 +151,31 @@ export function ProjectBoardPage() {
         });
     }, []);
 
+    // Track attempt status for failed cards visualization
     useEffect(() => {
         const offStatus = eventBus.on("attempt_status", (p) => {
             if (!boardState) return;
 
-            const card = Object.values(boardState.cards).find(
-                (c) => c.id === p.attemptId?.split("-")[0]
-            );
+            // Use direct cardId if available (robust)
+            let cardId = p.cardId;
 
-            if (!card) return;
+            // Fallback to extraction from attemptId (fragile, but kept for legacy/compatibility)
+            // Assumes attemptId starts with cardId (e.g. {cardId}-{timestamp})
+            if (!cardId && p.attemptId) {
+                const parts = p.attemptId.split("-");
+                if (parts.length > 1) {
+                    const potentialCardId = parts[0];
+                    if (boardState.cards[potentialCardId]) {
+                        cardId = potentialCardId;
+                    }
+                }
+            }
+
+            if (!cardId) return;
 
             setAttemptStatusByCardId((prev) => ({
                 ...prev,
-                [card.id]: p.status as AttemptStatus,
+                [cardId]: p.status as AttemptStatus,
             }));
         });
 

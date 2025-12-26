@@ -77,7 +77,7 @@ export type WsMsg =
     | { type: 'delete_card'; payload: { cardId: CardId } }
     // Attempt event envelopes broadcast by server; client may ignore until UI lands
     | { type: 'attempt_started'; payload: { attemptId: string; cardId: string } }
-    | { type: 'attempt_status'; payload: { attemptId: string; status: import('./runner').AttemptStatus } }
+    | { type: 'attempt_status'; payload: { attemptId: string; cardId?: string; status: import('./runner').AttemptStatus } }
     | {
     type: 'attempt_log';
     payload: { attemptId: string; level: 'info' | 'warn' | 'error'; message: string; ts: string }

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 import { KanbanCard } from "@/components/kanban/Card";
 import type { Card } from "shared";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const baseCard: Card = {
     id: "card-1",
@@ -13,6 +14,18 @@ const baseCard: Card = {
     updatedAt: new Date().toISOString(),
 };
 
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            retry: false,
+        },
+    },
+});
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
 describe("KanbanCard – failed status styling", () => {
     it("renders a Failed badge when attempt status is failed", () => {
         render(
@@ -20,6 +33,7 @@ describe("KanbanCard – failed status styling", () => {
                 card={baseCard}
                 attemptStatus="failed"
             />,
+            { wrapper }
         );
 
         const badge = screen.getByText("Failed");
@@ -32,6 +46,7 @@ describe("KanbanCard – failed status styling", () => {
                 card={baseCard}
                 attemptStatus="succeeded"
             />,
+            { wrapper }
         );
 
         const badge = screen.queryByText("Failed");
@@ -44,6 +59,7 @@ describe("KanbanCard – failed status styling", () => {
                 card={baseCard}
                 attemptStatus="failed"
             />,
+            { wrapper }
         );
 
         const cardElement = container.querySelector('[class*="bg-red-50/80"]');
@@ -56,6 +72,7 @@ describe("KanbanCard – failed status styling", () => {
                 card={baseCard}
                 attemptStatus="failed"
             />,
+            { wrapper }
         );
 
         const cardElement = container.querySelector('[class*="dark:bg-red-950/20"]');
@@ -68,6 +85,7 @@ describe("KanbanCard – failed status styling", () => {
                 card={baseCard}
                 attemptStatus="failed"
             />,
+            { wrapper }
         );
 
         const cardElement = container.querySelector('[class*="ring-destructive/40"]');
@@ -80,6 +98,7 @@ describe("KanbanCard – failed status styling", () => {
                 card={baseCard}
                 attemptStatus="succeeded"
             />,
+            { wrapper }
         );
 
         const cardElement = container.querySelector('[class*="bg-red-50/80"]');
@@ -93,6 +112,7 @@ describe("KanbanCard – failed status styling", () => {
                 blocked={true}
                 attemptStatus="failed"
             />,
+            { wrapper }
         );
 
         const hasFailedBg = container.querySelector('[class*="bg-red-50/80"]');
@@ -107,9 +127,36 @@ describe("KanbanCard – failed status styling", () => {
             <KanbanCard
                 card={baseCard}
             />,
+            { wrapper }
         );
 
         const badge = screen.queryByText("Failed");
         expect(badge).toBeNull();
+    });
+
+    it("has cursor-not-allowed when failed", () => {
+        const { container } = render(
+            <KanbanCard
+                card={baseCard}
+                attemptStatus="failed"
+            />,
+            { wrapper }
+        );
+
+        const cardElement = container.querySelector('[class*="cursor-not-allowed"]');
+        expect(cardElement).toBeTruthy();
+    });
+
+    it("has opacity-70 when failed", () => {
+        const { container } = render(
+            <KanbanCard
+                card={baseCard}
+                attemptStatus="failed"
+            />,
+            { wrapper }
+        );
+
+        const cardElement = container.querySelector('[class*="opacity-70"]');
+        expect(cardElement).toBeTruthy();
     });
 });

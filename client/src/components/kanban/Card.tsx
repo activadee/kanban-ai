@@ -65,11 +65,29 @@ export function KanbanCard({
                            }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
-    const isCardDisabled = disabled || isEnhancing
     const isFailed = attemptStatus === 'failed'
+    const isCardDisabled = disabled || isEnhancing || isFailed
     const showType = card.ticketType !== undefined && card.ticketType !== null
     const hasGithubIssue = Boolean(card.githubIssue)
     const isEnhanced = card.isEnhanced
+
+    const cardClassName = useMemo(() => {
+        const baseClasses = isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
+        
+        if (isFailed) {
+            return `${baseClasses} border-destructive/70 bg-red-50/80 dark:bg-red-950/20 ring-1 ring-destructive/40`
+        }
+        
+        if (blocked && !done) {
+            return `${baseClasses} border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10`
+        }
+        
+        if (isEnhanced) {
+            return `${baseClasses} border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15`
+        }
+        
+        return baseClasses
+    }, [isCardDisabled, isFailed, blocked, done, isEnhanced])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -85,18 +103,7 @@ export function KanbanCard({
         Boolean(menuContext)
 
     const cardInner = (
-        <UICard
-            className={`${
-                isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
-            } ${
-                isFailed
-                    ? 'border-destructive/70 bg-red-50/80 dark:bg-red-950/20 ring-1 ring-destructive/40'
-                    : blocked && !done
-                        ? 'border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10'
-                        : isEnhanced
-                            ? 'border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15'
-                            : ''
-            }`}>
+        <UICard className={cardClassName}>
             <CardContent className="flex h-full flex-col gap-2 overflow-hidden p-3">
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">

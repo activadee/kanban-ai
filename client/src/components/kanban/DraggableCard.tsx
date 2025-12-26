@@ -41,6 +41,7 @@ export function DraggableCard({
                                   onEnhance,
                               }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
+    const isFailed = attemptStatus === 'failed'
     const {
         attributes,
         listeners,
@@ -51,7 +52,7 @@ export function DraggableCard({
     } = useSortable({
         id: card.id,
         data: {type: 'card', cardId: card.id, columnId},
-        disabled: isEnhancing,
+        disabled: isEnhancing || isFailed,
     })
 
     const style: CSSProperties = {
@@ -65,12 +66,13 @@ export function DraggableCard({
             ref={setNodeRef}
             style={style}
             {...attributes}
-            {...(!isEnhancing ? listeners : undefined)}
+            {...(!(isEnhancing || isFailed) ? listeners : undefined)}
             onClick={(e) => {
+                if (isEnhancing || isFailed) return
                 e.stopPropagation()
                 onSelect?.(card.id)
             }}
-            className={`select-none ${isEnhancing ? 'cursor-not-allowed opacity-70' : ''}`}
+            className={`select-none ${isEnhancing || isFailed ? 'cursor-not-allowed opacity-70' : ''}`}
         >
             <KanbanCard
                 card={card}

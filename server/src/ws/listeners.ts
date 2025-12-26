@@ -10,8 +10,8 @@ export function registerWebSocketListeners(bus: AppEventBus) {
         broadcast(boardId, JSON.stringify({type: 'attempt_started', payload: {attemptId, cardId}}))
     })
 
-    bus.subscribe('attempt.status.changed', ({boardId, attemptId, status}) => {
-        broadcast(boardId, JSON.stringify({type: 'attempt_status', payload: {attemptId, status}}))
+    bus.subscribe('attempt.status.changed', ({boardId, attemptId, cardId, status}) => {
+        broadcast(boardId, JSON.stringify({type: 'attempt_status', payload: {attemptId, cardId, status}}))
     })
 
     bus.subscribe('attempt.log.appended', ({boardId, attemptId, level, message, ts}) => {
