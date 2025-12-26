@@ -50,6 +50,8 @@ type ServerInstance = ServerHandle & {
     url: string
 }
 
+type ServerOrPromise = ServerInstance | Promise<ServerInstance>
+
 export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation> {
     key = 'OPENCODE' as const
     label = 'OpenCode Agent'
@@ -58,7 +60,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     capabilities = {resume: true}
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
-    private readonly attemptServers = new Map<string, ServerInstance>()
+    private readonly attemptServers = new Map<string, ServerOrPromise>()
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
@@ -112,33 +114,47 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             })
         }
 
-        let serverInstance = this.attemptServers.get(ctx.attemptId)
-        if (!serverInstance) {
-            try {
-                const server = await createOpencodeServer({port: 0})
-                serverInstance = {close: server.close, url: server.url}
-                this.attemptServers.set(ctx.attemptId, serverInstance)
-                ctx.emit({
-                    type: 'log',
-                    level: 'info',
-                    message: `[opencode] local server listening at ${server.url}`,
-                })
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err)
-                ctx.emit({
-                    type: 'log',
-                    level: 'error',
-                    message: `[opencode] failed to start local server: ${message}`,
-                })
-                throw new Error(`Failed to start OpenCode server: ${message}`)
-            }
-        } else {
-            ctx.emit({
-                type: 'log',
-                level: 'info',
-                message: `[opencode] reusing local server at ${serverInstance.url}`,
+        const serverOrPromise = this.attemptServers.get(ctx.attemptId)
+
+        if (!serverOrPromise) {
+            const serverPromise = (async () => {
+                try {
+                    const server = await createOpencodeServer({port: 0})
+                    const instance: ServerInstance = {close: server.close, url: server.url}
+                    this.attemptServers.set(ctx.attemptId, instance)
+                    ctx.emit({
+                        type: 'log',
+                        level: 'info',
+                        message: `[opencode] local server listening at ${server.url}`,
+                    })
+                    return instance
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : String(err)
+                    ctx.emit({
+                        type: 'log',
+                        level: 'error',
+                        message: `[opencode] failed to start local server: ${message}`,
+                    })
+                    this.attemptServers.delete(ctx.attemptId)
+                    throw new Error(`Failed to start OpenCode server: ${message}`)
+                }
+            })()
+            this.attemptServers.set(ctx.attemptId, serverPromise)
+            return createOpencodeClient({
+                baseUrl: (await serverPromise).url,
+                directory: installation.directory,
             })
         }
+
+        const serverInstance = serverOrPromise instanceof Promise
+            ? await serverOrPromise
+            : serverOrPromise
+
+        ctx.emit({
+            type: 'log',
+            level: 'info',
+            message: `[opencode] reusing local server at ${serverInstance.url}`,
+        })
 
         return createOpencodeClient({
             baseUrl: serverInstance.url,
@@ -382,10 +398,14 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     private async cleanupServer(attemptId?: string): Promise<void> {
         if (!attemptId) return
 
-        const serverInstance = this.attemptServers.get(attemptId)
-        if (!serverInstance) return
+        const serverOrPromise = this.attemptServers.get(attemptId)
+        if (!serverOrPromise) return
 
         try {
+            const serverInstance = serverOrPromise instanceof Promise
+                ? await serverOrPromise
+                : serverOrPromise
+
             serverInstance.close()
             this.attemptServers.delete(attemptId)
         } catch (err) {
