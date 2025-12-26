@@ -2,6 +2,7 @@ import type {CSSProperties} from 'react'
 import {useSortable} from '@dnd-kit/sortable'
 import {CSS} from '@dnd-kit/utilities'
 import type {Card as TCard} from 'shared'
+import type {AttemptStatus} from 'shared'
 import {KanbanCard} from './Card'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
@@ -17,6 +18,7 @@ type Props = {
     blockers?: string[]
     onSelect?: (cardId: string) => void
     enhancementStatus?: CardEnhancementStatus
+    attemptStatus?: AttemptStatus
     onCardEnhancementClick?: (cardId: string) => void
     onEdit?: (cardId: string) => void
     onEnhance?: (cardId: string) => void
@@ -33,6 +35,7 @@ export function DraggableCard({
                                   blockers,
                                   onSelect,
                                   enhancementStatus,
+                                  attemptStatus,
                                   onCardEnhancementClick,
                                   onEdit,
                                   onEnhance,
@@ -76,6 +79,7 @@ export function DraggableCard({
                 blocked={blocked}
                 blockers={blockers}
                 enhancementStatus={enhancementStatus}
+                attemptStatus={attemptStatus}
                 onEnhancementClick={
                     enhancementStatus === 'ready' && onCardEnhancementClick
                         ? () => onCardEnhancementClick(card.id)

@@ -21,6 +21,7 @@ import {
 import type { CardEnhancementStatus } from "@/hooks/tickets";
 import type { MoveCardResponse } from "@/api/board";
 import type { BoardState } from "shared";
+import type { AttemptStatus } from "shared";
 import { boardKeys } from "@/hooks/board";
 import { useKanbanWS } from "@/lib/ws";
 import { toast } from "@/components/ui/toast.tsx";
@@ -56,6 +57,7 @@ export function ProjectBoardPage() {
         state: socketState,
     } = useKanbanWS(boardId ?? null);
     const [importOpen, setImportOpen] = useState(false);
+    const [attemptStatusByCardId, setAttemptStatusByCardId] = useState<Record<string, AttemptStatus>>({});
 
     const invalidateBoard = () => {
         if (!boardId) return;
@@ -150,6 +152,27 @@ export function ProjectBoardPage() {
     }, []);
 
     useEffect(() => {
+        const offStatus = eventBus.on("attempt_status", (p) => {
+            if (!boardState) return;
+
+            const card = Object.values(boardState.cards).find(
+                (c) => c.id === p.attemptId?.split("-")[0]
+            );
+
+            if (!card) return;
+
+            setAttemptStatusByCardId((prev) => ({
+                ...prev,
+                [card.id]: p.status as AttemptStatus,
+            }));
+        });
+
+        return () => {
+            offStatus();
+        };
+    }, [boardState]);
+
+    useEffect(() => {
         if (boardId && socketState) {
             queryClient.setQueryData<BoardState | undefined>(
                 boardKeys.state(boardId),
@@ -229,6 +252,7 @@ export function ProjectBoardPage() {
                         enhancementStatusByCardId={
                             enhancementStatusByCardId
                         }
+                        attemptStatusByCardId={attemptStatusByCardId}
                         onCardEnhancementClick={(cardId) =>
                             setEnhancementDialogCardId(cardId)
                         }

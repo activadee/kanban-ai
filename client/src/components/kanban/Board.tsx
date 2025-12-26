@@ -2,6 +2,7 @@ import {useEffect, useMemo, useState} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
+import type {AttemptStatus} from "shared";
 import {Button} from "@/components/ui/button";
 import {
     Select,
@@ -80,6 +81,7 @@ type Props = {
     state: BoardState;
     handlers: BoardHandlers;
     enhancementStatusByCardId?: Record<string, CardEnhancementStatus>;
+    attemptStatusByCardId?: Record<string, AttemptStatus>;
     onCardEnhancementClick?: (cardId: string) => void;
     initialSelectedCardId?: string | null;
 };
@@ -89,6 +91,7 @@ export function Board({
                           state,
                           handlers,
                           enhancementStatusByCardId,
+                          attemptStatusByCardId,
                           onCardEnhancementClick,
                           initialSelectedCardId,
                       }: Props) {
@@ -242,6 +245,7 @@ export function Board({
                                 enhancementStatusByCardId={
                                     enhancementStatusByCardId
                                 }
+                                attemptStatusByCardId={attemptStatusByCardId}
                                 onCardEnhancementClick={
                                     onCardEnhancementClick
                                 }
