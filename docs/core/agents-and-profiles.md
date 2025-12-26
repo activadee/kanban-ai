@@ -57,9 +57,10 @@ Codex and OpenCode, with additional agents under active development.
       - `kind = "ticketEnhance"` – inline ticket enhancement.
       - `kind = "prSummary"` – PR inline summary/title+body drafting.
   - Configuration:
-    - Tuned via agent profiles (primary model/agent selection, append/inline prompts, optional base URL / API key).
+    - Tuned via agent profiles (primary model/agent selection, append/inline prompts, optional base URL / API key, port).
     - Providing `baseUrl` (or `OPENCODE_BASE_URL`) switches the agent into remote mode while `apiKey` is mirrored into
       `OPENCODE_API_KEY` when the SDK runs the local server, keeping credentials inside the profile without extra env setup.
+    - The `port` field configures the local server port (default: 4097). When a server is already running on the configured port, it will be reused instead of starting a new instance. Valid ports are 1-65535, excluding reserved ports (80, 443, 22, 25, 53, 110, 143, 993, 995, 3306, 5432, 6379, 8080, 8443).
 
 Until additional WIP agents are promoted, **Codex and OpenCode are considered stable**. New features and UI flows
 should continue to target these as the default coding agents, with Droid reserved for internal testing and
