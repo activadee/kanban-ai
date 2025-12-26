@@ -33,7 +33,8 @@ Last updated: 2025-11-28
   - `attempt.autocommit.requested`
   - `attempt.stopped`
 - WebSocket listeners subscribe to these events and forward them to connected clients so the board, Attempts panel,
-  messages, and logs stay in sync.
+  messages, and logs stay in sync. When an Attempt status changes to `failed`, the board displays a "Failed" badge with
+  destructive styling on the associated card to make issues immediately visible.
 
 ## Worktrees and isolation
 
