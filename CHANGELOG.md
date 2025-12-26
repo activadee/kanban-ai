@@ -1,3 +1,10 @@
+## [0.22.0](https://github.com/activadee/kanban-ai/compare/v0.21.0...v0.22.0) (2025-12-26)
+
+### Features
+
+* add user-configurable port setting for OpenCode agent ([#333](https://github.com/activadee/kanban-ai/issues/333)) ([bb90a83](https://github.com/activadee/kanban-ai/commit/bb90a83d1017d1ef9e6ed8799951c4f787589bce)), closes [#327](https://github.com/activadee/kanban-ai/issues/327)
+* make left side statusbar collapsible ([#331](https://github.com/activadee/kanban-ai/issues/331)) ([47c42a0](https://github.com/activadee/kanban-ai/commit/47c42a0680ed3b6eaa0c8b31568423a80c1d1daf)), closes [#328](https://github.com/activadee/kanban-ai/issues/328)
+
 ## [0.21.0](https://github.com/activadee/kanban-ai/compare/v0.20.0...v0.21.0) (2025-12-26)
 
 ### Features
