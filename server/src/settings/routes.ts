@@ -13,13 +13,15 @@ const updateSchema = z.object({
     notificationsAgentCompletionSound: z.boolean().optional(),
     notificationsDesktop: z.boolean().optional(),
     autoStartAgentOnInProgress: z.boolean().optional(),
-    editorType: z.enum(['VS_CODE', 'WEBSTORM', 'ZED']).optional(),
+    editorType: z.enum(['VS_CODE', 'WEBSTORM', 'ZED']).nullable().optional(),
+    editorCommand: z.string().nullable().optional(),
     gitUserName: z.string().nullable().optional(),
     gitUserEmail: z.string().email().nullable().optional().or(z.string().trim().length(0)).optional(),
     branchTemplate: z.string().optional(),
     ghPrTitleTemplate: z.string().nullable().optional(),
     ghPrBodyTemplate: z.string().nullable().optional(),
     ghAutolinkTickets: z.boolean().optional(),
+    opencodePort: z.number().int().min(1).max(65535).optional(),
 })
 
 export function createAppSettingsRouter() {

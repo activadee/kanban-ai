@@ -8,8 +8,9 @@ import {toast} from '@/components/ui/toast'
 import {GitHubAccountDialog} from '@/components/github/GitHubAccountDialog'
 import {useGithubAuthStatus, useStartGithubDevice, usePollGithubDevice, useLogoutGithub} from '@/hooks'
 import {describeApiError} from '@/api/http'
+import {cn} from '@/lib/utils'
 
-export function GitHubAccountBox() {
+export function GitHubAccountBox({collapsed = false}: { collapsed?: boolean }) {
     const queryClient = useQueryClient()
     const authQuery = useGithubAuthStatus()
     const [deviceState, setDeviceState] = useState<import('shared').GitHubDeviceStartResponse | null>(null)
@@ -116,6 +117,42 @@ export function GitHubAccountBox() {
     const username = account?.username
     const avatar = account?.avatarUrl ?? null
 
+    // Collapsed state - show simplified icon-only version
+    if (collapsed) {
+        return (
+            <div className={cn('flex items-center justify-center', connected ? 'p-1' : 'p-1')}>
+                {connected ? (
+                    <button
+                        type="button"
+                        onClick={() => setModalOpen(true)}
+                        className="flex size-8 items-center justify-center rounded-md hover:opacity-90"
+                        title={`GitHub: ${username ?? 'Connected'}`}
+                        aria-label={`GitHub connected as ${username ?? 'user'}`}
+                    >
+                        {avatar ? (
+                            <img src={avatar} alt="GitHub avatar" className="size-6 rounded-full"/>
+                        ) : (
+                            <GitHubIcon className="size-5" aria-hidden="true"/>
+                        )}
+                    </button>
+                ) : (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={startGithubConnect}
+                        disabled={startingDevice || polling || authQuery.isFetching}
+                        title="Connect GitHub"
+                        aria-label="Connect GitHub"
+                    >
+                        <GitHubIcon className="size-5" aria-hidden="true"/>
+                    </Button>
+                )}
+            </div>
+        )
+    }
+
+    // Expanded state - full content
     return (
         <div className="rounded-md border border-border/60 bg-background/60 p-3">
             {connected ? (

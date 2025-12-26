@@ -13,7 +13,7 @@ export interface AppSettings {
     notificationsDesktop: boolean
     autoStartAgentOnInProgress: boolean
     // Editor
-    editorType: EditorType
+    editorType: EditorType | null
     editorCommand: string | null
     // Git defaults
     gitUserName: string | null
@@ -23,6 +23,8 @@ export interface AppSettings {
     ghPrTitleTemplate: string | null
     ghPrBodyTemplate: string | null
     ghAutolinkTickets: boolean
+    // OpenCode Agent
+    opencodePort: number
     createdAt: string
     updatedAt: string
 }
@@ -44,6 +46,7 @@ export type UpdateAppSettingsRequest = Partial<
         | 'ghPrTitleTemplate'
         | 'ghPrBodyTemplate'
         | 'ghAutolinkTickets'
+        | 'opencodePort'
     >
 >
 

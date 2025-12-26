@@ -44,11 +44,16 @@ emits `git.*` events so the UI and WebSocket layer can react to changes without 
 ## Open in editor
 
 - The Editor module integrates tightly with Git:
-  - `POST /attempts/:id/open-editor` opens your preferred editor at the Attempt’s worktree path.
-  - Editor detection and environment preparation are handled by the server (see `editor/README.md`).
+  - `POST /attempts/:id/open-editor` opens your preferred editor at the Attempt's worktree path.
+  - Editor detection and environment preparation are handled by the server (see `dev/server-editor.md`).
+  - The editor can be configured via Settings:
+    - Manual entry of editor executable path.
+    - File browser integration – browse the filesystem to select editor executables.
+    - Real-time validation – the executable path is validated to ensure it exists and is executable.
 - During this flow:
   - The server emits `editor.open.requested`, `editor.open.succeeded`, or `editor.open.failed`.
   - The UI surfaces success/failure state so you know whether the editor launch worked.
+  - When no editor is configured, the feature is disabled and users see a clear message.
 
 ## Auto-commit and automation
 

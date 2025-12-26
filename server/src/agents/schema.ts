@@ -51,6 +51,9 @@ function toField(key: string, schema: z.ZodTypeAny): AgentProfileField | null {
     if (inner instanceof z.ZodBoolean) {
         return {...base, type: 'boolean'}
     }
+    if (inner instanceof z.ZodNumber) {
+        return {...base, type: 'number'}
+    }
     if (inner instanceof z.ZodEnum) {
         const options = inner.options.map((v) => String(v))
         return {...base, type: 'enum', options}

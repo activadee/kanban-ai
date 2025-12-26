@@ -1,14 +1,14 @@
 import {toast} from '@/components/ui/toast'
-//
 import {Button} from '@/components/ui/button'
 import {useEffect, useMemo, useState} from 'react'
 import type {CheckedState} from '@radix-ui/react-checkbox'
-import {useAppSettings, useEditors, useGithubAppConfig, useSaveGithubAppConfig, useUpdateAppSettings} from '@/hooks'
-import type {EditorType, GithubAppConfig, UpdateAppSettingsRequest} from 'shared'
+import {useAppSettings, useGithubAppConfig, useSaveGithubAppConfig, useUpdateAppSettings, useValidateEditorPath} from '@/hooks'
+import type {GithubAppConfig, UpdateAppSettingsRequest} from 'shared'
 import {GeneralSettingsSection} from './app-settings/GeneralSettingsSection'
 import {EditorSettingsSection} from './app-settings/EditorSettingsSection'
 import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
+import {OpencodeAgentSettingsSection} from './app-settings/OpencodeAgentSettingsSection'
 import {GithubAppCredentialsFields} from '@/components/github/GithubAppCredentialsFields'
 import {describeApiError} from '@/api/http'
 import {PageHeader} from '@/components/layout/PageHeader'
@@ -20,13 +20,14 @@ type FormState = {
     notificationsAgentCompletionSound: boolean
     notificationsDesktop: boolean
     autoStartAgentOnInProgress: boolean
-    editorType: EditorType | ''
+    editorCommand: string | null
     gitUserName: string
     gitUserEmail: string
     branchTemplate: string
     ghPrTitleTemplate: string
     ghPrBodyTemplate: string
     ghAutolinkTickets: boolean
+    opencodePort: number
 }
 
 type GithubAppForm = {
@@ -38,13 +39,12 @@ type GithubAppForm = {
     updatedAt: string | null
 }
 
-const SUPPORTED_EDITOR_KEYS: readonly EditorType[] = ['VS_CODE', 'WEBSTORM', 'ZED'] as const
-
 export function AppSettingsPage() {
     const {data, isLoading} = useAppSettings()
-    const editorsQuery = useEditors()
+    const validateEditor = useValidateEditorPath()
     const githubAppQuery = useGithubAppConfig()
     const [form, setForm] = useState<FormState | null>(null)
+    const [editorValidationStatus, setEditorValidationStatus] = useState<'valid' | 'invalid' | 'pending' | null>(null)
     const [appCredForm, setAppCredForm] = useState<GithubAppForm | null>(null)
     const [appCredInitial, setAppCredInitial] = useState<GithubAppForm | null>(null)
 
@@ -57,13 +57,14 @@ export function AppSettingsPage() {
             notificationsAgentCompletionSound: data.notificationsAgentCompletionSound,
             notificationsDesktop: data.notificationsDesktop,
             autoStartAgentOnInProgress: data.autoStartAgentOnInProgress,
-            editorType: data.editorType,
+            editorCommand: data.editorCommand,
             gitUserName: data.gitUserName ?? '',
             gitUserEmail: data.gitUserEmail ?? '',
             branchTemplate: data.branchTemplate,
             ghPrTitleTemplate: data.ghPrTitleTemplate ?? '',
             ghPrBodyTemplate: data.ghPrBodyTemplate ?? '',
             ghAutolinkTickets: data.ghAutolinkTickets,
+            opencodePort: data.opencodePort,
         } satisfies FormState
     }, [data])
 
@@ -102,13 +103,14 @@ export function AppSettingsPage() {
                 notificationsAgentCompletionSound: result.notificationsAgentCompletionSound,
                 notificationsDesktop: result.notificationsDesktop,
                 autoStartAgentOnInProgress: result.autoStartAgentOnInProgress,
-                editorType: result.editorType,
+                editorCommand: result.editorCommand,
                 gitUserName: result.gitUserName ?? '',
                 gitUserEmail: result.gitUserEmail ?? '',
                 branchTemplate: result.branchTemplate,
                 ghPrTitleTemplate: result.ghPrTitleTemplate ?? '',
                 ghPrBodyTemplate: result.ghPrBodyTemplate ?? '',
                 ghAutolinkTickets: result.ghAutolinkTickets,
+                opencodePort: result.opencodePort,
             }
             setForm(next)
         },
@@ -147,13 +149,14 @@ export function AppSettingsPage() {
             notificationsAgentCompletionSound: form.notificationsAgentCompletionSound,
             notificationsDesktop: form.notificationsDesktop,
             autoStartAgentOnInProgress: form.autoStartAgentOnInProgress,
-            editorType: form.editorType || undefined,
+            editorCommand: form.editorCommand || null,
             gitUserName: form.gitUserName.trim() || null,
             gitUserEmail: form.gitUserEmail.trim() || null,
             branchTemplate: form.branchTemplate,
             ghPrTitleTemplate: form.ghPrTitleTemplate.trim() || null,
             ghPrBodyTemplate: form.ghPrBodyTemplate.trim() || null,
             ghAutolinkTickets: form.ghAutolinkTickets,
+            opencodePort: form.opencodePort,
         }
         updateSettings.mutate(payload)
     }
@@ -219,29 +222,21 @@ export function AppSettingsPage() {
         }
     }
 
-    const installedEditors = useMemo(
-        () =>
-            (editorsQuery.data ?? []).filter((editor) => editor.installed && SUPPORTED_EDITOR_KEYS.includes(editor.key as EditorType)),
-        [editorsQuery.data],
-    )
-
     useEffect(() => {
-        setForm((prev) => {
-            if (!prev) return prev
-            if (!installedEditors.length) {
-                return prev.editorType === '' ? prev : {...prev, editorType: ''}
-            }
-            if (installedEditors.some((editor) => editor.key === prev.editorType)) {
-                return prev
-            }
-            const fallback = installedEditors[0]
-            return fallback ? {...prev, editorType: fallback.key as EditorType} : prev
+        if (!form?.editorCommand) {
+            setEditorValidationStatus(null)
+            return
+        }
+        setEditorValidationStatus('pending')
+        validateEditor.mutateAsync(form.editorCommand).then((result) => {
+            setEditorValidationStatus(result.valid ? 'valid' : 'invalid')
+        }).catch(() => {
+            setEditorValidationStatus('invalid')
         })
-    }, [installedEditors])
+    }, [form?.editorCommand])
 
     if (isLoading && !data) {
-        return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading
-            settings…</div>
+        return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading settings…</div>
     }
 
     if (data && !form) setForm(initial)
@@ -261,9 +256,9 @@ export function AppSettingsPage() {
                         <div className="divide-y rounded-md border">
                             <GeneralSettingsSection form={form} onChange={(p) => setForm({...form, ...p})}
                                                     onDesktopToggle={(v) => handleDesktopToggle(v)}/>
-                            <EditorSettingsSection editorType={form.editorType}
-                                                   installed={installedEditors as { key: EditorType; label: string }[]}
-                                                   onChange={(v) => setForm({...form, editorType: v})}/>
+                            <EditorSettingsSection editorCommand={form.editorCommand}
+                                                   validationStatus={editorValidationStatus}
+                                                   onChange={(v) => setForm({...form, editorCommand: v})}/>
                             <GitDefaultsSection form={{
                                 gitUserName: form.gitUserName,
                                 gitUserEmail: form.gitUserEmail,
@@ -274,6 +269,8 @@ export function AppSettingsPage() {
                                 ghPrTitleTemplate: form.ghPrTitleTemplate,
                                 ghPrBodyTemplate: form.ghPrBodyTemplate
                             }} onChange={(p) => setForm({...form, ...p})}/>
+                            <OpencodeAgentSettingsSection form={{opencodePort: form.opencodePort}}
+                                                           onChange={(p) => setForm({...form, ...p})}/>
                         </div>
                         {appCredForm ? (
                             <div className="rounded-md border p-6">
@@ -355,7 +352,7 @@ export function AppSettingsPage() {
                     >
                         Reset
                     </Button>
-                    <Button disabled={!dirty || updateSettings.isPending} onClick={save}>
+                    <Button disabled={!dirty || updateSettings.isPending || editorValidationStatus === 'invalid'} onClick={save}>
                         {updateSettings.isPending ? 'Saving…' : 'Save changes'}
                     </Button>
                 </div>

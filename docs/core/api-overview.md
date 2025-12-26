@@ -98,8 +98,11 @@ endpoints above.
 
 - Filesystem:
   - `GET /api/v1/fs/git-repos` – discover local Git repositories; accepts optional `path` query.
+  - `GET /api/v1/fs/browse` – browse directories with optional filtering (path, showHidden, executablesOnly).
 - Editor:
-  - `GET  /api/v1/editors` – list detected editors.
+  - `GET  /api/v1/editors/suggestions` – list detected and installed editors.
+  - `POST /api/v1/editors/validate` – validate an editor executable path.
+  - `POST /api/v1/editors/open` – open a path in a configured editor.
   - `POST /api/v1/attempts/:id/open-editor` – open the preferred editor at the Attempt worktree path.
 
 Editor commands emit `editor.open.requested/succeeded/failed` events that surface as system status in the UI.

@@ -11,7 +11,9 @@ export * from './db/schema'
 export * as dbSchema from './db/schema'
 export * from './settings/service'
 export {discoverGitRepositories} from './fs/repos'
+export {browseDirectory} from './fs/browse'
 export {ensureGitRepository, getGitOriginUrl, parseGithubOwnerRepo} from './fs/git'
+export {validateEditorExecutable} from './editor/validate'
 
 // Domain services (Phase B)
 export {projectsService, type ProjectsService} from './projects/service'

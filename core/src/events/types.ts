@@ -248,20 +248,20 @@ export interface SettingsGlobalUpdatedEvent {
 
 export interface EditorOpenRequestedEvent {
     path: string
-    editorKey?: string
+    editorCommand?: string | null
     attemptId?: string
     projectId?: string
 }
 
 export interface EditorOpenSucceededEvent {
     path: string
-    editorKey: string
+    editorCommand?: string | null
     pid?: number
 }
 
 export interface EditorOpenFailedEvent {
     path: string
-    editorKey?: string
+    editorCommand?: string | null
     error: string
 }
 
