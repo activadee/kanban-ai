@@ -19,8 +19,18 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - An **Import GitHub issues** button for the current board.
 - Card titles inside the columns are truncated to a single line to keep cards from growing vertically, and hovering over a card reveals the full title in a tooltip so long text remains discoverable.
 - The board header in the main content shows:
-  - Title: “Kanban Board”.
+  - Title: "Kanban Board".
+  - A **Sort order** dropdown to change how tickets are displayed within each column.
   - A **Create Ticket** button to create a new card.
+
+### Sorting tickets
+
+- The board header includes a **Sort order** dropdown with three options:
+  - **Newest first** – displays tickets in each column ordered by creation date, with the most recently created tickets at the top (default).
+  - **Oldest first** – displays tickets in each column ordered by creation date, with the oldest tickets at the top.
+  - **Custom order** – maintains the manual order you set via drag & drop, so cards stay in the exact positions you arrange them.
+- The sort preference is persisted in your browser's local storage, so it's remembered across page reloads and board refreshes.
+- Drag & drop reordering is always available regardless of sort mode; when a custom order is selected, your manual arrangement becomes the displayed order.
 
 ## Creating cards
 

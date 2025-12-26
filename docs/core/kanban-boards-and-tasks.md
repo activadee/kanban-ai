@@ -68,6 +68,7 @@ Last updated: 2025-11-30
   - Validates the target column belongs to the board.
   - Updates indices in the source and target columns.
   - Returns the updated card plus fresh column snapshots so the UI can update without a full board reload.
+- The UI provides optional client-side sorting (newest-first, oldest-first, custom) as a display layer on top of the server-side ordering. When "custom order" is selected, the UI respects the server-maintained indices; when date-based sorting is active, the UI reorders cards for display without changing their underlying positions in the database.
 
 ## Task dependencies and blocking
 
