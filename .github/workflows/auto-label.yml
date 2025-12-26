@@ -13,5 +13,12 @@ permissions:
 
 jobs:
   auto-label:
-    uses: activadee/opencode-shared-workflows/.github/workflows/opencode-label.yml@main
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install and run open-workflows label
+        run: npx open-workflows label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}

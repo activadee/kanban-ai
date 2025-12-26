@@ -15,5 +15,12 @@ permissions:
 
 jobs:
   review:
-    uses: activadee/opencode-shared-workflows/.github/workflows/opencode-review.yml@main
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install and run open-workflows review
+        run: npx open-workflows review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
