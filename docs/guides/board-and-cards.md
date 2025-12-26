@@ -24,7 +24,7 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - A **Create Ticket** button to create a new card.
 - Cards surface status indicators through badges and styling:
   - **Blocked** cards show a red "Blocked" badge and rose-colored background.
-  - **Failed** cards show a red "Failed" badge with destructive styling (red border and background) when their latest Attempt has failed.
+  - **Failed** cards show a red "Failed" badge with destructive styling (red border and background) when their latest Attempt has failed. Failed cards can be clicked to open the Card Inspector for review and retry.
   - **Enhanced** cards display a green "Enhanced" badge and emerald highlight.
   - **Enhancing** cards show a spinner badge while background enhancement is running.
 
@@ -127,7 +127,7 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
   - If the drop would move a blocked card into In Progress:
     - The drop is blocked.
     - A toast explains that dependencies must be completed first.
-  - Failed cards have drag disabled until the failed Attempt is resolved or a new Attempt is started.
+   - Failed cards have drag disabled until the failed Attempt is resolved or a new Attempt is started, but you can click on them to open the Card Inspector and retry the attempt.
   - Other moves are allowed and immediately reflected on the board.
 - The board uses WebSockets to apply server-pushed state:
   - Local drag results are reconciled with the authoritative board snapshot from the server.

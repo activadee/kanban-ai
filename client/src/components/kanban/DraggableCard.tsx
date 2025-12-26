@@ -68,11 +68,12 @@ export function DraggableCard({
             {...attributes}
             {...(!(isEnhancing || isFailed) ? listeners : undefined)}
             onClick={(e) => {
-                if (isEnhancing || isFailed) return
+                // Allow clicking to select even when failed, so users can open and edit/retry
+                if (isEnhancing) return
                 e.stopPropagation()
                 onSelect?.(card.id)
             }}
-            className={`select-none ${isEnhancing || isFailed ? 'cursor-not-allowed opacity-70' : ''}`}
+            className={`select-none ${isEnhancing ? 'cursor-not-allowed opacity-70' : ''}`}
         >
             <KanbanCard
                 card={card}

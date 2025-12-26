@@ -1,5 +1,5 @@
 import {attempts, settingsService} from 'core'
-import {openEditorAtPath} from '../editor/service'
+import {openEditorAtPath} from '../editor/open'
 import {problemJson} from '../http/problem'
 import {log} from '../log'
 
@@ -7,27 +7,30 @@ export async function openEditorHandler(c: any) {
     const attemptId = c.req.param('id')
     const attempt = await attempts.getAttempt(attemptId)
     if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
-    const body = c.req.valid('json') as {subpath?: string; editorKey?: string}
+    const body = c.req.valid('json') as {subpath?: string; editorCommand?: string}
     if (!attempt.worktreePath) return problemJson(c, {status: 409, detail: 'No worktree for attempt'})
     const path = body?.subpath ? `${attempt.worktreePath}/${body.subpath}` : attempt.worktreePath
     const events = c.get('events')
     const settings = settingsService.snapshot()
-    let attemptedEditorKey: string | undefined = body?.editorKey ?? settings.editorType
+    const editorCommand = body?.editorCommand ?? settings.editorCommand
     events.publish('editor.open.requested', {
         path,
-        editorKey: attemptedEditorKey,
+        editorCommand,
         attemptId: attempt.id,
         projectId: attempt.boardId,
     })
 
     try {
-        const {spec, env} = await openEditorAtPath(path, {
-            editorKey: body.editorKey as any,
+        const result = await openEditorAtPath(path, {
+            editorCommand: editorCommand || undefined,
         })
-        attemptedEditorKey = env.EDITOR_KEY ?? attemptedEditorKey
+        if (!result) {
+            return problemJson(c, {status: 400, detail: 'Editor not configured'})
+        }
+        const {spec, env} = result
         events.publish('editor.open.succeeded', {
             path,
-            editorKey: attemptedEditorKey ?? 'VS_CODE',
+            editorCommand,
             pid: undefined,
         })
         const runtimeEnv = c.get('config').env
@@ -49,7 +52,7 @@ export async function openEditorHandler(c: any) {
     } catch (error) {
         events.publish('editor.open.failed', {
             path,
-            editorKey: attemptedEditorKey ?? 'VS_CODE',
+            editorCommand,
             error: error instanceof Error ? error.message : String(error),
         })
         log.error('attempts:editor', 'open failed', {err: error, attemptId: attempt.id, boardId: attempt.boardId})

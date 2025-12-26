@@ -23,7 +23,6 @@ import {
     useStopAttempt,
     useProjectSettings,
     useAppSettings,
-    useEditors,
 } from '@/hooks'
 import {CreatePrDialog} from '@/components/git/CreatePrDialog'
 import {toast} from '@/components/ui/toast'
@@ -291,7 +290,6 @@ function KanbanCardMenu({card, context, disabled = false}: MenuProps) {
 
     const projectSettingsQuery = useProjectSettings(projectId)
     const appSettingsQuery = useAppSettings()
-    const editorsQuery = useEditors()
 
     const shouldLoadAttempt =
         (menuOpen || prOpen) && (lane === 'inProgress' || lane === 'review')
@@ -306,24 +304,16 @@ function KanbanCardMenu({card, context, disabled = false}: MenuProps) {
 
     const attempt = cardAttemptQuery.data?.attempt ?? null
 
-    const installedEditors = useMemo(
-        () => (editorsQuery.data ?? []).filter((editor) => editor.installed),
-        [editorsQuery.data],
-    )
-    const defaultEditorKey = appSettingsQuery.data?.editorType ?? ''
-    const defaultEditor = useMemo(
-        () => installedEditors.find((editor) => editor.key === defaultEditorKey),
-        [installedEditors, defaultEditorKey],
-    )
+    const editorCommand = appSettingsQuery.data?.editorCommand
 
     const openButtonDisabledReason = useMemo(() => {
-        if (!defaultEditor) return 'Set a default editor in App Settings.'
+        if (!editorCommand) return 'Set an editor executable in App Settings.'
         if (!attempt) return null
         if (!attempt.worktreePath) {
             return "This attempt's worktree has been cleaned up. Start a new attempt to open an editor."
         }
         return null
-    }, [defaultEditor, attempt])
+    }, [editorCommand, attempt])
 
     const prDefaults = useMemo(() => {
         const settings = appSettingsQuery.data
@@ -412,8 +402,7 @@ function KanbanCardMenu({card, context, disabled = false}: MenuProps) {
         if (!attempt || openButtonDisabledReason) return
         try {
             const res = await openEditorMutation.mutateAsync({attemptId: attempt.id})
-            const title = defaultEditor ? `Opening in ${defaultEditor.label}` : 'Opening editor'
-            toast({title, description: `${res.command.cmd} ${res.command.args.join(' ')}`})
+            toast({title: 'Opening editor', description: `${res.command.cmd} ${res.command.args.join(' ')}`})
         } catch (err) {
             console.error('Open editor failed', err)
             const {title, description} = describeApiError(err, 'Open failed')

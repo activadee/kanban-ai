@@ -35,6 +35,20 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
   - Editor defaults (used by the Editor module when opening worktrees).
   - Git defaults (e.g. preferred author configuration and auto-start behavior).
   - OpenCode agent default port (used when no port is specified in profiles).
+  - Editor defaults – path to editor executable (used by the Editor module when opening worktrees).
+  - Git defaults – preferred author configuration and auto-start behavior.
+
+## Editor configuration
+
+- The editor can be configured via the Settings UI:
+  - Manual entry of editor executable path.
+  - File browser integration – browse the filesystem to select editor executables.
+  - Real-time validation – the executable path is validated to ensure it exists and is executable.
+- The editor module provides:
+  - Automatic detection of common editors (VS Code, Cursor, IntelliJ IDEA, etc.).
+  - Validation endpoints to check if an editor executable is valid.
+  - Support for custom editor commands.
+- When no editor is configured, the "Open in Editor" feature is disabled and users see a clear message.
 
 ## Project settings overview
 
@@ -46,9 +60,9 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
   - Ticket key prefix and repository naming.
   - Default agent and agent profile for Attempts.
 - Inline agent, inline agent profile, and optional per-inline-agent profile mappings for inline actions (e.g. ticket enhancement, PR summary). The mapping is partial; include only the inline kinds you want to override.
-  - Automation flags:
-    - Auto-commit on successful Attempt completion.
-    - Auto-push after auto-commit.
+- Automation flags:
+  - Auto-commit on successful Attempt completion.
+  - Auto-push after auto-commit.
 - These settings drive behaviors documented in:
   - **AI Attempts** – how Attempts behave and which agent/profile they use.
   - **Git integration** – when auto-commit/auto-push triggers.

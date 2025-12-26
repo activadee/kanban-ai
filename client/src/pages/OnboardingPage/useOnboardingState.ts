@@ -6,7 +6,6 @@ import {describeApiError} from '@/api/http'
 import {
     useAppSettings,
     useCompleteOnboarding,
-    useEditors,
     useGithubAppConfig,
     useGithubAuthStatus,
     useOnboardingProgress,
@@ -15,9 +14,9 @@ import {
     useSaveGithubAppConfig,
     useStartGithubDevice,
     useUpdateAppSettings,
+    useValidateEditorPath,
 } from '@/hooks'
 import type {
-    EditorType,
     GitHubCheckResponse,
     GitHubDeviceStartResponse,
     GithubAppConfig,
@@ -32,7 +31,7 @@ export type SettingsForm = {
     notificationsAgentCompletionSound: boolean
     notificationsDesktop: boolean
     autoStartAgentOnInProgress: boolean
-    editorType: EditorType | ''
+    editorCommand: string | null
     gitUserName: string
     gitUserEmail: string
     branchTemplate: string
@@ -73,7 +72,7 @@ function toSettingsForm(data: NonNullable<Awaited<ReturnType<typeof useAppSettin
         notificationsAgentCompletionSound: data.notificationsAgentCompletionSound,
         notificationsDesktop: data.notificationsDesktop,
         autoStartAgentOnInProgress: data.autoStartAgentOnInProgress,
-        editorType: data.editorType,
+        editorCommand: data.editorCommand,
         gitUserName: data.gitUserName ?? '',
         gitUserEmail: data.gitUserEmail ?? '',
         branchTemplate: data.branchTemplate,
@@ -90,7 +89,7 @@ export type OnboardingState = {
     stepMeta: { title: string; description: string }
     settingsForm: SettingsForm | null
     appCredForm: CredentialsState | null
-    installedEditors: { key: EditorType; label: string }[]
+    editorValidationStatus: 'valid' | 'invalid' | 'pending' | null
     connected: boolean
     connectedUsername: string | null
     onboardingCompleted: boolean
@@ -124,7 +123,6 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
     const navigate = useNavigate()
     const queryClient = useQueryClient()
 
-    // Data hooks
     const onboardingStatus = useOnboardingStatus()
     const progressMutation = useOnboardingProgress()
     const completeMutation = useCompleteOnboarding({
@@ -137,7 +135,7 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         },
     })
     const settingsQuery = useAppSettings()
-    const editorsQuery = useEditors()
+    const validateEditor = useValidateEditorPath()
     const updateSettings = useUpdateAppSettings({
         onSuccess: (result) => {
             const next = toSettingsForm(result)
@@ -185,18 +183,17 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         },
     })
 
-    // Local state
     const [settingsBaseline, setSettingsBaseline] = useState<SettingsForm | null>(null)
     const [settingsForm, setSettingsForm] = useState<SettingsForm | null>(null)
     const [appCredBaseline, setAppCredBaseline] = useState<CredentialsState | null>(null)
     const [appCredForm, setAppCredForm] = useState<CredentialsState | null>(null)
+    const [editorValidationStatus, setEditorValidationStatus] = useState<'valid' | 'invalid' | 'pending' | null>(null)
     const [currentStep, setCurrentStep] = useState<number>(0)
     const [deviceState, setDeviceState] = useState<GitHubDeviceStartResponse | null>(null)
     const [polling, setPolling] = useState(false)
     const [startingDevice, setStartingDevice] = useState(false)
     const [resumeApplied, setResumeApplied] = useState(false)
 
-    // Map query data -> local form
     const initialSettings = useMemo(
         () => (settingsQuery.data ? toSettingsForm(settingsQuery.data) : null),
         [settingsQuery.data],
@@ -224,7 +221,6 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         }
     }, [githubAppQuery.data])
 
-    // Resume from last recorded step if user reloads mid-onboarding
     useEffect(() => {
         if (resumeApplied || !onboardingStatus.data) return
         if (onboardingStatus.data.lastStep) {
@@ -236,35 +232,25 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         setResumeApplied(true)
     }, [onboardingStatus.data, resumeApplied])
 
-    // Record progress when step changes
     useEffect(() => {
         if (onboardingStatus.data?.status === 'pending') {
             progressMutation.mutate({step: STEP_ORDER[currentStep]})
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentStep, onboardingStatus.data?.status])
 
-    // Editor fallback (reuse logic from settings page)
-    const installedEditors = useMemo(
-        () => (editorsQuery.data ?? []).filter((editor) => editor.installed) as { key: EditorType; label: string }[],
-        [editorsQuery.data],
-    )
-
     useEffect(() => {
-        setSettingsForm((prev) => {
-            if (!prev) return prev
-            if (!installedEditors.length) {
-                return prev.editorType === '' ? prev : {...prev, editorType: ''}
-            }
-            if (installedEditors.some((editor) => editor.key === prev.editorType)) {
-                return prev
-            }
-            const fallback = installedEditors[0]
-            return fallback ? {...prev, editorType: fallback.key as EditorType} : prev
+        if (!settingsForm?.editorCommand) {
+            setEditorValidationStatus(null)
+            return
+        }
+        setEditorValidationStatus('pending')
+        validateEditor.mutateAsync(settingsForm.editorCommand).then((result) => {
+            setEditorValidationStatus(result.valid ? 'valid' : 'invalid')
+        }).catch(() => {
+            setEditorValidationStatus('invalid')
         })
-    }, [installedEditors])
+    }, [settingsForm?.editorCommand])
 
-    // Desktop notification toggle (copied from AppSettings)
     const updateNotificationsDesktop = (value: boolean) => {
         setSettingsForm((prev) => (prev ? {...prev, notificationsDesktop: value} : prev))
     }
@@ -343,8 +329,7 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         onboardingStatus.isLoading ||
         settingsQuery.isLoading ||
         githubAppQuery.isLoading ||
-        githubAuthQuery.isFetching ||
-        editorsQuery.isLoading
+        githubAuthQuery.isFetching
 
     const pollGithubDevice = pollDevice.mutateAsync
 
@@ -367,7 +352,6 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
                 } else if (result.status === 'success') {
                     setPolling(false)
                     setDeviceState(null)
-                    // Immediately reflect connection in query cache so the UI flips to "Connected" without waiting
                     queryClient.setQueryData(
                         githubKeys.check(),
                         {status: 'valid', account: result.account} satisfies GitHubCheckResponse,
@@ -404,7 +388,7 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
             notificationsAgentCompletionSound: settingsForm.notificationsAgentCompletionSound,
             notificationsDesktop: settingsForm.notificationsDesktop,
             autoStartAgentOnInProgress: settingsForm.autoStartAgentOnInProgress,
-            editorType: settingsForm.editorType || undefined,
+            editorCommand: settingsForm.editorCommand || null,
             gitUserName: settingsForm.gitUserName.trim() || null,
             gitUserEmail: settingsForm.gitUserEmail.trim() || null,
             branchTemplate: settingsForm.branchTemplate,
@@ -483,17 +467,15 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         }
     }
 
-    const queryErrored = settingsQuery.isError || githubAppQuery.isError || editorsQuery.isError
+    const queryErrored = settingsQuery.isError || githubAppQuery.isError
     const queryErrorMessages = [
         settingsQuery.error instanceof Error ? settingsQuery.error.message : null,
         githubAppQuery.error instanceof Error ? githubAppQuery.error.message : null,
-        editorsQuery.error instanceof Error ? editorsQuery.error.message : null,
     ].filter((msg): msg is string => Boolean(msg))
 
     const retryPrerequisites = () => {
         settingsQuery.refetch()
         githubAppQuery.refetch()
-        editorsQuery.refetch()
         onboardingStatus.refetch()
     }
 
@@ -504,7 +486,7 @@ export function useOnboardingState(): { state: OnboardingState; actions: Onboard
         stepMeta: STEP_META[STEP_ORDER[currentStep]],
         settingsForm,
         appCredForm,
-        installedEditors,
+        editorValidationStatus,
         connected,
         connectedUsername,
         onboardingCompleted,
