@@ -52,9 +52,6 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
         >
             {/* Header with toggle button */}
             <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center' : 'justify-between')}>
-                {!isCollapsed && (
-                    <div className="text-sm font-semibold text-muted-foreground">KanbanAI</div>
-                )}
                 <Button
                     variant="ghost"
                     size="icon"
