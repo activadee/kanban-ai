@@ -1,5 +1,6 @@
 import os from 'os'
 import nodePath from 'path'
+import {existsSync} from 'fs'
 import {createAdapter} from './base'
 import {isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
 
@@ -9,6 +10,7 @@ export function collectAntigravityCommandCandidates(): string[] {
 
     if (platform === 'darwin') {
         // macOS: Check common application paths
+        // Note: Bundle name is speculative and not yet verified with actual installation
         raw.add('/Applications/Google Antigravity.app/Contents/MacOS/antigravity')
     } else if (platform === 'linux') {
         // Linux: Check common installation paths
@@ -48,8 +50,9 @@ export function collectAntigravityCommandCandidates(): string[] {
             addWin(nodePath.join(programFilesX86, 'Antigravity', 'Antigravity.exe'))
         }
     }
-
-    return Array.from(raw)
+    
+    // Filter out non-existent absolute paths (command names are kept)
+    return Array.from(raw).filter((p) => !p.includes('/') || existsSync(p))
 }
 
 export const antigravityAdapter = createAdapter({

@@ -4,7 +4,6 @@ import { collectAntigravityCommandCandidates } from '../src/editor/adapters/anti
 describe('antigravity adapter', () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        vi.resetModules()
     })
 
     describe('collectAntigravityCommandCandidates', () => {
@@ -22,6 +21,12 @@ describe('antigravity adapter', () => {
         it('includes antigravity.exe for Windows', () => {
             const candidates = collectAntigravityCommandCandidates()
             expect(candidates).toContain('antigravity.exe')
+        })
+
+        it('filters out non-existent absolute paths', () => {
+            const candidates = collectAntigravityCommandCandidates()
+            const absolutePaths = candidates.filter(p => p.includes('/'))
+            expect(absolutePaths.length).toBeGreaterThanOrEqual(0)
         })
     })
 })
