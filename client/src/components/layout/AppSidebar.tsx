@@ -51,28 +51,28 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
             aria-expanded={!isCollapsed}
         >
             {/* Header with toggle button and branding */}
-            <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center' : 'justify-between')}>
+            <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center gap-2' : 'justify-between')}>
                 {!isCollapsed && (
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-muted-foreground">KanbanAI</span>
                     </div>
                 )}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn('size-7 transition-transform duration-200', isCollapsed ? 'mx-auto' : '')}
-                    onClick={toggleSidebar}
-                    title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                    aria-expanded={!isCollapsed}
-                >
-                    {isCollapsed ? (
-                        <PanelRight className="size-4"/>
-                    ) : (
-                        <PanelLeftClose className="size-4"/>
-                    )}
-                </Button>
-                {isCollapsed && (
+                <div className={cn('flex items-center', isCollapsed ? 'gap-1' : '')}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('size-7 transition-transform duration-200', isCollapsed ? '' : 'order-last')}
+                        onClick={toggleSidebar}
+                        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                        aria-expanded={!isCollapsed}
+                    >
+                        {isCollapsed ? (
+                            <PanelRight className="size-4"/>
+                        ) : (
+                            <PanelLeftClose className="size-4"/>
+                        )}
+                    </Button>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -83,7 +83,7 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
                     >
                         <RefreshCw className={cn('size-4', loading && 'animate-spin')}/>
                     </Button>
-                )}
+                </div>
             </div>
 
             {/* Collapsed state - show only icons */}
@@ -153,12 +153,13 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
 
                     <div className="my-4 h-px bg-border/60"/>
 
-                    <div className="flex items-center gap-2">
+                    <div className="mb-2 flex items-center justify-between px-1">
+                        <span className="text-xs font-medium text-muted-foreground">Projects</span>
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="size-6 ml-auto"
+                            className="size-6"
                             onClick={() => onCreateProject?.()}
                             title="Create project"
                         >
