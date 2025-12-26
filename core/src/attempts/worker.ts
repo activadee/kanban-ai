@@ -26,6 +26,10 @@ import {
 import {resolveAgentProfile} from './profiles'
 import {getPlanForCard} from '../plans/repo'
 import {buildPlanningAttemptDescription} from './planning-prompt'
+import {
+    buildImplementationFollowupPrompt,
+    stripProfilePromptsForPlanning,
+} from './prompt-utils'
 
 type RunningAttemptMeta = {
     controller: AbortController
@@ -378,30 +382,15 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 log,
             )
             let effectiveProfile: unknown = profile
+            if (isPlanningAttempt) {
+                effectiveProfile = stripProfilePromptsForPlanning(profile)
+            }
 
             if (params.mode === 'run') {
                 if (isPlanningAttempt) {
-                    const profileAppendPrompt = (() => {
-                        if (!profile || typeof profile !== 'object') return ''
-                        const value = (profile as Record<string, unknown>).appendPrompt
-                        return typeof value === 'string' ? value.trim() : ''
-                    })()
-
                     effectiveCardDescription = buildPlanningAttemptDescription(
                         cardDescription,
-                        profileAppendPrompt || undefined,
                     )
-
-                    if (profileAppendPrompt && profile && typeof profile === 'object') {
-                        const base = profile as Record<string, unknown>
-                        const inline = base.inlineProfile
-                        const hasInline = typeof inline === 'string' && inline.trim().length > 0
-                        const patch: Record<string, unknown> = {appendPrompt: null}
-                        if (agentKey === 'OPENCODE' && !hasInline) {
-                            patch.inlineProfile = profileAppendPrompt
-                        }
-                        effectiveProfile = {...base, ...patch}
-                    }
                 } else {
                     try {
                         const plan = await getPlanForCard(cardId)
@@ -476,6 +465,13 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                         throw new Error('Agent does not support follow-up')
                     }
                     try {
+                        const followupPrompt = isPlanningAttempt
+                            ? (params.followupPrompt ?? '').trim()
+                            : buildImplementationFollowupPrompt(
+                                  params.followupPrompt ?? '',
+                                  profile,
+                              )
+
                         const code = await agent.resume(
                         {
                             attemptId,
@@ -487,11 +483,11 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                             baseBranch,
                             cardTitle,
                             cardDescription: effectiveCardDescription,
-                            ticketType,
-                            signal: ac.signal,
-                            emit,
-                            sessionId: params.sessionId,
-                            followupPrompt: params.followupPrompt,
+                                  ticketType,
+                                  signal: ac.signal,
+                                  emit,
+                                  sessionId: params.sessionId,
+                            followupPrompt,
                             profileId: profileId ?? null,
                         } as any,
                         effectiveProfile as any,
