@@ -2,7 +2,7 @@ import os from 'os'
 import nodePath from 'path'
 import {existsSync} from 'fs'
 import {createAdapter} from './base'
-import {isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
+import {isWSL, readWindowsEnvVar, normalizePathForWindowsBinary} from '../wsl'
 
 export function collectAntigravityCommandCandidates(): string[] {
     const platform = os.platform()
@@ -51,4 +51,9 @@ export const antigravityAdapter = createAdapter({
     label: 'Google Antigravity',
     candidates: collectAntigravityCommandCandidates,
     argsFor: (path) => ['--new', path],
+    // Keep Antigravity Windows paths when launching in WSL; Windows path conversion would break it
+    transformPath: (path, bin) => {
+        if (isWSL() && /\.exe$/i.test(bin)) return path
+        return normalizePathForWindowsBinary(bin, path)
+    },
 })
