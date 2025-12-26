@@ -1,3 +1,13 @@
+## [0.19.5](https://github.com/activadee/kanban-ai/compare/v0.19.4...v0.19.5) (2025-12-26)
+
+### Bug Fixes
+
+* **client:** simpler fix for resizable panel toFixed crash ([#318](https://github.com/activadee/kanban-ai/issues/318)) ([080459e](https://github.com/activadee/kanban-ai/commit/080459e702d8e784e061d3ffa0b55bfcfb7e4289))
+
+### CI
+
+* migrate from Codex to OpenCode shared workflows ([af9078f](https://github.com/activadee/kanban-ai/commit/af9078fa9d26355a2e0e971800ea4a87749d5e9a))
+
 ## [0.19.4](https://github.com/activadee/kanban-ai/compare/v0.19.3...v0.19.4) (2025-12-25)
 
 ### Bug Fixes
