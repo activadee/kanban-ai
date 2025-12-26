@@ -70,3 +70,4 @@ After onboarding completes, most users land on the projects view and quickly mov
 
 - Open **Dashboard → Mission Control** to see KPIs, live agent activity, Inbox items, project health, and system status for your workspace.
 - For a walkthrough of each panel and the global time range selector, see the [Mission Control dashboard guide](dashboard-ui).
+- For an overview of the application layout, including the collapsible sidebar and navigation, see the [UI layout & navigation guide](ui-layout-and-navigation).
