@@ -12,9 +12,8 @@ The Card Inspector is opened by clicking a card on the board. On desktop it now 
 horizontal split: the board stays in the first panel while the inspector sits to the right, and a built-in handle
 lets you repartition the width between them. You can adjust the inspector width relative to the viewport
 (approximately 22 %–65 %, defaulting near 35 %) and the layout state is persisted under the `kanban-board-inspector`
-auto-save key so reopening the board restores your preferred size. Storage uses a safe wrapper that clamps saved
-percentages to the 0–100 range, sanitizes malformed values (including string payloads with whitespace), filters known
-prototype keys, and falls back to in-memory storage when `localStorage` isn’t available, so a corrupted value simply
+auto-save key so reopening the board restores your preferred size. Storage automatically converts legacy string values
+to numbers and falls back to in-memory storage when `localStorage` isn't available, so a corrupted value simply
 resets to a valid proportion instead of breaking the split. On mobile the inspector still opens as a full-height sheet
 that slides in from the side, keeping the focus on the tapped card.
 
@@ -48,7 +47,7 @@ Switching cards recalculates which top-level tab should be active: cards without
 
 - When the global **Auto-start agent on In Progress** setting is enabled and a card is moved from **Backlog → In
   Progress**:
-  - The server automatically starts an Attempt using the project’s default agent/profile.
+  - The server automatically starts an Attempt using the project's default agent/profile.
   - If the Card Inspector is already open for that card, it will automatically attach to the new Attempt:
     - The Attempt header updates to show the new Attempt ID and status.
     - Messages and logs begin streaming in real time, without requiring a page reload.
@@ -61,7 +60,7 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
 
 - Attempts stream messages as they run.
 - You can send follow-up prompts by typing into the input and pressing send.
-- “Thinking” entries (the agent’s planning/analysis steps) now surface as collapsible blocks that default to their header summary (using the provided title or the first line of text alongside the timestamp); click the header to expand and read the full reasoning text.
+- "Thinking" entries (the agent's planning/analysis steps) now surface as collapsible blocks that default to their header summary (using the provided title or the first line of text alongside the timestamp); click the header to expand and read the full reasoning text.
 - Controls:
   - **Stop Attempt**:
     - Sends a stop request to the server.
@@ -79,7 +78,7 @@ Still inside the **Attempts** tab, the **Processes** sub-tab shows **dev automat
 - Status of ongoing background tasks (pending, running, succeeded, failed).
 - Controls:
   - **Run dev script**:
-    - Re-runs the project’s configured dev script in the Attempt worktree.
+    - Re-runs the project's configured dev script in the Attempt worktree.
   - **Stop Attempt**:
     - Same as in Messages, but surfaced from the processes view.
   - **View logs**:
@@ -105,10 +104,10 @@ The Git toolbar now lives in the inspector header whenever an Attempt exists so 
 - **Open in editor**:
   - Launches your preferred editor at the Attempt worktree path.
   - Uses the Editor module and respects app settings.
-  - If the Attempt’s worktree has already been cleaned up (card moved to **Done**), the button is disabled with guidance
+  - If the Attempt's worktree has already been cleaned up (card moved to **Done**), the button is disabled with guidance
     to start a fresh Attempt before reopening an editor.
 - **Changes** (diff dialog):
-  - Shows a structured diff of the Attempt’s changes.
+  - Shows a structured diff of the Attempt's changes.
 - **Commit**:
   - Opens a commit dialog.
   - Lets you enter a commit message and commit all changes in the Attempt worktree.
@@ -117,7 +116,7 @@ The Git toolbar now lives in the inspector header whenever an Attempt exists so 
   - Pre-fills title/body based on templates and card details.
   - Links the PR back to the card and Attempt.
 - **Merge**:
-  - Runs a merge into the project’s base branch (where configured).
+  - Runs a merge into the project's base branch (where configured).
 
 These actions map directly to the Attempt Git and PR APIs documented in `core/git-integration.md` and `core/github-integration.md`.
 
