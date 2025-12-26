@@ -16,6 +16,7 @@
                 "pages": [
                     "guides/local-dev",
                     "guides/onboarding",
+                    "guides/ui-layout-and-navigation",
                     "guides/board-and-cards",
                     "guides/attempts-and-inspector-ui",
                     "guides/dashboard-ui",
