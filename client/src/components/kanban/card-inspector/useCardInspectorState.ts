@@ -59,7 +59,7 @@ export type CardInspectorAttemptState = {
     setFollowup: (value: string) => void
     sendFollowup: () => Promise<void>
     sendFollowupPending: boolean
-    startAttempt: () => Promise<void>
+    startAttempt: (opts?: {isPlanningAttempt?: boolean}) => Promise<void>
     retryAttempt: () => Promise<void>
     starting: boolean
     retrying: boolean
@@ -530,11 +530,17 @@ export function useCardInspectorState({
         },
     })
 
-    const startAttempt = async () => {
+    const startAttempt = async (opts?: {isPlanningAttempt?: boolean}) => {
         if (!projectId) return
         setStarting(true)
         try {
-            await startMutation.mutateAsync({projectId, cardId: card.id, agent, profileId})
+            await startMutation.mutateAsync({
+                projectId,
+                cardId: card.id,
+                agent,
+                profileId,
+                isPlanningAttempt: opts?.isPlanningAttempt === true,
+            })
         } catch (err) {
             console.error('Start attempt failed', err)
         } finally {

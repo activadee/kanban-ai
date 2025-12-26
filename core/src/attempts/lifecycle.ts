@@ -29,6 +29,7 @@ export type StartAttemptInput = {
     baseBranch?: string
     branchName?: string
     profileId?: string
+    isPlanningAttempt?: boolean
 }
 
 export async function getAttempt(id: string) {
@@ -100,6 +101,7 @@ export async function startAttempt(
     })()
     const settings = await ensureProjectSettings(input.boardId)
     const existing = await getAttemptForCard(input.boardId, input.cardId)
+    const isPlanningAttempt = input.isPlanningAttempt === true
     const cardRow = await getCardById(input.cardId)
     const boardRow = await getBoardById(input.boardId)
     let id = existing?.id ?? `att-${crypto.randomUUID()}`
@@ -146,6 +148,7 @@ export async function startAttempt(
             status: 'queued',
             baseBranch: base,
             branchName: branch,
+            isPlanningAttempt,
             worktreePath,
             createdAt: now,
             updatedAt: now,
@@ -158,6 +161,7 @@ export async function startAttempt(
             status: 'queued',
             baseBranch: base,
             branchName: branch,
+            isPlanningAttempt,
             worktreePath,
             startedAt: null,
             endedAt: null,
@@ -199,6 +203,7 @@ export async function startAttempt(
             cardTitle: cardRow?.title ?? '(untitled)',
             cardDescription: cardRow?.description ?? null,
             ticketType: cardRow?.ticketType ?? null,
+            isPlanningAttempt,
             automation: {
                 copyScript,
                 setupScript,
@@ -350,6 +355,7 @@ export async function followupAttempt(
             cardDescription: null,
             sessionId: base.sessionId,
             followupPrompt: prompt,
+            isPlanningAttempt: base.isPlanningAttempt ?? false,
             automation: {
                 copyScript,
                 setupScript,

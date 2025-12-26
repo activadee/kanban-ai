@@ -41,6 +41,7 @@ export async function startAttemptRequest(params: {
     profileId?: string;
     baseBranch?: string;
     branchName?: string
+    isPlanningAttempt?: boolean
 }) {
     const res = await fetch(`${SERVER_URL}/projects/${params.projectId}/cards/${params.cardId}/attempts`, {
         method: 'POST',
@@ -49,7 +50,8 @@ export async function startAttemptRequest(params: {
             agent: params.agent,
             profileId: params.profileId,
             baseBranch: params.baseBranch,
-            branchName: params.branchName
+            branchName: params.branchName,
+            isPlanningAttempt: params.isPlanningAttempt,
         }),
     })
     return parseApiResponse<Attempt>(res)

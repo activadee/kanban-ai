@@ -1,6 +1,7 @@
 import {describe, it, expect, afterEach, vi} from "vitest";
 import {render, fireEvent, cleanup} from "@testing-library/react";
 import type {Attempt, ConversationItem} from "shared";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 
 import {AttemptsSection} from "@/components/kanban/card-inspector/sections/AttemptsSection";
 
@@ -40,20 +41,23 @@ describe("AttemptsSection – thinking blocks", () => {
         ];
 
         render(
-            <AttemptsSection
-                attempt={attempt}
-                cardId="card-1"
-                locked={true}
-                conversation={conversation}
-                followup=""
-                onFollowupChange={vi.fn()}
-                onSendFollowup={vi.fn()}
-                sendPending={false}
-                stopping={false}
-                onStopAttempt={vi.fn()}
-                onProfileSelect={vi.fn()}
-                followupProfiles={[]}
-            />,
+            <QueryClientProvider client={new QueryClient()}>
+                <AttemptsSection
+                    attempt={attempt}
+                    projectId="proj-1"
+                    cardId="card-1"
+                    locked={true}
+                    conversation={conversation}
+                    followup=""
+                    onFollowupChange={vi.fn()}
+                    onSendFollowup={vi.fn()}
+                    sendPending={false}
+                    stopping={false}
+                    onStopAttempt={vi.fn()}
+                    onProfileSelect={vi.fn()}
+                    followupProfiles={[]}
+                />
+            </QueryClientProvider>,
         );
 
         const details = document.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;

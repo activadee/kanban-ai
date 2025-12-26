@@ -15,6 +15,10 @@ vi.mock("@/components/kanban/card-inspector/useCardInspectorState", () => ({
     useCardInspectorState: mocks.useCardInspectorStateMock,
 }));
 
+vi.mock("@/hooks/plans", () => ({
+    usePlan: () => ({ data: null }),
+}));
+
 vi.mock("@/components/ui/tabs", () => {
     const TabsContext = React.createContext<{ value?: string; onValueChange?: (v: string) => void }>({});
 

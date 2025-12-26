@@ -30,6 +30,8 @@ import {problemJson} from "../http/problem";
 import {startAttemptSchema} from "../attempts/attempts.schemas";
 import {enhanceTicketHandler} from "./project.enhance.handlers";
 import {setCardEnhancementSchema} from "./project.schemas";
+import {savePlanSchema} from './board.plan.schemas'
+import {deleteCardPlanHandler, getCardPlanHandler, saveCardPlanHandler} from './board.plan.handlers'
 
 export const createProjectsRouter = () => {
     const router = new Hono<AppEnv>();
@@ -100,6 +102,28 @@ export const createProjectsRouter = () => {
             return startProjectCardAttemptHandler(c, ctx);
         },
     );
+
+    router.get('/:projectId/cards/:cardId/plan', async (c) => {
+        const ctx = await loadProjectBoard(c)
+        if (ctx instanceof Response) return ctx
+        return getCardPlanHandler(c, ctx)
+    })
+
+    router.post(
+        '/:projectId/cards/:cardId/plan',
+        zValidator('json', savePlanSchema),
+        async (c) => {
+            const ctx = await loadProjectBoard(c)
+            if (ctx instanceof Response) return ctx
+            return saveCardPlanHandler(c, ctx)
+        },
+    )
+
+    router.delete('/:projectId/cards/:cardId/plan', async (c) => {
+        const ctx = await loadProjectBoard(c)
+        if (ctx instanceof Response) return ctx
+        return deleteCardPlanHandler(c, ctx)
+    })
 
     router.route(
         "/:projectId/board",

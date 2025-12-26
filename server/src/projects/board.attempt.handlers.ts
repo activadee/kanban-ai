@@ -41,6 +41,7 @@ export const startCardAttemptForBoardHandler = async (
 ) => {
     const {boardId, project} = ctx;
     const body = c.req.valid("json") as any;
+    const isPlanningAttempt = body.isPlanningAttempt === true
 
     try {
         // Disallow starting attempts for tasks already in Done/blocked
@@ -54,15 +55,17 @@ export const startCardAttemptForBoardHandler = async (
                 detail: "Task is done and locked",
             });
         }
-        try {
-            const {blocked} = await projectDeps.isCardBlocked(card.id);
-            if (blocked) {
-                return problemJson(c, {
-                    status: 409,
-                    detail: "Task is blocked by dependencies",
-                });
-            }
-        } catch {}
+        if (!isPlanningAttempt) {
+            try {
+                const {blocked} = await projectDeps.isCardBlocked(card.id);
+                if (blocked) {
+                    return problemJson(c, {
+                        status: 409,
+                        detail: "Task is blocked by dependencies",
+                    });
+                }
+            } catch {}
+        }
 
         const events = c.get("events");
         const attempt = await attempts.startAttempt(
@@ -73,6 +76,7 @@ export const startCardAttemptForBoardHandler = async (
                 profileId: body.profileId,
                 baseBranch: body.baseBranch,
                 branchName: body.branchName,
+                isPlanningAttempt,
             },
             {events},
         );

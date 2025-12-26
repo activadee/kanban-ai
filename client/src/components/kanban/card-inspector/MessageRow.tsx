@@ -6,7 +6,17 @@ import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
 import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
 
-export function MessageRow({item}: { item: ConversationItem }) {
+export function MessageRow({
+    item,
+    onMarkAsPlan,
+    markAsPlanPending,
+    isSavedPlan,
+}: {
+    item: ConversationItem
+    onMarkAsPlan?: () => void
+    markAsPlanPending?: boolean
+    isSavedPlan?: boolean
+}) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
     const time = timestamp.toLocaleTimeString()
     const [revealOutput, setRevealOutput] = useState(false)
@@ -15,13 +25,27 @@ export function MessageRow({item}: { item: ConversationItem }) {
         case 'message': {
             const {role, text} = item
             const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
+            const canMarkAsPlan = typeof onMarkAsPlan === 'function'
             return (
                 <div className="mb-2 rounded bg-background p-2">
-                    <div className="mb-1 flex items-center gap-2">
-                        <Badge className="text-[10px]" variant={badgeVariant}>{role}</Badge>
-                        <span className="text-xs text-muted-foreground">{time}</span>
-                        {item.profileId ?
-                            <span className="text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Badge className="text-[10px]" variant={badgeVariant}>{role}</Badge>
+                            {isSavedPlan ? <Badge className="text-[10px]" variant="outline">plan</Badge> : null}
+                            <span className="text-xs text-muted-foreground">{time}</span>
+                            {item.profileId ?
+                                <span className="truncate text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
+                        </div>
+                        {canMarkAsPlan ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={Boolean(markAsPlanPending) || Boolean(isSavedPlan) || !text.trim()}
+                                onClick={onMarkAsPlan}
+                            >
+                                {markAsPlanPending ? 'Saving…' : isSavedPlan ? 'Saved' : 'Mark as plan'}
+                            </Button>
+                        ) : null}
                     </div>
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
                 </div>

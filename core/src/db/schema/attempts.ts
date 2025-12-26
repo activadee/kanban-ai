@@ -9,6 +9,7 @@ export const attempts = sqliteTable('attempts', {
     status: text('status').notNull(),
     baseBranch: text('base_branch').notNull(),
     branchName: text('branch_name').notNull(),
+    isPlanningAttempt: integer('is_planning_attempt', {mode: 'boolean'}).notNull().default(false),
     worktreePath: text('worktree_path'),
     sessionId: text('session_id'),
     createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),

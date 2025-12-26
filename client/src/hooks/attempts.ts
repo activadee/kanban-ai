@@ -71,6 +71,7 @@ type StartAttemptArgs = {
     profileId?: string;
     baseBranch?: string;
     branchName?: string
+    isPlanningAttempt?: boolean
 }
 
 type StartAttemptOptions = UseMutationOptions<Attempt, Error, StartAttemptArgs>
@@ -85,6 +86,7 @@ export function useStartAttempt(options?: StartAttemptOptions) {
                 profileId: args.profileId,
                 baseBranch: args.baseBranch,
                 branchName: args.branchName,
+                isPlanningAttempt: args.isPlanningAttempt,
             }),
         ...options,
     })

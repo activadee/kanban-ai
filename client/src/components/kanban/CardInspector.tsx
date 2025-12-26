@@ -11,6 +11,7 @@ import {ActivitySection} from './card-inspector/sections/ActivitySection'
 import {useCardInspectorState, type InspectorTab} from './card-inspector/useCardInspectorState'
 import type {CardFormValues} from './CardDialogs'
 import {AttemptToolbar} from './card-inspector/AttemptToolbar'
+import {usePlan} from '@/hooks/plans'
 
 type TopLevelTab = 'ticket' | 'attempts'
 
@@ -54,6 +55,9 @@ export function CardInspector({
 
     const {details, header, attempt, git, activity} = inspectorState
 
+    const planQuery = usePlan(projectId, card.id)
+    const plan = planQuery.data ?? null
+
     const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('ticket')
     const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
 
@@ -91,6 +95,7 @@ export function CardInspector({
                 blocked={blocked}
                 copied={header.copied}
                 onCopyTicketKey={header.handleCopyTicketKey}
+                plan={plan}
                 onClose={onClose}
                 actions={
                     attempt.attempt ? (
@@ -156,6 +161,7 @@ export function CardInspector({
                             profileId={attempt.profileId}
                             onProfileChange={(id) => attempt.handleProfileSelect(id ?? '__default__')}
                             onStart={attempt.startAttempt}
+                            planExists={Boolean(plan)}
                             locked={locked}
                             blocked={blocked}
                             starting={attempt.starting}
@@ -180,9 +186,11 @@ export function CardInspector({
                                     <TabsContent value="messages" className="flex min-h-0 flex-1 flex-col">
                                         <AttemptsSection
                                             attempt={attempt.attempt}
+                                            projectId={projectId}
                                             cardId={card.id}
                                             locked={locked}
                                             conversation={attempt.conversation}
+                                            plan={plan}
                                             followup={attempt.followup}
                                             onFollowupChange={attempt.setFollowup}
                                             onSendFollowup={attempt.sendFollowup}

@@ -24,6 +24,8 @@ import {
     isAutomationFailureAllowed,
 } from './automation'
 import {resolveAgentProfile} from './profiles'
+import {getPlanForCard} from '../plans/repo'
+import {buildPlanningAttemptDescription} from './planning-prompt'
 
 type RunningAttemptMeta = {
     controller: AbortController
@@ -73,6 +75,7 @@ type AttemptWorkerCommonParams = {
     cardTitle: string
     cardDescription: string | null
     ticketType?: TicketType | null
+    isPlanningAttempt: boolean
     automation: AttemptAutomationConfig
 }
 
@@ -138,6 +141,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
         cardTitle,
         cardDescription,
         ticketType,
+        isPlanningAttempt,
         automation,
     } = params
 
@@ -181,6 +185,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
             if (!agent) throw new Error(`Unknown agent: ${agentKey}`)
 
             let msgSeq = await getNextConversationSeq(attemptId)
+            let effectiveCardDescription: string | null = cardDescription
             const emit = async (
                 evt:
                     | {
@@ -292,6 +297,27 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                 }
             }
 
+            if (params.mode === 'run') {
+                if (isPlanningAttempt) {
+                    effectiveCardDescription = buildPlanningAttemptDescription(cardDescription)
+                } else {
+                    try {
+                        const plan = await getPlanForCard(cardId)
+                        const planMarkdown = plan?.planMarkdown?.trim()
+                        if (planMarkdown) {
+                            const original = effectiveCardDescription ?? ''
+                            effectiveCardDescription = `## Plan\n\n${planMarkdown}\n\n---\n\n## Original Description\n\n${original}`
+                        }
+                    } catch (error) {
+                        await emit({
+                            type: 'log',
+                            level: 'warn',
+                            message: `[plans] failed to load plan: ${error instanceof Error ? error.message : String(error ?? 'unknown error')}`,
+                        })
+                    }
+                }
+            }
+
             const allowFailureConfig = {
                 allowScriptsToFail: automation.allowScriptsToFail,
                 allowCopyFilesToFail: automation.allowCopyFilesToFail,
@@ -385,7 +411,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                                   branchName,
                                   baseBranch,
                                   cardTitle,
-                                  cardDescription,
+                                  cardDescription: effectiveCardDescription,
                                   ticketType,
                                   signal: ac.signal,
                                   emit,
@@ -437,7 +463,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                             branchName,
                             baseBranch,
                             cardTitle,
-                            cardDescription,
+                            cardDescription: effectiveCardDescription,
                             ticketType,
                             signal: ac.signal,
                             emit,

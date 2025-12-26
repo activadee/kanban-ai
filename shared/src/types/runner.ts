@@ -10,6 +10,7 @@ export type CreateAttemptRequest = {
     baseBranch?: string
     branchName?: string
     profileId?: string
+    isPlanningAttempt?: boolean
 }
 
 export type Attempt = {
@@ -20,6 +21,7 @@ export type Attempt = {
     status: AttemptStatus
     baseBranch: string
     branchName: string
+    isPlanningAttempt?: boolean
     worktreePath: string | null
     sessionId?: string | null
     startedAt?: string | null
