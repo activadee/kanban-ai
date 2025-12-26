@@ -22,6 +22,7 @@ type Props = {
     onCardEnhancementClick?: (cardId: string) => void
     onEdit?: (cardId: string) => void
     onEnhance?: (cardId: string) => void
+    selectedCardId?: string | null
 }
 
 export function DraggableCard({
@@ -39,6 +40,7 @@ export function DraggableCard({
                                   onCardEnhancementClick,
                                   onEdit,
                                   onEnhance,
+                                  selectedCardId,
                               }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isFailed = attemptStatus === 'failed'
@@ -89,6 +91,7 @@ export function DraggableCard({
                         : undefined
                 }
                 disabled={isEnhancing}
+                isSelected={card.id === selectedCardId}
                 menuContext={{
                     projectId,
                     lane,

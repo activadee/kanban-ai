@@ -263,6 +263,7 @@ export function Board({
                                     setEditingCardId(cardId);
                                     setEditingCardAutoEnhance(true);
                                 }}
+                                selectedCardId={resolvedSelectedId}
                             />
                         </div>
                     ))}

@@ -48,6 +48,7 @@ type Props = {
     onEnhancementClick?: () => void
     disabled?: boolean
     menuContext?: KanbanCardMenuContext
+    isSelected?: boolean
 }
 
 export function KanbanCard({
@@ -61,6 +62,7 @@ export function KanbanCard({
                                onEnhancementClick,
                                disabled = false,
                                menuContext,
+                               isSelected = false,
                            }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
@@ -72,21 +74,26 @@ export function KanbanCard({
 
     const cardClassName = useMemo(() => {
         const baseClasses = isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
-        
+
+        // Selected takes precedence over all other visual states
+        if (isSelected) {
+            return `${baseClasses} ring-2 ring-primary ring-offset-2 dark:ring-offset-background`
+        }
+
         if (isFailed) {
             return `${baseClasses} border-destructive/70 bg-red-50/80 dark:bg-red-950/20 ring-1 ring-destructive/40`
         }
-        
+
         if (blocked && !done) {
             return `${baseClasses} border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10`
         }
-        
+
         if (isEnhanced) {
             return `${baseClasses} border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15`
         }
-        
+
         return baseClasses
-    }, [isCardDisabled, isFailed, blocked, done, isEnhanced])
+    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, isSelected])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -102,7 +109,7 @@ export function KanbanCard({
         Boolean(menuContext)
 
     const cardInner = (
-        <UICard className={cardClassName}>
+        <UICard data-testid="kanban-card" className={cardClassName}>
             <CardContent className="flex h-full flex-col gap-2 overflow-hidden p-3">
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">

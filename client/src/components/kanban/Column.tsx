@@ -21,6 +21,7 @@ type Props = {
     projectId: string
     isCardBlocked: (cardId: string) => boolean
     sortOrder?: CardSortOrder
+    selectedCardId?: string | null
 }
 
 export function Column({
@@ -35,6 +36,7 @@ export function Column({
                            projectId,
                            isCardBlocked,
                            sortOrder = 'custom',
+                           selectedCardId,
                        }: Props) {
     const cards = useMemo(
         () => {
@@ -104,6 +106,7 @@ export function Column({
                                 onSelect={onSelectCard}
                                 onEdit={onEditCard}
                                 onEnhance={onEnhanceCard}
+                                selectedCardId={selectedCardId}
                             />
                         )
                     })}
