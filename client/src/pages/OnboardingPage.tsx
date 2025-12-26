@@ -133,7 +133,7 @@ export function OnboardingPage() {
                         {stepId === 'editor' ? (
                             <EditorStep
                                 settingsForm={settingsForm}
-                                installedEditors={state.installedEditors}
+                                editorValidationStatus={state.editorValidationStatus}
                                 onChange={(patch) =>
                                     actions.setSettingsForm((prev) => (prev ? {...prev, ...patch} : prev))
                                 }
@@ -201,7 +201,8 @@ export function OnboardingPage() {
                                 disabled={
                                     state.completePending ||
                                     state.startingDevice ||
-                                    (stepId === 'github-app' && !state.appCredForm?.clientId.trim())
+                                    (stepId === 'github-app' && !state.appCredForm?.clientId.trim()) ||
+                                    (stepId === 'editor' && state.editorValidationStatus === 'invalid')
                                 }
                             >
                                 {stepId === 'finish'

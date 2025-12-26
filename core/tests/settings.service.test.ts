@@ -43,8 +43,8 @@ describe("settings/service", () => {
             language: "en",
             telemetryEnabled: true,
             notificationsAgentCompletionSound: true,
-            editorType: "VS_CODE",
-            editorCommand: null,
+            editorType: "NEOVIM",
+            editorCommand: "nvim",
             ghAutolinkTickets: false,
         });
 

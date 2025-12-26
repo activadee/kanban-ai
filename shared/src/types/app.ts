@@ -13,7 +13,7 @@ export interface AppSettings {
     notificationsDesktop: boolean
     autoStartAgentOnInProgress: boolean
     // Editor
-    editorType: EditorType
+    editorType: EditorType | null
     editorCommand: string | null
     // Git defaults
     gitUserName: string | null

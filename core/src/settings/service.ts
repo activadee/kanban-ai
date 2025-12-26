@@ -8,6 +8,28 @@ import {
     updateAppSettingsRow,
 } from "./repo";
 
+// Supported editor types - used to validate new values
+const SUPPORTED_EDITORS = new Set([
+    "VS_CODE",
+    "VS_CODE_INSURANCE",
+    "CURSOR",
+    "WINDSCRAFT",
+    "OPENVSP",
+    "REA",
+    "JETBRAINS",
+    "NOVA",
+    "SUBLIME",
+    "TEXTMATE",
+    "BBEDIT",
+    "CODE",
+    "ZEPHYR",
+    "VSCodium",
+    "VSCodium_Insiders",
+] as const);
+
+// Type alias for the literal values in SUPPORTED_EDITORS
+type EditorTypeLiteral = typeof SUPPORTED_EDITORS extends Set<infer T> ? T : never;
+
 let cache: SharedAppSettings | null = null;
 
 function defaults(): SharedAppSettings {
@@ -41,12 +63,11 @@ function toIso(v: Date | number | string | null | undefined): string {
         : d.toISOString();
 }
 
-const SUPPORTED_EDITORS = new Set<SharedAppSettings["editorType"]>([
-    "VS_CODE",
-    "WEBSTORM",
-    "ZED",
-]);
-
+/**
+ * Normalize editor settings from database row.
+ * For supported editors, command is set to null (uses executable discovery).
+ * For legacy/unknown editors, preserves the original type and command.
+ */
 function normalizeEditor(
     rowType: unknown,
     rowCommand: unknown,
@@ -57,14 +78,20 @@ function normalizeEditor(
     const type = (rowType as string | undefined) ?? "VS_CODE";
     const cleanedCommand =
         typeof rowCommand === "string" && rowCommand.trim() ? rowCommand : null;
-    if (SUPPORTED_EDITORS.has(type as SharedAppSettings["editorType"])) {
+
+    // For supported editors, use executable discovery (command = null)
+    if (SUPPORTED_EDITORS.has(type as EditorTypeLiteral)) {
         return {
             editorType: type as SharedAppSettings["editorType"],
             editorCommand: null,
         };
     }
-    // Legacy or unknown editors are coerced to default; drop custom command support
-    return { editorType: "VS_CODE", editorCommand: null };
+
+    // For legacy or unknown editors, preserve original type and command
+    return {
+        editorType: type as SharedAppSettings["editorType"],
+        editorCommand: cleanedCommand,
+    };
 }
 
 function mapRow(row: any): SharedAppSettings {

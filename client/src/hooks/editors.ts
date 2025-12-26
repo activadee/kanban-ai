@@ -1,15 +1,15 @@
-import {useQuery, type UseQueryOptions} from '@tanstack/react-query'
-import type {EditorInfo} from '@/api/editors'
-import {getEditors} from '@/api/editors'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { getEditorSuggestions, validateEditorPath } from '@/api/editors'
 
-const EDITORS_KEY = ['editors'] as const
+export function useEditorSuggestions() {
+  return useQuery({
+    queryKey: ['editors', 'suggestions'],
+    queryFn: getEditorSuggestions,
+  })
+}
 
-type Options = Partial<UseQueryOptions<EditorInfo[]>>
-
-export function useEditors(options?: Options) {
-    return useQuery({
-        queryKey: EDITORS_KEY,
-        queryFn: getEditors,
-        ...options,
-    })
+export function useValidateEditorPath() {
+  return useMutation({
+    mutationFn: validateEditorPath,
+  })
 }

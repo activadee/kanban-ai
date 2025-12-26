@@ -15,7 +15,6 @@ import {
     useAgents,
     useAgentProfiles,
     useAppSettings,
-    useEditors,
     useCardAttempt,
     useStartAttempt,
     useFollowupAttempt,
@@ -251,28 +250,15 @@ export function useCardInspectorState({
     }, [agent, agents, attemptAgent, projectDefaultAgent])
 
     const appSettingsQuery = useAppSettings()
-    const editorsQuery = useEditors()
-
-    const installedEditors = useMemo(
-        () => (editorsQuery.data ?? []).filter((editor) => editor.installed),
-        [editorsQuery.data],
-    )
-
-    const defaultEditorKey = appSettingsQuery.data?.editorType ?? ''
-
-    const defaultEditor = useMemo(
-        () => installedEditors.find((editor) => editor.key === defaultEditorKey),
-        [installedEditors, defaultEditorKey],
-    )
 
     const openButtonDisabledReason = useMemo(() => {
-        if (!defaultEditor) return 'Set a default editor in App Settings.'
+        if (!appSettingsQuery.data?.editorCommand) return 'Set an editor executable in App Settings.'
         if (!attempt) return null
         if (!attempt.worktreePath) {
             return 'This attempt\'s worktree has been cleaned up. Start a new attempt to open an editor.'
         }
         return null
-    }, [defaultEditor, attempt])
+    }, [appSettingsQuery.data?.editorCommand, attempt])
 
     const prDefaults = useMemo(() => {
         const settings = appSettingsQuery.data
@@ -564,8 +550,7 @@ export function useCardInspectorState({
         if (!attempt || openButtonDisabledReason) return
         try {
             const res = await openEditorMutation.mutateAsync({attemptId: attempt.id})
-            const title = defaultEditor ? `Opening in ${defaultEditor.label}` : 'Opening editor'
-            toast({title, description: `${res.command.cmd} ${res.command.args.join(' ')}`})
+            toast({title: 'Opening editor', description: `${res.command.cmd} ${res.command.args.join(' ')}`})
         } catch (err: unknown) {
             const {description, title} = describeApiError(err, 'Open failed')
             toast({title, description, variant: 'destructive'})
