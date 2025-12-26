@@ -6,6 +6,7 @@ import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {DraggableCard} from './DraggableCard'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
+import type {CardSortOrder} from '@/lib/sortOrder'
 
 type Props = {
     column: TColumn
@@ -17,6 +18,7 @@ type Props = {
     onEnhanceCard: (cardId: string) => void
     projectId: string
     isCardBlocked: (cardId: string) => boolean
+    sortOrder?: CardSortOrder
 }
 
 export function Column({
@@ -29,10 +31,24 @@ export function Column({
                            onEnhanceCard,
                            projectId,
                            isCardBlocked,
+                           sortOrder = 'custom',
                        }: Props) {
     const cards = useMemo(
-        () => column.cardIds.map((id) => state.cards[id]).filter(Boolean),
-        [column.cardIds, state.cards]
+        () => {
+            const allCards = column.cardIds.map((id) => state.cards[id]).filter(Boolean);
+
+            if (sortOrder === 'custom') {
+                return allCards;
+            }
+
+            return [...allCards].sort((a, b) => {
+                const dateA = new Date(a.createdAt).getTime();
+                const dateB = new Date(b.createdAt).getTime();
+
+                return sortOrder === 'newest-first' ? dateB - dateA : dateA - dateB;
+            });
+        },
+        [column.cardIds, state.cards, sortOrder]
     )
     const {setNodeRef, isOver} = useDroppable({id: column.id, data: {type: 'column', columnId: column.id}})
 
