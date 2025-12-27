@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install and run open-workflows review
-        run: npx -y @activadee-ai/open-workflows review
+        run: npx -y @activadee-ai/open-workflows review --sticky-comment
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
