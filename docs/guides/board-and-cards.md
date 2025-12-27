@@ -82,12 +82,13 @@ You can also create cards directly in a column using column-specific controls (e
   - Card title.
   - Status/blocked indicators when relevant.
   - Copy ticket key and close buttons.
-  - Attempt toolbar (Open in editor, View changes, Commit, Open PR, Merge, and Todos controls) that appears whenever an Attempt exists and stays visible next to the close button so Git actions are usable even while viewing Attempts tabs.
+  - Attempt toolbar (Open in editor, View changes, Commit, Open PR, Merge, and Todos controls) that appears whenever an Implementation Attempt exists and stays visible next to the close button so Git actions are usable even while viewing Ticket / Implementation / Plan tabs.
 - **Top-level tabs**:
   - **Ticket** – contains the Details and Git areas for editing card metadata. The details panel still provides title/description editing, the **Enhance in background** button, and the dependencies picker. The Git section continues to host the dialogs for changes, commits, PRs, and merges, while the action buttons themselves now live in the header toolbar so they stay available even when you are viewing other tabs.
-  - **Attempts** – surfaces attempt controls for the card. When no Attempt exists, you see the **Attempt create form** here (agent/profile selectors, Start button); once an Attempt is running, the tab shows nested **Messages**, **Processes**, and **Logs** sub-tabs for interacting with the current Attempt.
+  - **Implementation** – surfaces Implementation Attempt controls for the card. When no Implementation Attempt exists, you see the **Attempt create form** here (agent/profile selectors, Start button); once an Implementation Attempt is running, the tab shows nested **Messages**, **Processes**, and **Logs** sub-tabs for interacting with the current Attempt.
+  - **Plan** – hosts Planning mode. When no plan is saved, you can start a Planning Attempt here; once a plan is saved, the Plan tab displays the saved plan in a read-only **Plan (locked)** view.
 
-See the “Attempts & inspector (UI)” guide for the Attempts and activity sections inside the inspector.
+See the “Attempts & inspector (UI)” guide for the Implementation and Plan tabs inside the inspector.
 
 ## Dependencies in the UI
 

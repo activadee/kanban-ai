@@ -30,6 +30,8 @@ import {eventBus} from '@/lib/events'
 
 export type InspectorTab = 'messages' | 'processes' | 'logs'
 
+const IMPLEMENTATION_KIND = 'implementation' as const
+
 export type CardInspectorDetailsState = {
     values: { title: string; description: string; dependsOn: string[]; ticketType: TicketType | null }
     setValues: Dispatch<SetStateAction<{ title: string; description: string; dependsOn: string[]; ticketType: TicketType | null }>>
@@ -58,7 +60,7 @@ export type CardInspectorAttemptState = {
     setFollowup: (value: string) => void
     sendFollowup: () => Promise<void>
     sendFollowupPending: boolean
-    startAttempt: () => Promise<void>
+    startAttempt: (opts?: {isPlanningAttempt?: boolean}) => Promise<void>
     retryAttempt: () => Promise<void>
     starting: boolean
     retrying: boolean
@@ -142,7 +144,7 @@ export function useCardInspectorState({
             setFollowup('')
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(vars.attemptId)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(vars.attemptId)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND)})
         },
         onError: (err) => {
             const {title, description} = describeApiError(err, 'Follow-up failed')
@@ -154,7 +156,7 @@ export function useCardInspectorState({
         onSuccess: async (_item, variables) => {
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(variables.attemptId)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(variables.attemptId)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND)})
             toast({title: 'Dev script completed', description: 'Check the automation log for output.'})
         },
         onError: (err) => {
@@ -376,7 +378,7 @@ export function useCardInspectorState({
         const off = eventBus.on('attempt_started', (payload) => {
             if (payload.cardId !== card.id) return
             queryClient.invalidateQueries({
-                queryKey: cardAttemptKeys.detail(projectId, card.id),
+                queryKey: cardAttemptKeys.card(projectId, card.id),
             })
         })
         return off
@@ -387,7 +389,7 @@ export function useCardInspectorState({
         onStatus: (status) => {
             setAttempt((prev) => (prev ? ({...prev, status} as Attempt) : prev))
             queryClient.setQueryData(
-                cardAttemptKeys.detail(projectId, card.id),
+                cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND),
                 (prev:
                      | {
                 attempt: Attempt
@@ -412,7 +414,7 @@ export function useCardInspectorState({
             }
             setLogs((prev) => [...prev, entry])
             queryClient.setQueryData(
-                cardAttemptKeys.detail(projectId, card.id),
+                cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND),
                 (prev:
                      | {
                 attempt: Attempt
@@ -431,7 +433,7 @@ export function useCardInspectorState({
                 return [...prev, item]
             })
             queryClient.setQueryData(
-                cardAttemptKeys.detail(projectId, card.id),
+                cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND),
                 (prev:
                      | {
                 attempt: Attempt
@@ -449,7 +451,7 @@ export function useCardInspectorState({
         onSession: (sessionId) => {
             setAttempt((prev) => (prev ? ({...prev, sessionId} as Attempt) : prev))
             queryClient.setQueryData(
-                cardAttemptKeys.detail(projectId, card.id),
+                cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND),
                 (prev:
                      | {
                 attempt: Attempt
@@ -465,7 +467,7 @@ export function useCardInspectorState({
         onTodos: (summary) => {
             setTodoSummary(summary)
             queryClient.setQueryData(
-                cardAttemptKeys.detail(projectId, card.id),
+                cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND),
                 (prev:
                      | {
                 attempt: Attempt
@@ -512,15 +514,21 @@ export function useCardInspectorState({
             setConversation([])
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(att.id)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(att.id)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND)})
         },
     })
 
-    const startAttempt = async () => {
+    const startAttempt = async (opts?: {isPlanningAttempt?: boolean}) => {
         if (!projectId) return
         setStarting(true)
         try {
-            await startMutation.mutateAsync({projectId, cardId: card.id, agent, profileId})
+            await startMutation.mutateAsync({
+                projectId,
+                cardId: card.id,
+                agent,
+                profileId,
+                isPlanningAttempt: opts?.isPlanningAttempt === true,
+            })
         } catch (err) {
             console.error('Start attempt failed', err)
         } finally {
@@ -540,7 +548,7 @@ export function useCardInspectorState({
     const stopMutation = useStopAttempt({
         onSuccess: async (_data, variables) => {
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(variables.attemptId)})
-            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
+            await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id, IMPLEMENTATION_KIND)})
         },
     })
 

@@ -9,10 +9,11 @@ export const getProjectCardAttemptHandler = async (
 ) => {
     const {boardId} = ctx;
     try {
-        const data = await attempts.getLatestAttemptForCard(
-            boardId,
-            c.req.param("cardId"),
-        );
+        const kind = (c.req.query('kind') || '').trim().toLowerCase()
+        const cardId = c.req.param("cardId")
+        const data = kind === 'planning'
+            ? await attempts.getLatestPlanningAttemptForCard(boardId, cardId)
+            : await attempts.getLatestAttemptForCard(boardId, cardId)
         if (!data) {
             return problemJson(c, {status: 404, detail: "Attempt not found"});
         }
@@ -35,6 +36,7 @@ export const startProjectCardAttemptHandler = async (
 ) => {
     const {boardId} = ctx;
     const body = c.req.valid("json") as any;
+    const isPlanningAttempt = body.isPlanningAttempt === true
 
     try {
         const {getCardById, getColumnById} = projectsRepo;
@@ -55,15 +57,17 @@ export const startProjectCardAttemptHandler = async (
                 detail: "Task is done and locked",
             });
         }
-        try {
-            const {blocked} = await projectDeps.isCardBlocked(card.id);
-            if (blocked) {
-                return problemJson(c, {
-                    status: 409,
-                    detail: "Task is blocked by dependencies",
-                });
-            }
-        } catch {}
+        if (!isPlanningAttempt) {
+            try {
+                const {blocked} = await projectDeps.isCardBlocked(card.id);
+                if (blocked) {
+                    return problemJson(c, {
+                        status: 409,
+                        detail: "Task is blocked by dependencies",
+                    });
+                }
+            } catch {}
+        }
 
         const events = c.get("events");
         const attempt = await attempts.startAttempt(
@@ -74,6 +78,7 @@ export const startProjectCardAttemptHandler = async (
                 profileId: body.profileId,
                 baseBranch: body.baseBranch,
                 branchName: body.branchName,
+                isPlanningAttempt,
             },
             {events},
         );

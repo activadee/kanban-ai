@@ -96,6 +96,7 @@ export interface AttemptQueuedEvent {
     branchName: string
     baseBranch: string
     profileId?: string
+    isPlanningAttempt?: boolean
 }
 
 export interface AttemptStartedEvent {
@@ -107,6 +108,7 @@ export interface AttemptStartedEvent {
     baseBranch: string
     worktreePath: string
     profileId?: string
+    isPlanningAttempt?: boolean
 }
 
 export interface AttemptStatusChangedEvent {
@@ -151,6 +153,7 @@ export interface AttemptCompletedEvent {
     status: AttemptStatus
     worktreePath: string
     profileId?: string
+    isPlanningAttempt?: boolean
 }
 
 export interface AttemptAutocommitRequestedEvent {

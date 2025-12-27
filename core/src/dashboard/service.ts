@@ -253,6 +253,10 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         .from(boards)
 
     const attemptsTimePredicate = buildTimeRangePredicate(attempts.createdAt, rangeFrom, rangeTo)
+    const implementationAttemptPredicate = eq(attempts.isPlanningAttempt, false)
+    const attemptsRangePredicate = attemptsTimePredicate
+        ? and(implementationAttemptPredicate, attemptsTimePredicate)
+        : implementationAttemptPredicate
 
     let attemptsRangeQuery = db
         .select({
@@ -261,9 +265,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         })
         .from(attempts)
 
-    if (attemptsTimePredicate) {
-        attemptsRangeQuery = attemptsRangeQuery.where(attemptsTimePredicate)
-    }
+    attemptsRangeQuery = attemptsRangeQuery.where(attemptsRangePredicate)
 
     const [
         {total: attemptsInRangeRaw = 0, succeeded: attemptsSucceededInRangeRaw = 0} = {
@@ -278,22 +280,24 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         })
         .from(attempts)
 
-    if (attemptsTimePredicate) {
-        projectsWithActivityQuery = projectsWithActivityQuery.where(attemptsTimePredicate)
-    }
+    projectsWithActivityQuery = projectsWithActivityQuery.where(attemptsRangePredicate)
 
     const [{count: projectsWithActivityInRangeRaw = 0} = {count: 0}] = await projectsWithActivityQuery
 
     const attemptsCompletedTimePredicate = buildTimeRangePredicate(attempts.endedAt, rangeFrom, rangeTo)
 
     const attemptsCompletedWhere = attemptsCompletedTimePredicate
-        ? and(inArray(attempts.status, COMPLETED_STATUSES), attemptsCompletedTimePredicate)
-        : inArray(attempts.status, COMPLETED_STATUSES)
+        ? and(
+            implementationAttemptPredicate,
+            inArray(attempts.status, COMPLETED_STATUSES),
+            attemptsCompletedTimePredicate,
+        )
+        : and(implementationAttemptPredicate, inArray(attempts.status, COMPLETED_STATUSES))
 
     const [{count: activeAttemptsRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
         .from(attempts)
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
+        .where(and(implementationAttemptPredicate, inArray(attempts.status, ACTIVE_STATUSES)))
 
     const [{count: attemptsCompletedRaw = 0} = {count: 0}] = await db
         .select({count: sql<number>`cast(count(*) as integer)`})
@@ -348,7 +352,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             count: sql<number>`cast(count(*) as integer)`,
         })
         .from(attempts)
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
+        .where(and(implementationAttemptPredicate, inArray(attempts.status, ACTIVE_STATUSES)))
         .groupBy(attempts.boardId)
 
     const activeCountsMap = new Map<string, number>()
@@ -371,9 +375,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         })
         .from(attempts)
 
-    if (attemptsTimePredicate) {
-        attemptsPerBoardQuery = attemptsPerBoardQuery.where(attemptsTimePredicate)
-    }
+    attemptsPerBoardQuery = attemptsPerBoardQuery.where(attemptsRangePredicate)
 
     const attemptsPerBoardRows = (await attemptsPerBoardQuery.groupBy(
         attempts.boardId,
@@ -408,7 +410,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         .from(attempts)
         .leftJoin(cards, eq(attempts.cardId, cards.id))
         .leftJoin(boards, eq(attempts.boardId, boards.id))
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
+        .where(and(implementationAttemptPredicate, inArray(attempts.status, ACTIVE_STATUSES)))
         .orderBy(desc(sql`coalesce(${attempts.updatedAt}, ${attempts.createdAt})`))
         .limit(200)
 
@@ -553,7 +555,10 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
 
         const agentKeys = registeredAgents.map((agent) => agent.key)
 
-        const agentPredicates = [inArray(attempts.agent, agentKeys)]
+        const agentPredicates = [
+            inArray(attempts.agent, agentKeys),
+            implementationAttemptPredicate,
+        ]
         if (attemptsTimePredicate) {
             agentPredicates.push(attemptsTimePredicate)
         }
@@ -579,7 +584,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
                 lastActiveAt: sql<Date | null>`max(${attempts.createdAt})`,
             })
             .from(attempts)
-            .where(inArray(attempts.agent, agentKeys))
+            .where(and(implementationAttemptPredicate, inArray(attempts.agent, agentKeys)))
             .groupBy(attempts.agent)) as AgentLifetimeRow[]
 
         const aggregatesByAgent = new Map<

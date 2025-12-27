@@ -1,14 +1,19 @@
-import {useEffect, useRef} from 'react'
-import type {AgentKey, Attempt, ConversationItem} from 'shared'
+import {useEffect, useRef, useState} from 'react'
+import type {AgentKey, Attempt, CardPlan, ConversationItem} from 'shared'
 import {Label} from '@/components/ui/label'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {MessageRow} from '../MessageRow'
+import {useSavePlan} from '@/hooks/plans'
+import {toast} from '@/components/ui/toast'
+import {describeApiError} from '@/api/http'
 
 export type AttemptsSectionProps = {
     attempt: Attempt
+    projectId: string
     cardId: string
+    plan?: CardPlan | null
     locked?: boolean
     conversation: ConversationItem[]
     followup: string
@@ -27,7 +32,9 @@ export type AttemptsSectionProps = {
 
 export function AttemptsSection({
                                     attempt,
+                                    projectId,
                                     cardId,
+                                    plan,
                                     locked,
                                     conversation,
                                     followup,
@@ -46,6 +53,39 @@ export function AttemptsSection({
     const messagesContainerRef = useRef<HTMLDivElement | null>(null)
     const messagesEndRef = useRef<HTMLDivElement | null>(null)
     const initialScrolledForCardRef = useRef<string | null>(null)
+    const [savingPlanMessageId, setSavingPlanMessageId] = useState<string | null>(null)
+
+    const savePlanMutation = useSavePlan({
+        onSuccess: () => {
+            toast({title: 'Plan saved', variant: 'success'})
+        },
+        onError: (err) => {
+            const {title, description} = describeApiError(err, 'Save plan failed')
+            toast({title, description, variant: 'destructive'})
+        },
+    })
+
+    const handleMarkAsPlan = async (item: ConversationItem) => {
+        if (attempt.isPlanningAttempt !== true) return
+        if (item.type !== 'message' || item.role !== 'assistant') return
+        const markdown = item.text.trim()
+        if (!markdown) return
+
+        setSavingPlanMessageId(item.id ?? '')
+        try {
+            await savePlanMutation.mutateAsync({
+                projectId,
+                cardId,
+                input: {
+                    planMarkdown: markdown,
+                    sourceMessageId: item.id,
+                    sourceAttemptId: attempt.id,
+                },
+            })
+        } finally {
+            setSavingPlanMessageId(null)
+        }
+    }
 
     useEffect(() => {
         if (!conversation.length) return
@@ -66,7 +106,17 @@ export function AttemptsSection({
                     <div className="text-muted-foreground">No messages yet…</div>
                 ) : (
                     conversation.map((item, index) => (
-                        <MessageRow key={item.id ?? `${item.timestamp}-${index}`} item={item}/>
+                        <MessageRow
+                            key={item.id ?? `${item.timestamp}-${index}`}
+                            item={item}
+                            isSavedPlan={Boolean(plan?.sourceMessageId && item.id && plan.sourceMessageId === item.id)}
+                            markAsPlanPending={Boolean(savingPlanMessageId && savingPlanMessageId === item.id)}
+                            onMarkAsPlan={
+                                attempt.isPlanningAttempt === true && item.type === 'message' && item.role === 'assistant'
+                                    ? () => handleMarkAsPlan(item)
+                                    : undefined
+                            }
+                        />
                     ))
                 )}
                 <div ref={messagesEndRef}/>
@@ -142,4 +192,3 @@ export function AttemptsSection({
         </div>
     )
 }
-

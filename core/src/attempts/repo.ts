@@ -24,15 +24,28 @@ export async function getAttemptById(id: string, executor?: DbExecutor): Promise
     return row ?? null
 }
 
-export async function getAttemptForCard(boardId: string, cardId: string, executor?: DbExecutor): Promise<Attempt | null> {
+export async function getAttemptForCardByKind(
+    boardId: string,
+    cardId: string,
+    isPlanningAttempt: boolean,
+    executor?: DbExecutor,
+): Promise<Attempt | null> {
     const database = resolveDb(executor)
     const [row] = await (database as any)
         .select()
         .from(attempts)
-        .where(and(eq(attempts.boardId, boardId), eq(attempts.cardId, cardId)))
+        .where(and(eq(attempts.boardId, boardId), eq(attempts.cardId, cardId), eq(attempts.isPlanningAttempt, isPlanningAttempt)))
         .orderBy(desc(attempts.createdAt))
         .limit(1)
     return row ?? null
+}
+
+export async function getAttemptForCard(boardId: string, cardId: string, executor?: DbExecutor): Promise<Attempt | null> {
+    return getAttemptForCardByKind(boardId, cardId, false, executor)
+}
+
+export async function getPlanningAttemptForCard(boardId: string, cardId: string, executor?: DbExecutor): Promise<Attempt | null> {
+    return getAttemptForCardByKind(boardId, cardId, true, executor)
 }
 
 export async function insertAttempt(values: AttemptInsert, executor?: DbExecutor): Promise<void> {

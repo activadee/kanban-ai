@@ -23,18 +23,19 @@ Its layout consists of:
   - Ticket key and card title.
   - Copy ticket key button.
   - Blocked indicator (when dependencies are not satisfied).
-  - Attempt toolbar (Open in editor, View changes, Commit, PR, and Merge buttons plus the Todos summary) that only appears when an Attempt exists and stays visible even as you switch between the Ticket and Attempts tabs.
+  - Attempt toolbar (Open in editor, View changes, Commit, PR, and Merge buttons plus the Todos summary) that only appears when an Implementation Attempt exists and stays visible even as you switch between the Ticket, Implementation, and Plan tabs.
   - Close button.
 - Top-level tabs:
-  - **Ticket** – shows the Details and Git controls for the card. This is the default tab whenever you open the inspector or switch to a different card.
-  - **Attempts** – surfaces attempt-related controls. When no Attempt is running, you see the **Attempt create form** here; once an Attempt exists, this tab renders a nested tab view with **Messages**, **Processes**, and **Logs** sub-tabs for the selected Attempt. Cards with existing Attempts now open on this tab by default, while cards without Attempts still open on Ticket.
+  - **Ticket** – shows the Details and Git controls for the card. This is the default tab whenever you open the inspector or switch to a different card (unless the card already has an Implementation Attempt, or a saved Plan / Planning Attempt).
+  - **Implementation** – surfaces Implementation Attempt controls. When no Implementation Attempt exists, you see the **Attempt create form** here; once an Attempt exists, this tab renders a nested tab view with **Messages**, **Processes**, and **Logs** sub-tabs for the selected Attempt.
+  - **Plan** – hosts Planning mode. When no plan is saved, you can start a **Planning Attempt** and chat with the agent. When a plan is saved, the Plan tab becomes read-only and displays **Plan (locked)**.
 
-Switching cards recalculates which top-level tab should be active: cards without Attempts fall back to **Ticket**, while cards with Attempts open on **Attempts** (and its inner tabs). Navigating between Attempts, or when a new Attempt is detected, still resets the inner tab back to **Messages**, so you always start from the same view when focusing on new work.
+Switching cards recalculates which top-level tab should be active: cards with an Implementation Attempt open on **Implementation**, otherwise cards with a saved plan (or an active Planning Attempt) open on **Plan**, otherwise cards fall back to **Ticket**. Navigating between Attempts, or when a new Attempt is detected, still resets the inner tab back to **Messages**, so you always start from the same view when focusing on new work.
 
 ## Retrying failed Attempts
 
 When an Attempt has failed:
-- The **Attempts** tab shows the failed Attempt's status, conversation, and logs.
+- The **Implementation** tab shows the failed Attempt's status, conversation, and logs.
 - A **Retry** button appears next to the controls, allowing you to re-run the Attempt without recreating the card.
 - Clicking **Retry** re-queues the agent with the same configuration, and the Attempt status resets to `queued` then `running`.
 
@@ -42,8 +43,8 @@ Use this feature to quickly retry failed work after diagnosing the issue from lo
 
 ## Starting an Attempt
 
-- If the card has no active Attempt:
-  - The **Attempt create form** appears inside the **Attempts** tab.
+- If the card has no active Implementation Attempt:
+  - The **Attempt create form** appears inside the **Implementation** tab.
   - You can choose:
     - **Agent** – currently focused on the Codex agent.
     - **Profile** – per-project or global agent profile (or default).
@@ -51,6 +52,14 @@ Use this feature to quickly retry failed work after diagnosing the issue from lo
     - A worktree is created under `~/.kanbanAI/worktrees/...`.
     - The Attempt is queued and started.
     - Board listeners may move the card into In Progress automatically.
+
+### Starting a Planning Attempt
+
+- Open the **Plan** tab and click **Start planning**.
+- In a Planning Attempt, assistant messages show a **Mark as plan** button:
+  - Clicking it saves that message as the card’s plan.
+  - Once saved, the Plan tab shows **Plan (locked)** and the plan content is displayed in the Plan tab.
+- When you later start an **Implementation** Attempt, the saved plan (if present) is automatically prepended to the ticket description given to the agent.
 
 ### Auto-start when moving to In Progress
 
@@ -65,7 +74,7 @@ If the card is blocked by dependencies and auto-start is disabled, the UI may pr
 
 ## Messages tab
 
-Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversation** with the agent:
+Inside the **Implementation** tab, the **Messages** sub-tab shows the live **conversation** with the agent:
 
 - Attempts stream messages as they run.
 - You can send follow-up prompts by typing into the input and pressing send.
@@ -81,7 +90,7 @@ Use this tab to direct the agent, clarify requirements, and iterate on changes.
 
 ## Processes tab
 
-Still inside the **Attempts** tab, the **Processes** sub-tab shows **dev automation and processes** associated with the Attempt:
+Still inside the **Implementation** tab, the **Processes** sub-tab shows **dev automation and processes** associated with the Attempt:
 
 - Latest dev script run (e.g. `bun test`, `npm test`, or other configured commands).
 - Status of ongoing background tasks (pending, running, succeeded, failed).
@@ -91,13 +100,13 @@ Still inside the **Attempts** tab, the **Processes** sub-tab shows **dev automat
   - **Stop Attempt**:
     - Same as in Messages, but surfaced from the processes view.
   - **View logs**:
-    - Jumps to the **Logs** sub-tab (still inside **Attempts**) for more detailed output.
+    - Jumps to the **Logs** sub-tab (still inside **Implementation**) for more detailed output.
 
 Use this tab when you want to re-run tests, linters, or other dev automation as part of the Attempt.
 
 ## Logs tab
 
-The **Logs** sub-tab (inside **Attempts**) displays structured **logs** for the Attempt:
+The **Logs** sub-tab (inside **Implementation**) displays structured **logs** for the Attempt:
 
 - Agent logs.
 - Dev script output.

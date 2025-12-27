@@ -11,6 +11,7 @@ import {
     updateCardSchema,
     boardGithubImportSchema,
 } from "./project.schemas";
+import {savePlanSchema} from './board.plan.schemas'
 import {getBoardStateHandler} from "./board.state.handlers";
 import {
     createCardHandler,
@@ -21,6 +22,7 @@ import {
     getCardAttemptForBoardHandler,
     startCardAttemptForBoardHandler,
 } from "./board.attempt.handlers";
+import {deleteCardPlanHandler, getCardPlanHandler, saveCardPlanHandler} from './board.plan.handlers'
 import {importGithubIssuesHandler} from "./board.import.handlers";
 import {getGithubIssueStatsHandler} from "./board.github.handlers";
 
@@ -106,6 +108,28 @@ export function createBoardRouter(
             return startCardAttemptForBoardHandler(c, ctx);
         },
     );
+
+    boardRouter.get('/cards/:cardId/plan', async (c) => {
+        const ctx = await loadContext(c)
+        if (ctx instanceof Response) return ctx
+        return getCardPlanHandler(c, ctx)
+    })
+
+    boardRouter.post(
+        '/cards/:cardId/plan',
+        zValidator('json', savePlanSchema),
+        async (c) => {
+            const ctx = await loadContext(c)
+            if (ctx instanceof Response) return ctx
+            return saveCardPlanHandler(c, ctx)
+        },
+    )
+
+    boardRouter.delete('/cards/:cardId/plan', async (c) => {
+        const ctx = await loadContext(c)
+        if (ctx instanceof Response) return ctx
+        return deleteCardPlanHandler(c, ctx)
+    })
 
     boardRouter.post(
         "/import/github/issues",

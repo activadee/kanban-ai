@@ -260,7 +260,10 @@ export async function buildDashboardInbox(
     const nowRef = rangeTo ?? new Date()
     const nowMs = nowRef.getTime()
 
-    const wherePredicates = [inArray(attempts.status, INBOX_RELEVANT_STATUSES)]
+    const wherePredicates = [
+        inArray(attempts.status, INBOX_RELEVANT_STATUSES),
+        eq(attempts.isPlanningAttempt, false),
+    ]
 
     if (rangeFrom) {
         wherePredicates.push(gte(attempts.createdAt, rangeFrom))

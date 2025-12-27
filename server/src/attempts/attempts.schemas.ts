@@ -39,4 +39,5 @@ export const startAttemptSchema = z.object({
     profileId: z.string().optional(),
     baseBranch: z.string().min(1).optional(),
     branchName: z.string().min(1).optional(),
+    isPlanningAttempt: z.boolean().optional(),
 })

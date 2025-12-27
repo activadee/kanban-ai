@@ -5,6 +5,7 @@ import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/compon
 import type {AgentKey} from 'shared'
 
 export function AttemptCreateForm({
+                                      kind,
                                       agents,
                                       agent,
                                       onAgentChange,
@@ -16,6 +17,7 @@ export function AttemptCreateForm({
                                       blocked,
                                       starting,
                                   }: {
+    kind: 'implementation' | 'planning'
     agents: Array<{ key: AgentKey; label: string }>
     agent: AgentKey
     onAgentChange: (key: AgentKey) => void
@@ -27,9 +29,13 @@ export function AttemptCreateForm({
     blocked?: boolean
     starting?: boolean
 }) {
+    const isPlanning = kind === 'planning'
+    const blockedForMode = Boolean(blocked && kind === 'implementation')
+    const title = isPlanning ? 'Create Planning Attempt' : 'Create Attempt'
+
     return (
         <div className="rounded-lg border border-border/60 p-3">
-            <Label className="mb-2 block font-medium">Create Attempt</Label>
+            <Label className="mb-2 block font-medium">{title}</Label>
             <div className="space-y-3">
                 <div className="space-y-1">
                     <Label>Agent</Label>
@@ -66,12 +72,16 @@ export function AttemptCreateForm({
                         <Tooltip>
                             <TooltipTrigger asChild>
                 <span className="inline-flex">
-                  <Button size="sm" onClick={onStart} disabled={starting || !agent || locked || blocked}>
-                    {starting ? 'Starting…' : 'Start'}
+                  <Button
+                      size="sm"
+                      onClick={onStart}
+                      disabled={starting || !agent || locked || blockedForMode}
+                  >
+                    {starting ? 'Starting…' : isPlanning ? 'Start planning' : 'Start'}
                   </Button>
                 </span>
                             </TooltipTrigger>
-                            {(locked || blocked) ? (
+                            {(locked || blockedForMode) ? (
                                 <TooltipContent>
                                     {locked ? 'This task is Done and locked.' : 'This task is blocked by dependencies.'}
                                 </TooltipContent>
@@ -83,4 +93,3 @@ export function AttemptCreateForm({
         </div>
     )
 }
-

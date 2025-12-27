@@ -39,10 +39,12 @@ export async function postAttemptMessageHandler(c: any) {
             const title = (column?.title || '').trim().toLowerCase()
             if (title === 'done') return problemJson(c, {status: 409, detail: 'Task is done and locked'})
         }
-        try {
-            const {blocked} = await projectDeps.isCardBlocked(attempt.cardId)
-            if (blocked) return problemJson(c, {status: 409, detail: 'Task is blocked by dependencies'})
-        } catch {
+        if (attempt.isPlanningAttempt !== true) {
+            try {
+                const {blocked} = await projectDeps.isCardBlocked(attempt.cardId)
+                if (blocked) return problemJson(c, {status: 409, detail: 'Task is blocked by dependencies'})
+            } catch {
+            }
         }
 
         const events = c.get('events')

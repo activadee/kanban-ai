@@ -2,7 +2,7 @@ import type {ReactNode} from 'react'
 import {Badge} from '@/components/ui/badge'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {X, Lock, Copy} from 'lucide-react'
-import type {Card as TCard} from 'shared'
+import type {Card as TCard, CardPlan} from 'shared'
 import {formatTicketType, ticketTypeBadgeClass} from '@/lib/ticketTypes'
 
 export function InspectorHeader({
@@ -11,6 +11,7 @@ export function InspectorHeader({
                                     blocked,
                                     copied,
                                     onCopyTicketKey,
+                                    plan,
                                     onClose,
                                     actions,
                                 }: {
@@ -19,6 +20,7 @@ export function InspectorHeader({
     blocked?: boolean
     copied: boolean
     onCopyTicketKey: () => void
+    plan?: CardPlan | null
     onClose?: () => void
     actions?: ReactNode
 }) {
@@ -71,6 +73,18 @@ export function InspectorHeader({
                     </TooltipProvider>
                 ) : blocked ? (
                     <Badge variant="outline" className="border-destructive/50 text-destructive">Blocked</Badge>
+                ) : null}
+                {plan ? (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Badge variant="outline" className="text-xs">Plan saved</Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                Updated {new Date(plan.updatedAt).toLocaleString()}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 ) : null}
             </div>
             <div className="flex items-center gap-2">
