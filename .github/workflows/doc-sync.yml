@@ -8,12 +8,17 @@ on:
 permissions:
   contents: write
   pull-requests: read
-  id-token: write
 
 jobs:
   doc-sync:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' && github.actor == github.repository_owner)
-    uses: activadee/opencode-shared-workflows/.github/workflows/opencode-doc-sync.yml@main
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and run open-workflows doc-sync
+        run: npx -y @activadee-ai/open-workflows doc-sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
