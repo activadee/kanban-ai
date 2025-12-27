@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install and run open-workflows label
-        run: npx -y @activadee-ai/open-workflows@latest label
+        run: npx -y @activadee-ai/open-workflows label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
