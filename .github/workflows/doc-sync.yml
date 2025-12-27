@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install and run open-workflows doc-sync
-        run: npx -y @activadee-ai/open-workflows doc-sync
+        run: npx -y @activadee-ai/open-workflows@latest doc-sync
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
