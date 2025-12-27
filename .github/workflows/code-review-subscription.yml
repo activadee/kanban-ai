@@ -22,5 +22,5 @@ jobs:
       - name: Install and run open-workflows review
         run: npx -y @activadee-ai/open-workflows review
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
