@@ -9,9 +9,9 @@ on:
       - ready_for_review
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
-  id-token: write
+  
 
 jobs:
   review:
@@ -23,4 +23,5 @@ jobs:
         run: npx -y @activadee-ai/open-workflows review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
