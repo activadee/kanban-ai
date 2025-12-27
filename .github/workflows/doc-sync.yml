@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install and run open-workflows doc-sync
         run: npx -y @activadee-ai/open-workflows doc-sync
         env:
