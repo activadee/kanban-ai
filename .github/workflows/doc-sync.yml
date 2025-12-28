@@ -1,24 +1,30 @@
 name: Doc Sync
 
 on:
-  workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened]
-
-permissions:
-  contents: write
-  pull-requests: read
+    types: [opened, synchronize]
 
 jobs:
-  doc-sync:
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && github.actor == github.repository_owner)
+  sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Install and run open-workflows doc-sync
-        run: npx -y @activadee-ai/open-workflows doc-sync
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Sync Documentation
+        run: bunx opencode-ai run --agent doc-sync "Sync documentation for PR ${{ github.event.pull_request.number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
