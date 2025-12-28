@@ -97,6 +97,7 @@ describe('Path Resolution', () => {
             expect(info).toHaveProperty('legacyExists')
             expect(info).toHaveProperty('xdgConfigHome')
             expect(info).toHaveProperty('xdgCacheHome')
+            expect(info).toHaveProperty('platform')
 
             vi.unstubAllEnvs()
         })
@@ -110,6 +111,81 @@ describe('Path Resolution', () => {
             expect(info.xdgConfigHome).toBe('/custom/config')
             expect(info.xdgCacheHome).toBe('/custom/cache')
 
+            vi.unstubAllEnvs()
+        })
+    })
+
+    describe('Windows Support', () => {
+        test('uses APPDATA for config on Windows when XDG not set', () => {
+            vi.stubEnv('XDG_CONFIG_HOME', undefined)
+            vi.stubEnv('APPDATA', 'C:\\Users\\test\\AppData\\Roaming')
+
+            // Mock platform detection
+            const originalPlatform = process.platform
+            Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+
+            const result = getConfigDir('C:\\Users\\test')
+            // On Linux, path.join normalizes to forward slashes, but the path structure is correct
+            expect(result.toLowerCase()).toContain('appdata\\roaming'.toLowerCase())
+            expect(result).toContain('kanban-ai')
+
+            // Restore platform
+            Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+            vi.unstubAllEnvs()
+        })
+
+        test('uses LOCALAPPDATA for cache on Windows when XDG not set', () => {
+            vi.stubEnv('XDG_CACHE_HOME', undefined)
+            vi.stubEnv('LOCALAPPDATA', 'C:\\Users\\test\\AppData\\Local')
+
+            // Mock platform detection
+            const originalPlatform = process.platform
+            Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+
+            const result = getCacheDir('C:\\Users\\test')
+            expect(result.toLowerCase()).toContain('appdata\\local'.toLowerCase())
+            expect(result).toContain('kanban-ai')
+
+            // Restore platform
+            Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+            vi.unstubAllEnvs()
+        })
+
+        test('falls back to AppData\\Roaming when APPDATA not set on Windows', () => {
+            vi.stubEnv('XDG_CONFIG_HOME', undefined)
+            vi.stubEnv('APPDATA', undefined)
+
+            // Mock platform detection
+            const originalPlatform = process.platform
+            Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+
+            const result = getConfigDir('C:\\Users\\test')
+            // On Linux, path.join normalizes to forward slashes, so check for both with/without separator
+            const normalizedResult = result.toLowerCase().replace(/\\/g, '/')
+            expect(normalizedResult).toContain('appdata/roaming')
+            expect(result).toContain('kanban-ai')
+
+            // Restore platform
+            Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+            vi.unstubAllEnvs()
+        })
+
+        test('falls back to AppData\\Local when LOCALAPPDATA not set on Windows', () => {
+            vi.stubEnv('XDG_CACHE_HOME', undefined)
+            vi.stubEnv('LOCALAPPDATA', undefined)
+
+            // Mock platform detection
+            const originalPlatform = process.platform
+            Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
+
+            const result = getCacheDir('C:\\Users\\test')
+            // On Linux, path.join normalizes to forward slashes, so check for both with/without separator
+            const normalizedResult = result.toLowerCase().replace(/\\/g, '/')
+            expect(normalizedResult).toContain('appdata/local')
+            expect(result).toContain('kanban-ai')
+
+            // Restore platform
+            Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
             vi.unstubAllEnvs()
         })
     })
