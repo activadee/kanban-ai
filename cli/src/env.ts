@@ -10,11 +10,15 @@ import {
     KANBANAI_GITHUB_REPO_ENV,
     KANBANAI_HOME_ENV,
     KANBANAI_NO_UPDATE_CHECK_ENV,
+    XDG_CACHE_HOME_ENV,
+    XDG_CONFIG_HOME_ENV,
 } from './constants'
+import {getCacheDir, getConfigDir} from './paths'
 
 export interface EnvOptions {
     githubRepo: string
     baseCacheDir: string
+    configDir: string
     binaryVersionOverride?: string
     noUpdateCheck: boolean
     assumeYes: boolean
@@ -22,10 +26,13 @@ export interface EnvOptions {
 }
 
 export function resolveEnvOptions(): EnvOptions {
+    // Determine home directory - prefer KANBANAI_HOME for legacy compatibility
     const homeEnv = process.env[KANBANAI_HOME_ENV] || process.env.HOME || process.env.USERPROFILE
     const home = homeEnv || os.homedir()
 
-    const baseCacheDir = path.join(home, CACHE_DIR_NAME, CACHE_SUBDIR_BINARY)
+    // Resolve XDG-compliant paths
+    const configDir = getConfigDir(home)
+    const baseCacheDir = path.join(getCacheDir(home), CACHE_SUBDIR_BINARY)
 
     const githubRepo = process.env[KANBANAI_GITHUB_REPO_ENV] || DEFAULT_GITHUB_REPO
 
@@ -38,6 +45,7 @@ export function resolveEnvOptions(): EnvOptions {
     return {
         githubRepo,
         baseCacheDir,
+        configDir,
         binaryVersionOverride,
         noUpdateCheck,
         assumeYes,

@@ -1,6 +1,8 @@
 import {join} from 'path'
 import os from 'os'
 
+// Import XDG-compliant path resolution from shared utilities
+// This ensures consistent path handling between CLI and server
 function sanitizeSegment(input: string, max = 64): string {
     const stripped = input
         .normalize('NFKD')
@@ -12,7 +14,19 @@ function sanitizeSegment(input: string, max = 64): string {
     return stripped.slice(0, max) || 'untitled'
 }
 
-const WORKTREE_ROOT = join(os.homedir(), '.kanbanAI', 'worktrees')
+// Get the XDG-compliant cache directory for worktrees
+function getWorktreesCacheDir(): string {
+    const xdgCacheHome = process.env.XDG_CACHE_HOME
+    const home = os.homedir()
+
+    if (xdgCacheHome) {
+        return join(xdgCacheHome, 'kanban-ai', 'worktrees')
+    }
+
+    return join(home, '.cache', 'kanban-ai', 'worktrees')
+}
+
+const WORKTREE_ROOT = getWorktreesCacheDir()
 
 export function getWorktreesRoot(): string {
     return WORKTREE_ROOT
