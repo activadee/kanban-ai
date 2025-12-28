@@ -236,4 +236,54 @@ describe('agents/inline runInlineTask', () => {
             kind: 'ticketEnhance',
         })
     })
+
+    it('uses structured error message when agent throws a plain object', async () => {
+        const {getAgent} = await import('../src/agents/registry')
+        const {runInlineTask} = await import('../src/agents/inline')
+        const {InlineTaskError} = await import('../src/agents/types')
+        const {z} = await import('zod')
+
+        const inline = vi.fn().mockImplementation(async () => {
+            throw {name: 'NotFoundError', data: {message: 'Directory does not exist'}}
+        })
+
+        const agent = {
+            key: 'DROID',
+            label: 'Droid',
+            defaultProfile: {},
+            profileSchema: z.any(),
+            run: vi.fn(),
+            inline,
+        }
+
+        const mockedGetAgent = getAgent as unknown as {mockReturnValue: (value: unknown) => void}
+        mockedGetAgent.mockReturnValue(agent)
+
+        await expect(
+            runInlineTask({
+                agentKey: 'DROID',
+                kind: 'prSummary',
+                input: {
+                    repositoryPath: '/tmp/repo',
+                    baseBranch: 'main',
+                    headBranch: 'feat/test',
+                },
+                profile: {},
+                context: {
+                    projectId: 'proj-1',
+                    boardId: 'board-1',
+                    repositoryPath: '/tmp/repo',
+                    baseBranch: 'main',
+                    branchName: 'feat/test',
+                    headCommit: null,
+                    agentKey: 'DROID',
+                    profileId: null,
+                },
+            }),
+        ).rejects.toMatchObject({
+            constructor: InlineTaskError,
+            code: 'INLINE_TASK_FAILED',
+            message: 'Directory does not exist',
+        })
+    })
 })

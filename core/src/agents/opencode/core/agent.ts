@@ -33,6 +33,53 @@ import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} fro
 
 const nowIso = () => new Date().toISOString()
 
+function stringifyShort(value: unknown): string {
+    try {
+        const json = JSON.stringify(value)
+        if (!json) return ''
+        return json.length > 500 ? json.slice(0, 497) + '...' : json
+    } catch {
+        return ''
+    }
+}
+
+function describeOpencodeError(err: unknown): string {
+    if (err instanceof Error) {
+        return err.message || String(err)
+    }
+    if (typeof err === 'string') {
+        const trimmed = err.trim()
+        return trimmed || 'Unknown OpenCode error'
+    }
+    if (!err || typeof err !== 'object') {
+        return 'Unknown OpenCode error'
+    }
+
+    const record = err as Record<string, unknown>
+    const message = typeof record.message === 'string' ? record.message.trim() : ''
+    if (message) return message
+
+    const data = record.data
+    if (data && typeof data === 'object') {
+        const dataMsg = (data as Record<string, unknown>).message
+        if (typeof dataMsg === 'string') {
+            const trimmed = dataMsg.trim()
+            if (trimmed) return trimmed
+        }
+    }
+
+    const json = stringifyShort(err)
+    if (json) return json
+
+    return String(err)
+}
+
+function asOpencodeError(err: unknown, fallback: string): Error {
+    const msg = describeOpencodeError(err)
+    const message = msg && msg !== '[object Object]' ? msg : fallback
+    return err === undefined ? new Error(message) : new Error(message, {cause: err})
+}
+
 export type OpencodeInstallation = {
     mode: 'remote' | 'local'
     directory: string
@@ -62,21 +109,12 @@ const RESERVED_PORTS = new Set([80, 443, 22, 25, 53, 110, 143, 993, 995, 3306, 5
  * @param port - The port number to validate
  * @returns true if valid, false otherwise
  */
-export function isValidPort(port: number | null | undefined): boolean {
-    if (port === null || port === undefined) return true // Default is allowed
-    return Number.isInteger(port) && port >= 1 && port <= 65535 && !RESERVED_PORTS.has(port)
+export function isValidPort(port: unknown): port is number {
+    return typeof port === 'number' && Number.isInteger(port) && port >= 1 && port <= 65535 && !RESERVED_PORTS.has(port)
 }
 
-/**
- * Gets the effective port to use from profile configuration.
- * @param profile - The OpenCode profile
- * @returns The port number to use (default if not specified or invalid)
- */
-export function getEffectivePort(profile: OpencodeProfile): number {
-    if (!isValidPort(profile.port)) {
-        return DEFAULT_OPENCODE_PORT
-    }
-    return profile.port ?? DEFAULT_OPENCODE_PORT
+export function getEffectivePort(settingsPort: unknown): number {
+    return isValidPort(settingsPort) ? settingsPort : DEFAULT_OPENCODE_PORT
 }
 
 export {DEFAULT_OPENCODE_PORT}
@@ -144,8 +182,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             })
         }
 
-        // Get the configured port (default to 4097 if not specified or invalid)
-        const port = getEffectivePort(profile)
+        const {ensureAppSettings} = await import('../../../settings/service')
+        const settingsPort = (await ensureAppSettings()).opencodePort
+        const port = getEffectivePort(settingsPort)
 
         // Check if we already have a server running on this port
         const existingServer = OpencodeImpl.serversByPort.get(port)
@@ -693,13 +732,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const client = (await this.createClient(profile, enhanceCtx, installation)) as OpencodeClient
         const opencode = client
 
-        const session = (await opencode.session.create({
-            query: {directory: installation.directory},
-            body: {title: enhanceCtx.cardTitle},
-            signal: input.signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })) as unknown as SessionCreateResponse
+        let session: SessionCreateResponse
+        try {
+            session = (await opencode.session.create({
+                query: {directory: installation.directory},
+                body: {title: enhanceCtx.cardTitle},
+                signal: input.signal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as SessionCreateResponse
+        } catch (err) {
+            const wrapped = asOpencodeError(err, 'OpenCode session create failed')
+            enhanceCtx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] inline ticketEnhance session create failed: ${wrapped.message}`,
+            })
+            throw wrapped
+        }
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
@@ -741,12 +791,13 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             throwOnError: true,
         })) as unknown as SessionPromptResponse
         } catch (err) {
+            const wrapped = asOpencodeError(err, 'OpenCode session prompt failed')
             enhanceCtx.emit({
                 type: 'log',
                 level: 'error',
-                message: `[opencode] inline ticketEnhance failed: ${String(err)}`,
+                message: `[opencode] inline ticketEnhance failed: ${wrapped.message}`,
             })
-            throw err
+            throw wrapped
         }
 
         const markdown = this.extractPromptMarkdown(response)
@@ -827,13 +878,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const client = (await this.createClient(profile, summaryCtx, installation)) as OpencodeClient
         const opencode = client
 
-        const session = (await opencode.session.create({
-            query: {directory: installation.directory},
-            body: {title: summaryCtx.cardTitle},
-            signal: effectiveSignal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })) as unknown as SessionCreateResponse
+        let session: SessionCreateResponse
+        try {
+            session = (await opencode.session.create({
+                query: {directory: installation.directory},
+                body: {title: summaryCtx.cardTitle},
+                signal: effectiveSignal,
+                responseStyle: 'data',
+                throwOnError: true,
+            })) as unknown as SessionCreateResponse
+        } catch (err) {
+            const wrapped = asOpencodeError(err, 'OpenCode session create failed')
+            summaryCtx.emit({
+                type: 'log',
+                level: 'error',
+                message: `[opencode] inline prSummary session create failed: ${wrapped.message}`,
+            })
+            throw wrapped
+        }
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
@@ -867,12 +929,13 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 throwOnError: true,
             })) as unknown as SessionPromptResponse
         } catch (err) {
+            const wrapped = asOpencodeError(err, 'OpenCode session prompt failed')
             summaryCtx.emit({
                 type: 'log',
                 level: 'error',
-                message: `[opencode] inline prSummary failed: ${String(err)}`,
+                message: `[opencode] inline prSummary failed: ${wrapped.message}`,
             })
-            throw err
+            throw wrapped
         }
 
         const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`
