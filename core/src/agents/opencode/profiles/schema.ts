@@ -11,7 +11,6 @@ export const OpencodeProfileSchema = z.object({
     model: z.string().optional(),
     baseUrl: z.string().nullable().optional(),
     apiKey: z.string().nullable().optional(),
-    port: z.number().int().min(1).max(65535).nullable().optional(),
     debug: z.boolean().optional(),
 })
 

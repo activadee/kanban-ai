@@ -1,0 +1,20 @@
+name: Issue Label
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Label Issue
+        run: bunx opencode-ai run --agent label "Label issue ${{ github.event.issue.number }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
