@@ -7,7 +7,7 @@ Hono, React, and Vite in a type‑safe monorepo with shared models and a realtim
 
 - Kanban board with Backlog / In Progress / Review / Done.
 - GitHub device‑flow login, issue import, and PR creation from the app.
-- Per‑task Attempts that run inside isolated git worktrees under `$HOME/.kanbanAI/worktrees/...`.
+- Per‑task Attempts that run inside isolated git worktrees under `$HOME/.cache/kanban-ai/worktrees/...`.
 - Diff viewer, commit/push, and PR helpers wired into each Attempt.
 - Agent profiles (e.g., Codex via SDK) with configurable models and sandbox settings.
 
