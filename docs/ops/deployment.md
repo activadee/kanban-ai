@@ -21,7 +21,7 @@ For small self-hosted setups, you can run the Bun-based server directly:
    This will:
 
    - Build the client and server.
-   - Copy `client/dist` into `server/static` (generated output; don’t commit it).
+   - Copy `client/dist` into `server/static` (generated output; don't commit it).
    - Generate an embedded static bundle.
    - Start a single Hono/Bun server that serves:
      - API under `/api/v1` (shim at `/api`).
@@ -62,7 +62,7 @@ If you prefer a single executable:
    The wrapper:
 
    - Resolves the correct binary for your platform (downloading if needed).
-   - Caches binaries under `~/.kanbanAI/binary` (or `KANBANAI_HOME`).
+   - Caches binaries under `~/.cache/kanban-ai/binary` (or `KANBANAI_HOME/.cache/kanban-ai/binary`).
    - Passes any arguments after `--` through to the binary.
 
 3. Configure environment:
@@ -99,19 +99,19 @@ When exposing KanbanAI on the internet:
 
 - Run the server/binary on an internal port (e.g. `127.0.0.1:3000`).
 - Put a reverse proxy in front (Nginx, Caddy, Traefik, etc.) to:
-  - Terminate TLS.
-  - Handle custom domains and HTTP/2.
-  - Optionally enforce HTTP auth or IP allowlists.
+   - Terminate TLS.
+   - Handle custom domains and HTTP/2.
+   - Optionally enforce HTTP auth or IP allowlists.
 - Ensure WebSocket upgrade is forwarded for:
-  - `/api/v1/ws`
-  - `/api/v1/ws/dashboard`
+   - `/api/v1/ws`
+   - `/api/v1/ws/dashboard`
 
 ## Backups
 
 - Include in your backup strategy:
-  - The SQLite database file (`DATABASE_URL` path).
-  - Project Git repositories (managed separately from KanbanAI).
-  - Optionally `~/.kanbanAI` if you want to preserve cached binaries and worktrees.
+   - The SQLite database file (`DATABASE_URL` path).
+   - Project Git repositories (managed separately from KanbanAI).
+   - Optionally `~/.cache/kanban-ai` if you want to preserve cached binaries and worktrees.
 
 For CLI specifics and environment options, see [CLI & binaries](ops/cli-and-binaries). For data layout, see
 [Data & storage](core/data-and-storage).

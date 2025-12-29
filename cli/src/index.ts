@@ -55,7 +55,7 @@ export async function runCli(): Promise<void> {
     );
 
     const githubApiCache = {
-        dir: path.join(path.dirname(effectiveEnv.baseCacheDir), "github-api"),
+        dir: path.join(effectiveEnv.configDir, "github-api"),
     };
 
     const explicitVersion = cliOptions.binaryVersion

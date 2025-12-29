@@ -9,8 +9,8 @@ Last updated: 2025-11-30
   - Detects your platform/architecture.
   - Resolves which KanbanAI binary version to run (using cached binaries and GitHub Releases).
   - Downloads the binary if needed and caches it under:
-    - `$KANBANAI_HOME/.kanbanAI/binary`
-    - or `~/.kanbanAI/binary` by default.
+    - `$XDG_CACHE_HOME/kanban-ai/binary`
+    - or `~/.cache/kanban-ai/binary` by default.
   - Spawns the resolved binary with any pass-through flags.
 - Typical usage:
   - `npx kanban-ai -- --help`
@@ -27,26 +27,51 @@ Last updated: 2025-11-30
 ### Environment variables
 
 - `KANBANAI_BINARY_VERSION` – equivalent to `--binary-version`.
-- `KANBANAI_HOME` – overrides the base cache directory (defaults to `$HOME` from the OS).
+- `KANBANAI_HOME` – overrides the base home directory (defaults to `$HOME` from the OS).
 - `KANBANAI_GITHUB_REPO` – overrides the GitHub repo used for releases (defaults to `activadee/kanban-ai`).
 - `KANBANAI_NO_UPDATE_CHECK` – equivalent to `--no-update-check`.
 - `KANBANAI_ASSUME_YES` / `KANBANAI_ASSUME_NO` – automate update prompts for non-interactive usage.
+- `XDG_CONFIG_HOME` – overrides the config directory (default: `~/.config/kanban-ai`).
+- `XDG_CACHE_HOME` – overrides the cache directory (default: `~/.cache/kanban-ai`).
 - For higher GitHub rate limits, the wrapper also respects:
   - `GITHUB_TOKEN` / `GH_TOKEN` – used when contacting the GitHub Releases API.
 
 ### GitHub release lookups
 
-- Release metadata fetched from the GitHub API is now cached on disk under `github-api` next to the binary cache (e.g.
-  `~/.kanbanAI/github-api` when using the defaults). Cached entries use ETags/`If-None-Match` headers, respect a 30‑minute TTL,
+- Release metadata fetched from the GitHub API is now cached on disk under `github-api` in the config directory (e.g.
+  `~/.config/kanban-ai/github-api` when using the defaults). Cached entries use ETags/`If-None-Match` headers, respect a 30‑minute TTL,
   and are refreshed transparently when the release data changes.
 - When the API returns `304 Not Modified` or requests are made within the TTL, the CLI reads the stored JSON instead of counting
   against your rate limit.
 - If a rate-limit error (`403`/`429`) occurs, the CLI logs a warning (the same message suggests providing `GITHUB_TOKEN`/`GH_TOKEN`
   for higher limits), keeps using the cached metadata if available, and continues the flow. Without cached data, it falls back to
-  resolving the release download URL through GitHub’s `releases/download` redirect, which still succeeds even when the
+  resolving the release download URL through GitHub's `releases/download` redirect, which still succeeds even when the
   API is temporarily blocked.
 - The same redirect-based fallback happens when a pinned release lookup (`--binary-version`) hits the rate limit: the CLI
   follows the download redirect for the requested version and proceeds with that asset to avoid an unnecessary failure.
+
+### Directory structure
+
+The CLI follows the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html):
+
+- **Config**: `$XDG_CONFIG_HOME/kanban-ai` (default: `~/.config/kanban-ai`)
+- **Cache**: `$XDG_CACHE_HOME/kanban-ai` (default: `~/.cache/kanban-ai`)
+- **Binary cache**: `$XDG_CACHE_HOME/kanban-ai/binary`
+- **GitHub API cache**: `$XDG_CONFIG_HOME/kanban-ai/github-api`
+
+On Windows, the CLI uses `APPDATA` for config and `LOCALAPPDATA` for cache as conventional locations.
+
+### Migration from legacy directory
+
+If you previously used KanbanAI with the legacy `.kanbanAI` directory (`~/.kanbanAI`), the CLI includes migration utilities to move your data to the new XDG-compliant locations.
+
+The migration:
+- Detects the legacy directory automatically.
+- Copies `github-api` to the new config location.
+- Copies `binary` and other cache items to the new cache location.
+- Does not delete the legacy directory (manual cleanup is required).
+
+To run migration manually or check status, use the CLI's migration commands (when available) or run with environment variables to verify paths.
 
 ## Production server entrypoint
 

@@ -7,6 +7,7 @@ vi.mock("./env", () => ({
     resolveEnvOptions: () => ({
         githubRepo: "owner/repo",
         baseCacheDir: "/tmp/kanbanai",
+        configDir: "/tmp/kanbanai-config",
         binaryVersionOverride: undefined,
         noUpdateCheck: false,
         assumeYes: false,

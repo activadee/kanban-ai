@@ -17,6 +17,7 @@ const binaryInfo: BinaryInfo = {
 const baseEnv: EnvOptions = {
     githubRepo: "owner/repo",
     baseCacheDir: "/tmp/kanbanai",
+    configDir: "/tmp/kanbanai-config",
     binaryVersionOverride: undefined,
     noUpdateCheck: false,
     assumeYes: false,
