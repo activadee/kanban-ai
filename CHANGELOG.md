@@ -1,3 +1,20 @@
+## [0.22.1](https://github.com/activadee/kanban-ai/compare/v0.22.0...v0.22.1) (2025-12-29)
+
+### Bug Fixes
+
+* **attempts:** prevent setup automation from running on follow-up attempts ([#341](https://github.com/activadee/kanban-ai/issues/341)) ([c45829f](https://github.com/activadee/kanban-ai/commit/c45829f66c8b852da53e0371da8ad65af34776f4)), closes [#340](https://github.com/activadee/kanban-ai/issues/340)
+
+### Refactors
+
+* **ci:** migrate workflows to use @activadee-ai/open-workflows package ([#337](https://github.com/activadee/kanban-ai/issues/337)) ([b75d1aa](https://github.com/activadee/kanban-ai/commit/b75d1aa29cf147d59641e5f11d9fcf0a0cca17e0)), closes [#336](https://github.com/activadee/kanban-ai/issues/336)
+* **cli:** restructure cache/config directory layout with migration support ([#339](https://github.com/activadee/kanban-ai/issues/339)) ([7597fb9](https://github.com/activadee/kanban-ai/commit/7597fb94b5b18850534c54ae2aa49236bc3b032d)), closes [#338](https://github.com/activadee/kanban-ai/issues/338)
+* Improve error handling and port config for OpenCode agent ([6eec0d7](https://github.com/activadee/kanban-ai/commit/6eec0d7c37c722b3d4cfd9bffe6821cf4f002aa9))
+
+### CI
+
+* remove permissions from job ([4312991](https://github.com/activadee/kanban-ai/commit/4312991f2ab8cfff5236d683037cdab6138d83d2))
+* workflows ([60df064](https://github.com/activadee/kanban-ai/commit/60df06419a2094f288753cf8d0c8595ac63d9bb5))
+
 ## [0.22.0](https://github.com/activadee/kanban-ai/compare/v0.21.0...v0.22.0) (2025-12-26)
 
 ### Features
