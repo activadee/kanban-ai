@@ -342,7 +342,9 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                     {failHard: !allowFailuresByStage.copy_files},
                 )
             }
-            if (automation.setupScript) {
+            // Setup automation should only run once on initial attempt creation,
+            // not on follow-up attempts (mode === 'resume')
+            if (params.mode === 'run' && automation.setupScript) {
                 await runAutomationStageInWorktree(
                     'setup',
                     automation.setupScript,
