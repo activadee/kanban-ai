@@ -98,7 +98,7 @@ describe('githubRepo.getGithubIssueStats', () => {
     beforeEach(async () => {
         const sqlite = setupDb()
         const {drizzle} = await import('drizzle-orm/better-sqlite3')
-        const schema = await import('../src/db/schema')
+        const schema = await import('../../server/src/db/schema')
         const db = drizzle(sqlite, {schema})
 
         setDbProvider({
