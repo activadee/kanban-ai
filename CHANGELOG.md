@@ -1,3 +1,18 @@
+## [0.22.2](https://github.com/activadee/kanban-ai/compare/v0.22.1...v0.22.2) (2025-12-30)
+
+### Bug Fixes
+
+* **core:** use injected db provider for app settings ([#342](https://github.com/activadee/kanban-ai/issues/342)) ([5069bba](https://github.com/activadee/kanban-ai/commit/5069bba269f411e02cd62f26f38c3277431bc67e))
+
+### Chores
+
+* cleanup ([c44c768](https://github.com/activadee/kanban-ai/commit/c44c76824696125a625217a43c83199a83583952))
+
+### Refactors
+
+* **agents/droid:** migrate to @activade/droid-sdk ([#346](https://github.com/activadee/kanban-ai/issues/346)) ([05b30b0](https://github.com/activadee/kanban-ai/commit/05b30b0962fc4969728994c7dc0091bb952b4c90)), closes [#344](https://github.com/activadee/kanban-ai/issues/344)
+* **core:** remove drizzle orm dependency and abstract database layer ([#345](https://github.com/activadee/kanban-ai/issues/345)) ([68ae75a](https://github.com/activadee/kanban-ai/commit/68ae75a518a1bb0ea76dc205903797c3ce7080bc)), closes [#343](https://github.com/activadee/kanban-ai/issues/343)
+
 ## [0.22.1](https://github.com/activadee/kanban-ai/compare/v0.22.0...v0.22.1) (2025-12-29)
 
 ### Bug Fixes
