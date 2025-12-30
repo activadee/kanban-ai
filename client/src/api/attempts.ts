@@ -4,6 +4,7 @@ import type {
     ConversationAutomationItem,
     ConversationItem,
     AttemptTodoSummary,
+    MessageImage,
 } from 'shared'
 import {SERVER_URL} from '@/lib/env'
 import {parseApiResponse} from '@/api/http'
@@ -55,7 +56,7 @@ export async function startAttemptRequest(params: {
     return parseApiResponse<Attempt>(res)
 }
 
-export async function followupAttemptRequest(attemptId: string, payload: { prompt: string; profileId?: string }) {
+export async function followupAttemptRequest(attemptId: string, payload: { prompt: string; profileId?: string; images?: MessageImage[] }) {
     const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/messages`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},

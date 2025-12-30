@@ -13,7 +13,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
 
     switch (item.type) {
         case 'message': {
-            const {role, text} = item
+            const {role, text, images} = item
             const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
             return (
                 <div className="mb-2 rounded bg-background p-2">
@@ -24,6 +24,19 @@ export function MessageRow({item}: { item: ConversationItem }) {
                             <span className="text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
                     </div>
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
+                    {images && images.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                            {images.map((img, idx) => (
+                                <div key={idx} className="relative overflow-hidden rounded border bg-muted/50">
+                                    <img
+                                        src={`data:${img.mime};base64,${img.data}`}
+                                        alt={img.name ?? 'image'}
+                                        className="max-h-64 max-w-full object-contain"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             )
         }

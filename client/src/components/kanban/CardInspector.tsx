@@ -195,6 +195,11 @@ export function CardInspector({
                                             profileId={attempt.profileId}
                                             onProfileSelect={attempt.handleProfileSelect}
                                             followupProfiles={attempt.followupProfiles}
+                                            pendingImages={attempt.pendingImages}
+                                            addImages={attempt.addImages}
+                                            removeImage={attempt.removeImage}
+                                            clearImages={attempt.clearImages}
+                                            canAddMoreImages={attempt.canAddMoreImages}
                                         />
                                     </TabsContent>
                                     <TabsContent value="processes" className="flex min-h-0 flex-1 flex-col">

@@ -9,6 +9,7 @@ import type {
     Card as TCard,
     AttemptTodoSummary,
     TicketType,
+    MessageImage,
 } from 'shared'
 import {attemptKeys, cardAttemptKeys} from '@/lib/queryClient'
 import {
@@ -22,6 +23,7 @@ import {
     useOpenAttemptEditor,
     useProjectSettings,
     useRunDevAutomation,
+    useImagePaste,
 } from '@/hooks'
 import {useAttemptEventStream} from '@/hooks/useAttemptEventStream'
 import {toast} from '@/components/ui/toast'
@@ -58,6 +60,11 @@ export type CardInspectorAttemptState = {
     setFollowup: (value: string) => void
     sendFollowup: () => Promise<void>
     sendFollowupPending: boolean
+    pendingImages: MessageImage[]
+    addImages: (files: File[]) => Promise<void>
+    removeImage: (index: number) => void
+    clearImages: () => void
+    canAddMoreImages: boolean
     startAttempt: () => Promise<void>
     retryAttempt: () => Promise<void>
     starting: boolean
@@ -166,6 +173,8 @@ export function useCardInspectorState({
     const [stopping, setStopping] = useState(false)
     const [profileId, setProfileId] = useState<string | undefined>(undefined)
     const [changesOpen, setChangesOpen] = useState(false)
+
+    const imagePaste = useImagePaste()
     const [commitOpen, setCommitOpen] = useState(false)
     const [prOpen, setPrOpen] = useState(false)
     const [mergeOpen, setMergeOpen] = useState(false)
@@ -317,6 +326,7 @@ export function useCardInspectorState({
         manualAgentRef.current = false
         manualProfilesByAgentRef.current = {}
         setProfileId(undefined)
+        imagePaste.clearImages()
     }, [card.id])
 
     useEffect(() => {
@@ -529,11 +539,21 @@ export function useCardInspectorState({
     }
 
     const sendFollowup = async () => {
-        if (!attempt || !attempt.sessionId || !followup.trim()) return
+        const hasContent = followup.trim() || imagePaste.pendingImages.length > 0
+        if (!attempt || !attempt.sessionId || !hasContent) return
         try {
-            await followupMutation.mutateAsync({attemptId: attempt.id, prompt: followup, profileId})
+            const images = imagePaste.pendingImages.length > 0 ? imagePaste.pendingImages : undefined
+            await followupMutation.mutateAsync({attemptId: attempt.id, prompt: followup, profileId, images})
+            imagePaste.clearImages()
         } catch (err) {
             console.error('Follow-up failed', err)
+        }
+    }
+
+    const handleAddImages = async (files: File[]) => {
+        const errors = await imagePaste.addImages(files)
+        for (const error of errors) {
+            toast({title: 'Image error', description: error.message, variant: 'destructive'})
         }
     }
 
@@ -640,10 +660,15 @@ export function useCardInspectorState({
             setFollowup,
             sendFollowup,
             sendFollowupPending: followupMutation.isPending,
+            pendingImages: imagePaste.pendingImages,
+            addImages: handleAddImages,
+            removeImage: imagePaste.removeImage,
+            clearImages: imagePaste.clearImages,
+            canAddMoreImages: imagePaste.canAddMore,
             startAttempt,
             starting,
-            retryAttempt: startAttempt, // Retry uses the same logic as start attempt
-            retrying: starting, // Use starting state for retrying as well
+            retryAttempt: startAttempt,
+            retrying: starting,
             stopAttempt,
             stopping,
             handleAgentSelect,
