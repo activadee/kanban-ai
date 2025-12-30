@@ -1,10 +1,8 @@
-import {and, eq, ne, or, isNull, lt} from 'drizzle-orm'
 import type {ProjectSettings} from 'shared'
-import {projectSettings} from '../../db/schema'
-import type {DbExecutor} from '../../db/with-tx'
-import {resolveDb} from '../../db/with-tx'
+import {getProjectSettingsRepo} from '../../repos/provider'
+import type {GithubIssueSyncStatus} from '../../repos/interfaces'
 
-export type GithubIssueSyncStatus = 'idle' | 'running' | 'succeeded' | 'failed'
+export type {GithubIssueSyncStatus}
 
 export const MIN_GITHUB_SYNC_INTERVAL_MINUTES = 5
 export const MAX_GITHUB_SYNC_INTERVAL_MINUTES = 1440
@@ -41,46 +39,15 @@ export function isGithubIssueSyncDue(settings: ProjectSettings, now: Date = new 
 export async function tryStartGithubIssueSync(
     projectId: string,
     now: Date = new Date(),
-    executor?: DbExecutor,
 ): Promise<boolean> {
-    const db = resolveDb(executor)
     const staleCutoff = new Date(now.getTime() - STALE_RUNNING_THRESHOLD_MINUTES * 60 * 1000)
-    const result = await db
-        .update(projectSettings)
-        .set({
-            lastGithubIssueSyncAt: now,
-            lastGithubIssueSyncStatus: 'running',
-            updatedAt: now,
-        })
-        .where(
-            and(
-                eq(projectSettings.projectId, projectId),
-                or(
-                    ne(projectSettings.lastGithubIssueSyncStatus, 'running'),
-                    isNull(projectSettings.lastGithubIssueSyncAt),
-                    lt(projectSettings.lastGithubIssueSyncAt, staleCutoff),
-                ),
-            ),
-        )
-        .run()
-    const changes = (result as any)?.changes ?? (result as any)?.rowsAffected ?? 0
-    return changes > 0
+    return getProjectSettingsRepo().tryStartGithubIssueSync(projectId, now, staleCutoff)
 }
 
 export async function completeGithubIssueSync(
     projectId: string,
     status: Exclude<GithubIssueSyncStatus, 'running'>,
     now: Date = new Date(),
-    executor?: DbExecutor,
 ): Promise<void> {
-    const db = resolveDb(executor)
-    await db
-        .update(projectSettings)
-        .set({
-            lastGithubIssueSyncAt: now,
-            lastGithubIssueSyncStatus: status,
-            updatedAt: now,
-        })
-        .where(eq(projectSettings.projectId, projectId))
-        .run()
+    return getProjectSettingsRepo().completeGithubIssueSync(projectId, status, now)
 }

@@ -1,5 +1,5 @@
 import type {CardEnhancementSuggestion} from 'shared'
-import {withTx, type DbExecutor} from '../db/with-tx'
+import {withRepoTx} from '../repos/provider'
 import {deleteCardEnhancement, listCardEnhancementsForBoard, upsertCardEnhancement} from '../projects/enhancements'
 import {getCardById} from '../projects/repo'
 
@@ -15,8 +15,8 @@ function toIso(value: Date | string | number | null | undefined) {
     return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
 }
 
-async function assertCardBelongsToBoard(cardId: string, boardId: string, executor?: DbExecutor) {
-    const card = await getCardById(cardId, executor)
+async function assertCardBelongsToBoard(cardId: string, boardId: string) {
+    const card = await getCardById(cardId)
     if (!card || card.boardId !== boardId) {
         throw new Error('Card not found')
     }
@@ -45,24 +45,17 @@ export async function setCardEnhancement(
     cardId: string,
     entry: CardEnhancementEntry,
 ): Promise<void> {
-    await withTx(async (tx) => {
-        await assertCardBelongsToBoard(cardId, boardId, tx)
-        await upsertCardEnhancement(
-            {
-                cardId,
-                status: entry.status,
-                suggestionTitle: entry.suggestion?.title ?? null,
-                suggestionDescription: entry.suggestion?.description ?? null,
-                updatedAt: new Date(),
-            },
-            tx,
-        )
+    await assertCardBelongsToBoard(cardId, boardId)
+    await upsertCardEnhancement({
+        cardId,
+        status: entry.status,
+        suggestionTitle: entry.suggestion?.title ?? null,
+        suggestionDescription: entry.suggestion?.description ?? null,
+        updatedAt: new Date(),
     })
 }
 
 export async function clearCardEnhancement(boardId: string, cardId: string): Promise<void> {
-    await withTx(async (tx) => {
-        await assertCardBelongsToBoard(cardId, boardId, tx)
-        await deleteCardEnhancement(cardId, tx)
-    })
+    await assertCardBelongsToBoard(cardId, boardId)
+    await deleteCardEnhancement(cardId)
 }

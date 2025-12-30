@@ -34,6 +34,36 @@ vi.mock('../src/db/with-tx', () => ({
     resolveDb: () => ({}),
 }))
 
+const mockRepoProvider = {
+    projects: {
+        insertCard: vi.fn(),
+        updateCard: vi.fn(),
+        getCardById: vi.fn(),
+        getMaxCardOrder: vi.fn(),
+        listColumnsForBoard: vi.fn(),
+        getColumnById: vi.fn(),
+        listCardsForColumns: vi.fn(),
+        deleteCard: vi.fn(),
+    },
+    projectSettings: {},
+    attempts: {},
+    agentProfiles: {},
+    agentProfilesGlobal: {},
+    github: {},
+    appSettings: {},
+    onboarding: {},
+    dependencies: {},
+    enhancements: {},
+    dashboard: {},
+    withTx: async (fn: any) => fn(mockRepoProvider),
+}
+
+vi.mock('../src/repos/provider', () => ({
+    getRepoProvider: () => mockRepoProvider,
+    withRepoTx: async (fn: any) => fn(mockRepoProvider),
+    getProjectsRepo: () => mockRepoProvider.projects,
+}))
+
 describe('tasks/cards ticket types', () => {
     beforeEach(() => {
         insertCard.mockReset()
@@ -43,19 +73,23 @@ describe('tasks/cards ticket types', () => {
         getMaxCardOrder.mockReset()
         reserveNextTicketKey.mockReset()
         broadcastBoard.mockReset()
+        mockRepoProvider.projects.insertCard.mockReset()
+        mockRepoProvider.projects.updateCard.mockReset()
+        mockRepoProvider.projects.getColumnById.mockReset()
+        mockRepoProvider.projects.getCardById.mockReset()
+        mockRepoProvider.projects.getMaxCardOrder.mockReset()
     })
 
     it('stores ticketType on create', async () => {
         const {createBoardCard} = await import('../src/tasks/cards.service')
-        getColumnById.mockResolvedValue({id: 'col-1', boardId: 'board-1'})
-        getMaxCardOrder.mockResolvedValue(-1)
+        mockRepoProvider.projects.getColumnById.mockResolvedValue({id: 'col-1', boardId: 'board-1'})
+        mockRepoProvider.projects.getMaxCardOrder.mockResolvedValue(-1)
         reserveNextTicketKey.mockResolvedValue({key: 'PRJ-1'})
 
         await createBoardCard('col-1', 'New card', 'desc', 'feat', {suppressBroadcast: true})
 
-        expect(insertCard).toHaveBeenCalledWith(
+        expect(mockRepoProvider.projects.insertCard).toHaveBeenCalledWith(
             expect.objectContaining({ticketType: 'feat'}),
-            expect.anything(),
         )
     })
 

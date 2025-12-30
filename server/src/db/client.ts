@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
-import { dbSchema } from 'core'
+import * as dbSchema from './schema'
 import path from 'path'
 import fs from 'fs'
 import type { ServerConfig } from '../env'
@@ -51,6 +51,7 @@ const resolveDbPath = (config: ServerConfig) => {
 
 export type DbClient = ReturnType<typeof drizzle>
 export type DbResources = { db: DbClient; sqlite: Database; path: string }
+export type DbExecutor = Pick<DbClient, 'select' | 'insert' | 'update' | 'delete' | 'transaction'>
 
 export const createDbClient = (config: ServerConfig): DbResources => {
   const dbPath = resolveDbPath(config)
@@ -67,6 +68,6 @@ export const createDbClient = (config: ServerConfig): DbResources => {
   const sqlite = new Database(dbPath, { create: true })
   sqlite.run('PRAGMA foreign_keys = ON;')
 
-  const db = drizzle(sqlite, { schema: dbSchema as any })
+  const db = drizzle<typeof dbSchema>(sqlite, { schema: dbSchema })
   return { db, sqlite, path: dbPath }
 }

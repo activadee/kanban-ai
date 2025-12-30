@@ -10,7 +10,7 @@
 ## Data & Event Flow
 
 1. **Board State APIs**
-    - `getBoardState` reads columns/cards via Drizzle ORM and lazily ensures default columns exist.
+    - `getBoardState` reads columns/cards through the Projects repository interface and lazily ensures default columns exist.
     - Mutations (`createBoardCard`, `moveBoardCard`, `updateBoardCard`, `deleteBoardCard`) emit `card.*` and
       `board.state.changed` events after writing to the database.
     - `updateBoardCard` now persists the `disableAutoCloseOnPRMerge` flag so cards can opt out of the GitHub PR auto-close workflow while still emitting the usual board/card events.

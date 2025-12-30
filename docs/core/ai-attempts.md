@@ -1,6 +1,6 @@
 # AI Attempts (agentic runs)
 
-Last updated: 2025-11-28
+Last updated: 2025-12-30
 
 ## What an Attempt is
 
@@ -10,7 +10,7 @@ Last updated: 2025-11-28
    - Associated project/board/card identifiers.
    - Git worktree path and branch information.
    - Logs and conversation history (stored as structured JSONL).
-- All Attempt data is stored in SQLite via Drizzle ORM, with types exported from the `shared` package.
+- Attempt data is stored in SQLite via Drizzle ORM (server layer). Core modules access data through abstract repository interfaces (`core/src/repos/interfaces.ts`).
 
 ## Lifecycle and events
 

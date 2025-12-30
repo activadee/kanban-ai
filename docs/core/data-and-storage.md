@@ -7,10 +7,27 @@ title: Data & storage
 KanbanAI stores state in a local SQLite database and a set of Git worktrees under your home directory. This page
 summarizes where data lives and how it is managed.
 
+## Architecture overview
+
+The data layer follows a repository pattern with clear separation between business logic and data persistence:
+
+- **core/** package (database-agnostic):
+  - Defines abstract repository interfaces in `core/src/repos/interfaces.ts`
+  - Defines shared type contracts in `core/src/db/types.ts`
+  - Core modules depend on interfaces, not concrete database implementations
+  - No direct Drizzle ORM dependency; business logic is testable in isolation
+
+- **server/** package (persistence layer):
+  - Owns Drizzle schema definitions in `server/src/db/schema/`
+  - Implements concrete repository classes in `server/src/repos/`
+  - Wires repositories into the core module via dependency injection
+  - Handles all SQLite operations through Drizzle ORM
+
 ## Database
 
 - Engine:
-   - SQLite via `bun:sqlite`, managed through Drizzle migrations.
+   - SQLite via `bun:sqlite`, managed through Drizzle ORM (server layer).
+   - Core package is database-agnostic and accesses data through repository interfaces.
 - Location:
    - Production (`bun run prod`, compiled binaries): defaults to `kanban.db` under the OS-specific data directory (e.g.
      `~/.local/share/kanbanai/kanban.db` on Linux).

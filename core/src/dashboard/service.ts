@@ -1,4 +1,3 @@
-import {and, desc, eq, gte, inArray, lt, sql} from 'drizzle-orm'
 import {DASHBOARD_METRIC_KEYS} from 'shared'
 import type {
     DashboardOverview,
@@ -12,23 +11,11 @@ import type {
     AgentStatsSummary,
     AttemptStatus,
 } from 'shared'
-import {attempts, boards, cards, columns} from '../db/schema'
-import {resolveDb} from '../db/with-tx'
+import {getDashboardRepo} from '../repos/provider'
 import {resolveTimeBounds, resolveTimeRange} from './time-range'
 import {buildDashboardInbox} from './inbox'
 import {buildProjectHealth} from './project-health'
 import {listAgents} from '../agents/registry'
-
-const ACTIVE_STATUSES: AttemptStatus[] = ['queued', 'running', 'stopping']
-const COMPLETED_STATUSES: AttemptStatus[] = ['succeeded', 'failed', 'stopped']
-
-type BoardRow = {
-    id: string
-    name: string
-    repositorySlug: string | null
-    repositoryPath: string
-    createdAt: Date | number
-}
 
 type ColumnCardCounts = {
     backlog: number
@@ -80,9 +67,11 @@ function mapActivityRow(row: {
     agent: string
     status: string
     finishedAt: Date | number | null
+    startedAt?: Date | number | null
+    createdAt?: Date | number | null
 }): DashboardAttemptActivity {
-    const startedAt: Date | number | null = (row as any).startedAt ?? null
-    const createdAt: Date | number | null = (row as any).createdAt ?? null
+    const startedAt: Date | number | null = row.startedAt ?? null
+    const createdAt: Date | number | null = row.createdAt ?? null
 
     const occurredAt = toIso(row.finishedAt) ?? new Date().toISOString()
 
@@ -157,8 +146,6 @@ function classifyColumnTitleForDashboard(title: string): keyof ColumnCardCounts 
         return 'backlog'
     }
 
-    // Fallback: treat unknown columns as in-progress so that totals remain
-    // consistent and open work is still reflected in activity scores.
     return 'inProgress'
 }
 
@@ -198,15 +185,6 @@ function mapProjectSnapshotRow(row: {
     }
 }
 
-function buildTimeRangePredicate(column: any, rangeFrom: Date | null, rangeTo: Date | null) {
-    const predicates = []
-    if (rangeFrom) predicates.push(gte(column, rangeFrom))
-    if (rangeTo) predicates.push(lt(column, rangeTo))
-    if (predicates.length === 0) return undefined
-    if (predicates.length === 1) return predicates[0]
-    return and(...predicates)
-}
-
 function buildSingleBucketSeries(
     label: string,
     value: number,
@@ -242,79 +220,23 @@ function buildSingleBucketSeries(
 }
 
 export async function getDashboardOverview(timeRange?: DashboardTimeRange): Promise<DashboardOverview> {
-    const db = resolveDb()
+    const repo = getDashboardRepo()
 
     const resolvedRange = resolveTimeRange(timeRange)
     const {from: rangeFrom, to: rangeTo} = resolveTimeBounds(resolvedRange)
     const generatedAt = new Date().toISOString()
 
-    const [{count: totalProjectsRaw = 0} = {count: 0}] = await db
-        .select({count: sql<number>`cast(count(*) as integer)`})
-        .from(boards)
+    const totalProjects = await repo.countBoards()
 
-    const attemptsTimePredicate = buildTimeRangePredicate(attempts.createdAt, rangeFrom, rangeTo)
+    const {total: attemptsInRange, succeeded: attemptsSucceededInRange} = await repo.countAttemptsInRange(rangeFrom, rangeTo)
 
-    let attemptsRangeQuery = db
-        .select({
-            total: sql<number>`cast(count(*) as integer)`,
-            succeeded: sql<number>`cast(sum(case when ${attempts.status} = 'succeeded' then 1 else 0 end) as integer)`,
-        })
-        .from(attempts)
+    const projectsWithActivityInRange = await repo.countProjectsWithActivityInRange(rangeFrom, rangeTo)
 
-    if (attemptsTimePredicate) {
-        attemptsRangeQuery = attemptsRangeQuery.where(attemptsTimePredicate)
-    }
+    const activeAttemptsCount = await repo.countActiveAttempts()
 
-    const [
-        {total: attemptsInRangeRaw = 0, succeeded: attemptsSucceededInRangeRaw = 0} = {
-            total: 0,
-            succeeded: 0,
-        },
-    ] = await attemptsRangeQuery
+    const attemptsCompleted = await repo.countCompletedAttemptsInRange(rangeFrom, rangeTo)
 
-    let projectsWithActivityQuery = db
-        .select({
-            count: sql<number>`cast(count(distinct ${attempts.boardId}) as integer)`,
-        })
-        .from(attempts)
-
-    if (attemptsTimePredicate) {
-        projectsWithActivityQuery = projectsWithActivityQuery.where(attemptsTimePredicate)
-    }
-
-    const [{count: projectsWithActivityInRangeRaw = 0} = {count: 0}] = await projectsWithActivityQuery
-
-    const attemptsCompletedTimePredicate = buildTimeRangePredicate(attempts.endedAt, rangeFrom, rangeTo)
-
-    const attemptsCompletedWhere = attemptsCompletedTimePredicate
-        ? and(inArray(attempts.status, COMPLETED_STATUSES), attemptsCompletedTimePredicate)
-        : inArray(attempts.status, COMPLETED_STATUSES)
-
-    const [{count: activeAttemptsRaw = 0} = {count: 0}] = await db
-        .select({count: sql<number>`cast(count(*) as integer)`})
-        .from(attempts)
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
-
-    const [{count: attemptsCompletedRaw = 0} = {count: 0}] = await db
-        .select({count: sql<number>`cast(count(*) as integer)`})
-        .from(attempts)
-        .where(attemptsCompletedWhere)
-
-    type ColumnCountRow = {
-        boardId: string
-        columnTitle: string
-        count: number | null
-    }
-
-    const columnCountRows = (await db
-        .select({
-            boardId: columns.boardId,
-            columnTitle: columns.title,
-            count: sql<number>`cast(count(*) as integer)`,
-        })
-        .from(columns)
-        .innerJoin(cards, eq(cards.columnId, columns.id))
-        .groupBy(columns.boardId, columns.title)) as ColumnCountRow[]
+    const columnCountRows = await repo.getColumnCardCounts()
 
     const columnCardCountsMap = new Map<string, ColumnCardCounts>()
     const openCardsMap = new Map<string, number>()
@@ -342,42 +264,14 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         openCardsTotal += openCards
     }
 
-    const activeCountsRows = await db
-        .select({
-            boardId: attempts.boardId,
-            count: sql<number>`cast(count(*) as integer)`,
-        })
-        .from(attempts)
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
-        .groupBy(attempts.boardId)
-
+    const activeCountsRows = await repo.getActiveAttemptCountsByBoard()
     const activeCountsMap = new Map<string, number>()
     for (const row of activeCountsRows) {
         if (!row.boardId) continue
         activeCountsMap.set(row.boardId, Number(row.count ?? 0))
     }
 
-    type AttemptsPerBoardRow = {
-        boardId: string | null
-        total: number | null
-        failed: number | null
-    }
-
-    let attemptsPerBoardQuery = db
-        .select({
-            boardId: attempts.boardId,
-            total: sql<number>`cast(count(*) as integer)`,
-            failed: sql<number>`cast(sum(case when ${attempts.status} = 'failed' then 1 else 0 end) as integer)`,
-        })
-        .from(attempts)
-
-    if (attemptsTimePredicate) {
-        attemptsPerBoardQuery = attemptsPerBoardQuery.where(attemptsTimePredicate)
-    }
-
-    const attemptsPerBoardRows = (await attemptsPerBoardQuery.groupBy(
-        attempts.boardId,
-    )) as AttemptsPerBoardRow[]
+    const attemptsPerBoardRows = await repo.getAttemptsPerBoardInRange(rangeFrom, rangeTo)
 
     const attemptsInRangeByBoard = new Map<string, number>()
     const failedAttemptsInRangeByBoard = new Map<string, number>()
@@ -392,62 +286,15 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
         failedAttemptsInRangeByBoard.set(boardId, failed)
     }
 
-    const activeAttemptsRows = await db
-        .select({
-            attemptId: attempts.id,
-            projectId: boards.id,
-            projectName: boards.name,
-            cardId: attempts.cardId,
-            cardTitle: cards.title,
-            ticketKey: cards.ticketKey,
-            agent: attempts.agent,
-            status: attempts.status,
-            startedAt: attempts.startedAt,
-            updatedAt: attempts.updatedAt,
-        })
-        .from(attempts)
-        .leftJoin(cards, eq(attempts.cardId, cards.id))
-        .leftJoin(boards, eq(attempts.boardId, boards.id))
-        .where(inArray(attempts.status, ACTIVE_STATUSES))
-        .orderBy(desc(sql`coalesce(${attempts.updatedAt}, ${attempts.createdAt})`))
-        .limit(200)
+    const activeAttemptsRows = await repo.getActiveAttemptRows(200)
 
     const activeAttempts = activeAttemptsRows.map(mapAttemptRow)
 
-    const recentActivityRows = await db
-        .select({
-            attemptId: attempts.id,
-            projectId: boards.id,
-            projectName: boards.name,
-            cardId: attempts.cardId,
-            cardTitle: cards.title,
-            ticketKey: cards.ticketKey,
-            agent: attempts.agent,
-            status: attempts.status,
-            finishedAt: sql<Date | null>`coalesce(${attempts.endedAt}, ${attempts.updatedAt}, ${attempts.createdAt})`,
-            startedAt: attempts.startedAt,
-            createdAt: attempts.createdAt,
-        })
-        .from(attempts)
-        .leftJoin(cards, eq(attempts.cardId, cards.id))
-        .leftJoin(boards, eq(attempts.boardId, boards.id))
-        .where(attemptsCompletedWhere)
-        .orderBy(desc(sql`coalesce(${attempts.endedAt}, ${attempts.updatedAt}, ${attempts.createdAt})`))
-        .limit(40)
+    const recentActivityRows = await repo.getRecentActivityRows(rangeFrom, rangeTo, 40)
 
     const recentAttemptActivity = recentActivityRows.map(mapActivityRow)
 
-    const boardRows = (await db
-        .select({
-            id: boards.id,
-            name: boards.name,
-            repositorySlug: boards.repositorySlug,
-            repositoryPath: boards.repositoryPath,
-            createdAt: boards.createdAt,
-        })
-        .from(boards)
-        .orderBy(desc(boards.createdAt))
-        .limit(6)) as BoardRow[]
+    const boardRows = await repo.getBoardRows(6)
 
     const projectSnapshots: DashboardProjectSnapshot[] = boardRows.map((row) => {
         const columnCardCounts = columnCardCountsMap.get(row.id) ?? createEmptyColumnCardCounts()
@@ -486,13 +333,6 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
             health,
         })
     })
-
-    const totalProjects = Number(totalProjectsRaw ?? 0)
-    const activeAttemptsCount = Number(activeAttemptsRaw ?? 0)
-    const attemptsCompleted = Number(attemptsCompletedRaw ?? 0)
-    const attemptsInRange = Number(attemptsInRangeRaw ?? 0)
-    const attemptsSucceededInRange = Number(attemptsSucceededInRangeRaw ?? 0)
-    const projectsWithActivityInRange = Number(projectsWithActivityInRangeRaw ?? 0)
 
     const successRateInRange =
         attemptsInRange > 0 ? attemptsSucceededInRange / attemptsInRange : 0
@@ -538,49 +378,11 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
     let agentStats: AgentStatsSummary[] = []
 
     if (registeredAgents.length > 0) {
-        type AgentAggregateRow = {
-            agent: string | null
-            attemptsInRange: number | null
-            succeededInRange: number | null
-            failedInRange: number | null
-            lastActivityAt: Date | null
-        }
-
-        type AgentLifetimeRow = {
-            agent: string | null
-            lastActiveAt: Date | null
-        }
-
         const agentKeys = registeredAgents.map((agent) => agent.key)
 
-        const agentPredicates = [inArray(attempts.agent, agentKeys)]
-        if (attemptsTimePredicate) {
-            agentPredicates.push(attemptsTimePredicate)
-        }
+        const agentAggregateRows = await repo.getAgentAggregates(agentKeys, rangeFrom, rangeTo)
 
-        const agentWhere =
-            agentPredicates.length === 1 ? agentPredicates[0] : and(...agentPredicates)
-
-        const agentAggregateRows = (await db
-            .select({
-                agent: attempts.agent,
-                attemptsInRange: sql<number>`cast(count(*) as integer)`,
-                succeededInRange: sql<number>`cast(sum(case when ${attempts.status} = 'succeeded' then 1 else 0 end) as integer)`,
-                failedInRange: sql<number>`cast(sum(case when ${attempts.status} = 'failed' then 1 else 0 end) as integer)`,
-                lastActivityAt: sql<Date | null>`max(${attempts.createdAt})`,
-            })
-            .from(attempts)
-            .where(agentWhere)
-            .groupBy(attempts.agent)) as AgentAggregateRow[]
-
-        const agentLifetimeRows = (await db
-            .select({
-                agent: attempts.agent,
-                lastActiveAt: sql<Date | null>`max(${attempts.createdAt})`,
-            })
-            .from(attempts)
-            .where(inArray(attempts.agent, agentKeys))
-            .groupBy(attempts.agent)) as AgentLifetimeRow[]
+        const agentLifetimeRows = await repo.getAgentLifetimeStats(agentKeys)
 
         const aggregatesByAgent = new Map<
             string,
@@ -621,7 +423,7 @@ export async function getDashboardOverview(timeRange?: DashboardTimeRange): Prom
                 const aggregate = aggregatesByAgent.get(agent.key)
                 const attemptsInRangeForAgent = aggregate?.attemptsInRange ?? 0
                 const succeededInRangeForAgent = aggregate?.succeededInRange ?? 0
-                 const failedInRangeForAgent = aggregate?.failedInRange ?? 0
+                const failedInRangeForAgent = aggregate?.failedInRange ?? 0
 
                 const successRateInRangeForAgent =
                     attemptsInRangeForAgent > 0

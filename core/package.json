@@ -27,7 +27,6 @@
   "dependencies": {
     "@activade/droid-sdk": "^0.0.2",
     "@openai/codex-sdk": "^0.77.0",
-    "drizzle-orm": "^0.45.0",
     "@opencode-ai/sdk": "^1.0.129",
     "shared": "workspace:*",
     "simple-git": "^3.28.0",

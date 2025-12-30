@@ -1,137 +1,88 @@
-import {asc, desc, eq, inArray, sql} from 'drizzle-orm'
-import {boards, cards, columns, type Board, type Card, type Column} from '../db/schema'
-import type {TicketType} from 'shared'
-import type {DbExecutor} from '../db/with-tx'
-import {resolveDb} from '../db/with-tx'
+import {getProjectsRepo} from '../repos/provider'
+import type {
+    BoardRow,
+    BoardInsert,
+    ColumnRow,
+    ColumnInsert,
+    CardRow,
+    CardInsert,
+} from '../db/types'
+import type {CardWithColumnBoard, BoardUpdate, ColumnUpdate, CardUpdate} from '../repos/interfaces'
 
-export type BoardInsert = typeof boards.$inferInsert
-export type BoardUpdate = Partial<typeof boards.$inferInsert>
-export type ColumnInsert = typeof columns.$inferInsert
-export type CardInsert = typeof cards.$inferInsert
-export type CardUpdate = Partial<typeof cards.$inferInsert> & { ticketType?: TicketType | null }
+export type {BoardInsert, BoardUpdate, ColumnInsert, CardInsert, CardUpdate, CardWithColumnBoard}
 
-export async function listBoards(executor?: DbExecutor): Promise<Board[]> {
-    const database = resolveDb(executor)
-    return database.select().from(boards).orderBy(desc(boards.createdAt))
+export async function listBoards(): Promise<BoardRow[]> {
+    return getProjectsRepo().listBoards()
 }
 
-export async function getBoardById(id: string, executor?: DbExecutor): Promise<Board | null> {
-    const database = resolveDb(executor)
-    const [row] = await database.select().from(boards).where(eq(boards.id, id)).limit(1)
-    return row ?? null
+export async function getBoardById(id: string): Promise<BoardRow | null> {
+    return getProjectsRepo().getBoardById(id)
 }
 
-export async function listBoardIds(executor?: DbExecutor): Promise<string[]> {
-    const database = resolveDb(executor)
-    const rows = await database.select({id: boards.id}).from(boards)
-    return (rows as Array<{ id: string }>).map((row) => row.id)
+export async function listBoardIds(): Promise<string[]> {
+    return getProjectsRepo().listBoardIds()
 }
 
-export async function getRepositoryPath(boardId: string, executor?: DbExecutor): Promise<string | null> {
-    const database = resolveDb(executor)
-    const [row] = await database.select({path: boards.repositoryPath}).from(boards).where(eq(boards.id, boardId)).limit(1)
-    return row?.path ?? null
+export async function getRepositoryPath(boardId: string): Promise<string | null> {
+    return getProjectsRepo().getRepositoryPath(boardId)
 }
 
-export async function insertBoard(values: BoardInsert, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.insert(boards).values(values).run()
+export async function insertBoard(values: BoardInsert): Promise<void> {
+    return getProjectsRepo().insertBoard(values)
 }
 
-export async function updateBoard(id: string, patch: BoardUpdate, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.update(boards).set(patch).where(eq(boards.id, id)).run()
+export async function updateBoard(id: string, patch: BoardUpdate): Promise<void> {
+    return getProjectsRepo().updateBoard(id, patch)
 }
 
-export async function deleteBoard(id: string, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.delete(boards).where(eq(boards.id, id)).run()
+export async function deleteBoard(id: string): Promise<void> {
+    return getProjectsRepo().deleteBoard(id)
 }
 
-export async function listColumnsForBoard(boardId: string, executor?: DbExecutor): Promise<Column[]> {
-    const database = resolveDb(executor)
-    return database.select().from(columns).where(eq(columns.boardId, boardId)).orderBy(asc(columns.order))
+export async function listColumnsForBoard(boardId: string): Promise<ColumnRow[]> {
+    return getProjectsRepo().listColumnsForBoard(boardId)
 }
 
-export async function getColumnById(columnId: string, executor?: DbExecutor): Promise<Column | null> {
-    const database = resolveDb(executor)
-    const [row] = await database.select().from(columns).where(eq(columns.id, columnId)).limit(1)
-    return row ?? null
+export async function getColumnById(columnId: string): Promise<ColumnRow | null> {
+    return getProjectsRepo().getColumnById(columnId)
 }
 
-export async function insertColumn(values: ColumnInsert, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.insert(columns).values(values).run()
+export async function insertColumn(values: ColumnInsert): Promise<void> {
+    return getProjectsRepo().insertColumn(values)
 }
 
-export async function updateColumn(columnId: string, patch: Partial<typeof columns.$inferInsert>, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.update(columns).set(patch).where(eq(columns.id, columnId)).run()
+export async function updateColumn(columnId: string, patch: ColumnUpdate): Promise<void> {
+    return getProjectsRepo().updateColumn(columnId, patch)
 }
 
-export async function listCardsForColumns(columnIds: string[], executor?: DbExecutor): Promise<Card[]> {
-    if (columnIds.length === 0) return []
-    const database = resolveDb(executor)
-    return database.select().from(cards).where(inArray(cards.columnId, columnIds)).orderBy(asc(cards.order))
+export async function listCardsForColumns(columnIds: string[]): Promise<CardRow[]> {
+    return getProjectsRepo().listCardsForColumns(columnIds)
 }
 
-export async function listCardsForBoard(boardId: string, executor?: DbExecutor): Promise<Card[]> {
-    const database = resolveDb(executor)
-    return database.select().from(cards).where(eq(cards.boardId, boardId)).orderBy(asc(cards.createdAt))
+export async function listCardsForBoard(boardId: string): Promise<CardRow[]> {
+    return getProjectsRepo().listCardsForBoard(boardId)
 }
 
-export async function getCardById(cardId: string, executor?: DbExecutor): Promise<Card | null> {
-    const database = resolveDb(executor)
-    const [row] = await database.select().from(cards).where(eq(cards.id, cardId)).limit(1)
-    return row ?? null
+export async function getCardById(cardId: string): Promise<CardRow | null> {
+    return getProjectsRepo().getCardById(cardId)
 }
 
-export async function insertCard(values: CardInsert, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.insert(cards).values(values).run()
+export async function insertCard(values: CardInsert): Promise<void> {
+    return getProjectsRepo().insertCard(values)
 }
 
-export async function updateCard(cardId: string, patch: CardUpdate, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.update(cards).set(patch).where(eq(cards.id, cardId)).run()
+export async function updateCard(cardId: string, patch: CardUpdate): Promise<void> {
+    return getProjectsRepo().updateCard(cardId, patch)
 }
 
-export async function deleteCard(cardId: string, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await database.delete(cards).where(eq(cards.id, cardId)).run()
+export async function deleteCard(cardId: string): Promise<void> {
+    return getProjectsRepo().deleteCard(cardId)
 }
 
-export async function getMaxCardOrder(columnId: string, executor?: DbExecutor): Promise<number> {
-    const database = resolveDb(executor)
-    const [row] = await database
-        .select({max: sql<number>`coalesce(max(${cards.order}), -1)`})
-        .from(cards)
-        .where(eq(cards.columnId, columnId))
-    return row?.max ?? -1
+export async function getMaxCardOrder(columnId: string): Promise<number> {
+    return getProjectsRepo().getMaxCardOrder(columnId)
 }
 
-export type CardWithColumnBoard = {
-    id: string
-    ticketKey: string | null
-    boardId: string | null
-    columnId: string
-    columnBoardId: string | null
-    createdAt: Date | number | string
-}
-
-export async function listCardsWithColumn(boardId: string, executor?: DbExecutor): Promise<CardWithColumnBoard[]> {
-    const database = resolveDb(executor)
-    return database
-        .select({
-            id: cards.id,
-            ticketKey: cards.ticketKey,
-            boardId: cards.boardId,
-            columnId: cards.columnId,
-            columnBoardId: columns.boardId,
-            createdAt: cards.createdAt,
-        })
-        .from(cards)
-        .innerJoin(columns, eq(cards.columnId, columns.id))
-        .where(eq(columns.boardId, boardId))
-        .orderBy(asc(cards.createdAt))
+export async function listCardsWithColumn(boardId: string): Promise<CardWithColumnBoard[]> {
+    return getProjectsRepo().listCardsWithColumn(boardId)
 }

@@ -1,10 +1,10 @@
 import {fetchRepoIssues} from './api'
-import {projectTickets, projectsRepo, githubRepo, withTx} from 'core'
+import {projectTickets, projectsRepo, githubRepo, withRepoTx} from 'core'
 import type {AppEventBus} from '../events/bus'
 import {log} from '../log'
 
-const {listColumnsForBoard, listCardsForColumns, insertCard, updateCard, getBoardById, getCardById} = projectsRepo
-const {findGithubIssueMapping, insertGithubIssueMapping, updateGithubIssueMapping} = githubRepo
+const {listColumnsForBoard, listCardsForColumns, getBoardById, getCardById} = projectsRepo
+const {findGithubIssueMapping} = githubRepo
 
 export type ImportIssuesParams = {
     boardId: string
@@ -19,8 +19,8 @@ export type ImportIssuesResult = {
     skipped: number
 }
 
-async function ensureBacklogColumn(boardId: string, executor?: Parameters<typeof listColumnsForBoard>[1]) {
-    const columns = await listColumnsForBoard(boardId, executor)
+async function ensureBacklogColumn(boardId: string) {
+    const columns = await listColumnsForBoard(boardId)
     if (!columns.length) throw new Error('Board has no columns')
     return columns[0]!.id
 }
@@ -65,9 +65,9 @@ export async function importGithubIssues(
         })
     }
 
-    await withTx(async (tx) => {
+    await withRepoTx(async (provider) => {
         for (const issue of issues) {
-            const mapping = await findGithubIssueMapping(params.boardId, params.owner, params.repo, issue.number, tx)
+            const mapping = await findGithubIssueMapping(params.boardId, params.owner, params.repo, issue.number)
 
             if (!mapping) {
                 if (baseLogContext) {
@@ -81,29 +81,26 @@ export async function importGithubIssues(
                     })
                 }
 
-                const existingCards = await listCardsForColumns([backlogColumnId], tx)
+                const existingCards = await listCardsForColumns([backlogColumnId])
                 const nextOrder = existingCards.length
                 const cardId = `card-${crypto.randomUUID()}`
                 let ticketKey: string | null = null
 
                 for (let attempt = 0; attempt < 3; attempt++) {
                     try {
-                        const {key} = await projectTickets.reserveNextTicketKey(tx, params.boardId, now)
+                        const {key} = await projectTickets.reserveNextTicketKey(params.boardId, now)
                         ticketKey = key
-                        await insertCard(
-                            {
-                                id: cardId,
-                                title: issue.title,
-                                description: issue.body ?? null,
-                                order: nextOrder,
-                                columnId: backlogColumnId,
-                                boardId: params.boardId,
-                                ticketKey: key,
-                                createdAt: now,
-                                updatedAt: now,
-                            },
-                            tx,
-                        )
+                        await provider.projects.insertCard({
+                            id: cardId,
+                            title: issue.title,
+                            description: issue.body ?? null,
+                            order: nextOrder,
+                            columnId: backlogColumnId,
+                            boardId: params.boardId,
+                            ticketKey: key,
+                            createdAt: now,
+                            updatedAt: now,
+                        })
                         break
                     } catch (error) {
                         if (projectTickets.isUniqueTicketKeyError(error) && attempt < 2) continue
@@ -111,24 +108,21 @@ export async function importGithubIssues(
                     }
                 }
 
-                await insertGithubIssueMapping(
-                    {
-                        id: `ghi-${crypto.randomUUID()}`,
-                        boardId: params.boardId,
-                        cardId,
-                        owner: params.owner,
-                        repo: params.repo,
-                        direction: 'imported',
-                        issueId: String(issue.id),
-                        issueNumber: issue.number,
-                        titleSnapshot: issue.title,
-                        url: issue.html_url,
-                        state: issue.state,
-                        createdAt: now,
-                        updatedAt: now,
-                    },
-                    tx,
-                )
+                await provider.github.insertGithubIssueMapping({
+                    id: `ghi-${crypto.randomUUID()}`,
+                    boardId: params.boardId,
+                    cardId,
+                    owner: params.owner,
+                    repo: params.repo,
+                    direction: 'imported',
+                    issueId: String(issue.id),
+                    issueNumber: issue.number,
+                    titleSnapshot: issue.title,
+                    url: issue.html_url,
+                    state: issue.state,
+                    createdAt: now,
+                    updatedAt: now,
+                })
 
                 if (baseLogContext) {
                     log.info('github:sync', `Synced issue as ${ticketKey ?? 'unknown'} in ${board.name}`, {
@@ -143,10 +137,9 @@ export async function importGithubIssues(
             } else {
                 let didUpdate = false
                 if (mapping.titleSnapshot !== issue.title || mapping.state !== issue.state) {
-                    await updateGithubIssueMapping(
+                    await provider.github.updateGithubIssueMapping(
                         mapping.id,
                         {titleSnapshot: issue.title, state: issue.state, updatedAt: now},
-                        tx,
                     )
                     didUpdate = true
                 }
@@ -162,7 +155,7 @@ export async function importGithubIssues(
                     })
                 }
 
-                await updateCard(
+                await provider.projects.updateCard(
                     mapping.cardId,
                     {
                         title: issue.title,
@@ -170,12 +163,11 @@ export async function importGithubIssues(
                         boardId: params.boardId,
                         updatedAt: now,
                     },
-                    tx,
                 )
 
                 if (baseLogContext) {
                     // Best-effort: fetch ticket key for logging
-                    const card = await getCardById(mapping.cardId, tx)
+                    const card = await getCardById(mapping.cardId)
                     const ticketKey = card?.ticketKey ?? null
                     log.info('github:sync', `Synced issue as ${ticketKey ?? 'unknown'} in ${board.name}`, {
                         ...baseLogContext,

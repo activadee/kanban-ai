@@ -1,130 +1,73 @@
-import {and, asc, desc, eq, sql} from 'drizzle-orm'
-import {
-    attempts,
-    attemptLogs,
-    conversationItems,
-    attemptTodos,
-    type Attempt,
-    type AttemptLog,
-    type ConversationItemRow,
-    type AttemptTodoRow,
-} from '../db/schema'
-import type {DbExecutor} from '../db/with-tx'
-import {resolveDb} from '../db/with-tx'
+import {getAttemptsRepo} from '../repos/provider'
+import type {
+    AttemptRow,
+    AttemptInsert,
+    AttemptLogRow,
+    AttemptLogInsert,
+    ConversationItemRow,
+    ConversationItemInsert,
+    AttemptTodoRow,
+} from '../db/types'
+import type {AttemptUpdate} from '../repos/interfaces'
 
-export type AttemptInsert = typeof attempts.$inferInsert
-export type AttemptUpdate = Partial<typeof attempts.$inferInsert>
-export type AttemptLogInsert = typeof attemptLogs.$inferInsert
-export type ConversationItemInsert = typeof conversationItems.$inferInsert
-export type AttemptTodoInsert = typeof attemptTodos.$inferInsert
+export type {AttemptInsert, AttemptUpdate, AttemptLogInsert, ConversationItemInsert}
+export type AttemptTodoInsert = {attemptId: string; todosJson: string}
 
-export async function getAttemptById(id: string, executor?: DbExecutor): Promise<Attempt | null> {
-    const database = resolveDb(executor)
-    const [row] = await (database as any).select().from(attempts).where(eq(attempts.id, id)).limit(1)
-    return row ?? null
+export async function getAttemptById(id: string): Promise<AttemptRow | null> {
+    return getAttemptsRepo().getAttemptById(id)
 }
 
-export async function getAttemptForCard(boardId: string, cardId: string, executor?: DbExecutor): Promise<Attempt | null> {
-    const database = resolveDb(executor)
-    const [row] = await (database as any)
-        .select()
-        .from(attempts)
-        .where(and(eq(attempts.boardId, boardId), eq(attempts.cardId, cardId)))
-        .orderBy(desc(attempts.createdAt))
-        .limit(1)
-    return row ?? null
+export async function getAttemptForCard(boardId: string, cardId: string): Promise<AttemptRow | null> {
+    return getAttemptsRepo().getAttemptForCard(boardId, cardId)
 }
 
-export async function insertAttempt(values: AttemptInsert, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await (database as any).insert(attempts).values(values).run()
+export async function insertAttempt(values: AttemptInsert): Promise<void> {
+    return getAttemptsRepo().insertAttempt(values)
 }
 
-export async function updateAttempt(id: string, patch: AttemptUpdate, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await (database as any).update(attempts).set(patch).where(eq(attempts.id, id)).run()
+export async function updateAttempt(id: string, patch: AttemptUpdate): Promise<void> {
+    return getAttemptsRepo().updateAttempt(id, patch)
 }
 
-export async function listAttemptLogs(attemptId: string, executor?: DbExecutor): Promise<AttemptLog[]> {
-    const database = resolveDb(executor)
-    return (database as any).select().from(attemptLogs).where(eq(attemptLogs.attemptId, attemptId)).orderBy(asc(attemptLogs.ts))
+export async function listAttemptLogs(attemptId: string): Promise<AttemptLogRow[]> {
+    return getAttemptsRepo().listAttemptLogs(attemptId)
 }
 
-export async function insertAttemptLog(values: AttemptLogInsert, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await (database as any).insert(attemptLogs).values(values).run()
+export async function insertAttemptLog(values: AttemptLogInsert): Promise<void> {
+    return getAttemptsRepo().insertAttemptLog(values)
 }
 
-export async function listConversationItems(attemptId: string, executor?: DbExecutor): Promise<ConversationItemRow[]> {
-    const database = resolveDb(executor)
-    return (database as any)
-        .select()
-        .from(conversationItems)
-        .where(eq(conversationItems.attemptId, attemptId))
-        .orderBy(asc(conversationItems.seq), asc(conversationItems.ts))
+export async function listConversationItems(attemptId: string): Promise<ConversationItemRow[]> {
+    return getAttemptsRepo().listConversationItems(attemptId)
 }
 
 export async function listConversationItemsDescending(
     attemptId: string,
     limit: number,
-    executor?: DbExecutor,
-): Promise<Array<{ itemJson: string }>> {
-    const database = resolveDb(executor)
-    return (database as any)
-        .select({itemJson: conversationItems.itemJson})
-        .from(conversationItems)
-        .where(eq(conversationItems.attemptId, attemptId))
-        .orderBy(desc(conversationItems.seq), desc(conversationItems.ts))
-        .limit(limit)
+): Promise<Array<{itemJson: string}>> {
+    return getAttemptsRepo().listConversationItemsDescending(attemptId, limit)
 }
 
-export async function insertConversationItem(values: ConversationItemInsert, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    await (database as any).insert(conversationItems).values(values).run()
+export async function insertConversationItem(values: ConversationItemInsert): Promise<void> {
+    return getAttemptsRepo().insertConversationItem(values)
 }
 
-export async function getNextConversationSeq(attemptId: string, executor?: DbExecutor): Promise<number> {
-    const database = resolveDb(executor)
-    const [row] = await (database as any)
-        .select({maxSeq: sql<number>`coalesce(max(${conversationItems.seq}), 0)`})
-        .from(conversationItems)
-        .where(eq(conversationItems.attemptId, attemptId))
-    return (row?.maxSeq ?? 0) + 1
+export async function getNextConversationSeq(attemptId: string): Promise<number> {
+    return getAttemptsRepo().getNextConversationSeq(attemptId)
 }
 
-export async function getAttemptBoardId(attemptId: string, executor?: DbExecutor): Promise<string | null> {
-    const database = resolveDb(executor)
-    const [row] = await (database as any).select({boardId: attempts.boardId}).from(attempts).where(eq(attempts.id, attemptId)).limit(1)
-    return row?.boardId ?? null
+export async function getAttemptBoardId(attemptId: string): Promise<string | null> {
+    return getAttemptsRepo().getAttemptBoardId(attemptId)
 }
 
-export async function listAttemptsForBoard(boardId: string, executor?: DbExecutor): Promise<Attempt[]> {
-    const database = resolveDb(executor)
-    return (database as any).select().from(attempts).where(eq(attempts.boardId, boardId)).orderBy(asc(attempts.createdAt))
+export async function listAttemptsForBoard(boardId: string): Promise<AttemptRow[]> {
+    return getAttemptsRepo().listAttemptsForBoard(boardId)
 }
 
-export async function upsertAttemptTodos(attemptId: string, todosJson: string, executor?: DbExecutor): Promise<void> {
-    const database = resolveDb(executor)
-    const now = new Date()
-    await (database as any)
-        .insert(attemptTodos)
-        .values({attemptId, todosJson, updatedAt: now})
-        .onConflictDoUpdate({
-            target: attemptTodos.attemptId,
-            set: {
-                todosJson,
-                updatedAt: now,
-            },
-        })
-        .run()
+export async function upsertAttemptTodos(attemptId: string, todosJson: string): Promise<void> {
+    return getAttemptsRepo().upsertAttemptTodos(attemptId, todosJson)
 }
 
-export async function getAttemptTodos(attemptId: string, executor?: DbExecutor): Promise<AttemptTodoRow | null> {
-    const database = resolveDb(executor)
-    const [row] = await (database as any)
-        .select()
-        .from(attemptTodos)
-        .where(eq(attemptTodos.attemptId, attemptId))
-        .limit(1)
-    return row ?? null
+export async function getAttemptTodos(attemptId: string): Promise<AttemptTodoRow | null> {
+    return getAttemptsRepo().getAttemptTodos(attemptId)
 }
