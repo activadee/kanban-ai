@@ -1,6 +1,6 @@
 # Projects & repositories
 
-Last updated: 2025-11-28
+Last updated: 2025-12-30
 
 ## What a project is
 
@@ -8,7 +8,7 @@ Last updated: 2025-11-28
   - One kanban board (Backlog → In Progress → Review → Done).
   - Attempts (agent runs) tied to cards on that board.
   - Project-scoped settings, agent profiles, and GitHub integration.
-- On the backend, project and board data live in SQLite via Drizzle. The Projects and Tasks modules emit events
+- On the backend, project and board data live in SQLite. The server layer uses Drizzle ORM for persistence, while core modules access data through abstract repository interfaces (`core/src/repos/interfaces.ts`). The Projects and Tasks modules emit events
   (`project.*`, `board.state.changed`, `attempt.*`) so other services and the UI can react without tight coupling.
 
 ## Creating projects
@@ -18,15 +18,15 @@ Last updated: 2025-11-28
 - The project creation flow lets you point KanbanAI at an existing Git repository on disk.
 - The server exposes a filesystem API:
   - `GET /fs/git-repos?path=/optional/base/path`
-  - Backed by the Filesystem module’s `discoverGitRepositories` helper in `core`, which returns
+  - Backed by the Filesystem module's `discoverGitRepositories` helper in `core`, which returns
     `GitRepositoryEntry { name, path }` records.
-- The client uses this endpoint to implement repository discovery in the “create project” dialog:
+- The client uses this endpoint to implement repository discovery in the "create project" dialog:
   - You can browse or search for Git repositories.
   - Selecting one wires its `repositoryPath` into the new project.
 
 ### Blank projects (initialize a repo)
 
-- You can also create a “blank” project, choosing a directory where KanbanAI will initialize a new Git repository.
+- You can also create a "blank" project, choosing a directory where KanbanAI will initialize a new Git repository.
 - The Projects + Git modules:
   - Ensure the target directory exists.
   - Initialize a Git repository if needed.
@@ -58,7 +58,7 @@ that repository:
   - Optionally select a dedicated inline agent profile (per agent) used only for inline requests.
   - Define per-inline-agent profile mappings when you want different profiles for workflows like ticket enhancement,
     PR summary, or PR review. The mapping is a **partial** record keyed by inline kind (`ticketEnhance`, `prSummary`, `prReview`);
-    omit keys to fall back to the project’s inline/default profile, and use `null` to clear an override.
+    omit keys to fall back to the project's inline/default profile, and use `null` to clear an override.
 - **Automation flags**
   - `autoCommitOnFinish` – when enabled, successful Attempts trigger `attempt.autocommit.requested`, which runs an
     auto-commit against the Attempt worktree.
@@ -87,7 +87,7 @@ that repository:
     / `lastGithubIssueSyncStatus` timestamps, and logs each run with the `github:sync` scope (see
     `docs/core/github-integration.md`).
 
-Project settings are available in the UI under each project’s **Settings** tab and surfaced via the Projects module’s
+Project settings are available in the UI under each project's **Settings** tab and surfaced via the Projects module's
 settings endpoints.
 
 ## APIs & types
@@ -99,7 +99,7 @@ Project-related APIs are rooted under `/api/v1`:
 - `GET /projects/:projectId` – fetch a project and its board metadata.
 - `GET /projects/:projectId/settings` – load per-project settings (ensuring defaults).
 - `PATCH /projects/:projectId/settings` – update project settings (base branch, remote, defaults, inline agent/profile, partial `inlineAgentProfileMapping` for ticket enhancement/PR summary/PR review, automation flags, the failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and the GitHub issue toggle `githubIssueAutoCreateEnabled`). Unspecified mapping keys keep existing/fallback behavior.
-- `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card’s title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
+- `POST /projects/:projectId/tickets/enhance` – ask the configured agent to rewrite a card's title/description. Accepts `{title, description?, agent?, profileId?}` and returns `{ticket}` with the enhanced copy or RFC 7807 errors when enhancement fails.
 - `GET /projects/:projectId/github/origin` – inspect GitHub origin information for the project repository.
 
 Types for project payloads and filesystem responses (such as `GitRepositoryEntry`) are exported from the `shared` package

@@ -10,10 +10,12 @@ existing layering between `core/` and `server/`.
 ## Architecture recap
 
 - `core/`:
-  - Business logic and data access (Drizzle schema, services, event types).
-  - No framework or runtime-specific code.
+  - Business logic, abstract repository interfaces, and data access contracts.
+  - Defines repository interfaces in `core/src/repos/interfaces.ts` and type definitions in `core/src/db/types.ts`.
+  - No framework or runtime-specific code; database-agnostic.
 - `server/`:
   - Hono app, Bun entrypoints, HTTP/WebSocket routes, adapters for core services.
+  - Owns Drizzle schema definitions in `server/src/db/schema/` and implements concrete repositories in `server/src/repos/`.
   - Event bus wiring and module-level READMEs (`server/src/*/README.md`) describing each domain.
 - `client/`:
   - React + Vite UI that talks to the API + WebSockets and uses shared types from `shared/`.
