@@ -5,8 +5,491 @@ import { DASHBOARD_METRIC_KEYS } from "shared";
 
 import { resolveTimeRange } from "../src/dashboard/time-range";
 import { setDbProvider } from "../src/db/provider";
+import { setRepoProvider } from "../src/repos/provider";
 import type { Agent } from "../src/agents/types";
 import { registerAgent, __resetAgentRegistryForTests } from "../src/agents/registry";
+import type {
+    RepoProvider,
+    DashboardRepo,
+    AttemptsRepo,
+    DashboardColumnCountRow,
+    DashboardActiveCountRow,
+    DashboardAttemptsPerBoardRow,
+    DashboardActiveAttemptRow,
+    DashboardRecentActivityRow,
+    DashboardBoardRow,
+    DashboardAgentAggregateRow,
+    DashboardAgentLifetimeRow,
+    DashboardAttemptRowForInbox,
+} from "../src/repos/interfaces";
+
+const ACTIVE_STATUSES = ['queued', 'running', 'stopping'];
+const COMPLETED_STATUSES = ['succeeded', 'failed', 'stopped'];
+
+function createMockDashboardRepo(sqlite: ReturnType<typeof import("better-sqlite3")["default"]>): DashboardRepo {
+    return {
+        async countBoards(): Promise<number> {
+            const row = sqlite.prepare('SELECT count(*) as count FROM boards').get() as { count: number };
+            return row?.count ?? 0;
+        },
+
+        async countAttemptsInRange(
+            rangeFrom: Date | null,
+            rangeTo: Date | null,
+        ): Promise<{ total: number; succeeded: number }> {
+            let sql = `SELECT count(*) as total, sum(case when status = 'succeeded' then 1 else 0 end) as succeeded FROM attempts`;
+            const conditions: string[] = [];
+            const params: number[] = [];
+            
+            if (rangeFrom) {
+                conditions.push('created_at >= ?');
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                conditions.push('created_at < ?');
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            if (conditions.length > 0) {
+                sql += ' WHERE ' + conditions.join(' AND ');
+            }
+            
+            const row = sqlite.prepare(sql).get(...params) as { total: number; succeeded: number };
+            return { total: row?.total ?? 0, succeeded: row?.succeeded ?? 0 };
+        },
+
+        async countProjectsWithActivityInRange(rangeFrom: Date | null, rangeTo: Date | null): Promise<number> {
+            let sql = 'SELECT count(distinct board_id) as count FROM attempts';
+            const conditions: string[] = [];
+            const params: number[] = [];
+            
+            if (rangeFrom) {
+                conditions.push('created_at >= ?');
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                conditions.push('created_at < ?');
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            if (conditions.length > 0) {
+                sql += ' WHERE ' + conditions.join(' AND ');
+            }
+            
+            const row = sqlite.prepare(sql).get(...params) as { count: number };
+            return row?.count ?? 0;
+        },
+
+        async countActiveAttempts(): Promise<number> {
+            const placeholders = ACTIVE_STATUSES.map(() => '?').join(', ');
+            const row = sqlite.prepare(`SELECT count(*) as count FROM attempts WHERE status IN (${placeholders})`).get(...ACTIVE_STATUSES) as { count: number };
+            return row?.count ?? 0;
+        },
+
+        async countCompletedAttemptsInRange(rangeFrom: Date | null, rangeTo: Date | null): Promise<number> {
+            const placeholders = COMPLETED_STATUSES.map(() => '?').join(', ');
+            let sql = `SELECT count(*) as count FROM attempts WHERE status IN (${placeholders})`;
+            const params: (string | number)[] = [...COMPLETED_STATUSES];
+            
+            if (rangeFrom) {
+                sql += ' AND ended_at >= ?';
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                sql += ' AND ended_at < ?';
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            const row = sqlite.prepare(sql).get(...params) as { count: number };
+            return row?.count ?? 0;
+        },
+
+        async getColumnCardCounts(): Promise<DashboardColumnCountRow[]> {
+            const rows = sqlite.prepare(`
+                SELECT columns.board_id as boardId, columns.title as columnTitle, count(*) as count
+                FROM columns
+                INNER JOIN cards ON cards.column_id = columns.id
+                GROUP BY columns.board_id, columns.title
+            `).all() as Array<{ boardId: string; columnTitle: string; count: number }>;
+            
+            return rows.map((row) => ({
+                boardId: row.boardId,
+                columnTitle: row.columnTitle,
+                count: row.count,
+            }));
+        },
+
+        async getActiveAttemptCountsByBoard(): Promise<DashboardActiveCountRow[]> {
+            const placeholders = ACTIVE_STATUSES.map(() => '?').join(', ');
+            const rows = sqlite.prepare(`
+                SELECT board_id as boardId, count(*) as count
+                FROM attempts
+                WHERE status IN (${placeholders})
+                GROUP BY board_id
+            `).all(...ACTIVE_STATUSES) as Array<{ boardId: string; count: number }>;
+            
+            return rows.map((row) => ({ boardId: row.boardId, count: row.count ?? 0 }));
+        },
+
+        async getAttemptsPerBoardInRange(
+            rangeFrom: Date | null,
+            rangeTo: Date | null,
+        ): Promise<DashboardAttemptsPerBoardRow[]> {
+            let sql = `
+                SELECT board_id as boardId, count(*) as total,
+                       sum(case when status = 'failed' then 1 else 0 end) as failed
+                FROM attempts
+            `;
+            const conditions: string[] = [];
+            const params: number[] = [];
+            
+            if (rangeFrom) {
+                conditions.push('created_at >= ?');
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                conditions.push('created_at < ?');
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            if (conditions.length > 0) {
+                sql += ' WHERE ' + conditions.join(' AND ');
+            }
+            sql += ' GROUP BY board_id';
+            
+            const rows = sqlite.prepare(sql).all(...params) as Array<{ boardId: string; total: number; failed: number }>;
+            return rows.map((row) => ({
+                boardId: row.boardId,
+                total: row.total,
+                failed: row.failed,
+            }));
+        },
+
+        async getActiveAttemptRows(limit: number): Promise<DashboardActiveAttemptRow[]> {
+            const placeholders = ACTIVE_STATUSES.map(() => '?').join(', ');
+            const rows = sqlite.prepare(`
+                SELECT 
+                    attempts.id as attemptId,
+                    boards.id as projectId,
+                    boards.name as projectName,
+                    attempts.card_id as cardId,
+                    cards.title as cardTitle,
+                    cards.ticket_key as ticketKey,
+                    attempts.agent as agent,
+                    attempts.status as status,
+                    attempts.started_at as startedAt,
+                    attempts.updated_at as updatedAt
+                FROM attempts
+                LEFT JOIN cards ON attempts.card_id = cards.id
+                LEFT JOIN boards ON attempts.board_id = boards.id
+                WHERE attempts.status IN (${placeholders})
+                ORDER BY coalesce(attempts.updated_at, attempts.created_at) DESC
+                LIMIT ?
+            `).all(...ACTIVE_STATUSES, limit) as Array<{
+                attemptId: string;
+                projectId: string | null;
+                projectName: string | null;
+                cardId: string;
+                cardTitle: string | null;
+                ticketKey: string | null;
+                agent: string;
+                status: string;
+                startedAt: number | null;
+                updatedAt: number | null;
+            }>;
+            
+            return rows.map((row) => ({
+                attemptId: row.attemptId,
+                projectId: row.projectId,
+                projectName: row.projectName,
+                cardId: row.cardId,
+                cardTitle: row.cardTitle,
+                ticketKey: row.ticketKey,
+                agent: row.agent,
+                status: row.status,
+                startedAt: row.startedAt ? new Date(row.startedAt * 1000) : null,
+                updatedAt: row.updatedAt ? new Date(row.updatedAt * 1000) : null,
+            }));
+        },
+
+        async getRecentActivityRows(
+            rangeFrom: Date | null,
+            rangeTo: Date | null,
+            limit: number,
+        ): Promise<DashboardRecentActivityRow[]> {
+            const statusPlaceholders = COMPLETED_STATUSES.map(() => '?').join(', ');
+            let sql = `
+                SELECT 
+                    attempts.id as attemptId,
+                    boards.id as projectId,
+                    boards.name as projectName,
+                    attempts.card_id as cardId,
+                    cards.title as cardTitle,
+                    cards.ticket_key as ticketKey,
+                    attempts.agent as agent,
+                    attempts.status as status,
+                    coalesce(attempts.ended_at, attempts.updated_at, attempts.created_at) as finishedAt,
+                    attempts.started_at as startedAt,
+                    attempts.created_at as createdAt
+                FROM attempts
+                LEFT JOIN cards ON attempts.card_id = cards.id
+                LEFT JOIN boards ON attempts.board_id = boards.id
+                WHERE attempts.status IN (${statusPlaceholders})
+            `;
+            const params: (string | number)[] = [...COMPLETED_STATUSES];
+            
+            if (rangeFrom) {
+                sql += ' AND attempts.ended_at >= ?';
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                sql += ' AND attempts.ended_at < ?';
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            sql += ' ORDER BY coalesce(attempts.ended_at, attempts.updated_at, attempts.created_at) DESC LIMIT ?';
+            params.push(limit);
+            
+            const rows = sqlite.prepare(sql).all(...params) as Array<{
+                attemptId: string;
+                projectId: string | null;
+                projectName: string | null;
+                cardId: string;
+                cardTitle: string | null;
+                ticketKey: string | null;
+                agent: string;
+                status: string;
+                finishedAt: number | null;
+                startedAt: number | null;
+                createdAt: number | null;
+            }>;
+            
+            return rows.map((row) => ({
+                attemptId: row.attemptId,
+                projectId: row.projectId,
+                projectName: row.projectName,
+                cardId: row.cardId,
+                cardTitle: row.cardTitle,
+                ticketKey: row.ticketKey,
+                agent: row.agent,
+                status: row.status,
+                finishedAt: row.finishedAt ? new Date(row.finishedAt * 1000) : null,
+                startedAt: row.startedAt ? new Date(row.startedAt * 1000) : null,
+                createdAt: row.createdAt ? new Date(row.createdAt * 1000) : null,
+            }));
+        },
+
+        async getBoardRows(limit: number): Promise<DashboardBoardRow[]> {
+            const rows = sqlite.prepare(`
+                SELECT id, name, repository_slug as repositorySlug, repository_path as repositoryPath, created_at as createdAt
+                FROM boards
+                ORDER BY created_at DESC
+                LIMIT ?
+            `).all(limit) as Array<{
+                id: string;
+                name: string;
+                repositorySlug: string | null;
+                repositoryPath: string;
+                createdAt: number;
+            }>;
+            
+            return rows.map((row) => ({
+                id: row.id,
+                name: row.name,
+                repositorySlug: row.repositorySlug,
+                repositoryPath: row.repositoryPath,
+                createdAt: new Date(row.createdAt * 1000),
+            }));
+        },
+
+        async getAgentAggregates(
+            agentKeys: string[],
+            rangeFrom: Date | null,
+            rangeTo: Date | null,
+        ): Promise<DashboardAgentAggregateRow[]> {
+            if (agentKeys.length === 0) return [];
+            
+            const agentPlaceholders = agentKeys.map(() => '?').join(', ');
+            let sql = `
+                SELECT 
+                    agent,
+                    count(*) as attemptsInRange,
+                    sum(case when status = 'succeeded' then 1 else 0 end) as succeededInRange,
+                    sum(case when status = 'failed' then 1 else 0 end) as failedInRange,
+                    max(created_at) as lastActivityAt
+                FROM attempts
+                WHERE agent IN (${agentPlaceholders})
+            `;
+            const params: (string | number)[] = [...agentKeys];
+            
+            if (rangeFrom) {
+                sql += ' AND created_at >= ?';
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                sql += ' AND created_at < ?';
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            sql += ' GROUP BY agent';
+            
+            const rows = sqlite.prepare(sql).all(...params) as Array<{
+                agent: string | null;
+                attemptsInRange: number;
+                succeededInRange: number;
+                failedInRange: number;
+                lastActivityAt: number | null;
+            }>;
+            
+            return rows.map((row) => ({
+                agent: row.agent,
+                attemptsInRange: row.attemptsInRange,
+                succeededInRange: row.succeededInRange,
+                failedInRange: row.failedInRange,
+                lastActivityAt: row.lastActivityAt ? new Date(row.lastActivityAt * 1000) : null,
+            }));
+        },
+
+        async getAgentLifetimeStats(agentKeys: string[]): Promise<DashboardAgentLifetimeRow[]> {
+            if (agentKeys.length === 0) return [];
+            
+            const agentPlaceholders = agentKeys.map(() => '?').join(', ');
+            const rows = sqlite.prepare(`
+                SELECT agent, max(created_at) as lastActiveAt
+                FROM attempts
+                WHERE agent IN (${agentPlaceholders})
+                GROUP BY agent
+            `).all(...agentKeys) as Array<{
+                agent: string | null;
+                lastActiveAt: number | null;
+            }>;
+            
+            return rows.map((row) => ({
+                agent: row.agent,
+                lastActiveAt: row.lastActiveAt ? new Date(row.lastActiveAt * 1000) : null,
+            }));
+        },
+
+        async getInboxAttemptRows(
+            rangeFrom: Date | null,
+            rangeTo: Date | null,
+            limit: number,
+        ): Promise<DashboardAttemptRowForInbox[]> {
+            let sql = `
+                SELECT 
+                    attempts.id as attemptId,
+                    attempts.board_id as projectId,
+                    boards.name as projectName,
+                    cards.id as cardId,
+                    cards.title as cardTitle,
+                    cards.ticket_key as ticketKey,
+                    cards.pr_url as prUrl,
+                    columns.title as cardStatus,
+                    attempts.agent as agent,
+                    attempts.status as status,
+                    attempts.created_at as createdAt,
+                    attempts.updated_at as updatedAt,
+                    attempts.started_at as startedAt,
+                    attempts.ended_at as endedAt
+                FROM attempts
+                LEFT JOIN boards ON attempts.board_id = boards.id
+                LEFT JOIN cards ON attempts.card_id = cards.id
+                LEFT JOIN columns ON cards.column_id = columns.id
+            `;
+            const conditions: string[] = [];
+            const params: number[] = [];
+            
+            if (rangeFrom) {
+                conditions.push('attempts.created_at >= ?');
+                params.push(Math.floor(rangeFrom.getTime() / 1000));
+            }
+            if (rangeTo) {
+                conditions.push('attempts.created_at < ?');
+                params.push(Math.floor(rangeTo.getTime() / 1000));
+            }
+            
+            if (conditions.length > 0) {
+                sql += ' WHERE ' + conditions.join(' AND ');
+            }
+            sql += ' ORDER BY attempts.created_at DESC LIMIT ?';
+            params.push(limit);
+            
+            const rows = sqlite.prepare(sql).all(...params) as Array<{
+                attemptId: string;
+                projectId: string;
+                projectName: string | null;
+                cardId: string | null;
+                cardTitle: string | null;
+                ticketKey: string | null;
+                prUrl: string | null;
+                cardStatus: string | null;
+                agent: string;
+                status: string;
+                createdAt: number;
+                updatedAt: number;
+                startedAt: number | null;
+                endedAt: number | null;
+            }>;
+            
+            return rows.map((row) => ({
+                attemptId: row.attemptId,
+                projectId: row.projectId,
+                projectName: row.projectName,
+                cardId: row.cardId,
+                cardTitle: row.cardTitle,
+                ticketKey: row.ticketKey,
+                prUrl: row.prUrl,
+                cardStatus: row.cardStatus,
+                agent: row.agent,
+                status: row.status,
+                createdAt: new Date(row.createdAt * 1000),
+                updatedAt: new Date(row.updatedAt * 1000),
+                startedAt: row.startedAt ? new Date(row.startedAt * 1000) : null,
+                endedAt: row.endedAt ? new Date(row.endedAt * 1000) : null,
+            }));
+        },
+    };
+}
+
+function createMockAttemptsRepo(): AttemptsRepo {
+    return {
+        async getAttemptById() { return null; },
+        async getAttemptForCard() { return null; },
+        async insertAttempt() {},
+        async updateAttempt() {},
+        async listAttemptsForBoard() { return []; },
+        async getAttemptBoardId() { return null; },
+        async listAttemptLogs() { return []; },
+        async insertAttemptLog() {},
+        async listConversationItems() { return []; },
+        async listConversationItemsDescending() { return []; },
+        async insertConversationItem() {},
+        async getNextConversationSeq() { return 0; },
+        async upsertAttemptTodos() {},
+        async getAttemptTodos() { return null; },
+    };
+}
+
+function createMockRepoProvider(sqlite: ReturnType<typeof import("better-sqlite3")["default"]>): RepoProvider {
+    const provider: RepoProvider = {
+        projects: {} as RepoProvider['projects'],
+        projectSettings: {} as RepoProvider['projectSettings'],
+        attempts: createMockAttemptsRepo(),
+        agentProfiles: {} as RepoProvider['agentProfiles'],
+        agentProfilesGlobal: {} as RepoProvider['agentProfilesGlobal'],
+        github: {} as RepoProvider['github'],
+        appSettings: {} as RepoProvider['appSettings'],
+        onboarding: {} as RepoProvider['onboarding'],
+        dependencies: {} as RepoProvider['dependencies'],
+        enhancements: {} as RepoProvider['enhancements'],
+        dashboard: createMockDashboardRepo(sqlite),
+
+        async withTx<T>(fn: (provider: RepoProvider) => Promise<T>): Promise<T> {
+            return fn(provider);
+        },
+    };
+    return provider;
+}
 
 async function createTestDb() {
     const betterSqlite = await import("better-sqlite3");
@@ -95,6 +578,8 @@ async function createTestDb() {
             return fn(db);
         },
     });
+
+    setRepoProvider(createMockRepoProvider(sqlite));
 
     return { db, sqlite };
 }
