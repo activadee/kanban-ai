@@ -1,8 +1,6 @@
 import type {BoardState} from 'shared'
-import {withTx, resolveDb, type DbExecutor} from '../db/with-tx'
-import {listColumnsForBoard, insertColumn, listCardsForColumns, getBoardById} from '../projects/repo'
-import {githubIssues} from '../db/schema'
-import {eq} from 'drizzle-orm'
+import {withRepoTx, getGithubRepo} from '../repos/provider'
+import {listColumnsForBoard, listCardsForColumns, getBoardById} from '../projects/repo'
 import {listDependenciesForCards} from '../projects/dependencies'
 import {publishTaskEvent} from './events'
 
@@ -20,35 +18,26 @@ function toIso(value: Date | string | number | null | undefined) {
     return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString()
 }
 
-export async function ensureDefaultColumns(boardId: string, executor?: DbExecutor) {
-    const existing = await listColumnsForBoard(boardId, executor)
+export async function ensureDefaultColumns(boardId: string) {
+    const existing = await listColumnsForBoard(boardId)
     if (existing.length > 0) return
 
     const createdIds: string[] = []
-    const run = async (tx: DbExecutor) => {
+    await withRepoTx(async (provider) => {
         const now = new Date()
         for (const [index, item] of DEFAULT_COLUMNS.entries()) {
             const columnId = `col-${crypto.randomUUID()}`
-            await insertColumn(
-                {
-                    id: columnId,
-                    title: item.title,
-                    order: index,
-                    boardId,
-                    createdAt: now,
-                    updatedAt: now,
-                },
-                tx,
-            )
+            await provider.projects.insertColumn({
+                id: columnId,
+                title: item.title,
+                order: index,
+                boardId,
+                createdAt: now,
+                updatedAt: now,
+            })
             createdIds.push(columnId)
         }
-    }
-
-    if (executor) {
-        await run(executor)
-    } else {
-        await withTx(async (tx) => run(tx))
-    }
+    })
 
     if (createdIds.length > 0) {
         publishTaskEvent('board.columns.initialized', {boardId, columnIds: createdIds})
@@ -67,20 +56,11 @@ export async function getBoardState(boardId: string): Promise<BoardState> {
     const githubIssueMap = new Map<string, {issueNumber: number; url: string}>()
     if (cardIds.length > 0) {
         try {
-            const db = resolveDb()
-            const mappings = await (db as any)
-                .select()
-                .from(githubIssues)
-                .where(eq(githubIssues.boardId, boardId))
-            for (const mapping of mappings as Array<{
-                cardId: string
-                issueNumber: number
-                url: string
-                updatedAt: Date | string | number
-            }>) {
-                if (!cardIds.includes(mapping.cardId)) continue
-                if (!githubIssueMap.has(mapping.cardId)) {
-                    githubIssueMap.set(mapping.cardId, {
+            const github = getGithubRepo()
+            for (const cardId of cardIds) {
+                const mapping = await github.findGithubIssueMappingByCardId(cardId)
+                if (mapping && !githubIssueMap.has(cardId)) {
+                    githubIssueMap.set(cardId, {
                         issueNumber: mapping.issueNumber,
                         url: mapping.url,
                     })
@@ -133,7 +113,6 @@ export async function createDefaultBoardStructure(boardId: string) {
     await ensureDefaultColumns(boardId)
 }
 
-/** Broadcast the entire board state to all project subscribers. */
 export async function broadcastBoard(boardId: string) {
     const board = await getBoardState(boardId)
     publishTaskEvent('board.state.changed', {boardId, state: board})

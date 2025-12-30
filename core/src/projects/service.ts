@@ -1,19 +1,16 @@
 import type {ProjectSummary, CreateProjectRequest, UpdateProjectRequest} from 'shared'
-import {withTx, type DbExecutor} from '../db/with-tx'
-import type {Board} from '../db/schema'
+import {withRepoTx} from '../repos/provider'
+import type {BoardRow} from '../db/types'
 import {createDefaultBoardStructure} from '../tasks/service'
 import {ensureGitRepository} from '../fs/git'
 import {
     deleteBoard,
     getBoardById,
-    insertBoard,
-    insertColumn,
     listBoards,
     updateBoard,
     type BoardUpdate,
 } from './repo'
 import {deriveDefaultTicketPrefix} from './tickets/ticket-keys'
-import {insertProjectSettings} from './settings/repo'
 import {
     ensureProjectSettings,
     getProjectSettings,
@@ -25,7 +22,7 @@ function deriveSlugFromPath(path: string) {
     return parts.at(-1) ?? path
 }
 
-function mapBoardToProject(record: Board): ProjectSummary {
+function mapBoardToProject(record: BoardRow): ProjectSummary {
     const createdAt =
         record.createdAt instanceof Date ? record.createdAt.toISOString() : new Date(record.createdAt).toISOString()
 
@@ -41,17 +38,17 @@ function mapBoardToProject(record: Board): ProjectSummary {
     }
 }
 
-async function listProjects(executor?: DbExecutor): Promise<ProjectSummary[]> {
-    const rows = await listBoards(executor)
+async function listProjects(): Promise<ProjectSummary[]> {
+    const rows = await listBoards()
     return rows.map(mapBoardToProject)
 }
 
-async function getProject(id: string, executor?: DbExecutor): Promise<ProjectSummary | null> {
-    const row = await getBoardById(id, executor)
+async function getProject(id: string): Promise<ProjectSummary | null> {
+    const row = await getBoardById(id)
     return row ? mapBoardToProject(row) : null
 }
 
-async function createProject(input: CreateProjectRequest, executor?: DbExecutor): Promise<ProjectSummary> {
+async function createProject(input: CreateProjectRequest): Promise<ProjectSummary> {
     const id = crypto.randomUUID()
     const now = new Date()
     const name = input.name.trim()
@@ -62,56 +59,39 @@ async function createProject(input: CreateProjectRequest, executor?: DbExecutor)
     const repositoryPath = await ensureGitRepository(input.repositoryPath, input.initialize === true)
     const repositorySlug = input.repositorySlug ?? deriveSlugFromPath(repositoryPath)
     const repositoryUrl = input.repositoryUrl ?? null
+    const ticketPrefix = deriveDefaultTicketPrefix(name)
 
-    const run = async (tx: DbExecutor) => {
-        const ticketPrefix = deriveDefaultTicketPrefix(name)
-        await insertBoard(
-            {
-                id,
-                name,
-                repositoryPath,
-                repositoryUrl,
-                repositorySlug,
-                createdAt: now,
-                updatedAt: now,
-            },
-            tx,
-        )
+    await withRepoTx(async (provider) => {
+        await provider.projects.insertBoard({
+            id,
+            name,
+            repositoryPath,
+            repositoryUrl,
+            repositorySlug,
+            createdAt: now,
+            updatedAt: now,
+        })
 
-        await insertProjectSettings(
-            {
-                projectId: id,
-                ticketPrefix,
-                nextTicketNumber: 1,
-                createdAt: now,
-                updatedAt: now,
-            },
-            tx,
-        )
+        await provider.projectSettings.insertProjectSettings({
+            projectId: id,
+            ticketPrefix,
+            nextTicketNumber: 1,
+            createdAt: now,
+            updatedAt: now,
+        })
 
         const defaultColumns = ['Backlog', 'In Progress', 'Review', 'Done']
         for (const [index, title] of defaultColumns.entries()) {
-            await insertColumn(
-                {
-                    id: `col-${crypto.randomUUID()}`,
-                    boardId: id,
-                    title,
-                    order: index,
-                    createdAt: now,
-                    updatedAt: now,
-                },
-                tx,
-            )
+            await provider.projects.insertColumn({
+                id: `col-${crypto.randomUUID()}`,
+                boardId: id,
+                title,
+                order: index,
+                createdAt: now,
+                updatedAt: now,
+            })
         }
-    }
-
-    if (executor) {
-        await run(executor)
-    } else {
-        await withTx(async (tx) => {
-            await run(tx)
-        })
-    }
+    })
 
     await createDefaultBoardStructure(id)
     const project = await getProject(id)
@@ -121,7 +101,7 @@ async function createProject(input: CreateProjectRequest, executor?: DbExecutor)
     return project
 }
 
-async function updateProject(id: string, updates: UpdateProjectRequest, executor?: DbExecutor): Promise<ProjectSummary | null> {
+async function updateProject(id: string, updates: UpdateProjectRequest): Promise<ProjectSummary | null> {
     const payload: BoardUpdate = {
         updatedAt: new Date(),
     }
@@ -136,17 +116,17 @@ async function updateProject(id: string, updates: UpdateProjectRequest, executor
 
     const fieldsToUpdate = Object.keys(payload)
     if (fieldsToUpdate.length <= 1 && payload.updatedAt) {
-        return getProject(id, executor)
+        return getProject(id)
     }
 
-    await updateBoard(id, payload, executor)
-    return getProject(id, executor)
+    await updateBoard(id, payload)
+    return getProject(id)
 }
 
-async function deleteProject(id: string, executor?: DbExecutor): Promise<boolean> {
-    const existing = await getBoardById(id, executor)
+async function deleteProject(id: string): Promise<boolean> {
+    const existing = await getBoardById(id)
     if (!existing) return false
-    await deleteBoard(id, executor)
+    await deleteBoard(id)
     return true
 }
 

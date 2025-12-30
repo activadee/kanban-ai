@@ -3,8 +3,7 @@ import type {
     ProjectSettings,
     UpdateProjectSettingsRequest,
 } from "shared";
-import { withTx, type DbExecutor } from "../../db/with-tx";
-import type { ProjectSettingsRow } from "../../db/schema/projects";
+import type { ProjectSettingsRow } from "../../db/types";
 import { getBoardById } from "../repo";
 import {
     getProjectSettingsRow,
@@ -148,69 +147,63 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
 
 export async function ensureProjectSettings(
     projectId: string,
-    executor?: DbExecutor,
 ): Promise<ProjectSettings> {
-    const existing = await getProjectSettingsRow(projectId, executor);
+    const existing = await getProjectSettingsRow(projectId);
     if (existing) return mapRow(existing);
-    const board = await getBoardById(projectId, executor);
+    const board = await getBoardById(projectId);
     if (!board) throw new Error("Project not found");
     const ticketPrefix = deriveDefaultTicketPrefix(board.name);
     const now = new Date();
-    await insertProjectSettings(
-        {
-            projectId,
-            baseBranch: "main",
-            preferredRemote: null,
-            setupScript: null,
-            devScript: null,
-            cleanupScript: null,
-            copyFiles: null,
-            allowScriptsToFail: false,
-            allowCopyFilesToFail: false,
-            allowSetupScriptToFail: false,
-            allowDevScriptToFail: false,
-            allowCleanupScriptToFail: false,
-            defaultAgent: null,
-            defaultProfileId: null,
-            inlineAgent: null,
-            inlineProfileId: null,
-            inlineAgentProfileMappingJson: JSON.stringify({}),
-            autoCommitOnFinish: false,
-            autoPushOnAutocommit: false,
-            ticketPrefix,
-            nextTicketNumber: 1,
-            githubIssueSyncEnabled: false,
-            githubIssueSyncState: "open",
-            githubIssueSyncIntervalMinutes:
-                DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
-            githubIssueAutoCreateEnabled: false,
-            autoCloseTicketOnPRMerge: false,
-            lastGithubPrAutoCloseAt: null,
-            lastGithubPrAutoCloseStatus: "idle",
-            lastGithubIssueSyncAt: null,
-            lastGithubIssueSyncStatus: "idle",
-            createdAt: now,
-            updatedAt: now,
-        },
-        executor,
-    );
-    const created = await getProjectSettingsRow(projectId, executor);
+    await insertProjectSettings({
+        projectId,
+        baseBranch: "main",
+        preferredRemote: null,
+        setupScript: null,
+        devScript: null,
+        cleanupScript: null,
+        copyFiles: null,
+        allowScriptsToFail: false,
+        allowCopyFilesToFail: false,
+        allowSetupScriptToFail: false,
+        allowDevScriptToFail: false,
+        allowCleanupScriptToFail: false,
+        defaultAgent: null,
+        defaultProfileId: null,
+        inlineAgent: null,
+        inlineProfileId: null,
+        inlineAgentProfileMappingJson: JSON.stringify({}),
+        autoCommitOnFinish: false,
+        autoPushOnAutocommit: false,
+        ticketPrefix,
+        nextTicketNumber: 1,
+        githubIssueSyncEnabled: false,
+        githubIssueSyncState: "open",
+        githubIssueSyncIntervalMinutes:
+            DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
+        githubIssueAutoCreateEnabled: false,
+        autoCloseTicketOnPRMerge: false,
+        lastGithubPrAutoCloseAt: null,
+        lastGithubPrAutoCloseStatus: "idle",
+        lastGithubIssueSyncAt: null,
+        lastGithubIssueSyncStatus: "idle",
+        createdAt: now,
+        updatedAt: now,
+    });
+    const created = await getProjectSettingsRow(projectId);
     if (!created) throw new Error("Failed to initialize project settings");
     return mapRow(created);
 }
 
 export async function getProjectSettings(
     projectId: string,
-    executor?: DbExecutor,
 ): Promise<ProjectSettings> {
-    const row = await ensureProjectSettings(projectId, executor);
+    const row = await ensureProjectSettings(projectId);
     return row;
 }
 
 export async function updateProjectSettings(
     projectId: string,
     updates: UpdateProjectSettingsRequest,
-    executor?: DbExecutor,
 ): Promise<ProjectSettings> {
     const patch: Partial<ProjectSettingsRow> = {};
     const nn = (v: unknown) =>
@@ -220,18 +213,18 @@ export async function updateProjectSettings(
                 : null
             : v === undefined
               ? undefined
-              : (v as any);
+              : (v as string | number | boolean | null);
     if (updates.baseBranch !== undefined) patch.baseBranch = updates.baseBranch;
     if (updates.preferredRemote !== undefined)
-        patch.preferredRemote = nn(updates.preferredRemote);
+        patch.preferredRemote = nn(updates.preferredRemote) as string | null;
     if (updates.setupScript !== undefined)
-        patch.setupScript = nn(updates.setupScript);
+        patch.setupScript = nn(updates.setupScript) as string | null;
     if (updates.devScript !== undefined)
-        patch.devScript = nn(updates.devScript);
+        patch.devScript = nn(updates.devScript) as string | null;
     if (updates.cleanupScript !== undefined)
-        patch.cleanupScript = nn(updates.cleanupScript);
+        patch.cleanupScript = nn(updates.cleanupScript) as string | null;
     if (updates.copyFiles !== undefined)
-        patch.copyFiles = nn(updates.copyFiles);
+        patch.copyFiles = nn(updates.copyFiles) as string | null;
     if (updates.allowScriptsToFail !== undefined)
         patch.allowScriptsToFail = Boolean(updates.allowScriptsToFail);
     if (updates.allowCopyFilesToFail !== undefined)
@@ -243,13 +236,13 @@ export async function updateProjectSettings(
     if (updates.allowCleanupScriptToFail !== undefined)
         patch.allowCleanupScriptToFail = Boolean(updates.allowCleanupScriptToFail);
     if (updates.defaultAgent !== undefined)
-        patch.defaultAgent = nn(updates.defaultAgent);
+        patch.defaultAgent = nn(updates.defaultAgent) as string | null;
     if (updates.defaultProfileId !== undefined)
-        patch.defaultProfileId = nn(updates.defaultProfileId);
+        patch.defaultProfileId = nn(updates.defaultProfileId) as string | null;
     if (updates.inlineAgent !== undefined)
-        patch.inlineAgent = nn(updates.inlineAgent);
+        patch.inlineAgent = nn(updates.inlineAgent) as string | null;
     if (updates.inlineProfileId !== undefined)
-        patch.inlineProfileId = nn(updates.inlineProfileId);
+        patch.inlineProfileId = nn(updates.inlineProfileId) as string | null;
     if (updates.inlineAgentProfileMapping !== undefined) {
         const mapping = updates.inlineAgentProfileMapping ?? {};
         patch.inlineAgentProfileMappingJson = JSON.stringify(mapping);
@@ -278,8 +271,8 @@ export async function updateProjectSettings(
         patch.autoCloseTicketOnPRMerge = Boolean(updates.autoCloseTicketOnPRMerge);
     }
     patch.updatedAt = new Date();
-    await updateProjectSettingsRow(projectId, patch as any, executor);
-    const row = await ensureProjectSettings(projectId, executor);
+    await updateProjectSettingsRow(projectId, patch);
+    const row = await ensureProjectSettings(projectId);
     return row;
 }
 

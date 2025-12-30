@@ -1,13 +1,11 @@
 import type {TicketType} from 'shared'
-import {withTx, type DbExecutor} from '../db/with-tx'
+import {withRepoTx} from '../repos/provider'
 import {
     listColumnsForBoard,
     getColumnById,
     listCardsForColumns,
     getCardById,
-    insertCard,
     updateCard,
-    deleteCard,
     getMaxCardOrder,
     type CardUpdate,
 } from '../projects/repo'
@@ -15,11 +13,11 @@ import {isUniqueTicketKeyError, reserveNextTicketKey} from '../projects/tickets/
 import {publishTaskEvent} from './events'
 import {broadcastBoard, ensureDefaultColumns} from './board.service'
 
-async function reorderColumn(columnId: string, executor: DbExecutor) {
-    const cards = await listCardsForColumns([columnId], executor)
+async function reorderColumn(columnId: string) {
+    const cards = await listCardsForColumns([columnId])
     for (const [index, card] of cards.entries()) {
         if (card.order === index) continue
-        await updateCard(card.id, {order: index, updatedAt: new Date()}, executor)
+        await updateCard(card.id, {order: index, updatedAt: new Date()})
     }
 }
 
@@ -38,29 +36,26 @@ export async function createBoardCard(
     let createdColumnId: string | null = null
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-            await withTx(async (tx) => {
-                const columnRow = await getColumnById(columnId, tx)
+            await withRepoTx(async (provider) => {
+                const columnRow = await provider.projects.getColumnById(columnId)
                 if (!columnRow) throw new Error('Column not found')
 
-                const nextOrder = (await getMaxCardOrder(columnId, tx)) + 1
+                const nextOrder = (await provider.projects.getMaxCardOrder(columnId)) + 1
                 const now = new Date()
-                const {key} = await reserveNextTicketKey(tx, columnRow.boardId, now)
+                const {key} = await reserveNextTicketKey(columnRow.boardId, now)
                 const cardId = `card-${crypto.randomUUID()}`
-                await insertCard(
-                    {
-                        id: cardId,
-                        title,
-                        description: description ?? null,
-                        ticketType: ticketType ?? null,
-                        order: nextOrder,
-                        columnId,
-                        boardId: columnRow.boardId,
-                        ticketKey: key,
-                        createdAt: now,
-                        updatedAt: now,
-                    },
-                    tx,
-                )
+                await provider.projects.insertCard({
+                    id: cardId,
+                    title,
+                    description: description ?? null,
+                    ticketType: ticketType ?? null,
+                    order: nextOrder,
+                    columnId,
+                    boardId: columnRow.boardId,
+                    ticketKey: key,
+                    createdAt: now,
+                    updatedAt: now,
+                })
                 createdCardId = cardId
                 createdBoardId = columnRow.boardId
                 createdColumnId = columnId
@@ -99,13 +94,13 @@ export async function moveBoardCard(
 ) {
     let boardId: string | null = null
     let fromColumnId: string | null = null
-    await withTx(async (tx) => {
-        const cardRow = await getCardById(cardId, tx)
+    await withRepoTx(async (provider) => {
+        const cardRow = await provider.projects.getCardById(cardId)
         if (!cardRow) throw new Error('Card not found')
 
         const currentColumn = cardRow.columnId
-        const currentColumnRow = await getColumnById(currentColumn, tx)
-        const targetColumn = await getColumnById(toColumnId, tx)
+        const currentColumnRow = await provider.projects.getColumnById(currentColumn)
+        const targetColumn = await provider.projects.getColumnById(toColumnId)
         if (!targetColumn) throw new Error('Target column not found')
 
         const cardBoardId = cardRow.boardId ?? currentColumnRow?.boardId
@@ -114,14 +109,15 @@ export async function moveBoardCard(
         const now = new Date()
         const effectiveIndex = Math.max(0, toIndex)
 
-        await updateCard(cardId, {columnId: toColumnId, order: effectiveIndex, updatedAt: now}, tx)
-        await reorderColumn(toColumnId, tx)
-        if (currentColumn !== toColumnId) {
-            await reorderColumn(currentColumn, tx)
-        }
+        await provider.projects.updateCard(cardId, {columnId: toColumnId, order: effectiveIndex, updatedAt: now})
         boardId = cardBoardId
         fromColumnId = currentColumn
     })
+
+    await reorderColumn(toColumnId)
+    if (fromColumnId && fromColumnId !== toColumnId) {
+        await reorderColumn(fromColumnId)
+    }
 
     if (boardId) {
         publishTaskEvent('card.moved', {
@@ -137,7 +133,6 @@ export async function moveBoardCard(
     }
 }
 
-/** Move card to the last position of the column with the given title on this board. */
 export async function moveCardToColumnByTitle(
     boardId: string,
     cardId: string,
@@ -229,14 +224,17 @@ export async function updateBoardCard(
 export async function deleteBoardCard(cardId: string) {
     let boardId: string | null = null
     let columnId: string | null = null
-    await withTx(async (tx) => {
-        const cardRow = await getCardById(cardId, tx)
+    await withRepoTx(async (provider) => {
+        const cardRow = await provider.projects.getCardById(cardId)
         if (!cardRow) return
         boardId = cardRow.boardId ?? null
         columnId = cardRow.columnId
-        await deleteCard(cardId, tx)
-        await reorderColumn(cardRow.columnId, tx)
+        await provider.projects.deleteCard(cardId)
     })
+
+    if (columnId) {
+        await reorderColumn(columnId)
+    }
 
     if (!boardId && columnId) {
         const column = await getColumnById(columnId)

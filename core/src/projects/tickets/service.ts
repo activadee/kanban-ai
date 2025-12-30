@@ -1,21 +1,21 @@
 import type {TicketKeyPreview} from 'shared'
-import {withTx, type DbExecutor} from '../../db/with-tx'
-import {projectSettings} from '../../db/schema'
-import type {ProjectSettingsRow} from '../../db/schema/projects'
+import {withRepoTx} from '../../repos/provider'
+import type {ProjectSettingsRow} from '../../db/types'
 import {getProjectSettingsRow, updateProjectSettingsRow} from '../settings/repo'
 import {ensureProjectSettings} from '../settings/service'
 import {listBoardIds, listCardsWithColumn, updateCard} from '../repo'
 import {assertValidTicketPrefix, formatTicketKey, sanitizeTicketPrefix} from './ticket-keys'
 
-export async function reserveNextTicketKey(executor: DbExecutor, projectId: string, now = new Date()): Promise<TicketKeyPreview> {
-    // Lock row by updating the counter atomically
-    const row = (await getProjectSettingsRow(projectId, executor)) as ProjectSettingsRow | null
-    if (!row) throw new Error('Project settings not found')
-    const number = (row.nextTicketNumber ?? 1) as number
-    const next = number + 1
-    await updateProjectSettingsRow(projectId, {nextTicketNumber: next, updatedAt: now}, executor)
-    const prefix = row.ticketPrefix
-    return {key: formatTicketKey(prefix, number), prefix, number}
+export async function reserveNextTicketKey(projectId: string, now = new Date()): Promise<TicketKeyPreview> {
+    return withRepoTx(async (provider) => {
+        const row = await provider.projectSettings.getProjectSettingsRow(projectId) as ProjectSettingsRow | null
+        if (!row) throw new Error('Project settings not found')
+        const number = (row.nextTicketNumber ?? 1) as number
+        const next = number + 1
+        await provider.projectSettings.updateProjectSettingsRow(projectId, {nextTicketNumber: next, updatedAt: now})
+        const prefix = row.ticketPrefix
+        return {key: formatTicketKey(prefix, number), prefix, number}
+    })
 }
 
 export async function previewNextTicketKey(projectId: string): Promise<TicketKeyPreview> {
@@ -34,7 +34,6 @@ export async function backfillTicketKeys(projectId?: string): Promise<{ updated:
     let updated = 0
     for (const pid of ids) {
         const row = await ensureProjectSettings(pid)
-        // Normalize and validate prefix on the fly
         const sanitized = sanitizeTicketPrefix(row.ticketPrefix)
         assertValidTicketPrefix(sanitized)
         if (sanitized !== row.ticketPrefix) {
@@ -46,7 +45,7 @@ export async function backfillTicketKeys(projectId?: string): Promise<{ updated:
         for (const c of cards) {
             if (!c.ticketKey) {
                 const key = formatTicketKey(sanitized, next++)
-                await updateCard(c.id, {ticketKey: key, boardId: pid, updatedAt: new Date()} as any)
+                await updateCard(c.id, {ticketKey: key, boardId: pid, updatedAt: new Date()})
                 updated += 1
             }
         }
