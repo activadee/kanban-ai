@@ -4,11 +4,16 @@ import {defaultDroidProfile, type DroidProfile as Shared} from 'shared'
 export const DroidProfileSchema = z.object({
     appendPrompt: z.string().nullable().optional(),
     inlineProfile: z.string().nullable().optional(),
-    autonomy: z.enum(['read-only', 'low', 'medium', 'high']).optional(),
     model: z.string().optional(),
-    reasoningEffort: z.enum(['off', 'low', 'medium', 'high', 'xhigh']).optional(),
+    autonomyLevel: z.enum(['default', 'low', 'medium', 'high']).optional(),
+    reasoningEffort: z.enum(['off', 'none', 'low', 'medium', 'high']).optional(),
+    useSpec: z.boolean().optional(),
+    specModel: z.string().optional(),
+    specReasoningEffort: z.enum(['off', 'none', 'low', 'medium', 'high']).optional(),
+    enabledTools: z.array(z.string()).optional(),
+    disabledTools: z.array(z.string()).optional(),
+    skipPermissionsUnsafe: z.boolean().optional(),
     baseCommandOverride: z.string().nullable().optional(),
-    additionalParams: z.array(z.string()).optional(),
     debug: z.boolean().optional(),
 })
 

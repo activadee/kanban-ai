@@ -30,6 +30,13 @@ vi.mock('core', () => {
 
     return {
         getDashboardOverview,
+        bindAgentEventBus: vi.fn(),
+        registerAgent: vi.fn(),
+        getAgent: vi.fn(),
+        listAgents: vi.fn(() => []),
+        CodexAgent: {},
+        OpencodeAgent: {},
+        DroidAgent: {},
     }
 })
 

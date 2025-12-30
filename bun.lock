@@ -27,7 +27,7 @@
     },
     "cli": {
       "name": "kanban-ai",
-      "version": "0.19.5",
+      "version": "0.22.1",
       "bin": {
         "kanban-ai": "dist/index.js",
       },
@@ -94,6 +94,7 @@
       "name": "core",
       "version": "0.0.1",
       "dependencies": {
+        "@activade/droid-sdk": "^0.0.2",
         "@openai/codex-sdk": "^0.77.0",
         "@opencode-ai/sdk": "^1.0.129",
         "drizzle-orm": "^0.45.0",
@@ -142,6 +143,8 @@
     "@actions/http-client": ["@actions/http-client@2.2.3", "", { "dependencies": { "tunnel": "^0.0.6", "undici": "^5.25.4" } }, "sha512-mx8hyJi/hjFvbPokCg4uRd4ZX78t+YyRPtnKWwIl+RzNaVuFpQHfmlGVfsKEJN8LwTCvL+DfVgAM04XaHkm6bA=="],
 
     "@actions/io": ["@actions/io@1.1.3", "", {}, "sha512-wi9JjgKLYS7U/z8PPbco+PvTb/nRWjeoFlJ1Qer83k/3C5PHQi28hiVdeE2kHXmIL99mQFawx8qt/JPjZilJ8Q=="],
+
+    "@activade/droid-sdk": ["@activade/droid-sdk@0.0.2", "", { "peerDependencies": { "zod": "^3.0.0" }, "optionalPeers": ["zod"] }, "sha512-1kLCr48IHbFAlkzd+tPQ5zr9lh5Ah90f1l45ySIXbwn4H+oGzdWUpoH14frg4czHwzr/fQH+LCV0QsQMnZk30g=="],
 
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
 

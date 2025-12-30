@@ -1,6 +1,18 @@
-import {z} from 'zod'
-import {spawn} from 'child_process'
-import {CommandAgent, type CommandSpec} from '../../command'
+import {execFile} from 'node:child_process'
+import {promises as fs, constants as fsConstants} from 'node:fs'
+import {promisify} from 'node:util'
+
+import {
+    Droid,
+    type StreamEvent,
+    type TurnResult,
+    isMessageEvent,
+    isToolCallEvent,
+    isToolResultEvent,
+    isTurnCompletedEvent,
+    isTurnFailedEvent,
+    isSystemInitEvent,
+} from '@activade/droid-sdk'
 import type {
     Agent,
     AgentContext,
@@ -13,191 +25,322 @@ import type {
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
+import {SdkAgent, type SdkSession} from '../../sdk'
+import type {DroidProfile} from '../profiles/schema'
+import {DroidProfileSchema, defaultProfile} from '../profiles/schema'
+import {StreamGrouper} from '../../sdk/stream-grouper'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
-import {DroidProfileSchema, defaultProfile, type DroidProfile} from '../profiles/schema'
-import {buildDroidCommand, buildDroidFollowupCommand} from '../profiles/build'
-import {DroidStreamProcessor} from './parse'
 
-async function runDroidTextCommand(
-    line: string,
-    cwd: string,
-    env: Record<string, string> | undefined,
-    signal: AbortSignal,
-): Promise<string> {
-    return await new Promise<string>((resolve, reject) => {
-        const child = spawn('bash', ['-lc', line], {
-            cwd,
-            env: {...process.env, ...(env || {})},
-            stdio: ['ignore', 'pipe', 'pipe'],
-            detached: process.platform !== 'win32',
-        })
+type DroidInstallation = {executablePath: string}
+const execFileAsync = promisify(execFile)
+const nowIso = () => new Date().toISOString()
 
-        let stdout = ''
-        let stderr = ''
-        let aborted = false
-
-        const onAbort = () => {
-            try {
-                aborted = true
-                if (process.platform !== 'win32' && child.pid) {
-                    try {
-                        process.kill(-child.pid, 'SIGTERM')
-                    } catch {
-                        child.kill('SIGTERM')
-                    }
-                } else {
-                    child.kill('SIGTERM')
-                }
-            } catch {
-            }
-        }
-
-        if (signal.aborted) onAbort()
-        else signal.addEventListener('abort', onAbort, {once: true})
-
-        child.stdout?.on('data', (chunk) => {
-            stdout += String(chunk)
-        })
-        child.stderr?.on('data', (chunk) => {
-            stderr += String(chunk)
-        })
-
-        child.on('error', (err) => {
-            try {
-                signal.removeEventListener('abort', onAbort as unknown as EventListener)
-            } catch {
-            }
-            reject(err)
-        })
-
-        child.on('close', (code) => {
-            try {
-                signal.removeEventListener('abort', onAbort as unknown as EventListener)
-            } catch {
-            }
-            if (aborted || signal.aborted) {
-                reject(new Error('Droid enhance aborted'))
-                return
-            }
-            if (code !== 0) {
-                const msg = (stderr || stdout || `Droid exited with code ${code}`).toString()
-                reject(new Error(msg))
-                return
-            }
-            resolve(stdout.toString())
-        })
-    })
-}
-
-class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> implements Agent<z.infer<typeof DroidProfileSchema>> {
+class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Agent<DroidProfile> {
     key = 'DROID' as const
     label = 'Droid Agent'
     defaultProfile = defaultProfile
     profileSchema = DroidProfileSchema
     capabilities = {resume: true}
 
-    private stream = new DroidStreamProcessor()
+    private groupers = new Map<string, StreamGrouper>()
+    private toolCalls = new Map<string, {name: string; startedAt: number; command?: string; cwd?: string}>()
 
-    protected buildCommand(profile: DroidProfile, ctx: AgentContext): CommandSpec {
-        const append = profile.appendPrompt || ''
-        const promptParts = [ctx.cardTitle, ctx.cardDescription ?? '', append].filter(Boolean)
-        const prompt = promptParts.length > 0 ? `"${promptParts.join('\n\n').replace(/"/g, '\\"')}"` : undefined
-        const {base, params, env} = buildDroidCommand(profile, prompt, 'json')
-        this.stream.setMode(ctx.attemptId, 'json')
-        return {line: [base, ...params].join(' '), env}
+    private debug(profile: DroidProfile, ctx: AgentContext, event: unknown) {
+        if (!profile.debug) return
+        try {
+            const serialized = JSON.stringify(event)
+            ctx.emit({type: 'log', level: 'info', message: `[droid:debug] ${serialized}`})
+        } catch {
+            ctx.emit({type: 'log', level: 'info', message: `[droid:debug] [unserializable event]`})
+        }
     }
 
-    protected buildStdin(_profile: DroidProfile, _ctx: AgentContext): string | undefined {
-        // Droid uses command-line prompt, not stdin
-        return undefined
+    private threadOptions(profile: DroidProfile, cwd: string) {
+        return {
+            cwd,
+            model: profile.model,
+            autonomyLevel: profile.autonomyLevel,
+            reasoningEffort: profile.reasoningEffort,
+            useSpec: profile.useSpec,
+            specModel: profile.specModel,
+            specReasoningEffort: profile.specReasoningEffort,
+            enabledTools: profile.enabledTools,
+            disabledTools: profile.disabledTools,
+            skipPermissionsUnsafe: profile.skipPermissionsUnsafe,
+        }
     }
 
-    protected debugEnabled(profile: DroidProfile) {
-        return !!profile.debug
+    private async verifyExecutable(path: string): Promise<string> {
+        const candidate = path.trim()
+        if (!candidate.length) throw new Error('droid executable path is empty')
+        const mode = process.platform === 'win32' ? fsConstants.F_OK : fsConstants.X_OK
+        try {
+            await fs.access(candidate, mode)
+            return candidate
+        } catch (err) {
+            throw new Error(`droid executable not accessible at ${candidate}: ${String(err)}`)
+        }
     }
 
-    protected onStdoutText(line: string, ctx: AgentContext, profile: DroidProfile) {
-        this.stream.onStdoutText(line, ctx, profile)
+    private async locateExecutable(baseCommandOverride?: string | null): Promise<string> {
+        if (baseCommandOverride) return this.verifyExecutable(baseCommandOverride)
+
+        const envPath = process.env.DROID_PATH_OVERRIDE ?? process.env.DROID_PATH
+        if (envPath) return this.verifyExecutable(envPath)
+
+        const locator = process.platform === 'win32' ? 'where' : 'which'
+        try {
+            const {stdout} = await execFileAsync(locator, ['droid'])
+            const candidate = stdout
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .at(0)
+
+            if (candidate) return this.verifyExecutable(candidate)
+        } catch {
+        }
+
+        throw new Error('droid executable not found. Install the Droid CLI and ensure it is on PATH or set DROID_PATH/DROID_PATH_OVERRIDE.')
     }
 
-    protected onStdoutJson(obj: unknown, ctx: AgentContext, _profile: DroidProfile) {
-        this.stream.onStdoutJson(obj, ctx, _profile)
+    protected async detectInstallation(profile: DroidProfile, ctx: AgentContext): Promise<DroidInstallation> {
+        const executablePath = await this.locateExecutable(profile.baseCommandOverride)
+        ctx.emit({type: 'log', level: 'info', message: `[${this.key}] using droid executable: ${executablePath}`})
+        return {executablePath}
     }
 
-    protected onStderrText(line: string, ctx: AgentContext) {
-        this.stream.onStderrText(line, ctx)
+    protected async createClient(profile: DroidProfile, ctx: AgentContext, installation: DroidInstallation) {
+        return new Droid({
+            cwd: ctx.worktreePath,
+            model: profile.model,
+            autonomyLevel: profile.autonomyLevel,
+            reasoningEffort: profile.reasoningEffort,
+            droidPath: installation.executablePath,
+        })
     }
 
-    protected afterClose(_code: number, ctx: AgentContext, _profile: DroidProfile) {
-        this.stream.afterClose(_code, ctx, _profile)
+    protected async startSession(
+        client: unknown,
+        prompt: string,
+        profile: DroidProfile,
+        ctx: AgentContext,
+        signal: AbortSignal,
+        _installation: DroidInstallation,
+    ): Promise<SdkSession> {
+        const droid = client as Droid
+        const thread = droid.startThread(this.threadOptions(profile, ctx.worktreePath))
+
+        const {events, result} = await thread.runStreamed(prompt)
+
+        return {
+            stream: this.wrapEventsWithResult(events, result, ctx, signal, profile),
+            sessionId: thread.id,
+        }
+    }
+
+    protected async resumeSession(
+        client: unknown,
+        prompt: string,
+        sessionId: string,
+        profile: DroidProfile,
+        ctx: AgentContext,
+        signal: AbortSignal,
+        _installation: DroidInstallation,
+    ): Promise<SdkSession> {
+        const droid = client as Droid
+        const thread = droid.resumeThread(sessionId, this.threadOptions(profile, ctx.worktreePath))
+
+        const {events, result} = await thread.runStreamed(prompt)
+
+        return {
+            stream: this.wrapEventsWithResult(events, result, ctx, signal, profile),
+            sessionId: thread.id ?? sessionId,
+        }
+    }
+
+    private async *wrapEventsWithResult(
+        events: AsyncIterable<StreamEvent>,
+        result: Promise<TurnResult>,
+        ctx: AgentContext,
+        signal: AbortSignal,
+        profile: DroidProfile,
+    ): AsyncIterable<unknown> {
+        try {
+            for await (const event of events) {
+                if (signal.aborted) break
+                this.debug(profile, ctx, event)
+                yield event
+            }
+        } catch (err) {
+            if (!signal.aborted) {
+                ctx.emit({type: 'log', level: 'error', message: `[droid] stream error: ${String(err)}`})
+            }
+        }
+
+        try {
+            const turnResult = await result
+            if (turnResult.isError) {
+                yield {type: 'turn.failed', error: {message: turnResult.finalResponse}}
+            }
+        } catch (err) {
+            if (!signal.aborted) {
+                ctx.emit({type: 'log', level: 'error', message: `[droid] result error: ${String(err)}`})
+            }
+        }
+    }
+
+    private getGrouper(id: string) {
+        if (!this.groupers.has(id)) this.groupers.set(id, new StreamGrouper({emitThinkingImmediately: false}))
+        return this.groupers.get(id) as StreamGrouper
+    }
+
+    protected handleEvent(event: unknown, ctx: AgentContext, _profile: DroidProfile): void {
+        if (!event || typeof event !== 'object') return
+        const ev = event as StreamEvent
+
+        if (isSystemInitEvent(ev)) {
+            ctx.emit({type: 'log', level: 'info', message: `[droid] session ${ev.session_id}`})
+            ctx.emit({type: 'session', id: ev.session_id})
+            return
+        }
+
+        if (isMessageEvent(ev)) {
+            const g = this.getGrouper(ctx.attemptId)
+            g.flushReasoning(ctx)
+            if (ev.role === 'assistant' && ev.text) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'message',
+                        timestamp: new Date(ev.timestamp).toISOString(),
+                        role: 'assistant',
+                        text: ev.text,
+                        format: 'markdown',
+                        profileId: ctx.profileId ?? null,
+                    },
+                })
+            }
+            return
+        }
+
+        if (isToolCallEvent(ev)) {
+            const g = this.getGrouper(ctx.attemptId)
+            g.flushReasoning(ctx)
+
+            const params = ev.parameters as Record<string, unknown>
+            this.toolCalls.set(ev.id, {
+                name: ev.toolName,
+                startedAt: ev.timestamp,
+                command: typeof params?.command === 'string' ? params.command : undefined,
+                cwd: typeof params?.cwd === 'string' ? params.cwd : undefined,
+            })
+            return
+        }
+
+        if (isToolResultEvent(ev)) {
+            const g = this.getGrouper(ctx.attemptId)
+            const call = this.toolCalls.get(ev.toolId) ?? this.toolCalls.get(ev.id)
+            this.toolCalls.delete(ev.toolId)
+            this.toolCalls.delete(ev.id)
+
+            const startedAt = call?.startedAt ?? ev.timestamp
+            const completedAt = ev.timestamp
+            const durationMs = completedAt - startedAt
+
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'tool',
+                    timestamp: new Date(ev.timestamp).toISOString(),
+                    tool: {
+                        name: call?.name ?? ev.toolName,
+                        command: call?.command ?? null,
+                        cwd: call?.cwd ?? null,
+                        status: ev.isError ? 'failed' : 'succeeded',
+                        startedAt: new Date(startedAt).toISOString(),
+                        completedAt: new Date(completedAt).toISOString(),
+                        durationMs,
+                        exitCode: null,
+                        stdout: ev.isError ? null : (ev.value ?? null),
+                        stderr: ev.isError ? (ev.value ?? null) : null,
+                        metadata: undefined,
+                    },
+                },
+            })
+            return
+        }
+
+        if (isTurnCompletedEvent(ev)) {
+            ctx.emit({type: 'log', level: 'info', message: `[droid] completed in ${ev.durationMs}ms`})
+            return
+        }
+
+        if (isTurnFailedEvent(ev)) {
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'error',
+                    timestamp: new Date(ev.timestamp).toISOString(),
+                    text: ev.error.message,
+                },
+            })
+            return
+        }
+
+        const eventType = (ev as {type?: string}).type
+        if (eventType) {
+            ctx.emit({type: 'log', level: 'info', message: `[droid] unhandled event: ${eventType}`})
+        }
     }
 
     async run(ctx: AgentContext, profile: DroidProfile): Promise<number> {
-        const append = profile.appendPrompt || ''
-        const promptParts = [ctx.cardTitle, ctx.cardDescription ?? '', append].filter(Boolean)
-        const realPrompt = promptParts.join('\n\n').trim()
-
-        if (!profile.debug) {
-            if (realPrompt) this.emitUserMessage(ctx, realPrompt)
-            return super.run(ctx, profile)
-        }
-
-        // Hybrid flow: 1) JSON ping to capture session id
-        const pingText = 'session ping: respond with "ok" and exit immediately.'
-        const pingPrompt = `"${pingText.replace(/"/g, '\\"')}"`
-        const {base: pingBase, params: pingParams, env: pingEnv} = buildDroidCommand(profile, pingPrompt, 'json')
-        const pingLine = [pingBase, ...pingParams].join(' ')
-        this.stream.setMode(ctx.attemptId, 'ping')
-        await this.runWithLine(ctx, profile, pingLine, undefined, pingEnv)
-
-        const sid = this.stream.takeLastSession(ctx.attemptId)
-        if (!sid) {
+        this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
+        const prompt = this.buildPrompt(profile, ctx)
+        if (prompt) {
             ctx.emit({
-                type: 'log',
-                level: 'warn',
-                message: '[droid] ping did not return a session id; falling back to JSON mode'
+                type: 'conversation',
+                item: {
+                    type: 'message',
+                    timestamp: nowIso(),
+                    role: 'user',
+                    text: prompt,
+                    format: 'markdown',
+                    profileId: ctx.profileId ?? null,
+                },
             })
-            // Fallback single JSON run
-            if (realPrompt) this.emitUserMessage(ctx, realPrompt)
-            this.stream.setMode(ctx.attemptId, 'json')
-            return super.run(ctx, profile)
         }
-
-        // 2) Debug follow-up with real prompt
-        const quotedRealPrompt = realPrompt ? `"${realPrompt.replace(/"/g, '\\"')}"` : undefined
-        const {base, params, env} = buildDroidFollowupCommand(profile, sid, quotedRealPrompt, 'debug')
-        const line = [base, ...params].join(' ')
-        this.stream.setMode(ctx.attemptId, 'debug')
-        ctx.emit({type: 'log', level: 'info', message: `[droid] continue in debug with session ${sid}`})
-        return this.runWithLine(ctx, profile, line, undefined, env)
+        try {
+            return await super.run(ctx, profile)
+        } finally {
+            this.groupers.get(ctx.attemptId)?.flush(ctx)
+            this.groupers.delete(ctx.attemptId)
+        }
     }
 
     async resume(ctx: AgentContext, profile: DroidProfile): Promise<number> {
         if (!ctx.sessionId) throw new Error('Droid resume requires sessionId')
-        const followupPrompt = ctx.followupPrompt?.trim()
-        const quotedFollowup = followupPrompt ? `"${followupPrompt.replace(/"/g, '\\"')}"` : undefined
-        if (profile.debug) {
-            const {base, params, env} = buildDroidFollowupCommand(profile, ctx.sessionId, quotedFollowup, 'debug')
-            const line = [base, ...params].join(' ')
-            this.stream.setMode(ctx.attemptId, 'debug')
-            ctx.emit({type: 'log', level: 'info', message: `[droid] resume (debug) with session ${ctx.sessionId}`})
-            // Do not emit user message; debug stream will include it
-            return this.runWithLine(ctx, profile, line, undefined, env)
+        this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
+        const prompt = (ctx.followupPrompt ?? '').trim()
+        if (prompt.length) {
+            ctx.emit({
+                type: 'conversation',
+                item: {
+                    type: 'message',
+                    timestamp: nowIso(),
+                    role: 'user',
+                    text: prompt,
+                    format: 'markdown',
+                    profileId: ctx.profileId ?? null,
+                },
+            })
         }
-        const {base, params, env} = buildDroidFollowupCommand(profile, ctx.sessionId, quotedFollowup, 'json')
-        const line = [base, ...params].join(' ')
-        if (followupPrompt) this.emitUserMessage(ctx, followupPrompt)
-        ctx.emit({type: 'log', level: 'info', message: `[droid] resume with session ${ctx.sessionId}`})
-        this.stream.setMode(ctx.attemptId, 'json')
-        return this.runWithLine(ctx, profile, line, undefined, env)
-    }
-
-    private emitUserMessage(ctx: AgentContext, text: string) {
-        if (!text.trim()) return
-        ctx.emit({
-            type: 'conversation',
-            item: {type: 'message', timestamp: new Date().toISOString(), role: 'user', text, format: 'markdown'}
-        })
+        try {
+            return await super.resume(ctx, profile)
+        } finally {
+            this.groupers.get(ctx.attemptId)?.flush(ctx)
+            this.groupers.delete(ctx.attemptId)
+        }
     }
 
     async inline<K extends InlineTaskKind>(
@@ -222,16 +365,35 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
     }
 
     async enhance(input: TicketEnhanceInput, profile: DroidProfile): Promise<TicketEnhanceResult> {
+        const enhanceCtx: AgentContext = {
+            attemptId: 'enhance-' + input.projectId,
+            boardId: input.boardId,
+            cardId: 'ticket',
+            worktreePath: input.repositoryPath,
+            repositoryPath: input.repositoryPath,
+            branchName: input.baseBranch,
+            baseBranch: input.baseBranch,
+            cardTitle: input.title,
+            cardDescription: input.description,
+            profileId: input.profileId ?? null,
+            sessionId: undefined,
+            followupPrompt: undefined,
+            signal: input.signal,
+            emit: () => {},
+        }
+
+        const installation = await this.detectInstallation(profile, enhanceCtx)
+        const client = await this.createClient(profile, enhanceCtx, installation)
+        const droid = client as Droid
+        const thread = droid.startThread(this.threadOptions(profile, input.repositoryPath))
+
         const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
         const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
         const effectiveAppend = inline.length > 0 ? inline : baseAppend
         const prompt = buildTicketEnhancePrompt(input, effectiveAppend ?? undefined)
-        const quotedPrompt = `"${prompt.replace(/"/g, '\\"')}"`
-        const {base, params, env} = buildDroidCommand(profile, quotedPrompt, 'text')
-        const line = [base, ...params].join(' ')
-        const cwd = input.repositoryPath || process.cwd()
-        const raw = await runDroidTextCommand(line, cwd, env, input.signal)
-        const markdown = raw.trim()
+
+        const turn = await thread.run(prompt)
+        const markdown = (turn.finalResponse || '').trim()
         if (!markdown) {
             return {title: input.title, description: input.description}
         }
@@ -243,17 +405,35 @@ class DroidImpl extends CommandAgent<z.infer<typeof DroidProfileSchema>> impleme
         profile: DroidProfile,
         signal?: AbortSignal,
     ): Promise<PrSummaryInlineResult> {
+        const summaryCtx: AgentContext = {
+            attemptId: `pr-summary-${input.repositoryPath}`,
+            boardId: 'pr-summary',
+            cardId: 'pr',
+            worktreePath: input.repositoryPath,
+            repositoryPath: input.repositoryPath,
+            branchName: input.headBranch,
+            baseBranch: input.baseBranch,
+            cardTitle: `PR from ${input.headBranch} into ${input.baseBranch}`,
+            cardDescription: undefined,
+            profileId: null,
+            sessionId: undefined,
+            followupPrompt: undefined,
+            signal: signal ?? new AbortController().signal,
+            emit: () => {},
+        }
+
+        const installation = await this.detectInstallation(profile, summaryCtx)
+        const client = await this.createClient(profile, summaryCtx, installation)
+        const droid = client as Droid
+        const thread = droid.startThread(this.threadOptions(profile, input.repositoryPath))
+
         const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
         const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
         const effectiveAppend = inline.length > 0 ? inline : baseAppend
         const prompt = buildPrSummaryPrompt(input, effectiveAppend ?? undefined)
-        const quotedPrompt = `"${prompt.replace(/"/g, '\\"')}"`
-        const {base, params, env} = buildDroidCommand(profile, quotedPrompt, 'text')
-        const line = [base, ...params].join(' ')
-        const cwd = input.repositoryPath || process.cwd()
-        const controller = signal ?? new AbortController().signal
-        const raw = await runDroidTextCommand(line, cwd, env, controller)
-        const markdown = raw.trim()
+
+        const turn = await thread.run(prompt)
+        const markdown = (turn.finalResponse || '').trim()
         const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`
         const fallbackBody = `Changes from ${input.baseBranch} to ${input.headBranch} in ${input.repositoryPath}`
         if (!markdown) {

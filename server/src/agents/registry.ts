@@ -5,12 +5,11 @@ import {
     listAgents,
     CodexAgent,
     OpencodeAgent,
+    DroidAgent,
 } from 'core'
 
-// Register only stable, supported agents here.
-// Droid remains experimental/WIP and is intentionally
-// hidden from the public API/UI.
 registerAgent(CodexAgent)
 registerAgent(OpencodeAgent)
+registerAgent(DroidAgent)
 
 export {bindAgentEventBus, registerAgent, getAgent, listAgents}
