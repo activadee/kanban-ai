@@ -99,10 +99,17 @@ export interface ProjectsRepo {
     listCardsWithColumn(boardId: string): Promise<CardWithColumnBoard[]>
 }
 
+export type GithubIssueSyncStatus = 'idle' | 'running' | 'succeeded' | 'failed'
+export type GithubPrAutoCloseStatus = 'idle' | 'running' | 'succeeded' | 'failed'
+
 export interface ProjectSettingsRepo {
     getProjectSettingsRow(projectId: string): Promise<ProjectSettingsRow | null>
     insertProjectSettings(values: ProjectSettingsInsert): Promise<void>
     updateProjectSettingsRow(projectId: string, patch: ProjectSettingsUpdate): Promise<void>
+    tryStartGithubIssueSync(projectId: string, now: Date, staleCutoff: Date): Promise<boolean>
+    completeGithubIssueSync(projectId: string, status: Exclude<GithubIssueSyncStatus, 'running'>, now: Date): Promise<void>
+    tryStartGithubPrAutoClose(projectId: string, now: Date, staleCutoff: Date): Promise<boolean>
+    completeGithubPrAutoClose(projectId: string, status: Exclude<GithubPrAutoCloseStatus, 'running'>, now: Date): Promise<void>
 }
 
 export interface AttemptsRepo {

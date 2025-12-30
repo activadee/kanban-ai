@@ -1,25 +1,6 @@
-import {and, desc, eq, gte, inArray, lt, sql} from 'drizzle-orm'
 import type {DashboardInbox, InboxItemType, AttemptStatus} from 'shared'
-import {attempts, boards, cards, columns} from '../db/schema'
-import {resolveDb} from '../db/with-tx'
-import {listAttemptLogs} from '../attempts/repo'
-
-type AttemptRowForInbox = {
-    attemptId: string
-    projectId: string
-    projectName: string | null
-    cardId: string | null
-    cardTitle: string | null
-    ticketKey: string | null
-    prUrl: string | null
-    cardStatus: string | null
-    agent: string
-    status: string
-    createdAt: Date | number
-    updatedAt: Date | number
-    startedAt: Date | number | null
-    endedAt: Date | number | null
-}
+import {getDashboardRepo, getAttemptsRepo} from '../repos/provider'
+import type {DashboardAttemptRowForInbox} from '../repos/interfaces'
 
 type CardAggregationState = {
     hasAnySuccess: boolean
@@ -64,20 +45,10 @@ type StuckCandidate = InboxCandidateBase & {
 type InboxCandidate = ReviewCandidate | FailedCandidate | StuckCandidate
 
 const INBOX_DEFAULT_LIMIT = 25
-const INBOX_MAX_LIMIT = 100
 const INBOX_MAX_SCANNED_ATTEMPTS = 500
 
 const STUCK_QUEUED_THRESHOLD_SECONDS = 10 * 60
 const STUCK_RUNNING_THRESHOLD_SECONDS = 30 * 60
-
-const INBOX_RELEVANT_STATUSES: AttemptStatus[] = [
-    'queued',
-    'running',
-    'stopping',
-    'succeeded',
-    'failed',
-    'stopped',
-]
 
 function toIso(value: Date | number | null): string | null {
     if (value == null) return null
@@ -101,7 +72,7 @@ function isDoneColumn(cardStatus: string | null): boolean {
 }
 
 function classifyAttemptRow(
-    row: AttemptRowForInbox,
+    row: DashboardAttemptRowForInbox,
     cardState: CardAggregationState,
     nowMs: number,
 ): InboxCandidate | null {
@@ -229,9 +200,10 @@ function truncateSummary(text: string, maxLength: number): string {
 }
 
 async function enrichFailedCandidatesWithErrors(candidates: FailedCandidate[]): Promise<void> {
+    const attemptsRepo = getAttemptsRepo()
     const tasks = candidates.map(async (candidate) => {
         try {
-            const logs = await listAttemptLogs(candidate.attemptId)
+            const logs = await attemptsRepo.listAttemptLogs(candidate.attemptId)
             if (!Array.isArray(logs) || logs.length === 0) {
                 candidate.errorSummary = 'Attempt failed – see logs for details'
                 return
@@ -256,48 +228,16 @@ export async function buildDashboardInbox(
     rangeFrom: Date | null,
     rangeTo: Date | null,
 ): Promise<DashboardInbox> {
-    const db = resolveDb()
+    const repo = getDashboardRepo()
     const nowRef = rangeTo ?? new Date()
     const nowMs = nowRef.getTime()
 
-    const wherePredicates = [inArray(attempts.status, INBOX_RELEVANT_STATUSES)]
-
-    if (rangeFrom) {
-        wherePredicates.push(gte(attempts.createdAt, rangeFrom))
-    }
-    if (rangeTo) {
-        wherePredicates.push(lt(attempts.createdAt, rangeTo))
-    }
-
-    const attemptRows = await db
-        .select({
-            attemptId: attempts.id,
-            projectId: attempts.boardId,
-            projectName: boards.name,
-            cardId: attempts.cardId,
-            cardTitle: cards.title,
-            ticketKey: cards.ticketKey,
-            prUrl: cards.prUrl,
-            cardStatus: columns.title,
-            agent: attempts.agent,
-            status: attempts.status,
-            createdAt: attempts.createdAt,
-            updatedAt: attempts.updatedAt,
-            startedAt: attempts.startedAt,
-            endedAt: attempts.endedAt,
-        })
-        .from(attempts)
-        .leftJoin(cards, eq(attempts.cardId, cards.id))
-        .leftJoin(columns, eq(cards.columnId, columns.id))
-        .leftJoin(boards, eq(attempts.boardId, boards.id))
-        .where(and(...wherePredicates))
-        .orderBy(desc(sql`coalesce(${attempts.endedAt}, ${attempts.updatedAt}, ${attempts.createdAt})`))
-        .limit(INBOX_MAX_SCANNED_ATTEMPTS)
+    const attemptRows = await repo.getInboxAttemptRows(rangeFrom, rangeTo, INBOX_MAX_SCANNED_ATTEMPTS)
 
     const cardState = new Map<string, CardAggregationState>()
     const candidates: InboxCandidate[] = []
 
-    for (const row of attemptRows as AttemptRowForInbox[]) {
+    for (const row of attemptRows) {
         const cardId = row.cardId ?? `card-${row.projectId ?? 'unknown'}`
         const state =
             cardState.get(cardId) ??
@@ -439,8 +379,6 @@ export async function buildDashboardInbox(
     }
 }
 
-// Test-only exports to make the inbox classification logic easier to exercise
-// in isolation without coupling tests to the database layer.
 export {
     classifyAttemptRow,
     isDoneColumn,
