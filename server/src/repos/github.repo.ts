@@ -15,7 +15,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
         },
 
         async upsertGithubConnection(data: GithubConnectionUpsert): Promise<GithubConnectionRow> {
-            await db
+            const [row] = await db
                 .insert(githubConnections)
                 .values({
                     id: SINGLETON_ID,
@@ -36,8 +36,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                         updatedAt: new Date(),
                     },
                 })
-                .run()
-            const [row] = await db.select().from(githubConnections).where(eq(githubConnections.id, SINGLETON_ID)).limit(1)
+                .returning()
             return row!
         },
 
@@ -51,7 +50,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
         },
 
         async upsertGithubAppConfig(values: GithubAppConfigUpsert): Promise<GithubAppConfigRow> {
-            await db
+            const [row] = await db
                 .insert(githubAppConfigs)
                 .values({
                     id: SINGLETON_ID,
@@ -66,8 +65,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                         updatedAt: new Date(),
                     },
                 })
-                .run()
-            const [row] = await db.select().from(githubAppConfigs).where(eq(githubAppConfigs.id, SINGLETON_ID)).limit(1)
+                .returning()
             return row!
         },
 
