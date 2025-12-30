@@ -6,6 +6,7 @@ import type {
     AttemptTodoSummary,
     TicketType,
     AutomationStage,
+    MessageImage,
 } from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {createWorktree} from '../ports/worktree'
@@ -81,6 +82,7 @@ export type StartAttemptWorkerParams = AttemptWorkerCommonParams
 export type FollowupAttemptWorkerParams = AttemptWorkerCommonParams & {
     sessionId: string
     followupPrompt: string
+    images?: MessageImage[]
 }
 
 type InternalWorkerParams =
@@ -445,6 +447,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                             emit,
                             sessionId: params.sessionId,
                             followupPrompt: params.followupPrompt,
+                            images: params.images,
                             profileId: profileId ?? null,
                         } as any,
                         profile as any,

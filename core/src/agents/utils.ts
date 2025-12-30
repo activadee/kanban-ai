@@ -1,4 +1,31 @@
+import {promises as fs} from 'node:fs'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import type {MessageImage, MessageImageMimeType} from 'shared'
+import {getImageExtension} from 'shared'
 import type {PrSummaryInlineInput, TicketEnhanceInput, TicketEnhanceResult} from './types'
+
+export async function saveImageToTempFile(image: MessageImage, prefix?: string): Promise<string> {
+    const ext = getImageExtension(image.mime)
+    const filename = `${prefix ?? 'image'}-${crypto.randomUUID()}.${ext}`
+    const tempPath = join(tmpdir(), 'kanban-ai-images')
+    await fs.mkdir(tempPath, {recursive: true})
+    const filePath = join(tempPath, filename)
+    const buffer = Buffer.from(image.data, 'base64')
+    await fs.writeFile(filePath, buffer)
+    return filePath
+}
+
+export async function saveImagesToTempFiles(
+    images: MessageImage[],
+    prefix?: string,
+): Promise<string[]> {
+    return Promise.all(images.map((img, i) => saveImageToTempFile(img, `${prefix ?? 'img'}-${i}`)))
+}
+
+export function imageToDataUrl(image: MessageImage): string {
+    return `data:${image.mime};base64,${image.data}`
+}
 
 export function splitTicketMarkdown(
     markdown: string,

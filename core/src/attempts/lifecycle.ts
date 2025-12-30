@@ -1,4 +1,4 @@
-import type {AttemptStatus, ConversationItem, AttemptTodoSummary} from 'shared'
+import type {AttemptStatus, ConversationItem, AttemptTodoSummary, MessageImage} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -279,6 +279,7 @@ export async function followupAttempt(
     prompt: string,
     profileId: string | undefined,
     events: AppEventBus,
+    images?: MessageImage[],
 ) {
     const base = await getAttemptById(attemptId)
     if (!base) throw new Error('Attempt not found')
@@ -350,6 +351,7 @@ export async function followupAttempt(
             cardDescription: null,
             sessionId: base.sessionId,
             followupPrompt: prompt,
+            images,
             automation: {
                 copyScript,
                 setupScript,
