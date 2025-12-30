@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/bun-sqlite'
 import { Database } from 'bun:sqlite'
-import { dbSchema } from 'core'
+import * as dbSchema from './schema'
 import path from 'path'
 import fs from 'fs'
 import type { ServerConfig } from '../env'
