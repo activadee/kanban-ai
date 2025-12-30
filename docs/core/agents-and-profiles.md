@@ -1,6 +1,6 @@
 # Agents & profiles
 
-Last updated: 2025-11-29
+Last updated: 2025-12-30
 
 ## Agent registry
 
@@ -13,13 +13,12 @@ Last updated: 2025-11-29
   - `bindAgentEventBus` publishes the full registry when the event bus becomes available.
 - In the current implementation:
   - The UI focuses on a Codex-based agent backed by the Codex SDK and local Codex CLI.
-  - OpenCode is now a first-class SDK-backed agent exposed via the API and `/agents` endpoints.
-  - Droid remains experimental and is not exposed in the UI.
+  - OpenCode is a first-class SDK-backed agent exposed via the API and `/agents` endpoints.
+  - Droid is supported for starting card attempts via the API (schema-validated); the agent itself remains experimental and registration may be limited in production builds.
 
 ## Coding agents
 
-KanbanAI’s agent registry is designed to host multiple **coding agents**. Today, the primary supported agents are
-Codex and OpenCode, with additional agents under active development.
+KanbanAI's agent registry hosts multiple **coding agents**. The currently supported agents for starting attempts are Codex, OpenCode, and Droid, with additional agents under development.
 
 - **Codex**
   - Status: **Supported** (primary coding agent).
@@ -34,14 +33,17 @@ Codex and OpenCode, with additional agents under active development.
     - Tuned via agent profiles (model, temperature, tools/sandbox config) stored per project or globally.
     - Supports `modelReasoningEffort` (`minimal` | `low` | `medium` | `high` | `xhigh`) to control how much reasoning the Codex backend performs; higher levels, especially `xhigh`, typically trade higher latency and token usage for more robust planning and analysis.
 
-- **Droid** (WIP)
-  - Status: **Work in progress – not exposed in the UI, not supported for production use.**
+- **Droid**
+  - Status: **Supported for starting attempts** (experimental agent).
   - Implementation:
-    - Experimental agent module wired into the registry only in development builds.
+    - Experimental agent module wired into the registry (may be limited to development builds).
     - Shares the same Attempt lifecycle and worktree model as Codex.
-  - Intended goals:
-    - Explore alternative planning/execution strategies and sandboxes.
-    - Validate multi-agent orchestration patterns before promoting to a supported agent.
+    - Validated in `startAttemptSchema` for card attempts alongside Codex and OpenCode.
+  - Capabilities:
+    - Supports standard attempt operations (start, follow-up, stop).
+    - Streams structured messages into the Attempt model.
+  - Configuration:
+    - Uses the same profile system as other agents.
 
 - **OpenCode**
   - Status: **Supported** (SDK-backed coding agent).
@@ -52,19 +54,17 @@ Codex and OpenCode, with additional agents under active development.
       base URL is configured (via `baseUrl` in the profile or `OPENCODE_BASE_URL`).
   - Capabilities:
     - Reads and writes files inside attempt worktrees via OpenCode tools.
-    - Streams structured messages, tool invocations, and todos into KanbanAI’s Attempt model.
+    - Streams structured messages, tool invocations, and todos into KanbanAI's Attempt model.
     - Implements the unified inline interface for:
       - `kind = "ticketEnhance"` – inline ticket enhancement.
-      - `kind = "prSummary"` – PR inline summary/title+body drafting.
+      - `kind = "prSummary"` – PR inline summary (Create Pull Request dialog suggestions and checklisted in `docs/core/pr-inline-summary.md`).
   - Configuration:
     - Tuned via agent profiles (primary model/agent selection, append/inline prompts, optional base URL / API key, port).
     - Providing `baseUrl` (or `OPENCODE_BASE_URL`) switches the agent into remote mode while `apiKey` is mirrored into
       `OPENCODE_API_KEY` when the SDK runs the local server, keeping credentials inside the profile without extra env setup.
     - The `port` field configures the local server port (default: 4097). When a server is already running on the configured port, it will be reused instead of starting a new instance. Valid ports are 1-65535, excluding reserved ports (80, 443, 22, 25, 53, 110, 143, 993, 995, 3306, 5432, 6379, 8080, 8443).
 
-Until additional WIP agents are promoted, **Codex and OpenCode are considered stable**. New features and UI flows
-should continue to target these as the default coding agents, with Droid reserved for internal testing and
-experimentation.
+Until additional agents are promoted, **Codex and OpenCode are considered stable for production use**, with Droid available as an experimental option for starting attempts.
 
 ### Inline tasks & ticket enhancement
 
@@ -112,8 +112,8 @@ experimentation.
   - Resolves `boardId`, `agentKey`, and `profileId` from project settings and inputs:
     - Uses the explicit `agentKey` / `profileId` when provided.
     - Otherwise consults the per-inline-agent profile mapping for `InlineAgentId = "ticketEnhance"` when configured so ticket enhancement can use a dedicated profile.
-    - Otherwise uses the project’s configured inline agent/profile by default when set.
-    - Otherwise falls back to the project’s default agent/profile (or `"DROID"` when no default agent is set).
+    - Otherwise uses the project's configured inline agent/profile by default when set.
+    - Otherwise falls back to the project's default agent/profile (or `"DROID"` when no default agent is set).
     - Allows advanced callers to override `agentKey` / `profileId` explicitly.
   - Constructs a `TicketEnhanceInput` (including a cancellation signal) and `InlineTaskContext`.
   - Resolves the agent profile using the shared profile resolution helpers.
@@ -133,8 +133,8 @@ experimentation.
   - Resolves `agentKey` and `profileId` from project settings and inputs using the same rules as ticket enhancement:
     - Uses the explicit `agentKey` / `profileId` when provided.
     - Otherwise consults the per-inline-agent profile mapping for `InlineAgentId = "prSummary"` when configured so PR summaries can use a dedicated profile.
-    - Otherwise prefers the project’s configured inline agent/profile when set.
-    - Otherwise falls back to the project’s default agent/profile (or `"DROID"` when no default agent is set).
+    - Otherwise prefers the project's configured inline agent/profile when set.
+    - Otherwise falls back to the project's default agent/profile (or `"DROID"` when no default agent is set).
     - Allows advanced callers to override `agentKey` / `profileId` explicitly.
   - Loads the project and settings (including `repositoryPath` and `baseBranch`) and constructs a `PrSummaryInlineInput`:
     - `repositoryPath`, `baseBranch`, `headBranch`, plus optional change summaries in the future.
@@ -159,26 +159,26 @@ experimentation.
 ### Global vs project profiles
 
 - Profiles can be scoped:
-  - **Per project** – associated with a specific project’s ID.
+  - **Per project** – associated with a specific project's ID.
   - **Global** – workspace-wide entries (IDs beginning with `apg-`).
 - The UI surfaces both:
   - The Dashboard and settings pages expose an Agents view (e.g. `/agents/CODEX`) where profiles can be created and
     edited.
-  - When starting or following up on an Attempt, the “profile” selector shows relevant profiles from both scopes.
+  - When starting or following up on an Attempt, the "profile" selector shows relevant profiles from both scopes.
 
 ## How Attempts use agents and profiles
 
 - When a new Attempt is started or resumed:
   - The Attempts service resolves which agent to use from:
     - The explicit agent selected in the UI, or
-    - The project’s default agent setting.
+    - The project's default agent setting.
   - If a profile ID is provided (or a project default profile is configured), the service:
     - Loads the profile.
-    - Validates it against the agent’s schema.
+    - Validates it against the agent's schema.
     - Applies the configuration to the agent runner.
 - Behavior on invalid/missing profiles:
   - If a referenced profile is missing or fails validation, KanbanAI logs a warning.
-  - The Attempt falls back to the agent’s default profile so work can continue without manual cleanup.
+  - The Attempt falls back to the agent's default profile so work can continue without manual cleanup.
 - During execution:
   - Agents implement `run` and `resume` and stream structured messages back via callbacks.
   - The Attempts module translates these into `attempt.*` events and persists logs + conversation items, powering the
