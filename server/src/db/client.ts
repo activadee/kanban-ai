@@ -68,6 +68,6 @@ export const createDbClient = (config: ServerConfig): DbResources => {
   const sqlite = new Database(dbPath, { create: true })
   sqlite.run('PRAGMA foreign_keys = ON;')
 
-  const db = drizzle(sqlite, { schema: dbSchema as any })
+  const db = drizzle<typeof dbSchema>(sqlite, { schema: dbSchema })
   return { db, sqlite, path: dbPath }
 }
