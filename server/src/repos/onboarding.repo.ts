@@ -1,12 +1,12 @@
 import {eq} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {onboardingState} from '../db/schema'
 import type {OnboardingRepo} from 'core/repos/interfaces'
 import type {OnboardingStateRow} from 'core/db/types'
 
 const SINGLETON_ID = 'singleton'
 
-export function createOnboardingRepo(db: BunSQLiteDatabase): OnboardingRepo {
+export function createOnboardingRepo(db: DbExecutor): OnboardingRepo {
     return {
         async getOnboardingState(): Promise<OnboardingStateRow | null> {
             const [row] = await db.select().from(onboardingState).limit(1)

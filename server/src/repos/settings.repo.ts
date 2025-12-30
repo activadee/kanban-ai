@@ -1,12 +1,12 @@
 import {eq} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {appSettings} from '../db/schema'
 import type {AppSettingsRepo} from 'core/repos/interfaces'
 import type {AppSettingsRow} from 'core/db/types'
 
 const SINGLETON_ID = 'singleton'
 
-export function createAppSettingsRepo(db: BunSQLiteDatabase): AppSettingsRepo {
+export function createAppSettingsRepo(db: DbExecutor): AppSettingsRepo {
     return {
         async getAppSettingsRow(): Promise<AppSettingsRow | null> {
             const [row] = await db.select().from(appSettings).limit(1)

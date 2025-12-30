@@ -1,4 +1,3 @@
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
 import type {RepoProvider} from 'core/repos/interfaces'
 import {createProjectsRepo} from './projects.repo'
 import {createProjectSettingsRepo} from './project-settings.repo'
@@ -10,28 +9,31 @@ import {createOnboardingRepo} from './onboarding.repo'
 import {createDependenciesRepo} from './dependencies.repo'
 import {createEnhancementsRepo} from './enhancements.repo'
 import {createDashboardRepo} from './dashboard.repo'
-import type {DbClient} from '../db/client'
+import type {DbClient, DbExecutor} from '../db/client'
 
-export function createDrizzleRepoProvider(db: DbClient): RepoProvider {
-    const baseDb = db as unknown as BunSQLiteDatabase
+function createRepoProviderInternal(db: DbExecutor): RepoProvider {
     return {
-        projects: createProjectsRepo(baseDb),
-        projectSettings: createProjectSettingsRepo(baseDb),
-        attempts: createAttemptsRepo(baseDb),
-        agentProfiles: createAgentProfilesRepo(baseDb),
-        agentProfilesGlobal: createAgentProfilesGlobalRepo(baseDb),
-        github: createGithubRepo(baseDb),
-        appSettings: createAppSettingsRepo(baseDb),
-        onboarding: createOnboardingRepo(baseDb),
-        dependencies: createDependenciesRepo(baseDb),
-        enhancements: createEnhancementsRepo(baseDb),
-        dashboard: createDashboardRepo(baseDb),
+        projects: createProjectsRepo(db),
+        projectSettings: createProjectSettingsRepo(db),
+        attempts: createAttemptsRepo(db),
+        agentProfiles: createAgentProfilesRepo(db),
+        agentProfilesGlobal: createAgentProfilesGlobalRepo(db),
+        github: createGithubRepo(db),
+        appSettings: createAppSettingsRepo(db),
+        onboarding: createOnboardingRepo(db),
+        dependencies: createDependenciesRepo(db),
+        enhancements: createEnhancementsRepo(db),
+        dashboard: createDashboardRepo(db),
 
         async withTx<T>(fn: (provider: RepoProvider) => Promise<T>): Promise<T> {
             return db.transaction(async (tx) => {
-                const txProvider = createDrizzleRepoProvider(tx as unknown as DbClient)
+                const txProvider = createRepoProviderInternal(tx as DbExecutor)
                 return fn(txProvider)
             })
         },
     }
+}
+
+export function createDrizzleRepoProvider(db: DbClient): RepoProvider {
+    return createRepoProviderInternal(db)
 }

@@ -1,5 +1,5 @@
 import {asc, desc, eq, inArray, sql} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {boards, cards, columns} from '../db/schema'
 import type {
     ProjectsRepo,
@@ -17,7 +17,7 @@ import type {
     CardInsert,
 } from 'core/db/types'
 
-export function createProjectsRepo(db: BunSQLiteDatabase): ProjectsRepo {
+export function createProjectsRepo(db: DbExecutor): ProjectsRepo {
     return {
         async listBoards(): Promise<BoardRow[]> {
             return db.select().from(boards).orderBy(desc(boards.createdAt))

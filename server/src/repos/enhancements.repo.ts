@@ -1,9 +1,9 @@
 import {eq, inArray} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {cardEnhancements, cards} from '../db/schema'
 import type {EnhancementsRepo, CardEnhancementRecord} from 'core/repos/interfaces'
 
-export function createEnhancementsRepo(db: BunSQLiteDatabase): EnhancementsRepo {
+export function createEnhancementsRepo(db: DbExecutor): EnhancementsRepo {
     return {
         async listCardEnhancementsForBoard(boardId: string): Promise<CardEnhancementRecord[]> {
             const boardCards = await db.select({id: cards.id}).from(cards).where(eq(cards.boardId, boardId))

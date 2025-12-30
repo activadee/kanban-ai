@@ -1,10 +1,10 @@
 import {and, eq, ne, or, isNull, lt} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {projectSettings} from '../db/schema'
 import type {ProjectSettingsRepo, ProjectSettingsUpdate, GithubIssueSyncStatus, GithubPrAutoCloseStatus} from 'core/repos/interfaces'
 import type {ProjectSettingsRow, ProjectSettingsInsert} from 'core/db/types'
 
-export function createProjectSettingsRepo(db: BunSQLiteDatabase): ProjectSettingsRepo {
+export function createProjectSettingsRepo(db: DbExecutor): ProjectSettingsRepo {
     return {
         async getProjectSettingsRow(projectId: string): Promise<ProjectSettingsRow | null> {
             const [row] = await db.select().from(projectSettings).where(eq(projectSettings.projectId, projectId)).limit(1)

@@ -1,5 +1,5 @@
 import {and, eq, sql} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {githubConnections, githubIssues} from '../db/schema/github'
 import {githubAppConfigs} from '../db/schema/onboarding'
 import type {GithubRepo, GithubConnectionUpsert, GithubAppConfigUpsert, GithubIssueStats, GithubIssueUpdate} from 'core/repos/interfaces'
@@ -7,7 +7,7 @@ import type {GithubConnectionRow, GithubIssueRow, GithubIssueInsert, GithubAppCo
 
 const SINGLETON_ID = 'singleton'
 
-export function createGithubRepo(db: BunSQLiteDatabase): GithubRepo {
+export function createGithubRepo(db: DbExecutor): GithubRepo {
     return {
         async getGithubConnection(): Promise<GithubConnectionRow | null> {
             const [row] = await db.select().from(githubConnections).limit(1)

@@ -1,5 +1,5 @@
 import {and, desc, eq, gte, inArray, lt, sql} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {attempts, boards, cards, columns} from '../db/schema'
 import type {
     DashboardRepo,
@@ -30,7 +30,7 @@ function buildTimeRangePredicate(
     return and(...predicates)
 }
 
-export function createDashboardRepo(db: BunSQLiteDatabase): DashboardRepo {
+export function createDashboardRepo(db: DbExecutor): DashboardRepo {
     return {
         async countBoards(): Promise<number> {
             const [row] = await db.select({count: sql<number>`cast(count(*) as integer)`}).from(boards)

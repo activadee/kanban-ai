@@ -51,6 +51,7 @@ const resolveDbPath = (config: ServerConfig) => {
 
 export type DbClient = ReturnType<typeof drizzle>
 export type DbResources = { db: DbClient; sqlite: Database; path: string }
+export type DbExecutor = Pick<DbClient, 'select' | 'insert' | 'update' | 'delete' | 'transaction'>
 
 export const createDbClient = (config: ServerConfig): DbResources => {
   const dbPath = resolveDbPath(config)

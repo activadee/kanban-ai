@@ -1,5 +1,5 @@
 import {and, asc, desc, eq, sql} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {attempts, attemptLogs, conversationItems, attemptTodos} from '../db/schema'
 import type {AttemptsRepo, AttemptUpdate} from 'core/repos/interfaces'
 import type {
@@ -12,7 +12,7 @@ import type {
     AttemptTodoRow,
 } from 'core/db/types'
 
-export function createAttemptsRepo(db: BunSQLiteDatabase): AttemptsRepo {
+export function createAttemptsRepo(db: DbExecutor): AttemptsRepo {
     return {
         async getAttemptById(id: string): Promise<AttemptRow | null> {
             const [row] = await db.select().from(attempts).where(eq(attempts.id, id)).limit(1)

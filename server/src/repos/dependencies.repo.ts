@@ -1,9 +1,9 @@
 import {eq, inArray} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {cardDependencies} from '../db/schema'
 import type {DependenciesRepo} from 'core/repos/interfaces'
 
-export function createDependenciesRepo(db: BunSQLiteDatabase): DependenciesRepo {
+export function createDependenciesRepo(db: DbExecutor): DependenciesRepo {
     return {
         async listDependencies(cardId: string): Promise<string[]> {
             const rows = await db

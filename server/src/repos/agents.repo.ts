@@ -1,5 +1,5 @@
 import {and, eq} from 'drizzle-orm'
-import type {BunSQLiteDatabase} from 'drizzle-orm/bun-sqlite'
+import type {DbExecutor} from '../db/client'
 import {agentProfiles, agentProfilesGlobal} from '../db/schema'
 import type {AgentProfilesRepo, AgentProfilesGlobalRepo, AgentProfileUpdate, AgentProfileGlobalUpdate} from 'core/repos/interfaces'
 import type {
@@ -9,7 +9,7 @@ import type {
     AgentProfileGlobalInsert,
 } from 'core/db/types'
 
-export function createAgentProfilesRepo(db: BunSQLiteDatabase): AgentProfilesRepo {
+export function createAgentProfilesRepo(db: DbExecutor): AgentProfilesRepo {
     return {
         async listAgentProfiles(projectId: string): Promise<AgentProfileRow[]> {
             return db.select().from(agentProfiles).where(eq(agentProfiles.projectId, projectId))
@@ -45,7 +45,7 @@ export function createAgentProfilesRepo(db: BunSQLiteDatabase): AgentProfilesRep
     }
 }
 
-export function createAgentProfilesGlobalRepo(db: BunSQLiteDatabase): AgentProfilesGlobalRepo {
+export function createAgentProfilesGlobalRepo(db: DbExecutor): AgentProfilesGlobalRepo {
     return {
         async listGlobalAgentProfiles(): Promise<AgentProfileGlobalRow[]> {
             return db.select().from(agentProfilesGlobal)
