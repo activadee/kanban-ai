@@ -10,24 +10,26 @@ import {createOnboardingRepo} from './onboarding.repo'
 import {createDependenciesRepo} from './dependencies.repo'
 import {createEnhancementsRepo} from './enhancements.repo'
 import {createDashboardRepo} from './dashboard.repo'
+import type {DbClient} from '../db/client'
 
-export function createDrizzleRepoProvider(db: BunSQLiteDatabase): RepoProvider {
+export function createDrizzleRepoProvider(db: DbClient): RepoProvider {
+    const baseDb = db as unknown as BunSQLiteDatabase
     return {
-        projects: createProjectsRepo(db),
-        projectSettings: createProjectSettingsRepo(db),
-        attempts: createAttemptsRepo(db),
-        agentProfiles: createAgentProfilesRepo(db),
-        agentProfilesGlobal: createAgentProfilesGlobalRepo(db),
-        github: createGithubRepo(db),
-        appSettings: createAppSettingsRepo(db),
-        onboarding: createOnboardingRepo(db),
-        dependencies: createDependenciesRepo(db),
-        enhancements: createEnhancementsRepo(db),
-        dashboard: createDashboardRepo(db),
+        projects: createProjectsRepo(baseDb),
+        projectSettings: createProjectSettingsRepo(baseDb),
+        attempts: createAttemptsRepo(baseDb),
+        agentProfiles: createAgentProfilesRepo(baseDb),
+        agentProfilesGlobal: createAgentProfilesGlobalRepo(baseDb),
+        github: createGithubRepo(baseDb),
+        appSettings: createAppSettingsRepo(baseDb),
+        onboarding: createOnboardingRepo(baseDb),
+        dependencies: createDependenciesRepo(baseDb),
+        enhancements: createEnhancementsRepo(baseDb),
+        dashboard: createDashboardRepo(baseDb),
 
         async withTx<T>(fn: (provider: RepoProvider) => Promise<T>): Promise<T> {
             return db.transaction(async (tx) => {
-                const txProvider = createDrizzleRepoProvider(tx as unknown as BunSQLiteDatabase)
+                const txProvider = createDrizzleRepoProvider(tx as unknown as DbClient)
                 return fn(txProvider)
             })
         },

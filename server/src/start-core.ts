@@ -3,7 +3,8 @@ import { resolveMigrations } from './runtime'
 import type { ResolvedMigrations } from './runtime'
 import type { DbResources } from './db/client'
 import { registerCoreDbProvider } from './db/provider'
-import { settingsService } from 'core'
+import { settingsService, setRepoProvider } from 'core'
+import { createDrizzleRepoProvider } from './repos'
 import { log } from './log'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -278,6 +279,7 @@ export async function bootstrapRuntime(
   }
 
   registerCoreDbProvider(dbResources.db)
+  setRepoProvider(createDrizzleRepoProvider(dbResources.db))
   try {
     await settingsService.ensure()
   } catch (error) {

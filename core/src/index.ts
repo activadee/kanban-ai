@@ -7,7 +7,7 @@ export * from './events/types'
 
 export * from './db/with-tx'
 export {setDbProvider} from './db/provider'
-export {withRepoTx} from './repos/provider'
+export {setRepoProvider, withRepoTx} from './repos/provider'
 export * from './settings/service'
 export {discoverGitRepositories} from './fs/repos'
 export {browseDirectory} from './fs/browse'
