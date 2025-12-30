@@ -1,26 +1,49 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
-import {EventEmitter} from 'node:events'
 
 import type {PrSummaryInlineInput, TicketEnhanceInput} from '../src/agents/types'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt} from '../src/agents/utils'
 
-const buildDroidCommand = vi.fn()
+const mockRun = vi.fn()
+const mockStartThread = vi.fn()
 
-vi.mock('../src/agents/droid/profiles/build', () => ({
-    buildDroidCommand,
-    buildDroidFollowupCommand: vi.fn(),
+class MockDroid {
+    startThread = mockStartThread
+}
+
+vi.mock('@activade/droid-sdk', () => ({
+    Droid: MockDroid,
+    isMessageEvent: vi.fn(),
+    isToolCallEvent: vi.fn(),
+    isToolResultEvent: vi.fn(),
+    isTurnCompletedEvent: vi.fn(),
+    isTurnFailedEvent: vi.fn(),
+    isSystemInitEvent: vi.fn(),
 }))
 
-const spawnMock = vi.fn()
+vi.mock('node:child_process', () => ({
+    execFile: vi.fn((_cmd, _args, callback) => {
+        callback(null, {stdout: '/usr/bin/droid\n', stderr: ''})
+    }),
+}))
 
-vi.mock('child_process', () => ({
-    spawn: spawnMock,
+vi.mock('node:fs', () => ({
+    promises: {
+        access: vi.fn().mockResolvedValue(undefined),
+    },
+    constants: {
+        F_OK: 0,
+        X_OK: 1,
+    },
 }))
 
 describe('DroidAgent.enhance', () => {
     beforeEach(() => {
-        buildDroidCommand.mockReset()
-        spawnMock.mockReset()
+        mockRun.mockReset()
+        mockStartThread.mockReset()
+        mockStartThread.mockReturnValue({
+            run: mockRun,
+            id: 'test-session-id',
+        })
     })
 
     it('builds a text-only prompt and splits markdown output', async () => {
@@ -41,53 +64,29 @@ describe('DroidAgent.enhance', () => {
         const profile = {
             appendPrompt: null,
             inlineProfile: null,
-            autonomy: 'read-only',
             model: 'test-model',
-            reasoningEffort: 'low',
+            autonomyLevel: 'low' as const,
+            reasoningEffort: 'low' as const,
             baseCommandOverride: null,
-            additionalParams: [],
             debug: false,
         }
 
         const expectedPrompt = buildTicketEnhancePrompt(input, profile.inlineProfile ?? profile.appendPrompt ?? undefined)
-        const expectedQuoted = `"${expectedPrompt.replace(/"/g, '\\"')}"`
 
-        buildDroidCommand.mockImplementation((_cfg, prompt, format) => {
-            return {
-                base: 'droid',
-                params: ['-o', format, prompt],
-                env: {NO_COLOR: '1'},
-            }
-        })
-
-        spawnMock.mockImplementation(() => {
-            const child = new EventEmitter() as any
-            child.stdout = new EventEmitter()
-            child.stderr = new EventEmitter()
-            child.stdin = {
-                write: vi.fn(),
-                end: vi.fn(),
-            }
-            child.pid = 123
-            child.killed = false
-            child.kill = vi.fn()
-
-            setTimeout(() => {
-                child.stdout.emit('data', '# Enhanced Title\nEnhanced body')
-                child.stdout.emit('end')
-                child.emit('close', 0)
-            }, 0)
-
-            return child
+        mockRun.mockResolvedValue({
+            finalResponse: '# Enhanced Title\nEnhanced body',
+            isError: false,
+            sessionId: 'test-session-id',
+            durationMs: 100,
+            numTurns: 1,
+            items: [],
         })
 
         const result = await (DroidAgent as any).enhance(input, profile)
 
-        expect(buildDroidCommand).toHaveBeenCalledTimes(1)
-        const [cfgArg, promptArg, formatArg] = buildDroidCommand.mock.calls[0] as [any, string, string]
-        expect(cfgArg).toBe(profile)
-        expect(formatArg).toBe('text')
-        expect(promptArg).toBe(expectedQuoted)
+        expect(mockStartThread).toHaveBeenCalledTimes(1)
+        expect(mockRun).toHaveBeenCalledTimes(1)
+        expect(mockRun).toHaveBeenCalledWith(expectedPrompt)
 
         expect(result).toEqual({
             title: 'Enhanced Title',
@@ -98,8 +97,12 @@ describe('DroidAgent.enhance', () => {
 
 describe('DroidAgent.summarizePullRequest', () => {
     beforeEach(() => {
-        buildDroidCommand.mockReset()
-        spawnMock.mockReset()
+        mockRun.mockReset()
+        mockStartThread.mockReset()
+        mockStartThread.mockReturnValue({
+            run: mockRun,
+            id: 'test-session-id',
+        })
     })
 
     it('builds a PR-summary prompt and maps markdown to title/body', async () => {
@@ -117,53 +120,29 @@ describe('DroidAgent.summarizePullRequest', () => {
         const profile = {
             appendPrompt: null,
             inlineProfile: null,
-            autonomy: 'read-only',
             model: 'test-model',
-            reasoningEffort: 'low',
+            autonomyLevel: 'low' as const,
+            reasoningEffort: 'low' as const,
             baseCommandOverride: null,
-            additionalParams: [],
             debug: false,
         }
 
         const expectedPrompt = buildPrSummaryPrompt(input, profile.inlineProfile ?? profile.appendPrompt ?? undefined)
-        const expectedQuoted = `"${expectedPrompt.replace(/"/g, '\\"')}"`
 
-        buildDroidCommand.mockImplementation((_cfg, prompt, format) => {
-            return {
-                base: 'droid',
-                params: ['-o', format, prompt],
-                env: {NO_COLOR: '1'},
-            }
-        })
-
-        spawnMock.mockImplementation(() => {
-            const child = new EventEmitter() as any
-            child.stdout = new EventEmitter()
-            child.stderr = new EventEmitter()
-            child.stdin = {
-                write: vi.fn(),
-                end: vi.fn(),
-            }
-            child.pid = 123
-            child.killed = false
-            child.kill = vi.fn()
-
-            setTimeout(() => {
-                child.stdout.emit('data', '# PR Title\nPR body')
-                child.stdout.emit('end')
-                child.emit('close', 0)
-            }, 0)
-
-            return child
+        mockRun.mockResolvedValue({
+            finalResponse: '# PR Title\nPR body',
+            isError: false,
+            sessionId: 'test-session-id',
+            durationMs: 100,
+            numTurns: 1,
+            items: [],
         })
 
         const result = await (DroidAgent as any).summarizePullRequest(input, profile, controller.signal)
 
-        expect(buildDroidCommand).toHaveBeenCalledTimes(1)
-        const [cfgArg, promptArg, formatArg] = buildDroidCommand.mock.calls[0] as [any, string, string]
-        expect(cfgArg).toBe(profile)
-        expect(formatArg).toBe('text')
-        expect(promptArg).toBe(expectedQuoted)
+        expect(mockStartThread).toHaveBeenCalledTimes(1)
+        expect(mockRun).toHaveBeenCalledTimes(1)
+        expect(mockRun).toHaveBeenCalledWith(expectedPrompt)
 
         expect(result).toEqual({
             title: 'PR Title',

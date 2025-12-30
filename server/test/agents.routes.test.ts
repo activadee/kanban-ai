@@ -21,6 +21,7 @@ vi.mock('core', () => {
         listAgents,
         CodexAgent: {},
         OpencodeAgent: {},
+        DroidAgent: {},
         agentProfilesGlobal: {
             listGlobalAgentProfiles: vi.fn(),
             getGlobalAgentProfile: vi.fn(),

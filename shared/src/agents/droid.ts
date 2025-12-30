@@ -1,16 +1,17 @@
 export type DroidProfile = {
     appendPrompt?: string | null
-    /**
-     * Optional prompt used only for inline responses (e.g. ticket enhancement).
-     * Falls back to appendPrompt when empty or unset.
-     */
     inlineProfile?: string | null
-    autonomy?: 'read-only' | 'low' | 'medium' | 'high'
     model?: string
-    reasoningEffort?: 'off' | 'low' | 'medium' | 'high' | 'xhigh'
+    autonomyLevel?: 'default' | 'low' | 'medium' | 'high'
+    reasoningEffort?: 'off' | 'none' | 'low' | 'medium' | 'high'
+    useSpec?: boolean
+    specModel?: string
+    specReasoningEffort?: 'off' | 'none' | 'low' | 'medium' | 'high'
+    enabledTools?: string[]
+    disabledTools?: string[]
+    skipPermissionsUnsafe?: boolean
     baseCommandOverride?: string | null
-    additionalParams?: string[]
     debug?: boolean
 }
 
-export const defaultDroidProfile: DroidProfile = {autonomy: 'read-only', debug: false}
+export const defaultDroidProfile: DroidProfile = {debug: false}
