@@ -50,7 +50,7 @@ export async function createCard(
 export async function updateCard(
     boardId: string,
     cardId: string,
-    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null; isEnhanced?: boolean },
+    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null; isEnhanced?: boolean; images?: MessageImage[] },
 ) {
     const body: Record<string, unknown> = {
         title: values.title,
@@ -60,6 +60,9 @@ export async function updateCard(
     }
     if (values.description !== undefined) {
         body.description = values.description ?? null
+    }
+    if (values.images !== undefined) {
+        body.images = values.images
     }
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}`, {
         method: 'PATCH',
