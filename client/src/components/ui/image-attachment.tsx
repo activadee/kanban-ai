@@ -56,7 +56,7 @@ export function ImageAttachment({
         ) : (
           images.map((image, index) => (
             <div
-              key={index}
+              key={`${image.name ?? 'img'}-${image.data.slice(0, 16)}-${index}`}
               className={cn(
                 "group relative overflow-hidden rounded-md border border-border bg-muted/50 transition-all hover:border-primary/50",
                 thumbnailSizeClasses

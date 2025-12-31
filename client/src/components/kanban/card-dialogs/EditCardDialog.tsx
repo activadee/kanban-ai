@@ -68,8 +68,6 @@ export function EditCardDialog({
         open ? cardId : undefined,
         { enabled: open && Boolean(cardId) }
     );
-    
-    const existingCount = existingImages?.length ?? 0;
 
     useEffect(() => {
         if (open) {
@@ -134,12 +132,15 @@ export function EditCardDialog({
         if (!values.title.trim()) return;
         try {
             setSaving(true);
+            const allImages = [...(existingImages ?? []), ...pendingImages];
             await onSubmit({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 ticketType: values.ticketType ?? null,
+                images: allImages.length > 0 ? allImages : undefined,
             });
             onOpenChange(false);
+            clearImages();
         } finally {
             setSaving(false);
         }
@@ -204,10 +205,10 @@ export function EditCardDialog({
                                 <span className="text-xs">Loading images...</span>
                             </div>
                         )}
-                        {existingCount > 0 && !imagesLoading && (
+                        {existingImages && existingImages.length > 0 && !imagesLoading && (
                             <div className="mt-2 space-y-1">
-                                <ImageAttachment images={existingImages!} variant="thumbnail" size="sm" />
-                                <p className="text-xs text-muted-foreground">{existingCount} saved</p>
+                                <ImageAttachment images={existingImages} variant="thumbnail" size="sm" />
+                                <p className="text-xs text-muted-foreground">{existingImages.length} saved</p>
                             </div>
                         )}
                         {pendingImages.length > 0 && (

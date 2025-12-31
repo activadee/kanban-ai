@@ -130,7 +130,8 @@ export const updateCardHandlers = createHandlers(
             body.isEnhanced !== undefined ||
             body.disableAutoCloseOnPRMerge !== undefined
         const hasDeps = Array.isArray(body.dependsOn)
-        const suppressBroadcast = wantsMove || hasDeps
+        const hasImages = Array.isArray(body.images)
+        const suppressBroadcast = wantsMove || hasDeps || hasImages
 
         if (wantsMove) {
             const targetColumn = await getColumnById(body.columnId!)
@@ -185,6 +186,10 @@ export const updateCardHandlers = createHandlers(
 
             if (hasDeps) {
                 await projectDeps.setDependencies(cardId, body.dependsOn as string[])
+            }
+
+            if (hasImages) {
+                await cardImagesRepo.setCardImages(cardId, JSON.stringify(body.images))
             }
 
             if (wantsMove) {
@@ -247,7 +252,7 @@ export const updateCardHandlers = createHandlers(
                 return c.json({card: cardPayload, columns: columnsPayload}, 200)
             }
 
-            if (hasDeps) {
+            if (hasDeps || hasImages) {
                 await broadcastBoard(boardId)
             }
             const state = await fetchBoardState(boardId)

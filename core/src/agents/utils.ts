@@ -5,15 +5,24 @@ import type {MessageImage, MessageImageMimeType} from 'shared'
 import {getImageExtension} from 'shared'
 import type {PrSummaryInlineInput, TicketEnhanceInput, TicketEnhanceResult} from './types'
 
+const TEMP_IMAGES_DIR = join(tmpdir(), 'kanban-ai-images')
+
 export async function saveImageToTempFile(image: MessageImage, prefix?: string): Promise<string> {
     const ext = getImageExtension(image.mime)
     const filename = `${prefix ?? 'image'}-${crypto.randomUUID()}.${ext}`
-    const tempPath = join(tmpdir(), 'kanban-ai-images')
-    await fs.mkdir(tempPath, {recursive: true})
-    const filePath = join(tempPath, filename)
+    await fs.mkdir(TEMP_IMAGES_DIR, {recursive: true})
+    const filePath = join(TEMP_IMAGES_DIR, filename)
     const buffer = Buffer.from(image.data, 'base64')
     await fs.writeFile(filePath, buffer)
     return filePath
+}
+
+export async function cleanupTempImageFile(filePath: string): Promise<void> {
+    await fs.unlink(filePath).catch(() => {})
+}
+
+export async function cleanupTempImageFiles(filePaths: string[]): Promise<void> {
+    await Promise.all(filePaths.map(cleanupTempImageFile))
 }
 
 export async function saveImagesToTempFiles(
