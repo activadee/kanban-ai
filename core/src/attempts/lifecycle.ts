@@ -6,6 +6,7 @@ import {getWorktreePath, getWorktreePathByNames} from '../ports/worktree'
 import {getAgent} from '../agents/registry'
 import {renderBranchName} from '../git/branch'
 import {settingsService} from '../settings/service'
+import {getCardImages} from '../repos/card-images'
 import {
     getAttemptById,
     getAttemptForCard,
@@ -174,6 +175,11 @@ export async function startAttempt(
     const allowDevScriptToFail = settings.allowDevScriptToFail ?? false
     const allowCleanupScriptToFail = settings.allowCleanupScriptToFail ?? false
 
+    const cardImagesRow = await getCardImages(input.cardId)
+    const cardImages: MessageImage[] = cardImagesRow?.imagesJson
+        ? (JSON.parse(cardImagesRow.imagesJson) as MessageImage[])
+        : []
+
     events.publish('attempt.queued', {
         attemptId: id,
         boardId: input.boardId,
@@ -199,6 +205,7 @@ export async function startAttempt(
             cardTitle: cardRow?.title ?? '(untitled)',
             cardDescription: cardRow?.description ?? null,
             ticketType: cardRow?.ticketType ?? null,
+            images: cardImages.length > 0 ? cardImages : undefined,
             automation: {
                 copyScript,
                 setupScript,

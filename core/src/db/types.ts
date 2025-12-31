@@ -420,6 +420,18 @@ export interface CardEnhancementInsert {
     updatedAt?: Date
 }
 
+export interface CardImagesRow {
+    cardId: string
+    imagesJson: string
+    createdAt: Date
+}
+
+export interface CardImagesInsert {
+    cardId: string
+    imagesJson: string
+    createdAt?: Date
+}
+
 /** @deprecated Use BoardRow instead */
 export type Board = BoardRow
 /** @deprecated Use ColumnRow instead */

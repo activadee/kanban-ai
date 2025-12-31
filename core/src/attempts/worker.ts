@@ -77,7 +77,9 @@ type AttemptWorkerCommonParams = {
     automation: AttemptAutomationConfig
 }
 
-export type StartAttemptWorkerParams = AttemptWorkerCommonParams
+export type StartAttemptWorkerParams = AttemptWorkerCommonParams & {
+    images?: MessageImage[]
+}
 
 export type FollowupAttemptWorkerParams = AttemptWorkerCommonParams & {
     sessionId: string
@@ -391,6 +393,7 @@ function queueAttemptRun(params: InternalWorkerParams, events: AppEventBus) {
                                   cardTitle,
                                   cardDescription,
                                   ticketType,
+                                  images: params.images,
                                   signal: ac.signal,
                                   emit,
                                   profileId: profileId ?? null,

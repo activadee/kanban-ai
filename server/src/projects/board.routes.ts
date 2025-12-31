@@ -16,6 +16,7 @@ import {
     createCardHandler,
     updateCardHandler,
     deleteCardHandler,
+    getCardImagesHandler,
 } from "./board.card.handlers";
 import {
     getCardAttemptForBoardHandler,
@@ -89,6 +90,12 @@ export function createBoardRouter(
         const ctx = await loadContext(c);
         if (ctx instanceof Response) return ctx;
         return deleteCardHandler(c, ctx);
+    });
+
+    boardRouter.get("/cards/:cardId/images", async (c) => {
+        const ctx = await loadContext(c);
+        if (ctx instanceof Response) return ctx;
+        return getCardImagesHandler(c, ctx);
     });
 
     boardRouter.get("/cards/:cardId/attempt", async (c) => {

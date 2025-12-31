@@ -5,6 +5,7 @@ import {cn} from '@/lib/utils'
 import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
 import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
+import {ImageAttachment} from '@/components/ui/image-attachment'
 
 export function MessageRow({item}: { item: ConversationItem }) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
@@ -25,17 +26,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
                     </div>
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
                     {images && images.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            {images.map((img, idx) => (
-                                <div key={idx} className="relative overflow-hidden rounded border bg-muted/50">
-                                    <img
-                                        src={`data:${img.mime};base64,${img.data}`}
-                                        alt={img.name ?? 'image'}
-                                        className="max-h-64 max-w-full object-contain"
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        <ImageAttachment images={images} variant="badge" size="sm" className="mt-2" />
                     ) : null}
                 </div>
             )

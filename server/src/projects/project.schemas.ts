@@ -118,6 +118,7 @@ export const createCardSchema = z.object({
     dependsOn: z.array(z.string()).optional(),
     ticketType: ticketTypeSchema,
     createGithubIssue: z.boolean().optional(),
+    images: z.array(messageImageSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
 });
 
 export const updateCardSchema = z

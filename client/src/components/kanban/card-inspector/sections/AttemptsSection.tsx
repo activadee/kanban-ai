@@ -4,7 +4,7 @@ import {Label} from '@/components/ui/label'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
-import {X} from 'lucide-react'
+import {ImageAttachment} from '@/components/ui/image-attachment'
 import {cn} from '@/lib/utils'
 import {MessageRow} from '../MessageRow'
 
@@ -32,36 +32,7 @@ export type AttemptsSectionProps = {
     canAddMoreImages: boolean
 }
 
-function PendingImages({
-                           images,
-                           onRemove,
-                       }: {
-    images: MessageImage[]
-    onRemove: (index: number) => void
-}) {
-    if (images.length === 0) return null
 
-    return (
-        <div className="flex flex-wrap gap-2 py-2">
-            {images.map((img, idx) => (
-                <div key={idx} className="group relative flex h-16 w-16 items-center justify-center overflow-hidden rounded border bg-background">
-                    <img
-                        src={`data:${img.mime};base64,${img.data}`}
-                        alt={img.name ?? 'pending image'}
-                        className="h-full w-full object-cover"
-                    />
-                    <button
-                        onClick={() => onRemove(idx)}
-                        className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
-                        title="Remove image"
-                    >
-                        <X className="h-3 w-3" />
-                    </button>
-                </div>
-            ))}
-        </div>
-    )
-}
 
 export function AttemptsSection({
                                     attempt,
@@ -164,7 +135,15 @@ export function AttemptsSection({
                             placeholder={isDragging ? 'Drop images here…' : 'Ask the agent to continue… (Paste images supported)'}
                             className={cn(isDragging && 'pointer-events-none')}
                         />
-                        <PendingImages images={pendingImages} onRemove={removeImage} />
+                        {pendingImages.length > 0 && (
+                            <ImageAttachment 
+                                images={pendingImages} 
+                                variant="thumbnail" 
+                                size="sm"
+                                onRemove={removeImage}
+                                className="py-2"
+                            />
+                        )}
                     </div>
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         {attemptAgent ? (

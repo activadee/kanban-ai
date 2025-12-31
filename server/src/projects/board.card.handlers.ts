@@ -1,5 +1,5 @@
 import type {BoardContext} from "./board.routes";
-import {projectsRepo, projectDeps, tasks, projectsService} from "core";
+import {projectsRepo, projectDeps, tasks, projectsService, cardImagesRepo} from "core";
 import {problemJson} from "../http/problem";
 import {log} from "../log";
 import {createGithubIssueForCard} from "../github/export.service";
@@ -24,6 +24,7 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         dependsOn?: string[];
         ticketType?: import("shared").TicketType | null;
         createGithubIssue?: boolean;
+        images?: import("shared").MessageImage[];
     };
 
     const column = await getColumnById(body.columnId);
@@ -56,6 +57,10 @@ export const createCardHandler = async (c: any, ctx: BoardContext) => {
         );
         if (Array.isArray(body.dependsOn) && body.dependsOn.length > 0) {
             await projectDeps.setDependencies(cardId, body.dependsOn);
+        }
+
+        if (Array.isArray(body.images) && body.images.length > 0) {
+            await cardImagesRepo.setCardImages(cardId, JSON.stringify(body.images));
         }
 
         let githubIssueError: string | null = null;
@@ -308,6 +313,40 @@ export const deleteCardHandler = async (c: any, ctx: BoardContext) => {
         return problemJson(c, {
             status: 502,
             detail: "Failed to delete card",
+        });
+    }
+};
+
+export const getCardImagesHandler = async (c: any, ctx: BoardContext) => {
+    const {boardId} = ctx;
+    const cardId = c.req.param("cardId");
+
+    const card = await getCardById(cardId);
+    if (!card) return problemJson(c, {status: 404, detail: "Card not found"});
+    let cardBoardId = card.boardId ?? null;
+    if (!cardBoardId) {
+        const column = await getColumnById(card.columnId);
+        cardBoardId = column?.boardId ?? null;
+    }
+    if (cardBoardId !== boardId) {
+        return problemJson(c, {
+            status: 400,
+            detail: "Card does not belong to this board",
+        });
+    }
+
+    try {
+        const row = await cardImagesRepo.getCardImages(cardId);
+        if (!row) {
+            return c.json({images: []}, 200);
+        }
+        const images = JSON.parse(row.imagesJson);
+        return c.json({images}, 200);
+    } catch (error) {
+        log.error("board:cards", "get images failed", {err: error, boardId, cardId});
+        return problemJson(c, {
+            status: 502,
+            detail: "Failed to get card images",
         });
     }
 };

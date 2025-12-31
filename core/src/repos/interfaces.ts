@@ -27,6 +27,7 @@ import type {
     CardDependencyRow,
     CardEnhancementRow,
     CardEnhancementStatus,
+    CardImagesRow,
 } from '../db/types'
 import type {TicketType} from 'shared'
 
@@ -193,6 +194,12 @@ export interface EnhancementsRepo {
     deleteCardEnhancement(cardId: string): Promise<void>
 }
 
+export interface CardImagesRepo {
+    getCardImages(cardId: string): Promise<CardImagesRow | null>
+    setCardImages(cardId: string, imagesJson: string): Promise<void>
+    deleteCardImages(cardId: string): Promise<void>
+}
+
 export type DashboardAttemptRowForInbox = {
     attemptId: string
     projectId: string
@@ -335,6 +342,7 @@ export interface RepoProvider {
     dependencies: DependenciesRepo
     enhancements: EnhancementsRepo
     dashboard: DashboardRepo
+    cardImages: CardImagesRepo
 
     withTx<T>(fn: (provider: RepoProvider) => Promise<T>): Promise<T>
 }

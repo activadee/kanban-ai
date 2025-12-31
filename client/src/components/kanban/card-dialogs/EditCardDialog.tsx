@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot, X } from "lucide-react";
+import { Bot, Loader2 } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
+import { ImageAttachment } from "@/components/ui/image-attachment";
 import type { CardFormValues, BaseDialogProps } from "./types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TicketType } from "shared";
 import { ticketTypeOptions } from "@/lib/ticketTypes";
-import { useImagePaste } from "@/hooks";
+import { useImagePaste, useCardImages } from "@/hooks";
 
 type EditProps = BaseDialogProps & {
     cardTitle: string;
@@ -45,6 +46,8 @@ export function EditCardDialog({
     cardTicketType,
     onSubmit,
     onDelete,
+    projectId,
+    cardId,
     onEnhanceInBackground,
     autoEnhanceOnOpen = false,
 }: EditProps) {
@@ -59,6 +62,14 @@ export function EditCardDialog({
     const [deleting, setDeleting] = useState(false);
     const [hasAutoEnhanced, setHasAutoEnhanced] = useState(false);
     const {pendingImages, addImagesFromClipboard, addImagesFromDataTransfer, removeImage, clearImages, canAddMore} = useImagePaste();
+    
+    const { data: existingImages, isLoading: imagesLoading } = useCardImages(
+        open ? projectId : undefined,
+        open ? cardId : undefined,
+        { enabled: open && Boolean(cardId) }
+    );
+    
+    const existingCount = existingImages?.length ?? 0;
 
     useEffect(() => {
         if (open) {
@@ -187,30 +198,30 @@ export function EditCardDialog({
                             onDragOver={(e) => e.preventDefault()}
                             placeholder={canAddMore ? "Describe the task... (paste or drop images here)" : "Describe the task..."}
                         />
-                        {pendingImages.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {pendingImages.map((img, idx) => (
-                                    <div key={idx} className="relative group">
-                                        <img
-                                            src={`data:${img.mime};base64,${img.data}`}
-                                            alt={img.name || `Image ${idx + 1}`}
-                                            className="h-16 w-16 object-cover rounded border"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeImage(idx)}
-                                            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
+                        {imagesLoading && (
+                            <div className="flex items-center gap-2 mt-2 text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-xs">Loading images...</span>
+                            </div>
+                        )}
+                        {existingCount > 0 && !imagesLoading && (
+                            <div className="mt-2 space-y-1">
+                                <ImageAttachment images={existingImages!} variant="thumbnail" size="sm" />
+                                <p className="text-xs text-muted-foreground">{existingCount} saved</p>
                             </div>
                         )}
                         {pendingImages.length > 0 && (
-                            <p className="text-xs text-muted-foreground">
-                                {pendingImages.length} image{pendingImages.length !== 1 ? "s" : ""} attached (sent with &quot;Enhance in background&quot;)
-                            </p>
+                            <div className="mt-2 space-y-1">
+                                <ImageAttachment 
+                                    images={pendingImages} 
+                                    variant="thumbnail" 
+                                    size="sm"
+                                    onRemove={removeImage}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {pendingImages.length} new (sent with "Enhance in background")
+                                </p>
+                            </div>
                         )}
                     </div>
                     <div className="space-y-2">

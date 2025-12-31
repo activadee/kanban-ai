@@ -284,6 +284,7 @@ export function ProjectBoardPage() {
                                         dependsOn: values.dependsOn ?? [],
                                         ticketType: values.ticketType ?? null,
                                         createGithubIssue: values.createGithubIssue === true,
+                                        images: values.images,
                                     },
                                 });
                                 if (result.githubIssueError) {
@@ -321,6 +322,7 @@ export function ProjectBoardPage() {
                                         dependsOn: values.dependsOn ?? [],
                                         ticketType: values.ticketType ?? null,
                                         createGithubIssue: values.createGithubIssue === true,
+                                        images: values.images,
                                     },
                                 });
                                 const cardId = result.cardId;

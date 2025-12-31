@@ -1,0 +1,5 @@
+CREATE TABLE card_images (
+    card_id TEXT PRIMARY KEY REFERENCES cards(id) ON DELETE CASCADE,
+    images_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

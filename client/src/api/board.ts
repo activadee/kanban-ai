@@ -1,5 +1,5 @@
 import {SERVER_URL} from '@/lib/env'
-import type {BoardState, Card, Column, ColumnId, TicketType, GithubIssueStatsResponse} from 'shared'
+import type {BoardState, Card, Column, ColumnId, TicketType, GithubIssueStatsResponse, MessageImage} from 'shared'
 import {parseApiResponse} from '@/api/http'
 
 const jsonHeaders = {'Content-Type': 'application/json'}
@@ -29,7 +29,7 @@ export async function fetchGithubIssueStats(boardId: string): Promise<GithubIssu
 export async function createCard(
     boardId: string,
     columnId: string,
-    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null; createGithubIssue?: boolean },
+    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: TicketType | null; createGithubIssue?: boolean; images?: MessageImage[] },
 ): Promise<CreateCardResponse> {
     const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards`, {
         method: 'POST',
@@ -41,6 +41,7 @@ export async function createCard(
             dependsOn: values.dependsOn ?? [],
             ticketType: values.ticketType ?? null,
             createGithubIssue: values.createGithubIssue === true,
+            images: values.images,
         }),
     })
     return parseApiResponse<CreateCardResponse>(res)
@@ -82,4 +83,10 @@ export async function moveCard(boardId: string, cardId: string, toColumnId: stri
         body: JSON.stringify({columnId: toColumnId, index: toIndex}),
     })
     return parseApiResponse<MoveCardResponse>(res)
+}
+
+export async function fetchCardImages(boardId: string, cardId: string): Promise<MessageImage[]> {
+    const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}/images`)
+    const data = await parseApiResponse<{ images: MessageImage[] }>(res)
+    return data.images
 }

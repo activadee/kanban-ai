@@ -1,6 +1,5 @@
 import {useEffect, useState} from 'react'
 import {useQueryClient} from '@tanstack/react-query'
-import {X} from 'lucide-react'
 import {Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle} from '@/components/ui/dialog'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {Label} from '@/components/ui/label'
@@ -9,6 +8,7 @@ import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Checkbox} from '@/components/ui/checkbox'
 import {toast} from '@/components/ui/toast'
+import {ImageAttachment} from '@/components/ui/image-attachment'
 import {projectsKeys} from '@/lib/queryClient'
 import {useNextTicketKey, useProjectSettings, useImagePaste} from '@/hooks'
 import {DependenciesPicker} from '@/components/kanban/DependenciesPicker'
@@ -85,10 +85,12 @@ export function CreateCardDialog({
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
                 createGithubIssue: values.createGithubIssue === true && canCreateGithubIssue,
+                images: pendingImages.length > 0 ? pendingImages : undefined,
             })
             onOpenChange(false)
             setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
+            clearImages()
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
             setSubmitting(false)
@@ -180,28 +182,17 @@ export function CreateCardDialog({
                             placeholder={canAddMore ? 'Describe the task... (paste or drop images here)' : 'Describe the task...'}
                         />
                         {pendingImages.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {pendingImages.map((img, idx) => (
-                                    <div key={idx} className="relative group">
-                                        <img
-                                            src={`data:${img.mime};base64,${img.data}`}
-                                            alt={img.name || `Image ${idx + 1}`}
-                                            className="h-16 w-16 object-cover rounded border"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeImage(idx)}
-                                            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                            <ImageAttachment 
+                                images={pendingImages} 
+                                variant="thumbnail" 
+                                size="sm"
+                                onRemove={removeImage}
+                                className="mt-2"
+                            />
                         )}
                         {pendingImages.length > 0 && (
                             <p className="text-xs text-muted-foreground">
-                                {pendingImages.length} image{pendingImages.length !== 1 ? 's' : ''} attached (sent with &quot;Create &amp; Enhance&quot;)
+                                {pendingImages.length} image{pendingImages.length !== 1 ? 's' : ''} attached
                             </p>
                         )}
                     </div>
