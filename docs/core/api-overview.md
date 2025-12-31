@@ -26,15 +26,16 @@ All endpoints below are rooted at `/api/v1`; paths are shown with the full prefi
   - `GET  /api/v1/projects/:projectId` – fetch a single project/board.
   - `GET  /api/v1/projects/:projectId/github/origin` – inspect GitHub origin.
   - `GET  /api/v1/projects/:projectId/settings` – load per-project settings.
-- `PATCH /api/v1/projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, optional per-inline-agent profile mapping for workflows like ticket enhancement/PR summary, automation flags, failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and GitHub Issue settings: `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), `githubIssueSyncIntervalMinutes` (5–1440 minutes), `githubIssueAutoCreateEnabled`, and `autoCloseTicketOnPRMerge` to opt into automatically moving Review cards with merged PRs to Done (requires Review + Done columns).
+  - `PATCH /api/v1/projects/:projectId/settings` – update per-project settings (branch, remote, defaults, inline agent/profile, optional per-inline-agent profile mapping for workflows like ticket enhancement/PR summary, automation flags, failure tolerance toggles `allowScriptsToFail`, `allowCopyFilesToFail`, `allowSetupScriptToFail`, `allowDevScriptToFail`, `allowCleanupScriptToFail`, and GitHub Issue settings: `githubIssueSyncEnabled`, `githubIssueSyncState` (`open`/`all`/`closed`), `githubIssueSyncIntervalMinutes` (5–1440 minutes), `githubIssueAutoCreateEnabled`, and `autoCloseTicketOnPRMerge` to opt into automatically moving Review cards with merged PRs to Done (requires Review + Done columns).
   - `POST /api/v1/projects/:projectId/tickets/enhance` – send `{title, description?, agent?, profileId?}` to the configured agent and receive `{ticket}` with rewritten text (RFC 7807 errors on failure).
   - `GET  /api/v1/projects/:projectId/enhancements` – hydrate persisted enhancement entries. Returns `{ enhancements: Record<string, { status: "enhancing" | "ready", suggestion?: { title: string, description?: string } }> }` so the UI can show badges and up-to-date suggestions.
-  - `PUT  /api/v1/projects/:projectId/cards/:cardId/enhancement` – record a card’s enhancement status (`"enhancing"` while the job runs, `"ready"` when the agent response is available) and an optional suggestion payload.
+  - `PUT  /api/v1/projects/:projectId/cards/:cardId/enhancement` – record a card's enhancement status (`"enhancing"` while the job runs, `"ready"` when the agent response is available) and an optional suggestion payload.
   - `DELETE /api/v1/projects/:projectId/cards/:cardId/enhancement` – clear the persisted enhancement state after acceptance, rejection, or abandonment.
 - Boards:
   - `GET    /api/v1/boards/:boardId` – board state (columns + cards).
-  - `POST   /api/v1/boards/:boardId/cards` – create a card. Accepts optional `createGithubIssue: boolean` (only effective when `githubIssueAutoCreateEnabled` is on). Responds with `{ state, cardId, githubIssueError? }`.
-- `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index); the payload also accepts `isEnhanced` so clients can set/clear the enhancement badge without changing the card text, plus `disableAutoCloseOnPRMerge` so tickets can opt out of the auto-close-on-PR-merge workflow even when the project has it enabled.
+  - `POST   /api/v1/boards/:boardId/cards` – create a card. Accepts optional `createGithubIssue: boolean` (only effective when `githubIssueAutoCreateEnabled` is on) and `images: MessageImage[]` (array of base64-encoded images; supports PNG, JPEG, WebP up to 10MB each, max 5 images per card). Responds with `{ state, cardId, githubIssueError? }`.
+  - `GET    /api/v1/boards/:boardId/cards/:cardId/images` – fetch images attached to a card. Returns `{ images: MessageImage[] }` where each image contains `data` (base64), `mime` (image type), and optional `name`.
+  - `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index); the payload also accepts `isEnhanced` so clients can set/clear the enhancement badge without changing the card text, plus `disableAutoCloseOnPRMerge` so tickets can opt out of the auto-close-on-PR-merge workflow even when the project has it enabled.
   - `DELETE /api/v1/boards/:boardId/cards/:cardId` – delete a card.
   - `POST   /api/v1/boards/:boardId/import/github/issues` – import GitHub issues as cards.
   - `GET    /api/v1/boards/:boardId/github/issues/stats` – counts linked issues by direction (`imported`, `exported`, `total`).
@@ -129,7 +130,7 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
 
 - `GET /api/v1/version` – returns `{currentVersion, latestVersion, updateAvailable, checkedAt}`.
   - `currentVersion` is derived from `KANBANAI_VERSION` or the nearest `kanban-ai` `package.json`.
-  - `latestVersion` is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`), cached for ~15 minutes, and falls back to `currentVersion` when the lookup fails.
+  - `latestVersion` is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`), cached for ~15 minutes, and falls back to `currentVersion` when the lookup fails.
   - `updateAvailable` lets clients know when a newer release exists so UI can prompt for restart.
 
 For realtime message shapes and WebSocket usage, see `core/realtime-and-websockets.md`.

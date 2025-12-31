@@ -41,6 +41,8 @@ The data layer follows a repository pattern with clear separation between busine
    - Drizzle migrations (defined under `server/drizzle/*.sql`) are bundled into `server/drizzle/migration-data.generated.ts` via `scripts/build-drizzle-migration-bundle.ts` and embedded into the server/binary.
    - On server start, migrations are applied automatically before handling requests.
    - You can override the migrations directory with `KANBANAI_MIGRATIONS_DIR` when using external migration files; it should point at a directory containing ordered `.sql` files (for example, a copy of `server/drizzle`).
+- Tables:
+   - `card_images` – stores base64-encoded images attached to cards. Each row contains `card_id` (FK to `cards`), `images_json` (JSON array of image objects with `data`, `mime`, and `name` fields), and `created_at`. Images are limited to PNG, JPEG, or WebP format, max 10MB each, max 5 images per card.
 
 ## Worktrees
 

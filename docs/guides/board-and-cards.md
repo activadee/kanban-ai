@@ -44,23 +44,24 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - Fill in:
     - **Title** – required.
     - **Description** – optional.
+    - **Images** – optional screenshots or images. You can paste images from the clipboard (Ctrl/Cmd+V) or drag and drop image files onto the dialog. Supported formats: PNG, JPEG, WebP (max 10MB each, up to 5 images per card). Attached images appear as thumbnails; click to preview in a lightbox, or use the X button to remove.
     - **Dependencies** – optional list of other cards this card depends on.
     - When GitHub Issue Creation is enabled in project settings (`githubIssueAutoCreateEnabled`), a **Create GitHub Issue**
-      checkbox appears. Checking it creates a GitHub issue in the project’s origin repository using the ticket title/
+      checkbox appears. Checking it creates a GitHub issue in the project's origin repository using the ticket title/
       description and links it back to the card. The card is still created if issue export fails, but the UI surfaces a
       toast with the error.
 - Submit to create the card in the chosen column.
 
 While editing the description, a small bot button in the textarea lets you send the current title/description to the
-project’s configured enhancement agent. The dialog now includes a **Create & Enhance** button beside **Create Ticket**,
+project's configured enhancement agent. The dialog now includes a **Create & Enhance** button beside **Create Ticket**,
 which creates the card and immediately queues a background enhancement job. While the enhancement runs, the newly created
 card surfaces an **Enhancing** badge and cannot be dragged. When the suggestion is ready, a sparkles icon appears on the
 card; clicking it opens the enhancement diff dialog to compare the persisted title/description with the AI suggestion.
 Accepting the suggestion updates the card, while rejecting it just clears the pending enhancement so you can try again
-later. Accepted enhancements also flip the card’s `isEnhanced` flag, which renders a green **Enhanced** badge and a
+later. Accepted enhancements also flip the card's `isEnhanced` flag, which renders a green **Enhanced** badge and a
 subtle highlight in the header row so polished tickets remain visible even after you reload the board.
 
-You can also create cards directly in a column using column-specific controls (e.g. “Add card”) where present.
+You can also create cards directly in a column using column-specific controls (e.g. "Add card") where present.
 
 ## Selecting cards & the inspector
 
@@ -68,7 +69,7 @@ You can also create cards directly in a column using column-specific controls (e
   - On desktop:
     - The inspector now appears as the right panel in a horizontal split so it shares space with the board instead of
       overlaying it, and the handle resizes the panels side-by-side.
-     - Drag the vertical handle to repartition the board/inspector widths (roughly 22 %–65 % of the viewport) and
+     - Drag the vertical handle to repartition the board/inspector widths (roughly 22 %–65 % of the viewport) and
        the layout state is stored under the `kanban-board-inspector` auto-save key so reopening the board restores the
        same ratio. The storage layer handles legacy string values by automatically converting them to numbers and
        falls back to memory when `localStorage` is blocked, so even malformed values simply reset to a valid size
@@ -87,7 +88,7 @@ You can also create cards directly in a column using column-specific controls (e
   - **Ticket** – contains the Details and Git areas for editing card metadata. The details panel still provides title/description editing, the **Enhance in background** button, and the dependencies picker. The Git section continues to host the dialogs for changes, commits, PRs, and merges, while the action buttons themselves now live in the header toolbar so they stay available even when you are viewing other tabs.
   - **Attempts** – surfaces attempt controls for the card. When no Attempt exists, you see the **Attempt create form** here (agent/profile selectors, Start button); once an Attempt is running, the tab shows nested **Messages**, **Processes**, and **Logs** sub-tabs for interacting with the current Attempt.
 
-See the “Attempts & inspector (UI)” guide for the Attempts and activity sections inside the inspector.
+See the "Attempts & inspector (UI)" guide for the Attempts and activity sections inside the inspector.
 
 ## Dependencies in the UI
 
@@ -100,7 +101,7 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
 - Moving the card into **In Progress** may be prevented:
     - Backend validation will return a 409 if any dependency is not in Done.
     - The board shows a toast:
-      - Title: “Task is blocked by dependencies”.
+      - Title: "Task is blocked by dependencies".
       - Description explaining that dependencies must be completed first.
 
 ## Card action menu
@@ -109,7 +110,7 @@ See the “Attempts & inspector (UI)” guide for the Attempts and activity sect
   - When the card is running a background enhancement job, the ellipsis menu is temporarily disabled and any open menu closes so the card keeps its focus on the pending enhancement.
 - Backlog columns:
   - **Enhance ticket…** opens the Edit Ticket dialog for that card and immediately queues the background enhancement job using the current title/description.
-  - **Start work** kicks off an Attempt using the project’s default agent and profile. The board shows a toast if the card is blocked or if no default agent/profile is configured.
+  - **Start work** kicks off an Attempt using the project's default agent and profile. The board shows a toast if the card is blocked or if no default agent/profile is configured.
 - In Progress columns:
   - **Stop Attempt** becomes enabled while the latest Attempt is running (and shows a disabled state when nothing is active).
 - Review columns:

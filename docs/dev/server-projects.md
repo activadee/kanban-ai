@@ -29,6 +29,11 @@
 4. **Boards, Cards & Attempts (`board.routes.ts` + `board.*.handlers.ts`)**
     - `/projects/:projectId/board/*` and `/boards/:boardId/*` provide board state, card CRUD/move, attempts, GitHub imports, and
       `/boards/:boardId/github/issues/stats` exposes lightweight linked issue counts (`imported`, `exported`, `total`).
+    - Card images are supported via:
+      - `POST /boards/:boardId/cards` accepts optional `images` array (base64-encoded PNG/JPEG/WebP, max 5 images, 10MB each).
+      - `GET /boards/:boardId/cards/:cardId/images` returns `{ images: MessageImage[] }` for existing attachments.
+    - Image persistence uses `CardImagesRepo` (`getCardImages`, `setCardImages`, `deleteCardImages`) with storage in the `card_images` table.
+
 5. **GitHub Imports & exports**
     - `/projects/:projectId/board/import/github/issues` (and `/boards/:boardId/import/github/issues`) call `github/import.service.ts`, which emits `github.issues.imported` after completion.
     - When `githubIssueAutoCreateEnabled` is true and a ticket is created with `createGithubIssue`, `createCardHandler`
