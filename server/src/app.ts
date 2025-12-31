@@ -5,6 +5,7 @@ import {secureHeaders} from 'hono/secure-headers'
 import type {UpgradeWebSocket} from 'hono/ws'
 import type {AppEnv, AppServices, ServerConfig} from './env'
 import {getRuntimeConfig, setRuntimeConfig} from './env'
+import {requestId, skipForWebSocket} from './lib/middleware'
 import {projectsService, settingsService, bindAgentEventBus} from 'core'
 import {createProjectsRouter} from './projects/project.routes'
 import {createBoardsRouter} from './projects/board.routes'
@@ -77,12 +78,7 @@ export const createApp = ({
 
     const app = new Hono<AppEnv>()
 
-    // Request ID for tracing
-    app.use('*', async (c, next) => {
-        const id = (globalThis as any).crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-        c.res.headers.set('X-Request-Id', id)
-        await next()
-    })
+    app.use('*', requestId)
 
     if (appConfig.debugLogging) {
         app.use('*', logger((str, ...rest) => {
@@ -91,21 +87,11 @@ export const createApp = ({
         }))
     }
 
-    const isApiWebSocket = (path: string) => path.startsWith('/api/ws') || path.startsWith('/api/v1/ws')
+    app.use('*', skipForWebSocket(secureHeaders({
+        referrerPolicy: 'strict-origin-when-cross-origin',
+    })))
 
-    // Security headers (exclude WebSocket upgrade paths)
-    app.use('*', (c, next) => {
-        if (isApiWebSocket(c.req.path)) return next()
-        return secureHeaders({
-            referrerPolicy: 'strict-origin-when-cross-origin',
-        })(c, next)
-    })
-
-    // CORS only for REST endpoints (exclude websockets)
-    app.use('/api/*', (c, next) => {
-        if (isApiWebSocket(c.req.path)) return next()
-        return cors()(c, next)
-    })
+    app.use('/api/*', skipForWebSocket(cors()))
 
     app.use('*', async (c, next) => {
         c.set('services', services)
@@ -174,3 +160,5 @@ export const createApp = ({
 
     return app
 }
+
+export type AppType = ReturnType<typeof createApp>

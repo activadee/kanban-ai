@@ -1,14 +1,8 @@
 import {Hono} from 'hono'
 import type {AppEnv} from '../env'
-import {getAppVersionInfo} from './service'
+import {getVersionHandlers} from './handlers'
 
-export function createVersionRouter() {
-    const router = new Hono<AppEnv>()
+export const createVersionRouter = () =>
+    new Hono<AppEnv>().get('/', ...getVersionHandlers)
 
-    router.get('/', async (c) => {
-        const version = await getAppVersionInfo()
-        return c.json(version)
-    })
-
-    return router
-}
+export type VersionRoutes = ReturnType<typeof createVersionRouter>

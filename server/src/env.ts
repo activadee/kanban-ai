@@ -1,4 +1,5 @@
 import type { ProjectsService, SettingsService } from 'core'
+import type { ProjectSummary } from 'shared'
 import type { AppEventBus } from './events/bus'
 
 export type EnvBindings = {
@@ -87,15 +88,25 @@ export function setRuntimeConfig(config: ServerConfig) {
 
 export const runtimeEnv = () => getRuntimeConfig().env
 
+export type BoardContext = {
+  boardId: string
+  project: ProjectSummary
+}
+
 export type AppEnv = {
   Bindings: EnvBindings
   Variables: {
     services: AppServices
     events: AppEventBus
     config: ServerConfig
+    requestId: string
     projectId?: string
     boardId?: string
+    boardContext?: BoardContext
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type AppContext = import('hono').Context<AppEnv, any, any>
 
 export type AppContextVars = AppEnv['Variables']
