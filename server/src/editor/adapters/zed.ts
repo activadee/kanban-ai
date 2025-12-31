@@ -2,7 +2,7 @@ import {existsSync} from 'fs'
 import os from 'os'
 import nodePath from 'path'
 import {createAdapter} from './base'
-import {isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
+import {isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../../utils/wsl'
 import {runtimeEnv} from '../../env'
 
 function collectZedCommandCandidates(): string[] {

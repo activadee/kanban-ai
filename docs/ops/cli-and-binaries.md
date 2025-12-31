@@ -20,9 +20,24 @@ Last updated: 2025-11-30
 
 - `--binary-version <semver>` – pick a specific KanbanAI release.
 - `--no-update-check` – skip GitHub lookups and reuse the newest cached binary.
+- `--no-auto-open` – do not automatically open the browser when the server starts.
 - `--cli-version` – print the wrapper version (from `cli/package.json`) and exit.
 - `--version` / `--help` – standard inspection flags; do not launch the server.
 - Any arguments after `--` are passed directly through to the KanbanAI binary.
+
+### Server options (forwarded to the binary)
+
+The CLI wrapper forwards these options to the KanbanAI server:
+
+- `--host <host>` – set the host to bind to (default: `127.0.0.1`).
+- `--port, -p <port>` – set the port to listen on (default: `3000`).
+- `--migrations-dir <path>` – set the migrations directory.
+- `--no-auto-open` – do not automatically open the browser.
+
+Example:
+```bash
+npx kanban-ai -- --port 8080 --no-auto-open
+```
 
 ### Environment variables
 
@@ -90,6 +105,7 @@ To run migration manually or check status, use the CLI's migration commands (whe
   - `--host <host>` – override `HOST` (default `127.0.0.1`).
   - `--port <port>` – override `PORT` (default `3000`).
   - `--migrations-dir <path>` – override `KANBANAI_MIGRATIONS_DIR`.
+  - `--no-auto-open` – do not automatically open the browser.
 
 ### Environment configuration
 

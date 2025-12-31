@@ -1,5 +1,5 @@
 import {pickBinary} from '../bin'
-import {normalizePathForWindowsBinary} from '../wsl'
+import {normalizePathForWindowsBinary} from '../../utils/wsl'
 import type {EditorAdapter, EditorInfo, ExecSpec} from '../types'
 
 function formatCommandLine(cmd: string, args: string[]): string {

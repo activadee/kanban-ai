@@ -1,7 +1,7 @@
 import os from 'os'
 import nodePath from 'path'
 import {createAdapter} from './base'
-import {currentWSLDistroName, isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../wsl'
+import {currentWSLDistroName, isWSL, readWindowsEnvVar, windowsPathToWSLPath} from '../../utils/wsl'
 
 function collectVSCodeCommandCandidates(): string[] {
     const platform = os.platform()

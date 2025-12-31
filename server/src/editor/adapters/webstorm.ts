@@ -2,7 +2,7 @@ import {existsSync, readdirSync} from 'fs'
 import os from 'os'
 import nodePath from 'path'
 import {createAdapter} from './base'
-import {isWSL, readWindowsEnvVar, windowsPathToWSLPath, windowsToolboxPaths} from '../wsl'
+import {isWSL, readWindowsEnvVar, windowsPathToWSLPath, windowsToolboxPaths} from '../../utils/wsl'
 import {runtimeEnv} from '../../env'
 
 function safeSubdirs(dir: string | null | undefined): string[] {

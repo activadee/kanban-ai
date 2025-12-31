@@ -27,9 +27,10 @@ For small self-hosted setups, you can run the Bun-based server directly:
      - API under `/api/v1` (shim at `/api`).
      - The React app and static assets with SPA fallback.
 
-2. Configure environment:
+2. Configure environment and options:
 
    - `HOST` / `PORT` – listening interface and port (default `127.0.0.1:3000`).
+   - `--no-auto-open` – do not automatically open the browser when the server starts.
    - `DATABASE_URL` – SQLite file path.
    - `KANBANAI_MIGRATIONS_DIR` – optional external migrations directory.
    - `KANBANAI_STATIC_DIR` – optional external `client/dist` directory.
@@ -56,7 +57,7 @@ If you prefer a single executable:
 
    ```bash
    npx kanban-ai -- --help
-   npx kanban-ai -- --port 3000
+   npx kanban-ai -- --port 3000 --no-auto-open
    ```
 
    The wrapper:
