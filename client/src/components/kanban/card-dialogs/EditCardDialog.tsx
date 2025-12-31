@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot } from "lucide-react";
+import { Bot, X } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
 import type { CardFormValues, BaseDialogProps } from "./types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TicketType } from "shared";
 import { ticketTypeOptions } from "@/lib/ticketTypes";
+import { useImagePaste } from "@/hooks";
 
 type EditProps = BaseDialogProps & {
     cardTitle: string;
@@ -56,6 +58,7 @@ export function EditCardDialog({
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [hasAutoEnhanced, setHasAutoEnhanced] = useState(false);
+    const {pendingImages, addImagesFromClipboard, addImagesFromDataTransfer, removeImage, clearImages, canAddMore} = useImagePaste();
 
     useEffect(() => {
         if (open) {
@@ -65,8 +68,9 @@ export function EditCardDialog({
                 ticketType: cardTicketType ?? null,
             });
             setHasAutoEnhanced(false);
+            clearImages();
         }
-    }, [open, cardTitle, cardDescription, cardTicketType]);
+    }, [open, cardTitle, cardDescription, cardTicketType, clearImages]);
 
     const handleEnhanceInBackground = async () => {
         if (!values.title.trim()) return;
@@ -77,14 +81,34 @@ export function EditCardDialog({
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
+                images: pendingImages.length > 0 ? pendingImages : undefined,
             };
             await onSubmit(payload);
             if (onEnhanceInBackground) {
                 await onEnhanceInBackground(payload);
             }
             onOpenChange(false);
+            clearImages();
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleDescriptionPaste = async (e: React.ClipboardEvent) => {
+        if (!canAddMore) return;
+        const clipboardEvent = e.nativeEvent as ClipboardEvent;
+        const errors = await addImagesFromClipboard(clipboardEvent);
+        if (errors.length > 0) {
+            toast({title: 'Image error', description: errors[0].message, variant: 'destructive'});
+        }
+    };
+
+    const handleDescriptionDrop = async (e: React.DragEvent) => {
+        if (!canAddMore) return;
+        e.preventDefault();
+        const errors = await addImagesFromDataTransfer(e.dataTransfer);
+        if (errors.length > 0) {
+            toast({title: 'Image error', description: errors[0].message, variant: 'destructive'});
         }
     };
 
@@ -158,7 +182,36 @@ export function EditCardDialog({
                                     description: event.target.value,
                                 }))
                             }
+                            onPaste={handleDescriptionPaste}
+                            onDrop={handleDescriptionDrop}
+                            onDragOver={(e) => e.preventDefault()}
+                            placeholder={canAddMore ? "Describe the task... (paste or drop images here)" : "Describe the task..."}
                         />
+                        {pendingImages.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {pendingImages.map((img, idx) => (
+                                    <div key={idx} className="relative group">
+                                        <img
+                                            src={`data:${img.mime};base64,${img.data}`}
+                                            alt={img.name || `Image ${idx + 1}`}
+                                            className="h-16 w-16 object-cover rounded border"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeImage(idx)}
+                                            className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {pendingImages.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                {pendingImages.length} image{pendingImages.length !== 1 ? "s" : ""} attached (sent with &quot;Enhance in background&quot;)
+                            </p>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="edit-card-type">Type</Label>

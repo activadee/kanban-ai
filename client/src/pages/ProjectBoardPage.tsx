@@ -339,6 +339,7 @@ export function ProjectBoardPage() {
                                         title: values.title,
                                         description: values.description,
                                         ticketType: values.ticketType,
+                                        images: values.images,
                                     }).catch((err) => {
                                         console.error("Background enhancement failed", err);
                                     });
@@ -453,6 +454,7 @@ export function ProjectBoardPage() {
                                     title: values.title,
                                     description: values.description,
                                     ticketType: values.ticketType,
+                                    images: values.images,
                                 });
                             } catch (err) {
                                 console.error(

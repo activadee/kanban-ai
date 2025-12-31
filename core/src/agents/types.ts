@@ -42,6 +42,7 @@ export type TicketEnhanceInput = {
     description: string
     ticketType?: TicketType | null
     profileId?: string | null
+    images?: MessageImage[]
     signal: AbortSignal
 }
 

@@ -8,6 +8,7 @@ type EnhanceTicketBody = {
     agent?: string;
     profileId?: string;
     ticketType?: import("shared").TicketType | null;
+    images?: import("shared").MessageImage[];
 };
 
 export const enhanceTicketHandler = async (c: any) => {
@@ -22,6 +23,7 @@ export const enhanceTicketHandler = async (c: any) => {
             agentKey: body.agent,
             profileId: body.profileId,
             ticketType: body.ticketType ?? undefined,
+            images: body.images,
         });
 
         return c.json({ticket: result}, 200);
