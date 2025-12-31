@@ -61,13 +61,15 @@ export function EditCardDialog({
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [hasAutoEnhanced, setHasAutoEnhanced] = useState(false);
-    const {pendingImages, addImagesFromClipboard, addImagesFromDataTransfer, removeImage, clearImages, canAddMore} = useImagePaste();
     
     const { data: existingImages, isLoading: imagesLoading } = useCardImages(
         open ? projectId : undefined,
         open ? cardId : undefined,
         { enabled: open && Boolean(cardId) }
     );
+    
+    const existingCount = existingImages?.length ?? 0;
+    const {pendingImages, addImagesFromClipboard, addImagesFromDataTransfer, removeImage, clearImages, canAddMore} = useImagePaste(undefined, existingCount);
 
     useEffect(() => {
         if (open) {
@@ -104,7 +106,6 @@ export function EditCardDialog({
     };
 
     const handleDescriptionPaste = async (e: React.ClipboardEvent) => {
-        if (!canAddMore) return;
         const clipboardEvent = e.nativeEvent as ClipboardEvent;
         const errors = await addImagesFromClipboard(clipboardEvent);
         if (errors.length > 0) {
@@ -113,7 +114,6 @@ export function EditCardDialog({
     };
 
     const handleDescriptionDrop = async (e: React.DragEvent) => {
-        if (!canAddMore) return;
         e.preventDefault();
         const errors = await addImagesFromDataTransfer(e.dataTransfer);
         if (errors.length > 0) {

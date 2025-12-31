@@ -37,7 +37,7 @@ export function CardDetailsForm({
     canAddMoreImages?: boolean
 }) {
     const handlePaste = async (e: React.ClipboardEvent) => {
-        if (!canAddMoreImages || !onAddImages) return
+        if (!onAddImages) return
         const items = e.clipboardData?.items
         if (!items) return
         const files: File[] = []
@@ -54,7 +54,7 @@ export function CardDetailsForm({
     }
 
     const handleDrop = async (e: React.DragEvent) => {
-        if (!canAddMoreImages || !onAddImages) return
+        if (!onAddImages) return
         e.preventDefault()
         const files: File[] = []
         for (const item of e.dataTransfer.files) {

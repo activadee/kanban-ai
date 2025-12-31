@@ -64,10 +64,11 @@ function extractImageFiles(dataTransfer: DataTransfer): File[] {
     return files
 }
 
-export function useImagePaste(maxImages: number = MAX_IMAGES_PER_MESSAGE): UseImagePasteResult {
+export function useImagePaste(maxImages: number = MAX_IMAGES_PER_MESSAGE, existingCount: number = 0): UseImagePasteResult {
     const [pendingImages, setPendingImages] = useState<MessageImage[]>([])
 
-    const canAddMore = pendingImages.length < maxImages
+    const totalCount = existingCount + pendingImages.length
+    const canAddMore = totalCount < maxImages
 
     const addImages = useCallback(async (files: File[]): Promise<ImageValidationError[]> => {
         const errors: ImageValidationError[] = []
@@ -108,11 +109,11 @@ export function useImagePaste(maxImages: number = MAX_IMAGES_PER_MESSAGE): UseIm
 
         if (validImages.length > 0) {
             setPendingImages((prev) => {
-                const remaining = maxImages - prev.length
+                const remaining = maxImages - existingCount - prev.length
                 if (remaining <= 0) {
                     errors.push({
                         type: 'too_many',
-                        message: `Maximum ${maxImages} images allowed per message`,
+                        message: `Maximum ${maxImages} images allowed (${existingCount} saved + ${prev.length} pending)`,
                     })
                     return prev
                 }
@@ -120,7 +121,7 @@ export function useImagePaste(maxImages: number = MAX_IMAGES_PER_MESSAGE): UseIm
                 if (toAdd.length < validImages.length) {
                     errors.push({
                         type: 'too_many',
-                        message: `Only ${toAdd.length} of ${validImages.length} images added. Maximum ${maxImages} images allowed per message`,
+                        message: `Only ${toAdd.length} of ${validImages.length} images added. Maximum ${maxImages} images allowed (${existingCount} saved)`,
                     })
                 }
                 return [...prev, ...toAdd]
@@ -128,7 +129,7 @@ export function useImagePaste(maxImages: number = MAX_IMAGES_PER_MESSAGE): UseIm
         }
 
         return errors
-    }, [maxImages])
+    }, [maxImages, existingCount])
 
     const addImagesFromClipboard = useCallback(async (event: ClipboardEvent): Promise<ImageValidationError[]> => {
         if (!event.clipboardData) return []

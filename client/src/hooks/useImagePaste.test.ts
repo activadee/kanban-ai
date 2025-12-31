@@ -211,4 +211,64 @@ describe('useImagePaste', () => {
         expect(result.current.pendingImages).toHaveLength(1)
         expect(result.current.pendingImages[0].mime).toBe('image/webp')
     })
+
+    describe('existingCount parameter', () => {
+        it('accounts for existing images in canAddMore calculation', () => {
+            // With 3 existing images and max of 5, we can only add 2 more
+            const {result} = renderHook(() => useImagePaste(5, 3))
+            expect(result.current.canAddMore).toBe(true)
+            expect(result.current.pendingImages).toHaveLength(0)
+        })
+
+        it('canAddMore is false when existing images reach max', () => {
+            // 5 existing images, max is 5 = no room for more
+            const {result} = renderHook(() => useImagePaste(5, 5))
+            expect(result.current.canAddMore).toBe(false)
+        })
+
+        it('limits pending images based on existing count', async () => {
+            // With 3 existing and max 5, can only add 2 pending
+            const {result} = renderHook(() => useImagePaste(5, 3))
+            const files = [
+                createValidPngFile('a.png'),
+                createValidPngFile('b.png'),
+                createValidPngFile('c.png'),
+                createValidPngFile('d.png'),
+            ]
+
+            await act(async () => {
+                const errors = await result.current.addImages(files)
+                expect(errors.some((e) => e.type === 'too_many')).toBe(true)
+            })
+
+            expect(result.current.pendingImages).toHaveLength(2) // Only 2 slots available
+            expect(result.current.canAddMore).toBe(false)
+        })
+
+        it('blocks all additions when existing count equals max', async () => {
+            const {result} = renderHook(() => useImagePaste(5, 5))
+            const file = createValidPngFile('test.png')
+
+            await act(async () => {
+                const errors = await result.current.addImages([file])
+                expect(errors.some((e) => e.type === 'too_many')).toBe(true)
+            })
+
+            expect(result.current.pendingImages).toHaveLength(0)
+        })
+
+        it('error message includes existing and pending counts', async () => {
+            const {result} = renderHook(() => useImagePaste(5, 4))
+            const files = [
+                createValidPngFile('a.png'),
+                createValidPngFile('b.png'),
+            ]
+
+            await act(async () => {
+                const errors = await result.current.addImages(files)
+                expect(errors).toHaveLength(1)
+                expect(errors[0].message).toContain('4 saved')
+            })
+        })
+    })
 })

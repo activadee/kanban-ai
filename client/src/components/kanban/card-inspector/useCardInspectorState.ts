@@ -182,10 +182,12 @@ export function useCardInspectorState({
     const [profileId, setProfileId] = useState<string | undefined>(undefined)
     const [changesOpen, setChangesOpen] = useState(false)
 
-    const attemptImagePaste = useImagePaste()
-    const detailsImagePaste = useImagePaste()
     const cardImagesQuery = useCardImages(projectId, card.id, { enabled: true })
     const existingImages = useMemo(() => cardImagesQuery.data ?? [], [cardImagesQuery.data])
+    const existingImagesCount = existingImages.length
+    
+    const attemptImagePaste = useImagePaste()
+    const detailsImagePaste = useImagePaste(undefined, existingImagesCount)
     const [commitOpen, setCommitOpen] = useState(false)
     const [prOpen, setPrOpen] = useState(false)
     const [mergeOpen, setMergeOpen] = useState(false)
