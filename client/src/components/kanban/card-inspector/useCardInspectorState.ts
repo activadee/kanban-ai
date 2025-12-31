@@ -24,6 +24,7 @@ import {
     useProjectSettings,
     useRunDevAutomation,
     useImagePaste,
+    useCardImages,
 } from '@/hooks'
 import {useAttemptEventStream} from '@/hooks/useAttemptEventStream'
 import {toast} from '@/components/ui/toast'
@@ -39,6 +40,13 @@ export type CardInspectorDetailsState = {
     deleting: boolean
     handleSave: () => Promise<void>
     handleDelete: () => Promise<void>
+    existingImages: MessageImage[]
+    imagesLoading: boolean
+    pendingImages: MessageImage[]
+    addImages: (files: File[]) => Promise<void>
+    removeImage: (index: number) => void
+    clearImages: () => void
+    canAddMoreImages: boolean
 }
 
 export type CardInspectorHeaderState = {
@@ -104,7 +112,7 @@ export type UseCardInspectorStateArgs = {
     blocked?: boolean
     availableCards?: { id: string; title: string; ticketKey?: string }[]
     cardsIndex?: Map<string, { id: string; title: string; ticketKey?: string }>
-    onUpdate: (values: { title: string; description: string; dependsOn?: string[]; ticketType?: TicketType | null }) => Promise<void> | void
+    onUpdate: (values: { title: string; description: string; dependsOn?: string[]; ticketType?: TicketType | null; images?: MessageImage[] }) => Promise<void> | void
     onDelete: () => Promise<void> | void
 }
 
@@ -174,7 +182,10 @@ export function useCardInspectorState({
     const [profileId, setProfileId] = useState<string | undefined>(undefined)
     const [changesOpen, setChangesOpen] = useState(false)
 
-    const imagePaste = useImagePaste()
+    const attemptImagePaste = useImagePaste()
+    const detailsImagePaste = useImagePaste()
+    const cardImagesQuery = useCardImages(projectId, card.id, { enabled: true })
+    const existingImages = useMemo(() => cardImagesQuery.data ?? [], [cardImagesQuery.data])
     const [commitOpen, setCommitOpen] = useState(false)
     const [prOpen, setPrOpen] = useState(false)
     const [mergeOpen, setMergeOpen] = useState(false)
@@ -326,7 +337,8 @@ export function useCardInspectorState({
         manualAgentRef.current = false
         manualProfilesByAgentRef.current = {}
         setProfileId(undefined)
-        imagePaste.clearImages()
+        attemptImagePaste.clearImages()
+        detailsImagePaste.clearImages()
     }, [card.id])
 
     useEffect(() => {
@@ -495,12 +507,16 @@ export function useCardInspectorState({
         if (!values.title.trim()) return
         try {
             setSaving(true)
+            const allImages = [...existingImages, ...detailsImagePaste.pendingImages]
             await onUpdate({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 dependsOn: values.dependsOn,
                 ticketType: values.ticketType ?? null,
+                images: allImages.length > 0 ? allImages : undefined,
             })
+            detailsImagePaste.clearImages()
+            await queryClient.invalidateQueries({queryKey: ['cardImages', projectId, card.id]})
         } finally {
             setSaving(false)
         }
@@ -539,19 +555,26 @@ export function useCardInspectorState({
     }
 
     const sendFollowup = async () => {
-        const hasContent = followup.trim() || imagePaste.pendingImages.length > 0
+        const hasContent = followup.trim() || attemptImagePaste.pendingImages.length > 0
         if (!attempt || !attempt.sessionId || !hasContent) return
         try {
-            const images = imagePaste.pendingImages.length > 0 ? imagePaste.pendingImages : undefined
+            const images = attemptImagePaste.pendingImages.length > 0 ? attemptImagePaste.pendingImages : undefined
             await followupMutation.mutateAsync({attemptId: attempt.id, prompt: followup, profileId, images})
-            imagePaste.clearImages()
+            attemptImagePaste.clearImages()
         } catch (err) {
             console.error('Follow-up failed', err)
         }
     }
 
-    const handleAddImages = async (files: File[]) => {
-        const errors = await imagePaste.addImages(files)
+    const handleAddAttemptImages = async (files: File[]) => {
+        const errors = await attemptImagePaste.addImages(files)
+        for (const error of errors) {
+            toast({title: 'Image error', description: error.message, variant: 'destructive'})
+        }
+    }
+
+    const handleAddDetailsImages = async (files: File[]) => {
+        const errors = await detailsImagePaste.addImages(files)
         for (const error of errors) {
             toast({title: 'Image error', description: error.message, variant: 'destructive'})
         }
@@ -632,6 +655,13 @@ export function useCardInspectorState({
             deleting,
             handleSave,
             handleDelete,
+            existingImages,
+            imagesLoading: cardImagesQuery.isLoading,
+            pendingImages: detailsImagePaste.pendingImages,
+            addImages: handleAddDetailsImages,
+            removeImage: detailsImagePaste.removeImage,
+            clearImages: detailsImagePaste.clearImages,
+            canAddMoreImages: detailsImagePaste.canAddMore,
         },
         header: {
             copied,
@@ -660,11 +690,11 @@ export function useCardInspectorState({
             setFollowup,
             sendFollowup,
             sendFollowupPending: followupMutation.isPending,
-            pendingImages: imagePaste.pendingImages,
-            addImages: handleAddImages,
-            removeImage: imagePaste.removeImage,
-            clearImages: imagePaste.clearImages,
-            canAddMoreImages: imagePaste.canAddMore,
+            pendingImages: attemptImagePaste.pendingImages,
+            addImages: handleAddAttemptImages,
+            removeImage: attemptImagePaste.removeImage,
+            clearImages: attemptImagePaste.clearImages,
+            canAddMoreImages: attemptImagePaste.canAddMore,
             startAttempt,
             starting,
             retryAttempt: startAttempt,

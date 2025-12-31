@@ -131,19 +131,26 @@ export function CardInspector({
                         onEnhanceInBackground={
                             onEnhanceCard
                                 ? async () => {
-                                    // Save latest edits, then start background enhancement.
                                     await details.handleSave()
                                     await onEnhanceCard({
                                         title: details.values.title.trim(),
                                         description: details.values.description.trim(),
                                         dependsOn: details.values.dependsOn,
                                         ticketType: details.values.ticketType ?? null,
+                                        images: details.pendingImages.length > 0 ? details.pendingImages : undefined,
                                     })
+                                    details.clearImages()
                                 }
                                 : undefined
                         }
                         saving={details.saving}
                         deleting={details.deleting}
+                        existingImages={details.existingImages}
+                        imagesLoading={details.imagesLoading}
+                        pendingImages={details.pendingImages}
+                        onAddImages={details.addImages}
+                        onRemoveImage={details.removeImage}
+                        canAddMoreImages={details.canAddMoreImages}
                     />
                 </TabsContent>
                 <TabsContent value="attempts" className="flex min-h-0 flex-1 flex-col gap-3">
