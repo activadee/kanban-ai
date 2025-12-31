@@ -1,27 +1,5 @@
 import { spawn } from 'child_process'
-import { existsSync, readFileSync } from 'fs'
-
-/**
- * Detects if running inside WSL (Windows Subsystem for Linux).
- */
-function isWSL(): boolean {
-  // Check environment variables set by WSL
-  if (process.env.WSL_DISTRO_NAME || process.env.WSLENV) {
-    return true
-  }
-
-  // Check /proc/version for Microsoft/WSL indicators
-  try {
-    if (existsSync('/proc/version')) {
-      const version = readFileSync('/proc/version', 'utf8').toLowerCase()
-      return version.includes('microsoft') || version.includes('wsl')
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return false
-}
+import { isWSL } from '../editor/wsl'
 
 /**
  * Opens a URL in the system's default browser.
