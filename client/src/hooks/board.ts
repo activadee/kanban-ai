@@ -30,7 +30,7 @@ type CreateArgs = {
 type UpdateArgs = {
     boardId: string;
     cardId: string;
-    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; isEnhanced?: boolean }
+    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; isEnhanced?: boolean; images?: import('shared').MessageImage[] }
 }
 
 type DeleteArgs = { boardId: string; cardId: string }

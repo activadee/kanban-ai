@@ -380,6 +380,7 @@ export function ProjectBoardPage() {
                                             values.description || undefined,
                                         dependsOn: values.dependsOn,
                                         ticketType: values.ticketType,
+                                        images: values.images,
                                     },
                                 });
                             } catch (err) {
