@@ -1,5 +1,5 @@
 import { spawn } from 'child_process'
-import { isWSL } from '../editor/wsl'
+import { isWSL } from '../utils/wsl'
 
 /**
  * Opens a URL in the system's default browser.

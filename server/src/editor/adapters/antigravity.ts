@@ -2,7 +2,7 @@ import os from 'os'
 import nodePath from 'path'
 import {existsSync} from 'fs'
 import {createAdapter} from './base'
-import {isWSL, readWindowsEnvVar, normalizePathForWindowsBinary, windowsPathToWSLPath} from '../wsl'
+import {isWSL, readWindowsEnvVar, normalizePathForWindowsBinary, windowsPathToWSLPath} from '../../utils/wsl'
 
 export function collectAntigravityCommandCandidates(): string[] {
     const platform = os.platform()
