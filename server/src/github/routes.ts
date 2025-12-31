@@ -3,10 +3,9 @@ import type {AppEnv} from '../env'
 import {createGithubAuthRouter} from './auth.routes'
 import {createGithubAppConfigRouter} from './app-config.routes'
 
-export const createGithubRouter = () => {
-    const router = new Hono<AppEnv>()
-    router.route('/', createGithubAuthRouter())
-    router.route('/', createGithubAppConfigRouter())
+export const createGithubRouter = () =>
+    new Hono<AppEnv>()
+        .route('/', createGithubAuthRouter())
+        .route('/', createGithubAppConfigRouter())
 
-    return router
-}
+export type GithubRoutes = ReturnType<typeof createGithubRouter>

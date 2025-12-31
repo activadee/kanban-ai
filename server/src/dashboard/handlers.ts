@@ -1,0 +1,80 @@
+import type {DashboardTimeRange, DashboardTimeRangePreset} from 'shared'
+import {getDashboardOverview} from 'core'
+import {problemJson} from '../http/problem'
+import {log} from '../log'
+import {createHandlers} from '../lib/factory'
+
+type TimeRangeParseResult = {
+    timeRange?: DashboardTimeRange
+    invalid?: boolean
+}
+
+function isValidIsoDate(value: string | null): boolean {
+    if (!value) return false
+    const time = Date.parse(value)
+    return Number.isFinite(time)
+}
+
+function parseTimeRangeFromQuery(searchParams: URLSearchParams): TimeRangeParseResult {
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
+    const presetParam = searchParams.get('timeRangePreset')
+    const rangeAlias = searchParams.get('range')
+
+    const allowedPresets = new Set<DashboardTimeRangePreset>([
+        'last_24h',
+        'last_7d',
+        'last_30d',
+        'last_90d',
+        'all_time',
+    ])
+    const rangeAliasToPreset: Record<string, DashboardTimeRangePreset> = {
+        '24h': 'last_24h',
+        '7d': 'last_7d',
+        '30d': 'last_30d',
+        '90d': 'last_90d',
+        all: 'all_time',
+    }
+
+    if (from || to) {
+        if (!from || !to || !isValidIsoDate(from) || !isValidIsoDate(to)) {
+            return {invalid: true}
+        }
+        return {timeRange: {from, to}}
+    }
+
+    if (presetParam && allowedPresets.has(presetParam as DashboardTimeRangePreset)) {
+        return {timeRange: {preset: presetParam as DashboardTimeRangePreset}}
+    }
+
+    if (rangeAlias) {
+        const mapped = rangeAliasToPreset[rangeAlias]
+        if (!mapped) {
+            return {invalid: true}
+        }
+        return {timeRange: {preset: mapped}}
+    }
+
+    return {}
+}
+
+export const getDashboardHandlers = createHandlers(async (c) => {
+    const url = new URL(c.req.url)
+    const {timeRange, invalid} = parseTimeRangeFromQuery(url.searchParams)
+
+    if (invalid) {
+        return problemJson(c, {
+            status: 400,
+            detail: 'Invalid time range; use ISO 8601 from/to, a supported timeRangePreset, or a supported range alias',
+        })
+    }
+    const startedAt = Date.now()
+    const overview = await getDashboardOverview(timeRange)
+    const elapsedMs = Date.now() - startedAt
+    log.debug('dashboard', 'overview computed', {
+        elapsedMs,
+        preset: timeRange?.preset,
+        hasCustomRange: Boolean(timeRange?.from || timeRange?.to),
+    })
+    return c.json(overview)
+})
