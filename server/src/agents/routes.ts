@@ -1,40 +1,21 @@
 import {Hono} from 'hono'
-import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
 import {
-    createGlobalAgentProfileHandler,
-    deleteGlobalAgentProfileHandler,
-    getAgentProfileSchemaHandler,
-    listAgentsHandler,
-    listGlobalAgentProfilesHandler,
-    updateGlobalAgentProfileHandler,
+    listAgentsHandlers,
+    getAgentProfileSchemaHandlers,
+    listGlobalAgentProfilesHandlers,
+    createGlobalAgentProfileHandlers,
+    updateGlobalAgentProfileHandlers,
+    deleteGlobalAgentProfileHandlers,
 } from './agents.handlers'
-import {createGlobalAgentProfileSchema, updateGlobalAgentProfileSchema} from './agents.schemas'
-import {problemJson} from '../http/problem'
 
-export function createAgentsRouter() {
-    const router = new Hono<AppEnv>()
+export const createAgentsRouter = () =>
+    new Hono<AppEnv>()
+        .get('/', ...listAgentsHandlers)
+        .get('/:agentKey/schema', ...getAgentProfileSchemaHandlers)
+        .get('/profiles', ...listGlobalAgentProfilesHandlers)
+        .post('/profiles', ...createGlobalAgentProfileHandlers)
+        .patch('/profiles/:id', ...updateGlobalAgentProfileHandlers)
+        .delete('/profiles/:id', ...deleteGlobalAgentProfileHandlers)
 
-    router.get('/', (c) => listAgentsHandler(c))
-
-    router.get('/:agentKey/schema', (c) => getAgentProfileSchemaHandler(c))
-
-    // Global profiles CRUD
-    router.get('/profiles', (c) => listGlobalAgentProfilesHandler(c))
-
-    router.post(
-        '/profiles',
-        zValidator('json', createGlobalAgentProfileSchema),
-        (c) => createGlobalAgentProfileHandler(c),
-    )
-
-    router.patch(
-        '/profiles/:id',
-        zValidator('json', updateGlobalAgentProfileSchema),
-        (c) => updateGlobalAgentProfileHandler(c),
-    )
-
-    router.delete('/profiles/:id', (c) => deleteGlobalAgentProfileHandler(c))
-
-    return router
-}
+export type AgentsRoutes = ReturnType<typeof createAgentsRouter>

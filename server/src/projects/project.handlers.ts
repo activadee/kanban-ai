@@ -1,26 +1,28 @@
 export {
-    listProjectsHandler,
-    createProjectHandler,
-    getProjectHandler,
-    listProjectBranchesHandler,
-    updateProjectHandler,
-    deleteProjectHandler,
-    getGithubOriginHandler,
+    listProjectsHandlers,
+    createProjectHandlers,
+    getProjectHandlers,
+    listProjectBranchesHandlers,
+    updateProjectHandlers,
+    deleteProjectHandlers,
+    getGithubOriginHandlers,
 } from "./project.core.handlers";
 
 export {
-    getProjectSettingsHandler,
-    previewNextTicketKeyHandler,
-    updateProjectSettingsHandler,
+    getProjectSettingsHandlers,
+    previewNextTicketKeyHandlers,
+    updateProjectSettingsHandlers,
 } from "./project.settings.handlers";
 
 export {
-    getProjectCardAttemptHandler,
-    startProjectCardAttemptHandler,
+    getProjectCardAttemptHandlers,
+    startProjectCardAttemptHandlers,
 } from "./project.attempt.handlers";
 
 export {
-    getCardEnhancementsHandler,
-    setCardEnhancementHandler,
-    clearCardEnhancementHandler,
+    getCardEnhancementsHandlers,
+    setCardEnhancementHandlers,
+    clearCardEnhancementHandlers,
 } from "./project.enhancement.state.handlers";
+
+export {enhanceTicketHandlers} from "./project.enhance.handlers";

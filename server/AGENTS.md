@@ -1,5 +1,208 @@
 <SYSTEM>This is the full developer documentation for Hono.</SYSTEM>
 
+# KanbanAI Server Patterns
+
+## Context Types
+
+The `AppContext` type from `../env` provides typed access to services and events:
+
+```typescript
+// Inside any handler, c is fully typed
+const services = c.get('services')  // ProjectsService, etc.
+const events = c.get('events')       // EventBus
+const requestId = c.get('requestId') // string
+```
+
+## Factory Helpers
+
+Use typed middleware/handlers from `lib/factory`:
+
+```typescript
+import {createMiddleware, createHandlers} from '../lib/factory'
+
+const authMiddleware = createMiddleware(async (c, next) => {
+    // c is fully typed
+    await next()
+})
+```
+
+## Unified Handler Pattern
+
+Use `createHandlers` for ALL handlers. Include validators inside the handler chain for full type inference.
+
+### File Structure
+
+```
+server/src/
+├── {domain}/
+│   ├── handlers.ts      # Handler functions using createHandlers
+│   ├── routes.ts        # Route definitions (spread handlers)
+│   └── schemas.ts       # Zod schemas (optional, for shared schemas)
+```
+
+### Handler Examples
+
+```typescript
+// handlers.ts
+import {z} from 'zod'
+import {zValidator} from '@hono/zod-validator'
+import {createHandlers} from '../lib/factory'
+
+// Simple handler - no params or validation
+export const listItemsHandlers = createHandlers(async (c) => {
+    const items = await getItems()
+    return c.json({items})
+})
+
+// Handler with route params
+export const getItemHandlers = createHandlers(
+    zValidator('param', z.object({id: z.string()})),
+    async (c) => {
+        const {id} = c.req.valid('param')  // Fully typed!
+        const item = await getItem(id)
+        if (!item) return problemJson(c, {status: 404, detail: 'Not found'})
+        return c.json({item})
+    },
+)
+
+// Handler with body validation
+export const createItemHandlers = createHandlers(
+    zValidator('json', z.object({name: z.string()})),
+    async (c) => {
+        const {name} = c.req.valid('json')  // Fully typed!
+        const item = await createItem(name)
+        return c.json({item}, 201)
+    },
+)
+
+// Handler with multiple validators (param + body)
+export const updateItemHandlers = createHandlers(
+    zValidator('param', z.object({id: z.string()})),
+    zValidator('json', z.object({name: z.string().optional()})),
+    async (c) => {
+        const {id} = c.req.valid('param')
+        const body = c.req.valid('json')
+        const item = await updateItem(id, body)
+        return c.json({item})
+    },
+)
+
+// Handler with query params
+export const searchItemsHandlers = createHandlers(
+    zValidator('query', z.object({q: z.string().optional()})),
+    async (c) => {
+        const {q} = c.req.valid('query')
+        const items = await searchItems(q)
+        return c.json({items})
+    },
+)
+```
+
+### Route Examples
+
+```typescript
+// routes.ts - clean, no validators here
+import {Hono} from 'hono'
+import type {AppEnv} from '../env'
+import {
+    listItemsHandlers,
+    getItemHandlers,
+    createItemHandlers,
+    updateItemHandlers,
+    searchItemsHandlers,
+} from './handlers'
+
+export const createItemsRouter = () =>
+    new Hono<AppEnv>()
+        .get('/', ...listItemsHandlers)
+        .get('/search', ...searchItemsHandlers)
+        .get('/:id', ...getItemHandlers)
+        .post('/', ...createItemHandlers)
+        .patch('/:id', ...updateItemHandlers)
+```
+
+### Nested Routes with Context Middleware
+
+For routes that need shared context (e.g., board routes under projects):
+
+```typescript
+// board.routes.ts
+import {Hono} from 'hono'
+import {createMiddleware} from '../lib/factory'
+import {problemJson} from '../http/problem'
+import {getBoardStateHandlers, createCardHandlers} from './board.handlers'
+
+export function createBoardRouter(
+    resolveBoard: (c: AppContext) => Promise<BoardContext | null>,
+) {
+    const boardMiddleware = createMiddleware(async (c, next) => {
+        const ctx = await resolveBoard(c)
+        if (!ctx) return problemJson(c, {status: 404, detail: 'Board not found'})
+        c.set('boardContext', ctx)
+        await next()
+    })
+
+    return new Hono<AppEnv>()
+        .use('/*', boardMiddleware)
+        .get('/', ...getBoardStateHandlers)
+        .post('/cards', ...createCardHandlers)
+}
+```
+
+```typescript
+// board.handlers.ts
+export const getBoardStateHandlers = createHandlers(async (c) => {
+    const ctx = c.get('boardContext')!  // Set by middleware
+    const state = await fetchBoardState(ctx.boardId)
+    return c.json({state})
+})
+```
+
+### Why This Pattern
+
+1. **Type accumulation** - Each validator adds types that flow to subsequent handlers
+2. **No manual casting** - `c.req.valid()` returns properly typed data
+3. **Clean routes** - Routes only define paths and spread handlers
+4. **Testable** - Handlers can be unit tested in isolation
+5. **Composable** - Add middleware (auth, logging) before the final handler
+
+### Naming Conventions
+
+- Handler exports: `*Handlers` (plural) - e.g., `getItemHandlers`, `createCardHandlers`
+- Router factories: `create*Router` - e.g., `createItemsRouter`, `createBoardRouter`
+- Schemas: `*Schema` - e.g., `createItemSchema`, `updateCardSchema`
+
+## Reusable Middleware
+
+Common middleware patterns in `lib/middleware/`:
+
+- `requestId` - Adds X-Request-Id header and sets `c.get('requestId')`
+- `skipForWebSocket` - Wraps middleware to skip WebSocket upgrade paths
+
+```typescript
+import {requestId, skipForWebSocket} from './lib/middleware'
+import {cors} from 'hono/cors'
+
+app.use('*', requestId)
+app.use('/api/*', skipForWebSocket(cors()))
+```
+
+## Error Handling
+
+Use `problemJson()` for RFC 7807 structured errors:
+
+```typescript
+import {problemJson, ProblemError} from '../http/problem'
+
+// In handlers:
+return problemJson(c, {status: 404, detail: 'Not found'})
+
+// Or throw:
+throw new ProblemError({status: 400, detail: 'Invalid input'})
+```
+
+---
+
 # Start of Hono documentation
 
 # Hono

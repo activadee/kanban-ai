@@ -1,84 +1,52 @@
 import {Hono} from 'hono'
-import {zValidator} from '@hono/zod-validator'
 import type {AppEnv} from '../env'
 import {
-    attemptMessageSchema,
-    gitCommitSchema,
-    gitPushSchema,
-    openEditorSchema,
-    stopAttemptSchema,
-    attemptPrSchema,
-} from './attempts.schemas'
-import {
-    getAttemptHandler,
-    listAttemptLogsHandler,
-    postAttemptMessageHandler,
-    runDevAutomationHandler,
-    stopAttemptHandler,
+    getAttemptHandlers,
+    listAttemptLogsHandlers,
+    postAttemptMessageHandlers,
+    runDevAutomationHandlers,
+    stopAttemptHandlers,
 } from './attempts.handlers'
-import {openEditorHandler} from './attempts.editor.handlers'
+import {openEditorHandlers} from './attempts.editor.handlers'
 import {
-    gitCommitHandler,
-    gitFileHandler,
-    gitMergeHandler,
-    gitPushHandler,
-    gitStatusHandler,
+    gitCommitHandlers,
+    gitFileHandlers,
+    gitMergeHandlers,
+    gitPushHandlers,
+    gitStatusHandlers,
 } from './attempts.git.handlers'
-import {createAttemptPrHandler} from './attempts.pr.handlers'
+import {createAttemptPrHandlers} from './attempts.pr.handlers'
 import {problemJson} from '../http/problem'
 
-export const createAttemptsRouter = () => {
-    const router = new Hono<AppEnv>()
+export const createAttemptsRouter = () =>
+    new Hono<AppEnv>()
+        .post('/boards/:boardId/cards/:cardId/attempts', async (c) => {
+            c.header('Deprecation', 'true')
+            c.header('Link', '</api/v1/projects/{projectId}/cards/{cardId}/attempts>; rel="successor-version"')
+            return problemJson(c, {status: 410, detail: 'Moved to /projects/:projectId/cards/:cardId/attempts'})
+        })
+        .get('/:id', ...getAttemptHandlers)
+        .patch('/:id', ...stopAttemptHandlers)
+        .post('/:id/stop', async (c) => {
+            c.header('Deprecation', 'true')
+            const id = c.req.param('id')
+            c.header('Link', `</api/v1/attempts/${id}>; rel="successor-version"`)
+            return problemJson(c, {status: 410, detail: 'Use PATCH /attempts/:id with status=stopped'})
+        })
+        .get('/:id/logs', ...listAttemptLogsHandlers)
+        .post('/:id/open-editor', ...openEditorHandlers)
+        .get('/:id/git/status', ...gitStatusHandlers)
+        .get('/:id/git/file', ...gitFileHandlers)
+        .post('/:id/messages', ...postAttemptMessageHandlers)
+        .post('/:id/followup', async (c) => {
+            c.header('Deprecation', 'true')
+            c.header('Link', '</api/v1/attempts/{id}/messages>; rel="successor-version"')
+            return problemJson(c, {status: 410, detail: 'Use POST /attempts/:id/messages'})
+        })
+        .post('/:id/git/commit', ...gitCommitHandlers)
+        .post('/:id/git/push', ...gitPushHandlers)
+        .post('/:id/github/pr', ...createAttemptPrHandlers)
+        .post('/:id/git/merge', ...gitMergeHandlers)
+        .post('/:id/automation/dev', ...runDevAutomationHandlers)
 
-    // Deprecated start path kept only to signal new canonical route
-    router.post('/boards/:boardId/cards/:cardId/attempts', async (c) => {
-        c.header('Deprecation', 'true')
-        c.header('Link', '</api/v1/projects/{projectId}/cards/{cardId}/attempts>; rel="successor-version"')
-        return problemJson(c, {status: 410, detail: 'Moved to /projects/:projectId/cards/:cardId/attempts'})
-    })
-
-    router.get('/:id', getAttemptHandler)
-
-    router.patch('/:id', zValidator('json', stopAttemptSchema), stopAttemptHandler)
-
-    // Keep old stop path as a deprecation hint
-    router.post('/:id/stop', async (c) => {
-        c.header('Deprecation', 'true')
-        const id = c.req.param('id')
-        c.header('Link', `</api/v1/attempts/${id}>; rel="successor-version"`)
-        return problemJson(c, {status: 410, detail: 'Use PATCH /attempts/:id with status=stopped'})
-    })
-
-    router.get('/:id/logs', listAttemptLogsHandler)
-
-    // Open editor at worktree (or subpath)
-    router.post('/:id/open-editor', zValidator('json', openEditorSchema), openEditorHandler)
-
-    // Git endpoints per attempt (use worktree path)
-    router.get('/:id/git/status', gitStatusHandler)
-
-    router.get('/:id/git/file', gitFileHandler)
-
-    router.post('/:id/messages', zValidator('json', attemptMessageSchema), postAttemptMessageHandler)
-
-    // Deprecated follow-up path
-    router.post('/:id/followup', async (c) => {
-        c.header('Deprecation', 'true')
-        c.header('Link', '</api/v1/attempts/{id}/messages>; rel="successor-version"')
-        return problemJson(c, {status: 410, detail: 'Use POST /attempts/:id/messages'})
-    })
-
-    // ---- Attempt-scoped Git write operations ----
-    router.post('/:id/git/commit', zValidator('json', gitCommitSchema), gitCommitHandler)
-
-    router.post('/:id/git/push', zValidator('json', gitPushSchema), gitPushHandler)
-
-    router.post('/:id/github/pr', zValidator('json', attemptPrSchema), createAttemptPrHandler)
-
-    // Merge attempt branch into base branch (no push)
-    router.post('/:id/git/merge', gitMergeHandler)
-
-    router.post('/:id/automation/dev', runDevAutomationHandler)
-
-    return router
-}
+export type AttemptsRoutes = ReturnType<typeof createAttemptsRouter>

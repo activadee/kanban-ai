@@ -1,140 +1,58 @@
-import {Hono} from "hono";
-import {zValidator} from "@hono/zod-validator";
-import type {AppEnv} from "../env";
-import type {ProjectSummary} from "shared";
-import {tasks} from "core";
-import {problemJson} from "../http/problem";
-import {log} from "../log";
-import {startAttemptSchema} from "../attempts/attempts.schemas";
-import {
-    createCardSchema,
-    updateCardSchema,
-    boardGithubImportSchema,
-} from "./project.schemas";
-import {getBoardStateHandler} from "./board.state.handlers";
-import {
-    createCardHandler,
-    updateCardHandler,
-    deleteCardHandler,
-    getCardImagesHandler,
-} from "./board.card.handlers";
-import {
-    getCardAttemptForBoardHandler,
-    startCardAttemptForBoardHandler,
-} from "./board.attempt.handlers";
-import {importGithubIssuesHandler} from "./board.import.handlers";
-import {getGithubIssueStatsHandler} from "./board.github.handlers";
+import {Hono} from 'hono'
+import type {AppEnv, AppContext, BoardContext} from '../env'
+import {problemJson} from '../http/problem'
+import {createMiddleware} from '../lib/factory'
+import {getBoardStateHandlers} from './board.state.handlers'
+import {createCardHandlers, updateCardHandlers, deleteCardHandlers, getCardImagesHandlers} from './board.card.handlers'
+import {getCardAttemptForBoardHandlers, startCardAttemptForBoardHandlers} from './board.attempt.handlers'
+import {importGithubIssuesHandlers} from './board.import.handlers'
+import {getGithubIssueStatsHandlers} from './board.github.handlers'
 
-export type BoardContext = {boardId: string; project: ProjectSummary};
+export type {BoardContext}
 
-export const resolveBoardForProject = async (
-    c: any,
-): Promise<BoardContext | null> => {
-    const {projects} = c.get("services");
-    const projectId = c.req.param("projectId");
-    const project = await projects.get(projectId);
-    if (!project) return null;
-    return {boardId: project.boardId ?? project.id, project};
-};
+export const resolveBoardForProject = async (c: AppContext): Promise<BoardContext | null> => {
+    const {projects} = c.get('services')
+    const projectId = c.req.param('projectId') as string
+    const project = await projects.get(projectId)
+    if (!project) return null
+    return {boardId: project.boardId ?? project.id, project}
+}
 
-export const resolveBoardById = async (
-    c: any,
-): Promise<BoardContext | null> => {
-    const {projects} = c.get("services");
-    const boardId = c.req.param("boardId");
-    const project = await projects.get(boardId);
-    if (!project) return null;
-    return {boardId: project.boardId ?? project.id, project};
-};
+export const resolveBoardById = async (c: AppContext): Promise<BoardContext | null> => {
+    const {projects} = c.get('services')
+    const boardId = c.req.param('boardId') as string
+    const project = await projects.get(boardId)
+    if (!project) return null
+    return {boardId: project.boardId ?? project.id, project}
+}
 
 export function createBoardRouter(
-    resolveBoard: (c: any) => Promise<BoardContext | null>,
+    resolveBoard: (c: AppContext) => Promise<BoardContext | null>,
 ) {
-    const boardRouter = new Hono<AppEnv>();
+    const boardMiddleware = createMiddleware(async (c, next) => {
+        const ctx = await resolveBoard(c)
+        if (!ctx) {
+            return problemJson(c, {status: 404, detail: 'Board not found'})
+        }
+        c.set('boardContext', ctx)
+        await next()
+    })
 
-    const loadContext = async (
-        c: any,
-    ): Promise<BoardContext | Response> => {
-        const ctx = await resolveBoard(c);
-        if (!ctx) return problemJson(c, {status: 404, detail: "Board not found"});
-        return ctx;
-    };
-
-    boardRouter.get("/", async (c) => {
-        const ctx = await loadContext(c);
-        if (ctx instanceof Response) return ctx;
-        return getBoardStateHandler(c, ctx);
-    });
-
-    boardRouter.post(
-        "/cards",
-        zValidator("json", createCardSchema),
-        async (c) => {
-            const ctx = await loadContext(c);
-            if (ctx instanceof Response) return ctx;
-            return createCardHandler(c, ctx);
-        },
-    );
-
-    boardRouter.patch(
-        "/cards/:cardId",
-        zValidator("json", updateCardSchema),
-        async (c) => {
-            const ctx = await loadContext(c);
-            if (ctx instanceof Response) return ctx;
-            return updateCardHandler(c, ctx);
-        },
-    );
-
-    boardRouter.delete("/cards/:cardId", async (c) => {
-        const ctx = await loadContext(c);
-        if (ctx instanceof Response) return ctx;
-        return deleteCardHandler(c, ctx);
-    });
-
-    boardRouter.get("/cards/:cardId/images", async (c) => {
-        const ctx = await loadContext(c);
-        if (ctx instanceof Response) return ctx;
-        return getCardImagesHandler(c, ctx);
-    });
-
-    boardRouter.get("/cards/:cardId/attempt", async (c) => {
-        const ctx = await loadContext(c);
-        if (ctx instanceof Response) return ctx;
-        return getCardAttemptForBoardHandler(c, ctx);
-    });
-
-    boardRouter.post(
-        "/cards/:cardId/attempts",
-        zValidator("json", startAttemptSchema),
-        async (c) => {
-            const ctx = await loadContext(c);
-            if (ctx instanceof Response) return ctx;
-            return startCardAttemptForBoardHandler(c, ctx);
-        },
-    );
-
-    boardRouter.post(
-        "/import/github/issues",
-        zValidator("json", boardGithubImportSchema),
-        async (c) => {
-            const ctx = await loadContext(c);
-            if (ctx instanceof Response) return ctx;
-            return importGithubIssuesHandler(c, ctx);
-        },
-    );
-
-    boardRouter.get("/github/issues/stats", async (c) => {
-        const ctx = await loadContext(c);
-        if (ctx instanceof Response) return ctx;
-        return getGithubIssueStatsHandler(c, ctx);
-    });
-
-    return boardRouter;
+    return new Hono<AppEnv>()
+        .use('/*', boardMiddleware)
+        .get('/', ...getBoardStateHandlers)
+        .post('/cards', ...createCardHandlers)
+        .patch('/cards/:cardId', ...updateCardHandlers)
+        .delete('/cards/:cardId', ...deleteCardHandlers)
+        .get('/cards/:cardId/images', ...getCardImagesHandlers)
+        .get('/cards/:cardId/attempt', ...getCardAttemptForBoardHandlers)
+        .post('/cards/:cardId/attempts', ...startCardAttemptForBoardHandlers)
+        .post('/import/github/issues', ...importGithubIssuesHandlers)
+        .get('/github/issues/stats', ...getGithubIssueStatsHandlers)
 }
 
 export const createBoardsRouter = () => {
-    const router = new Hono<AppEnv>();
-    router.route("/:boardId", createBoardRouter(resolveBoardById));
-    return router;
-};
+    const router = new Hono<AppEnv>()
+    router.route('/:boardId', createBoardRouter(resolveBoardById))
+    return router
+}

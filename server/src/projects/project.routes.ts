@@ -1,152 +1,45 @@
 import {Hono} from "hono";
-import {zValidator} from "@hono/zod-validator";
 import type {AppEnv} from "../env";
 import {
-    createProjectSchema,
-    updateProjectSchema,
-    updateProjectSettingsSchema,
-    enhanceTicketSchema,
-} from "./project.schemas";
-import {
-    listProjectsHandler,
-    createProjectHandler,
-    getProjectHandler,
-    getProjectSettingsHandler,
-    previewNextTicketKeyHandler,
-    updateProjectSettingsHandler,
-    listProjectBranchesHandler,
-    updateProjectHandler,
-    deleteProjectHandler,
-    getGithubOriginHandler,
-    getProjectCardAttemptHandler,
-    startProjectCardAttemptHandler,
-    getCardEnhancementsHandler,
-    setCardEnhancementHandler,
-    clearCardEnhancementHandler,
+    listProjectsHandlers,
+    createProjectHandlers,
+    getProjectHandlers,
+    getProjectSettingsHandlers,
+    previewNextTicketKeyHandlers,
+    updateProjectSettingsHandlers,
+    listProjectBranchesHandlers,
+    updateProjectHandlers,
+    deleteProjectHandlers,
+    getGithubOriginHandlers,
+    getProjectCardAttemptHandlers,
+    startProjectCardAttemptHandlers,
+    getCardEnhancementsHandlers,
+    setCardEnhancementHandlers,
+    clearCardEnhancementHandlers,
+    enhanceTicketHandlers,
 } from "./project.handlers";
-import {registerProjectAgentRoutes} from "./project.agents.routes";
+import {createProjectAgentProfilesRouter} from "./project.agents.routes";
 import {createBoardRouter, resolveBoardForProject} from "./board.routes";
-import {problemJson} from "../http/problem";
-import {startAttemptSchema} from "../attempts/attempts.schemas";
-import {enhanceTicketHandler} from "./project.enhance.handlers";
-import {setCardEnhancementSchema} from "./project.schemas";
 
-export const createProjectsRouter = () => {
-    const router = new Hono<AppEnv>();
+export const createProjectsRouter = () =>
+    new Hono<AppEnv>()
+        .get("/", ...listProjectsHandlers)
+        .post("/", ...createProjectHandlers)
+        .get("/:projectId", ...getProjectHandlers)
+        .get("/:projectId/cards/:cardId/attempt", ...getProjectCardAttemptHandlers)
+        .get("/:projectId/enhancements", ...getCardEnhancementsHandlers)
+        .put("/:projectId/cards/:cardId/enhancement", ...setCardEnhancementHandlers)
+        .delete("/:projectId/cards/:cardId/enhancement", ...clearCardEnhancementHandlers)
+        .post("/:projectId/cards/:cardId/attempts", ...startProjectCardAttemptHandlers)
+        .route("/:projectId/board", createBoardRouter(resolveBoardForProject))
+        .route("/:projectId/agents/profiles", createProjectAgentProfilesRouter())
+        .get("/:projectId/settings", ...getProjectSettingsHandlers)
+        .get("/:projectId/tickets/next-key", ...previewNextTicketKeyHandlers)
+        .post("/:projectId/tickets/enhance", ...enhanceTicketHandlers)
+        .patch("/:projectId/settings", ...updateProjectSettingsHandlers)
+        .get("/:projectId/git/branches", ...listProjectBranchesHandlers)
+        .patch("/:projectId", ...updateProjectHandlers)
+        .delete("/:projectId", ...deleteProjectHandlers)
+        .get("/:projectId/github/origin", ...getGithubOriginHandlers);
 
-    const loadProjectBoard = async (
-        c: any,
-    ): Promise<import("./board.routes").BoardContext | Response> => {
-        const ctx = await resolveBoardForProject(c);
-        if (!ctx) {
-            return problemJson(c, {status: 404, detail: "Project not found"});
-        }
-        return ctx;
-    };
-
-    router.get("/", (c) => listProjectsHandler(c));
-
-    router.post(
-        "/",
-        zValidator("json", createProjectSchema),
-        (c) => createProjectHandler(c),
-    );
-
-    router.get("/:projectId", (c) => getProjectHandler(c));
-
-    router.get(
-        "/:projectId/cards/:cardId/attempt",
-        async (c) => {
-            const ctx = await loadProjectBoard(c);
-            if (ctx instanceof Response) return ctx;
-            return getProjectCardAttemptHandler(c, ctx);
-        },
-    );
-
-    router.get(
-        "/:projectId/enhancements",
-        async (c) => {
-            const ctx = await loadProjectBoard(c);
-            if (ctx instanceof Response) return ctx;
-            return getCardEnhancementsHandler(c, ctx);
-        },
-    );
-
-    router.put(
-        "/:projectId/cards/:cardId/enhancement",
-        zValidator("json", setCardEnhancementSchema),
-        async (c) => {
-            const ctx = await loadProjectBoard(c);
-            if (ctx instanceof Response) return ctx;
-            return setCardEnhancementHandler(c, ctx);
-        },
-    );
-
-    router.delete(
-        "/:projectId/cards/:cardId/enhancement",
-        async (c) => {
-            const ctx = await loadProjectBoard(c);
-            if (ctx instanceof Response) return ctx;
-            return clearCardEnhancementHandler(c, ctx);
-        },
-    );
-
-    router.post(
-        "/:projectId/cards/:cardId/attempts",
-        zValidator("json", startAttemptSchema),
-        async (c) => {
-            const ctx = await loadProjectBoard(c);
-            if (ctx instanceof Response) return ctx;
-            return startProjectCardAttemptHandler(c, ctx);
-        },
-    );
-
-    router.route(
-        "/:projectId/board",
-        createBoardRouter(resolveBoardForProject),
-    );
-
-    router.get(
-        "/:projectId/settings",
-        (c) => getProjectSettingsHandler(c),
-    );
-
-    router.get(
-        "/:projectId/tickets/next-key",
-        (c) => previewNextTicketKeyHandler(c),
-    );
-
-    router.post(
-        "/:projectId/tickets/enhance",
-        zValidator("json", enhanceTicketSchema),
-        (c) => enhanceTicketHandler(c),
-    );
-
-    router.patch(
-        "/:projectId/settings",
-        zValidator("json", updateProjectSettingsSchema),
-        (c) => updateProjectSettingsHandler(c),
-    );
-
-    router.get(
-        "/:projectId/git/branches",
-        (c) => listProjectBranchesHandler(c),
-    );
-
-    router.patch(
-        "/:projectId",
-        zValidator("json", updateProjectSchema),
-        (c) => updateProjectHandler(c),
-    );
-
-    router.delete("/:projectId", (c) => deleteProjectHandler(c));
-
-    router.get(
-        "/:projectId/github/origin",
-        (c) => getGithubOriginHandler(c),
-    );
-
-    registerProjectAgentRoutes(router);
-
-    return router;
-};
+export type ProjectsRoutes = ReturnType<typeof createProjectsRouter>;
