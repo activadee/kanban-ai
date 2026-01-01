@@ -42,7 +42,7 @@ describe('OpencodeImpl shutdown functionality', () => {
         expect(OpencodeImpl.getActiveServerCount()).toBe(0)
     })
 
-    it('shutdownAllServers handles errors from close gracefully', async () => {
+    it('shutdownAllServers throws when close fails', async () => {
         const closeMock = vi.fn().mockImplementation(() => {
             throw new Error('close failed')
         })
@@ -50,8 +50,9 @@ describe('OpencodeImpl shutdown functionality', () => {
         const serversByPort = (OpencodeImpl as unknown as {serversByPort: Map<number, {close: () => void; url: string; port: number}>}).serversByPort
         serversByPort.set(4097, {close: closeMock, url: 'http://localhost:4097', port: 4097})
 
-        await expect(OpencodeImpl.shutdownAllServers()).resolves.toBeUndefined()
+        await expect(OpencodeImpl.shutdownAllServers()).rejects.toThrow('Failed to close OpenCode servers')
         expect(closeMock).toHaveBeenCalledOnce()
+        expect(OpencodeImpl.getActiveServerCount()).toBe(0)
     })
 
     it('shutdownAllServers is idempotent when called multiple times', async () => {

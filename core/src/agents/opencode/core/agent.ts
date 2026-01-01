@@ -143,15 +143,24 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             return
         }
 
+        const errors: Array<{port: number; error: unknown}> = []
         const closePromises = servers.map(async ([port, server]) => {
             try {
                 server.close()
                 OpencodeImpl.serversByPort.delete(port)
-            } catch { }
+            } catch (err) {
+                errors.push({port, error: err})
+                OpencodeImpl.serversByPort.delete(port)
+            }
         })
 
         await Promise.all(closePromises)
         OpencodeImpl.shutdownInProgress = false
+
+        if (errors.length > 0) {
+            const errorMessages = errors.map((e) => `port ${e.port}: ${String(e.error)}`).join(', ')
+            throw new Error(`Failed to close OpenCode servers: ${errorMessages}`)
+        }
     }
 
     static getActiveServerCount(): number {
