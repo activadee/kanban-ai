@@ -1,3 +1,14 @@
+## [0.24.0](https://github.com/activadee/kanban-ai/compare/v0.23.0...v0.24.0) (2026-01-01)
+
+### Features
+
+* enable image support for Droid agent ([#357](https://github.com/activadee/kanban-ai/issues/357)) ([82321b8](https://github.com/activadee/kanban-ai/commit/82321b825a78e4de22a3be39b082506c0c30122b)), closes [#352](https://github.com/activadee/kanban-ai/issues/352)
+* **opencode:** graceful shutdown of OpenCode server on app termination ([#358](https://github.com/activadee/kanban-ai/issues/358)) ([c2b5c3c](https://github.com/activadee/kanban-ai/commit/c2b5c3cf580c0f3f4225bcac1e04635b48eb3c2c)), closes [#355](https://github.com/activadee/kanban-ai/issues/355)
+
+### Refactors
+
+* **client:** redesign sidebar, settings, and agents UI ([#359](https://github.com/activadee/kanban-ai/issues/359)) ([76b95b6](https://github.com/activadee/kanban-ai/commit/76b95b6bf2ea39e1b3165066c927b06f017b0ec2))
+
 ## [0.23.0](https://github.com/activadee/kanban-ai/compare/v0.22.2...v0.23.0) (2026-01-01)
 
 ### Features
