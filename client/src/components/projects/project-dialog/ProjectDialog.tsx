@@ -398,7 +398,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                     </Button>
                     <Button
                         onClick={handleSubmit}
-                        disabled={loading || (pathValidation !== 'valid' && pathValidation !== 'idle' && !isEditMode)}
+                        disabled={loading || (pathValidation !== 'valid' && !isEditMode)}
                     >
                         {loading ? (
                             <>
