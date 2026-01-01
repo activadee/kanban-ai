@@ -120,11 +120,7 @@
     }
 }
 
-/* ============================================
-   KanbanCard Editorial Design System
-   ============================================ */
-
-/* Ticket Type Border Colors - Editorial Palette */
+/* KanbanCard Design Tokens */
 :root {
     --ticket-feat: oklch(0.72 0.19 142);
     --ticket-fix: oklch(0.65 0.24 25);
@@ -137,13 +133,8 @@
     --ticket-build: oklch(0.68 0.12 200);
     --ticket-ci: oklch(0.60 0.20 290);
     --ticket-revert: oklch(0.62 0.22 15);
-    
-    /* Card accent colors */
     --card-enhanced-glow: oklch(0.72 0.19 142 / 0.15);
-    --card-enhanced-border: oklch(0.72 0.19 142 / 0.5);
     --card-failed-glow: oklch(0.65 0.24 25 / 0.12);
-    --card-failed-border: oklch(0.65 0.24 25 / 0.6);
-    --card-blocked-border: oklch(0.65 0.18 25 / 0.4);
 }
 
 .dark {
@@ -158,278 +149,192 @@
     --ticket-build: oklch(0.74 0.10 200);
     --ticket-ci: oklch(0.68 0.17 290);
     --ticket-revert: oklch(0.70 0.18 15);
-    
     --card-enhanced-glow: oklch(0.72 0.17 145 / 0.12);
-    --card-enhanced-border: oklch(0.72 0.17 145 / 0.4);
     --card-failed-glow: oklch(0.72 0.20 20 / 0.08);
-    --card-failed-border: oklch(0.72 0.20 20 / 0.5);
-    --card-blocked-border: oklch(0.70 0.15 20 / 0.35);
 }
 
-/* Enhanced card shimmer effect */
 @keyframes kanban-shimmer {
-    0% {
-        background-position: -200% 0;
-    }
-    100% {
-        background-position: 200% 0;
-    }
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 
-/* Failed card pulse effect */
 @keyframes kanban-attention-pulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 var(--card-failed-glow),
-                    0 1px 3px 0 rgb(0 0 0 / 0.05);
+    0%, 100% { box-shadow: 0 0 0 0 var(--card-failed-glow), 0 1px 3px 0 rgb(0 0 0 / 0.05); }
+    50% { box-shadow: 0 0 0 4px var(--card-failed-glow), 0 1px 3px 0 rgb(0 0 0 / 0.05); }
+}
+
+@layer components {
+    .kanban-card {
+        @apply relative rounded-lg overflow-visible;
+        background: var(--card);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    50% {
-        box-shadow: 0 0 0 4px var(--card-failed-glow),
-                    0 1px 3px 0 rgb(0 0 0 / 0.05);
+
+    .kanban-card::before {
+        @apply absolute left-0 top-0 bottom-0;
+        content: '';
+        width: 3px;
+        background: var(--ticket-type-color, transparent);
+        transition: width 0.2s ease;
     }
-}
 
-/* Kanban card base styles */
-.kanban-card {
-    position: relative;
-    border-radius: 0.5rem;
-    background: var(--card);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow: visible;
-}
+    .kanban-card:hover::before {
+        width: 4px;
+    }
 
-.kanban-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--ticket-type-color, transparent);
-    transition: width 0.2s ease;
-}
+    .kanban-card--enhanced {
+        background: linear-gradient(135deg, var(--card) 0%, var(--card-enhanced-glow) 50%, var(--card) 100%);
+        background-size: 200% 100%;
+        animation: kanban-shimmer 6s ease-in-out infinite;
+    }
 
-.kanban-card:hover::before {
-    width: 4px;
-}
+    .kanban-card--selected {
+        transform: translateX(2px);
+        box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);
+    }
 
-/* Enhanced card state */
-.kanban-card--enhanced {
-    background: linear-gradient(
-        135deg,
-        var(--card) 0%,
-        var(--card-enhanced-glow) 50%,
-        var(--card) 100%
-    );
-    background-size: 200% 100%;
-    animation: kanban-shimmer 6s ease-in-out infinite;
-}
+    .dark .kanban-card--selected {
+        box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.3), 0 2px 6px -1px rgb(0 0 0 / 0.2);
+    }
 
-/* Selected card state - Editorial Highlight */
-.kanban-card--selected {
-    transform: translateX(2px);
-    box-shadow: 
-        0 4px 12px -2px rgb(0 0 0 / 0.08),
-        0 2px 4px -1px rgb(0 0 0 / 0.04);
-}
+    .kanban-card--selected::before {
+        width: 6px !important;
+        box-shadow: 4px 0 12px -2px var(--ticket-type-color, var(--primary)), 2px 0 4px -1px var(--ticket-type-color, var(--primary));
+    }
 
-.dark .kanban-card--selected {
-    box-shadow: 
-        0 4px 16px -2px rgb(0 0 0 / 0.3),
-        0 2px 6px -1px rgb(0 0 0 / 0.2);
-}
+    .dark .kanban-card--selected::before {
+        box-shadow: 6px 0 16px -2px var(--ticket-type-color, var(--primary)), 3px 0 6px -1px var(--ticket-type-color, var(--primary));
+    }
 
-.kanban-card--selected::before {
-    width: 6px !important;
-    box-shadow: 
-        4px 0 12px -2px var(--ticket-type-color, var(--primary)),
-        2px 0 4px -1px var(--ticket-type-color, var(--primary));
-}
+    .kanban-card--selected.kanban-card--done {
+        transform: translateX(1px);
+        opacity: 0.7;
+    }
 
-.dark .kanban-card--selected::before {
-    box-shadow: 
-        6px 0 16px -2px var(--ticket-type-color, var(--primary)),
-        3px 0 6px -1px var(--ticket-type-color, var(--primary));
-}
+    .kanban-card--selected.kanban-card--done::before {
+        width: 5px !important;
+        opacity: 0.5;
+    }
 
-/* Selected + Done - muted selection */
-.kanban-card--selected.kanban-card--done {
-    transform: translateX(1px);
-    opacity: 0.7;
-}
+    .kanban-bookmark {
+        @apply absolute z-1;
+        top: -1px;
+        right: 8px;
+        color: var(--ticket-feat);
+        filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1));
+    }
 
-.kanban-card--selected.kanban-card--done::before {
-    width: 5px !important;
-    opacity: 0.5;
-}
+    .kanban-bookmark svg {
+        fill: var(--ticket-feat);
+        stroke: var(--card);
+        stroke-width: 1.5;
+    }
 
-/* Enhanced bookmark indicator */
-.kanban-bookmark {
-    position: absolute;
-    top: -1px;
-    right: 8px;
-    color: var(--ticket-feat);
-    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1));
-    z-index: 1;
-}
+    .kanban-card--failed {
+        background: var(--card);
+        animation: kanban-attention-pulse 2s ease-in-out infinite;
+    }
 
-.kanban-bookmark svg {
-    fill: var(--ticket-feat);
-    stroke: var(--card);
-    stroke-width: 1.5;
-}
+    .kanban-card--failed::before {
+        background: var(--ticket-fix) !important;
+        width: 4px;
+    }
 
-/* Failed card state */
-.kanban-card--failed {
-    background: var(--card);
-    animation: kanban-attention-pulse 2s ease-in-out infinite;
-}
+    .kanban-card--blocked {
+        opacity: 0.85;
+    }
 
-.kanban-card--failed::before {
-    background: var(--ticket-fix) !important;
-    width: 4px;
-}
+    .kanban-card--blocked::before {
+        background: repeating-linear-gradient(45deg, var(--ticket-fix), var(--ticket-fix) 2px, transparent 2px, transparent 6px);
+        width: 4px;
+    }
 
-/* Blocked card state */
-.kanban-card--blocked {
-    opacity: 0.85;
-}
+    .kanban-card--done {
+        opacity: 0.6;
+        filter: grayscale(0.3);
+    }
 
-.kanban-card--blocked::before {
-    background: repeating-linear-gradient(
-        45deg,
-        var(--ticket-fix),
-        var(--ticket-fix) 2px,
-        transparent 2px,
-        transparent 6px
-    );
-    width: 4px;
-}
+    .kanban-card--done::before {
+        opacity: 0.4;
+    }
 
-/* Done card state */
-.kanban-card--done {
-    opacity: 0.6;
-    filter: grayscale(0.3);
-}
+    .kanban-card[data-ticket-type="feat"]::before { background: var(--ticket-feat); }
+    .kanban-card[data-ticket-type="fix"]::before { background: var(--ticket-fix); }
+    .kanban-card[data-ticket-type="chore"]::before { background: var(--ticket-chore); }
+    .kanban-card[data-ticket-type="docs"]::before { background: var(--ticket-docs); }
+    .kanban-card[data-ticket-type="style"]::before { background: var(--ticket-style); }
+    .kanban-card[data-ticket-type="refactor"]::before { background: var(--ticket-refactor); }
+    .kanban-card[data-ticket-type="perf"]::before { background: var(--ticket-perf); }
+    .kanban-card[data-ticket-type="test"]::before { background: var(--ticket-test); }
+    .kanban-card[data-ticket-type="build"]::before { background: var(--ticket-build); }
+    .kanban-card[data-ticket-type="ci"]::before { background: var(--ticket-ci); }
+    .kanban-card[data-ticket-type="revert"]::before { background: var(--ticket-revert); }
 
-.kanban-card--done::before {
-    opacity: 0.4;
-}
+    .kanban-card-action {
+        @apply inline-flex items-center justify-center rounded-md;
+        width: 26px;
+        height: 26px;
+        color: var(--muted-foreground);
+        transition: all 0.15s ease;
+    }
 
-/* Ticket type colors applied via inline style --ticket-type-color */
-.kanban-card[data-ticket-type="feat"]::before { background: var(--ticket-feat); }
-.kanban-card[data-ticket-type="fix"]::before { background: var(--ticket-fix); }
-.kanban-card[data-ticket-type="chore"]::before { background: var(--ticket-chore); }
-.kanban-card[data-ticket-type="docs"]::before { background: var(--ticket-docs); }
-.kanban-card[data-ticket-type="style"]::before { background: var(--ticket-style); }
-.kanban-card[data-ticket-type="refactor"]::before { background: var(--ticket-refactor); }
-.kanban-card[data-ticket-type="perf"]::before { background: var(--ticket-perf); }
-.kanban-card[data-ticket-type="test"]::before { background: var(--ticket-test); }
-.kanban-card[data-ticket-type="build"]::before { background: var(--ticket-build); }
-.kanban-card[data-ticket-type="ci"]::before { background: var(--ticket-ci); }
-.kanban-card[data-ticket-type="revert"]::before { background: var(--ticket-revert); }
+    .kanban-card-action:hover {
+        background: var(--accent);
+        color: var(--foreground);
+        transform: translateY(-1px);
+    }
 
-/* Icon action buttons with refined hover */
-.kanban-card-action {
-    width: 26px;
-    height: 26px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    color: var(--muted-foreground);
-    transition: all 0.15s ease;
-}
+    .kanban-card-action--pr:hover { color: var(--ticket-feat); }
+    .kanban-card-action--sparkle:hover { color: var(--ticket-docs); }
 
-.kanban-card-action:hover {
-    background: var(--accent);
-    color: var(--foreground);
-    transform: translateY(-1px);
-}
+    .kanban-badge {
+        @apply text-[10px] font-semibold uppercase rounded;
+        letter-spacing: 0.02em;
+        padding: 2px 8px;
+    }
 
-.kanban-card-action--pr:hover {
-    color: var(--ticket-feat);
-}
+    .kanban-badge--type {
+        @apply border-0 border-l-2 border-solid;
+    }
 
-.kanban-card-action--sparkle:hover {
-    color: var(--ticket-docs);
-}
+    .kanban-badge--key {
+        @apply font-mono font-medium normal-case border-none;
+        letter-spacing: 0.01em;
+        background: var(--muted);
+        color: var(--muted-foreground);
+    }
 
-/* Badge refinements */
-.kanban-badge {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 2px 8px;
-    border-radius: 4px;
-    text-transform: uppercase;
-}
+    .kanban-badge--status {
+        @apply text-[9px];
+        padding: 2px 6px;
+    }
 
-.kanban-badge--type {
-    border-width: 0;
-    border-left-width: 2px;
-    border-style: solid;
-}
+    .kanban-indicator--blocked {
+        @apply inline-flex items-center gap-1 text-[10px] font-semibold rounded;
+        color: var(--ticket-fix);
+        padding: 2px 6px;
+        background: oklch(0.95 0.04 25);
+    }
 
-.kanban-badge--key {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    text-transform: none;
-    background: var(--muted);
-    color: var(--muted-foreground);
-    border: none;
-}
+    .dark .kanban-indicator--blocked {
+        background: oklch(0.25 0.06 25);
+    }
 
-.kanban-badge--status {
-    font-size: 9px;
-    padding: 2px 6px;
-}
+    .kanban-spinner {
+        @apply inline-flex items-center gap-1 text-[10px] font-medium rounded;
+        color: var(--muted-foreground);
+        padding: 2px 6px;
+        background: var(--muted);
+    }
 
+    .kanban-indicator--failed {
+        @apply inline-flex items-center gap-1 text-[10px] font-semibold rounded;
+        color: var(--ticket-fix);
+        padding: 2px 6px;
+        background: oklch(0.95 0.05 25);
+    }
 
-
-/* Blocked indicator */
-.kanban-indicator--blocked {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--ticket-fix);
-    padding: 2px 6px;
-    background: oklch(0.95 0.04 25);
-    border-radius: 4px;
-}
-
-.dark .kanban-indicator--blocked {
-    background: oklch(0.25 0.06 25);
-}
-
-/* Enhancing state spinner */
-.kanban-spinner {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--muted-foreground);
-    padding: 2px 6px;
-    background: var(--muted);
-    border-radius: 4px;
-}
-
-/* Failed indicator */
-.kanban-indicator--failed {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--ticket-fix);
-    padding: 2px 6px;
-    background: oklch(0.95 0.05 25);
-    border-radius: 4px;
-}
-
-.dark .kanban-indicator--failed {
-    background: oklch(0.25 0.07 25);
+    .dark .kanban-indicator--failed {
+        background: oklch(0.25 0.07 25);
+    }
 }
