@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useMemo, useState, useImperativeHandle, forwardRef} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
@@ -86,15 +86,19 @@ type Props = {
     initialSelectedCardId?: string | null;
 };
 
-export function Board({
-                          projectId,
-                          state,
-                          handlers,
-                          enhancementStatusByCardId,
-                          attemptStatusByCardId,
-                          onCardEnhancementClick,
-                          initialSelectedCardId,
-                      }: Props) {
+export type BoardHandle = {
+    openCreateDialog: () => void;
+};
+
+export const Board = forwardRef<BoardHandle, Props>(function Board({
+    projectId,
+    state,
+    handlers,
+    enhancementStatusByCardId,
+    attemptStatusByCardId,
+    onCardEnhancementClick,
+    initialSelectedCardId,
+}, ref) {
     const [sortOrder, setSortOrderState] = useState<CardSortOrder>(getSortOrder);
     const columns = useMemo<ColumnType[]>(
         () => state.columnOrder.map((id) => state.columns[id]).filter(Boolean),
@@ -107,6 +111,14 @@ export function Board({
     const [creatingColumnId, setCreatingColumnId] = useState<string | null>(
         null,
     );
+
+    useImperativeHandle(ref, () => ({
+        openCreateDialog: () => {
+            const targetColumnId = columns[0]?.id;
+            if (targetColumnId) setCreatingColumnId(targetColumnId);
+        },
+    }), [columns]);
+
     const [editingCardId, setEditingCardId] = useState<string | null>(null);
     const [editingCardAutoEnhance, setEditingCardAutoEnhance] =
         useState<boolean>(false);
@@ -304,14 +316,6 @@ export function Board({
                             </SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button
-                        onClick={() =>
-                            setCreatingColumnId(columns[0]?.id ?? null)
-                        }
-                        disabled={!columns.length}
-                    >
-                        Create Ticket
-                    </Button>
                 </div>
             </div>
             <Separator className="mb-4 h-px w-full" />
@@ -544,4 +548,4 @@ export function Board({
             )}
         </div>
     );
-}
+});

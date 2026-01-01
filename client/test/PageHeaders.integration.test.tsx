@@ -84,6 +84,16 @@ vi.mock('@/lib/ws', () => ({
     useKanbanWS: () => ({connected: true, reconnecting: false, state: undefined}),
 }))
 
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('react-router-dom')>()
+    return {
+        ...actual,
+        useOutletContext: () => ({
+            registerCreateTicket: vi.fn(),
+        }),
+    }
+})
+
 vi.mock('@/components/kanban/Board', () => ({
     Board: () => <div data-testid="board-stub"/>,
 }))

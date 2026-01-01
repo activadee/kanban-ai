@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useNavigate, useParams, useSearchParams, useOutletContext } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Board } from "@/components/kanban/Board";
+import { Board, type BoardHandle } from "@/components/kanban/Board";
+import type { AppLayoutContext } from "@/components/layout/AppLayout";
 import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnhancementDialog";
 import type { CardFormValues } from "@/components/kanban/CardDialogs";
 import { ImportIssuesDialog } from "@/components/github/ImportIssuesDialog";
@@ -35,6 +36,17 @@ export function ProjectBoardPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
+    const { registerCreateTicket } = useOutletContext<AppLayoutContext>();
+    const boardRef = useRef<BoardHandle>(null);
+
+    const openCreateDialog = useCallback(() => {
+        boardRef.current?.openCreateDialog();
+    }, []);
+
+    useEffect(() => {
+        registerCreateTicket(openCreateDialog);
+        return () => registerCreateTicket(null);
+    }, [registerCreateTicket, openCreateDialog]);
 
     const {
         data: project,
@@ -258,6 +270,7 @@ export function ProjectBoardPage() {
 
                 <div className="flex-1 min-h-0">
                     <Board
+                        ref={boardRef}
                         projectId={project.id}
                         state={boardState}
                         initialSelectedCardId={initialSelectedCardId}

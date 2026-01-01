@@ -1,45 +1,72 @@
 import {useMemo, useState} from 'react'
 import {useLocation, useNavigate, useParams} from 'react-router-dom'
-import {LayoutDashboard, Kanban, Settings, RefreshCw, Plus, PanelLeftClose, PanelRight} from 'lucide-react'
+import {
+    LayoutDashboard,
+    Kanban,
+    Settings,
+    RefreshCw,
+    Plus,
+    PanelLeftClose,
+    PanelRight,
+    Bot,
+    GitPullRequestDraft,
+    GitBranch,
+    HelpCircle,
+} from 'lucide-react'
 import {useProjectsNav} from '@/contexts/useProjectsNav'
 import {Button} from '@/components/ui/button'
-//
 import {cn} from '@/lib/utils'
 import {ProjectSettingsDrawer} from '@/components/projects/ProjectSettingsDrawer'
 import {ProjectDeleteDialog} from '@/components/projects/ProjectDeleteDialog'
 import type {ProjectSummary} from 'shared'
-//
 import {useAgents} from '@/hooks'
 import {NavButton} from './sidebar/NavButton'
 import {AgentsSection} from './sidebar/AgentsSection'
 import {GitHubAccountBox} from './sidebar/GitHubAccountBox'
-import {ProjectsList} from './sidebar/ProjectsList'
+import {ProjectSelector} from './sidebar/ProjectSelector'
+import {SectionLabel} from './sidebar/SectionLabel'
 import {describeApiError} from '@/api/http'
 import {useLocalStorage} from '@/hooks/useLocalStorage'
+import {useKeyboardShortcuts} from '@/hooks/useKeyboardShortcuts'
 
-// NavButton moved to './sidebar/NavButton'
-
-export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) {
+export function AppSidebar({
+    onCreateProject,
+    onCreateTicket,
+}: {
+    onCreateProject?: () => void
+    onCreateTicket?: () => void
+}) {
     const navigate = useNavigate()
     const location = useLocation()
-    const params = useParams<{ projectId: string }>()
+    const params = useParams<{projectId: string}>()
     const {projects, loading, refresh, deleteMutation} = useProjectsNav()
-    // collapsed state now handled inside ProjectsList
     const [settingsProject, setSettingsProject] = useState<ProjectSummary | null>(null)
     const [deleteProject, setDeleteProject] = useState<ProjectSummary | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
 
-    // Persist sidebar collapsed state in localStorage
     const [isCollapsed, setIsCollapsed] = useLocalStorage('app-sidebar-collapsed', false)
 
     const activeProjectId = params.projectId ?? null
+    const hasActiveProject = Boolean(activeProjectId)
 
     const groupedProjects = useMemo(() => projects, [projects])
     const agentsQuery = useAgents()
 
+    useKeyboardShortcuts()
+
     const toggleSidebar = () => {
         setIsCollapsed((prev: boolean) => !prev)
+    }
+
+    const isProjectRoute = (path: string) => {
+        if (!activeProjectId) return false
+        return location.pathname === `/projects/${activeProjectId}${path}`
+    }
+
+    const navigateToProjectRoute = (path: string) => {
+        if (!activeProjectId) return
+        navigate(`/projects/${activeProjectId}${path}`)
     }
 
     return (
@@ -50,7 +77,6 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
             )}
             aria-expanded={!isCollapsed}
         >
-            {/* Header with toggle button and branding */}
             <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center gap-2' : 'justify-between')}>
                 {!isCollapsed && (
                     <div className="flex items-center gap-2">
@@ -68,9 +94,9 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
                         aria-expanded={!isCollapsed}
                     >
                         {isCollapsed ? (
-                            <PanelRight className="size-4"/>
+                            <PanelRight className="size-4" />
                         ) : (
-                            <PanelLeftClose className="size-4"/>
+                            <PanelLeftClose className="size-4" />
                         )}
                     </Button>
                     <Button
@@ -81,117 +107,209 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
                         title="Refresh projects"
                         disabled={loading}
                     >
-                        <RefreshCw className={cn('size-4', loading && 'animate-spin')}/>
+                        <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
                     </Button>
                 </div>
             </div>
 
-            {/* Collapsed state - show only icons */}
             {isCollapsed ? (
-                <div className="flex flex-col items-center gap-2 px-2 py-4">
+                <div className="flex flex-1 flex-col items-center gap-2 px-2 py-4">
+                    <ProjectSelector
+                        projects={groupedProjects}
+                        selectedProjectId={activeProjectId}
+                        onCreateProject={onCreateProject}
+                        collapsed
+                    />
+                    <div className="h-px w-8 bg-border/60 my-1" />
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8"
-                        onClick={() => navigate('/dashboard')}
-                        title="Dashboard"
+                        className={cn('size-8', isProjectRoute('/dashboard') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('/dashboard')}
+                        title="Dashboard (D)"
                         aria-label="Dashboard"
+                        disabled={!hasActiveProject}
                     >
-                        <LayoutDashboard className="size-5"/>
+                        <LayoutDashboard className="size-5" />
                     </Button>
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8"
-                        onClick={() => navigate('/')}
-                        title="Projects"
-                        aria-label="Projects"
+                        className={cn('size-8', isProjectRoute('') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('')}
+                        title="Kanban Board (K)"
+                        aria-label="Kanban Board"
+                        disabled={!hasActiveProject}
                     >
-                        <Kanban className="size-5"/>
-                    </Button>
-                    <div className="h-px w-8 bg-border/60 my-1"/>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-8"
-                        onClick={() => onCreateProject?.()}
-                        title="Create project"
-                        aria-label="Create project"
-                    >
-                        <Plus className="size-5"/>
+                        <Kanban className="size-5" />
                     </Button>
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8"
-                        onClick={() => navigate('/settings')}
-                        title="Settings"
-                        aria-label="Settings"
+                        className={cn('size-8', isProjectRoute('/agents') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('/agents')}
+                        title="Agents (A)"
+                        aria-label="Agents"
+                        disabled={!hasActiveProject}
                     >
-                        <Settings className="size-5"/>
+                        <Bot className="size-5" />
                     </Button>
-                    <div className="mt-auto h-px w-8 bg-border/60 my-1"/>
-                    <GitHubAccountBox collapsed={true}/>
+                    
+                    <div className="h-px w-8 bg-border/60 my-1" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('size-8', isProjectRoute('/github-issues') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('/github-issues')}
+                        title="GitHub Issues (G)"
+                        aria-label="GitHub Issues"
+                        disabled={!hasActiveProject}
+                    >
+                        <GitPullRequestDraft className="size-5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('size-8', isProjectRoute('/worktrees') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('/worktrees')}
+                        title="Worktrees (W)"
+                        aria-label="Worktrees"
+                        disabled={!hasActiveProject}
+                    >
+                        <GitBranch className="size-5" />
+                    </Button>
+
+                    <div className="flex-1" />
+
+                    {onCreateTicket && hasActiveProject && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            onClick={onCreateTicket}
+                            title="Create Ticket"
+                            aria-label="Create Ticket"
+                        >
+                            <Plus className="size-5" />
+                        </Button>
+                    )}
+
+                    <div className="h-px w-8 bg-border/60 my-1" />
+                    <GitHubAccountBox collapsed />
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            onClick={() => navigate('/settings')}
+                            title="Settings"
+                            aria-label="Settings"
+                        >
+                            <Settings className="size-5" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            title="Help"
+                            aria-label="Help"
+                        >
+                            <HelpCircle className="size-5" />
+                        </Button>
+                    </div>
                 </div>
             ) : (
-                /* Expanded state - full sidebar content */
                 <>
+                    <ProjectSelector
+                        projects={groupedProjects}
+                        selectedProjectId={activeProjectId}
+                        onCreateProject={onCreateProject}
+                    />
+
+                    <div className="my-4 h-px bg-border/60" />
+
+                    <SectionLabel>Project</SectionLabel>
                     <div className="space-y-1">
                         <NavButton
                             icon={LayoutDashboard}
                             label="Dashboard"
-                            active={location.pathname === '/dashboard'}
-                            onClick={() => navigate('/dashboard')}
+                            shortcut="D"
+                            active={isProjectRoute('/dashboard')}
+                            onClick={() => navigateToProjectRoute('/dashboard')}
                         />
                         <NavButton
                             icon={Kanban}
-                            label="Projects"
-                            active={location.pathname === '/' || location.pathname === '/projects'}
-                            onClick={() => navigate('/')}
+                            label="Kanban Board"
+                            shortcut="K"
+                            active={isProjectRoute('')}
+                            onClick={() => navigateToProjectRoute('')}
                         />
-                    </div>
-
-                    <div className="my-4 h-px bg-border/60"/>
-
-                    <div className="flex items-center justify-end px-3">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            onClick={() => onCreateProject?.()}
-                            title="Create project"
-                        >
-                            <Plus className="size-4"/>
-                        </Button>
-                    </div>
-                    <ProjectsList
-                        projects={groupedProjects}
-                        activeProjectId={activeProjectId}
-                        loading={loading}
-                        onOpenSettings={(p) => setSettingsProject(p)}
-                        onDelete={(p) => {
-                            setDeleteProject(p);
-                            setDeleteError(null)
-                        }}
-                    />
-
-                    {/* Agents section */}
-                    <div className="my-4 h-px bg-border/60"/>
-                    <AgentsSection agents={agentsQuery.data?.agents ?? []}/>
-
-                    {/* GitHub account */}
-                    <div className="mt-auto space-y-3 pt-4">
-                        <GitHubAccountBox/>
-                        <div className="h-px bg-border/60"/>
-
-                        {/* App settings entry */}
                         <NavButton
-                            icon={Settings}
-                            label="Settings"
-                            active={location.pathname.startsWith('/settings')}
-                            onClick={() => navigate('/settings')}
+                            icon={Bot}
+                            label="Agents"
+                            shortcut="A"
+                            active={isProjectRoute('/agents')}
+                            onClick={() => navigateToProjectRoute('/agents')}
                         />
+                    </div>
+
+                    <div className="my-4 h-px bg-border/60" />
+
+                    <SectionLabel>Tools</SectionLabel>
+                    <div className="space-y-1">
+                        <NavButton
+                            icon={GitPullRequestDraft}
+                            label="GitHub Issues"
+                            shortcut="G"
+                            active={isProjectRoute('/github-issues')}
+                            onClick={() => navigateToProjectRoute('/github-issues')}
+                        />
+                        <NavButton
+                            icon={GitBranch}
+                            label="Worktrees"
+                            shortcut="W"
+                            active={isProjectRoute('/worktrees')}
+                            onClick={() => navigateToProjectRoute('/worktrees')}
+                        />
+                    </div>
+
+                    <div className="my-4 h-px bg-border/60" />
+
+                    <AgentsSection agents={agentsQuery.data?.agents ?? []} />
+
+                    <div className="mt-auto space-y-3 pt-4">
+                        {onCreateTicket && hasActiveProject && (
+                            <div className="px-3">
+                                <Button
+                                    className="w-full"
+                                    onClick={onCreateTicket}
+                                >
+                                    <Plus className="mr-2 size-4" />
+                                    Create Ticket
+                                </Button>
+                            </div>
+                        )}
+
+                        <GitHubAccountBox />
+                        <div className="h-px bg-border/60" />
+
+                        <div className="flex items-center gap-1">
+                            <NavButton
+                                icon={Settings}
+                                label="Settings"
+                                active={location.pathname.startsWith('/settings')}
+                                onClick={() => navigate('/settings')}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-9 shrink-0"
+                                title="Help"
+                                aria-label="Help"
+                            >
+                                <HelpCircle className="size-4" />
+                            </Button>
+                        </div>
                     </div>
                 </>
             )}
@@ -234,5 +352,3 @@ export function AppSidebar({onCreateProject}: { onCreateProject?: () => void }) 
         </aside>
     )
 }
-
-// AgentsSection and GitHubAccountBox moved to './sidebar'
