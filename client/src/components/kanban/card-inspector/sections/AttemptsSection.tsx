@@ -48,7 +48,6 @@ export type AttemptsSectionProps = {
     pendingImages: MessageImage[]
     addImages: (files: File[]) => Promise<void>
     removeImage: (index: number) => void
-    clearImages: () => void
     canAddMoreImages: boolean
 }
 
