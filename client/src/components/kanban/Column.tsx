@@ -63,6 +63,14 @@ export function Column({
                     ? 'done'
                     : 'other'
 
+    const laneTopBorderColor: Record<CardLane, string> = {
+        backlog: 'bg-amber-500',
+        inProgress: 'bg-blue-500',
+        review: 'bg-violet-500',
+        done: 'bg-emerald-500',
+        other: 'bg-slate-500',
+    }
+
     const doneColumnIds = useMemo(
         () => Object.values(state.columns).filter((c) => (c.key === 'done') || c.title.trim().toLowerCase() === 'done').map((c) => c.id),
         [state.columns],
@@ -70,7 +78,8 @@ export function Column({
     const doneCardIds = useMemo(() => new Set(doneColumnIds.flatMap((cid) => state.columns[cid]?.cardIds ?? [])), [doneColumnIds, state.columns])
 
     return (
-        <UICard className="flex h-full min-h-0 flex-col">
+        <UICard className="flex h-full min-h-0 flex-col overflow-hidden">
+            <div className={`h-1 w-full shrink-0 ${laneTopBorderColor[lane]}`} />
             <CardHeader className="pt-4 pb-2">
                 <CardTitle className="text-base">
                     {column.title} <span className="text-muted-foreground">({cards.length})</span>
