@@ -8,6 +8,7 @@ import { startGithubIssueSyncScheduler } from '../github/sync'
 import { startGithubPrAutoCloseScheduler } from '../github/pr-auto-close.sync'
 import { projectsService, settingsService } from 'core'
 import { openBrowser } from '../browser/open'
+import { registerShutdownHandlers } from '../lifecycle'
 
 type ProdFetch = StartOptions['fetch']
 
@@ -96,6 +97,7 @@ const run = async () => {
 
   startGithubIssueSyncScheduler({ events })
   startGithubPrAutoCloseScheduler({ events })
+  registerShutdownHandlers()
 
   log.info('prod', 'listening', { url, dbFile, migrationsDir: resolvedMigrationsDir })
 

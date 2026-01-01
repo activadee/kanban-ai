@@ -65,7 +65,12 @@ export * as agentProfilesGlobal from './agents/profiles-global'
 export {CommandAgent, type CommandSpec} from './agents/command'
 export {SdkAgent} from './agents/sdk'
 export {CodexAgent} from './agents/codex'
-export {OpencodeAgent} from './agents/opencode'
+export {
+    OpencodeAgent,
+    shutdownOpencodeServers,
+    getOpencodeServerCount,
+    isOpencodeShuttingDown,
+} from './agents/opencode'
 export {DroidAgent} from './agents/droid'
 export {getDashboardOverview} from './dashboard/service'
 export * as onboardingRepo from './onboarding/repo'

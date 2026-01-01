@@ -94,6 +94,15 @@ WantedBy=multi-user.target
 
 Adjust paths and environment variables to your environment.
 
+### Graceful shutdown
+
+KanbanAI handles termination signals (SIGTERM, SIGINT) gracefully:
+
+- When the process receives SIGTERM or SIGINT, it initiates a graceful shutdown.
+- OpenCode servers are closed cleanly before the process exits.
+- The graceful shutdown has a 5-second timeout; if it doesn't complete in time, the process exits with code 1.
+- No database corruption occurs from sudden termination, as SQLite handles this safely.
+
 ## Reverse proxy (TLS & domains)
 
 When exposing KanbanAI on the internet:
