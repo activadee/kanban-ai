@@ -62,6 +62,11 @@ export class StreamGrouper {
         this.reasoningBuf = ''
     }
 
+    /** Clears buffered reasoning without emitting. */
+    clearReasoning() {
+        this.reasoningBuf = ''
+    }
+
     execBegin(key: string, info: { cmd: string; cwd?: string }) {
         this.execPending.set(key, {...info, started: Date.now(), stdout: [], stderr: []});
         this.lastExecKey = key

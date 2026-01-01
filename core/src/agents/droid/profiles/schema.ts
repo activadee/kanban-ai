@@ -1,9 +1,8 @@
 import {z} from 'zod'
 import {defaultDroidProfile, type DroidProfile as Shared} from 'shared'
+import {BaseProfileSchema} from '../../profiles/base'
 
-export const DroidProfileSchema = z.object({
-    appendPrompt: z.string().nullable().optional(),
-    inlineProfile: z.string().nullable().optional(),
+export const DroidProfileSchema = BaseProfileSchema.extend({
     model: z.string().optional(),
     autonomyLevel: z.enum(['default', 'low', 'medium', 'high']).optional(),
     reasoningEffort: z.enum(['off', 'none', 'low', 'medium', 'high']).optional(),
@@ -14,7 +13,6 @@ export const DroidProfileSchema = z.object({
     disabledTools: z.array(z.string()).optional(),
     skipPermissionsUnsafe: z.boolean().optional(),
     baseCommandOverride: z.string().nullable().optional(),
-    debug: z.boolean().optional(),
 })
 
 export type DroidProfile = z.infer<typeof DroidProfileSchema>
