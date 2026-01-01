@@ -1,5 +1,5 @@
 import { createApp } from '../app'
-import { createWebSocket, startServer, type StartOptions } from '../start'
+import { startServer, type StartOptions } from '../start'
 import { createStaticHandler } from './utils/spa-handler'
 import { log, applyLogConfig } from '../log'
 import { loadConfig, setRuntimeConfig, type AppServices } from '../env'
@@ -15,20 +15,17 @@ type ProdFetch = StartOptions['fetch']
 const createComposedFetch = (apiApp: ReturnType<typeof createApp>, staticDir?: string): ProdFetch => {
   const serveStatic = createStaticHandler(staticDir)
 
-  return async function fetch(request, server) {
+  return async function fetch(request) {
     const url = new URL(request.url)
 
     if (url.pathname.startsWith('/api')) {
-      // Forward Bun's server object through to Hono so hono/bun websocket
-      // integration can retrieve it via c.env. This is an adapter boundary,
-      // so we intentionally cast here.
-      return apiApp.fetch(request, server as unknown as any)
+      return apiApp.fetch(request)
     }
 
     const staticResponse = await serveStatic(request)
     if (staticResponse) return staticResponse
 
-    return apiApp.fetch(request, server as unknown as any)
+    return apiApp.fetch(request)
   }
 }
 
@@ -84,14 +81,12 @@ const run = async () => {
   const services: AppServices = { projects: projectsService, settings: settingsService }
   const events = createEventBus()
 
-  const { upgradeWebSocket, websocket } = await createWebSocket()
-  const apiApp = createApp({ upgradeWebSocket, config, services, events })
+  const apiApp = createApp({ config, services, events })
   const fetch = createComposedFetch(apiApp, config.staticDir)
 
   const { url, dbFile, migrationsDir: resolvedMigrationsDir } = await startServer({
     config,
     fetch,
-    websocket,
     migrationsDir,
   })
 

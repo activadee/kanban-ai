@@ -1,7 +1,6 @@
 import type {AppServices} from '../env'
 import type {AppEventBus} from './bus'
 import {registerTaskListeners, bindGitEventBus, registerGitListeners, bindAgentEventBus} from 'core'
-import {registerWebSocketListeners} from '../ws/listeners'
 import {registerSSEListeners} from '../sse/listeners'
 import {bindWorktreeEventBus} from '../fs/worktree-runner'
 import {registerFsListeners} from '../fs/listeners'
@@ -21,7 +20,6 @@ export function registerEventListeners(bus: AppEventBus, services: AppServices) 
     registerGitListeners(bus)
     registerTaskListeners(bus)
     registerSettingsListeners(bus)
-    registerWebSocketListeners(bus)
     registerSSEListeners(bus)
     registerDashboardListeners(bus)
 }

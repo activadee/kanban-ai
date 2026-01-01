@@ -2,16 +2,14 @@ import {Hono} from 'hono'
 import {cors} from 'hono/cors'
 import {logger} from 'hono/logger'
 import {secureHeaders} from 'hono/secure-headers'
-import type {UpgradeWebSocket} from 'hono/ws'
 import type {AppEnv, AppServices, ServerConfig} from './env'
 import {getRuntimeConfig, setRuntimeConfig} from './env'
-import {requestId, skipForWebSocket} from './lib/middleware'
+import {requestId} from './lib/middleware'
 import {projectsService, settingsService, bindAgentEventBus} from 'core'
 import {createProjectsRouter} from './projects/project.routes'
 import {createBoardsRouter} from './projects/board.routes'
 import {createGithubRouter} from './github/routes'
 import {createFilesystemRouter} from './fs/routes'
-import {kanbanWebsocketHandlers} from './ws/kanban-handlers'
 import {createAttemptsRouter} from './attempts/routes'
 import {createAgentsRouter} from './agents/routes'
 import {createGithubProjectRouter} from './github/pr-routes'
@@ -22,7 +20,6 @@ import {createEventBus, type AppEventBus} from './events/bus'
 import {registerEventListeners} from './events/register'
 import {createDashboardRouter} from './dashboard/routes'
 import {registerWorktreeProvider} from './ports/worktree'
-import {dashboardWebsocketHandlers} from './ws/dashboard-handlers'
 import {sseHandlers} from './sse/handlers'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
@@ -42,14 +39,12 @@ function createMetricsRouter() {
 
 export type AppOptions = {
     services?: AppServices
-    upgradeWebSocket?: UpgradeWebSocket<AppEnv>
     events?: AppEventBus
     config?: ServerConfig
 }
 
 export const createApp = ({
                               services = {projects: projectsService, settings: settingsService},
-                              upgradeWebSocket,
                               events,
                               config
                           }: AppOptions = {}) => {
@@ -75,7 +70,6 @@ export const createApp = ({
         bindAgentEventBus(bus)
     } catch {
     }
-    // dynamic import block removed; using static imports above
 
     const app = new Hono<AppEnv>()
 
@@ -88,11 +82,11 @@ export const createApp = ({
         }))
     }
 
-    app.use('*', skipForWebSocket(secureHeaders({
+    app.use('*', secureHeaders({
         referrerPolicy: 'strict-origin-when-cross-origin',
-    })))
+    }))
 
-    app.use('/api/*', skipForWebSocket(cors()))
+    app.use('/api/*', cors())
 
     app.use('*', async (c, next) => {
         c.set('services', services)
@@ -124,24 +118,7 @@ export const createApp = ({
     api.route('/onboarding', createOnboardingRouter())
     api.route('/version', createVersionRouter())
 
-    if (upgradeWebSocket) {
-        api.get(
-            '/ws',
-            async (c, next) => {
-                const boardId = c.req.query('boardId') ?? c.req.query('projectId')
-                if (!boardId) return problemJson(c, {status: 400, detail: 'Missing boardId'})
-                c.set('boardId', boardId)
-                await next()
-            },
-            upgradeWebSocket((c) => kanbanWebsocketHandlers(c.get('boardId')!)),
-        )
-        api.get('/ws/dashboard', upgradeWebSocket(() => dashboardWebsocketHandlers()))
-    } else {
-        api.get('/ws', (c) => problemJson(c, {status: 503, detail: 'WebSocket support not configured'}))
-        api.get('/ws/dashboard', (c) => problemJson(c, {status: 503, detail: 'WebSocket support not configured'}))
-    }
-
-    // SSE endpoint (alternative to WebSocket, works over standard HTTP)
+    // SSE endpoint for real-time updates
     // With boardId: board-specific events; without: global/dashboard events
     api.get('/sse', ...sseHandlers)
 

@@ -1,5 +1,5 @@
 import { createApp } from '../app'
-import { createWebSocket, startServer } from '../start'
+import { startServer } from '../start'
 import { log, applyLogConfig } from '../log'
 import { loadConfig, setRuntimeConfig, type AppServices } from '../env'
 import { applyDevDatabaseConfig } from './dev-config'
@@ -42,9 +42,8 @@ if (import.meta.main) {
     const services: AppServices = { projects: projectsService, settings: settingsService }
     const events = createEventBus()
 
-    const { upgradeWebSocket, websocket } = await createWebSocket()
-    const app = createApp({ upgradeWebSocket, config, services, events })
-    const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
+    const app = createApp({ config, services, events })
+    const { url, dbFile } = await startServer({ config, fetch: app.fetch })
     startGithubIssueSyncScheduler({ events })
     startGithubPrAutoCloseScheduler({ events })
     registerShutdownHandlers()

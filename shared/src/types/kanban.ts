@@ -77,20 +77,6 @@ export type SseMsg =
     // Dashboard events
     | { type: 'dashboard_overview'; payload: DashboardOverview }
 
-// WebSocket message envelope (legacy, includes bidirectional commands)
-// Keep for backwards compatibility during transition
-export type WsMsg =
-    | SseMsg
-    | { type: 'get_state' }
-    | { type: 'ping'; payload?: { ts?: string } }
-    | { type: 'pong'; payload?: { ts?: string } }
-    | { type: 'create_card'; payload: { columnId: ColumnId; title: string; description?: string; ticketType?: TicketType | null } }
-    | { type: 'move_card'; payload: { cardId: CardId; toColumnId: ColumnId; toIndex: number } }
-    | { type: 'update_card'; payload: { cardId: CardId; title?: string; description?: string; ticketType?: TicketType | null; isEnhanced?: boolean; disableAutoCloseOnPRMerge?: boolean } }
-    | { type: 'delete_card'; payload: { cardId: CardId } }
-    // Legacy git:status format (SSE uses git_status)
-    | { type: 'git:status' }
-
 export const initialBoard = (): BoardState => {
     const now = new Date().toISOString()
     const mkId = (p: string, i: number) => `${p}-${i}`
@@ -118,7 +104,7 @@ export const initialBoard = (): BoardState => {
     }
     const c3: Card = {
         id: mkId('card', 3),
-        title: 'Wire WebSockets',
+        title: 'Wire SSE',
         description: 'Realtime board sync',
         isEnhanced: false,
         createdAt: now,
