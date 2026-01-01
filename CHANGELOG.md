@@ -1,3 +1,13 @@
+## [0.24.1](https://github.com/activadee/kanban-ai/compare/v0.24.0...v0.24.1) (2026-01-01)
+
+### Bug Fixes
+
+* **kanban:** maintain board lane width when resizing panels ([#360](https://github.com/activadee/kanban-ai/issues/360)) ([03e567a](https://github.com/activadee/kanban-ai/commit/03e567aed6aa3fd9e2bc7d75efa6f09da5db0388))
+
+### Refactors
+
+* **kanban:** redesign card layout and introduce editorial design system ([#361](https://github.com/activadee/kanban-ai/issues/361)) ([894ed36](https://github.com/activadee/kanban-ai/commit/894ed36a78837f1fc548da3a1456bb65686f003b))
+
 ## [0.24.0](https://github.com/activadee/kanban-ai/compare/v0.23.0...v0.24.0) (2026-01-01)
 
 ### Features
