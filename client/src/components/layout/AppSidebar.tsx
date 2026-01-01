@@ -26,13 +26,19 @@ import {SectionLabel} from './sidebar/SectionLabel'
 import {describeApiError} from '@/api/http'
 import {useLocalStorage} from '@/hooks/useLocalStorage'
 import {useKeyboardShortcuts} from '@/hooks/useKeyboardShortcuts'
+import {useIsMobile} from '@/hooks/useIsMobile'
+import {Sheet, SheetContent} from '@/components/ui/sheet'
 
 export function AppSidebar({
     onCreateProject,
     onCreateTicket,
+    mobileOpen,
+    onMobileOpenChange,
 }: {
     onCreateProject?: () => void
     onCreateTicket?: () => void
+    mobileOpen?: boolean
+    onMobileOpenChange?: (open: boolean) => void
 }) {
     const navigate = useNavigate()
     const location = useLocation()
@@ -42,6 +48,7 @@ export function AppSidebar({
     const [deleteProject, setDeleteProject] = useState<ProjectSummary | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
+    const isMobile = useIsMobile()
 
     const [isCollapsed, setIsCollapsed] = useLocalStorage('app-sidebar-collapsed', false)
 
@@ -64,52 +71,19 @@ export function AppSidebar({
     const navigateToProjectRoute = (path: string) => {
         if (!activeProjectId) return
         navigate(`/projects/${activeProjectId}${path}`)
+        onMobileOpenChange?.(false)
     }
 
-    return (
-        <aside
-            className={cn(
-                'flex h-full flex-col border-r border-border/60 bg-muted/20 transition-all duration-300 ease-in-out',
-                isCollapsed ? 'w-16' : 'w-64'
-            )}
-            aria-expanded={!isCollapsed}
-        >
-            <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center gap-2' : 'justify-between')}>
-                {!isCollapsed && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-muted-foreground">KanbanAI</span>
-                    </div>
-                )}
-                <div className={cn('flex items-center', isCollapsed ? 'gap-1' : '')}>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn('size-7 transition-transform duration-200', isCollapsed ? '' : 'order-last')}
-                        onClick={toggleSidebar}
-                        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                        aria-expanded={!isCollapsed}
-                    >
-                        {isCollapsed ? (
-                            <PanelRight className="size-4" />
-                        ) : (
-                            <PanelLeftClose className="size-4" />
-                        )}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        onClick={refresh}
-                        title="Refresh projects"
-                        disabled={loading}
-                    >
-                        <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
-                    </Button>
-                </div>
-            </div>
+    const handleNavigate = (path: string) => {
+        navigate(path)
+        onMobileOpenChange?.(false)
+    }
 
-            {isCollapsed ? (
+    const showCollapsed = !isMobile && isCollapsed
+
+    const sidebarContent = (
+        <>
+            {showCollapsed ? (
                 <div className="flex flex-1 flex-col items-center gap-2 px-2 py-4">
                     <ProjectSelector
                         projects={groupedProjects}
@@ -146,7 +120,7 @@ export function AppSidebar({
                         variant="ghost"
                         size="icon"
                         className={cn('size-8', location.pathname === '/agents' && 'bg-muted')}
-                        onClick={() => navigate('/agents')}
+                        onClick={() => handleNavigate('/agents')}
                         title="Agents (A)"
                         aria-label="Agents"
                     >
@@ -197,7 +171,7 @@ export function AppSidebar({
                             variant="ghost"
                             size="icon"
                             className="size-8"
-                            onClick={() => navigate('/settings')}
+                            onClick={() => handleNavigate('/settings')}
                             title="Settings"
                             aria-label="Settings"
                         >
@@ -251,7 +225,7 @@ export function AppSidebar({
                             label="Agents"
                             shortcut="A"
                             active={location.pathname === '/agents'}
-                            onClick={() => navigate('/agents')}
+                            onClick={() => handleNavigate('/agents')}
                         />
                         <NavButton
                             icon={GitPullRequestDraft}
@@ -290,7 +264,7 @@ export function AppSidebar({
                                 icon={Settings}
                                 label="Settings"
                                 active={location.pathname.startsWith('/settings')}
-                                onClick={() => navigate('/settings')}
+                                onClick={() => handleNavigate('/settings')}
                             />
                             <Button
                                 variant="ghost"
@@ -305,7 +279,11 @@ export function AppSidebar({
                     </div>
                 </>
             )}
+        </>
+    )
 
+    const dialogs = (
+        <>
             <ProjectSettingsDrawer
                 projectId={settingsProject?.id ?? null}
                 open={Boolean(settingsProject)}
@@ -341,6 +319,70 @@ export function AppSidebar({
                     }
                 }}
             />
-        </aside>
+        </>
+    )
+
+    if (isMobile) {
+        return (
+            <>
+                <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
+                    <SheetContent side="left" className="w-64 p-0 pt-12">
+                        <div className="flex h-full flex-col bg-muted/20">
+                            {sidebarContent}
+                        </div>
+                    </SheetContent>
+                </Sheet>
+                {dialogs}
+            </>
+        )
+    }
+
+    return (
+        <>
+            <aside
+                className={cn(
+                    'hidden md:flex h-full flex-col border-r border-border/60 bg-muted/20 transition-all duration-300 ease-in-out',
+                    isCollapsed ? 'w-16' : 'w-64'
+                )}
+                aria-expanded={!isCollapsed}
+            >
+                <div className={cn('flex items-center px-3 py-4', isCollapsed ? 'justify-center gap-2' : 'justify-between')}>
+                    {!isCollapsed && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-muted-foreground">KanbanAI</span>
+                        </div>
+                    )}
+                    <div className={cn('flex items-center', isCollapsed ? 'gap-1' : '')}>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn('size-7 transition-transform duration-200', isCollapsed ? '' : 'order-last')}
+                            onClick={toggleSidebar}
+                            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                            aria-expanded={!isCollapsed}
+                        >
+                            {isCollapsed ? (
+                                <PanelRight className="size-4" />
+                            ) : (
+                                <PanelLeftClose className="size-4" />
+                            )}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7"
+                            onClick={refresh}
+                            title="Refresh projects"
+                            disabled={loading}
+                        >
+                            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+                        </Button>
+                    </div>
+                </div>
+                {sidebarContent}
+            </aside>
+            {dialogs}
+        </>
     )
 }
