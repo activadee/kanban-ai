@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState, useImperativeHandle, forwardRef} from "react";
+import {useEffect, useMemo, useState, useImperativeHandle, forwardRef, useRef, useCallback} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
@@ -238,6 +238,10 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
         setSelectedId(initialSelectedCardId);
     }, [initialSelectedCardId]);
 
+    const laneMinWidth = 280;
+    const laneGap = 16;
+    const boardMinWidth = columns.length * laneMinWidth + (columns.length - 1) * laneGap;
+
     const boardContent = (
         <DndContext
             sensors={sensors}
@@ -245,11 +249,14 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
             onDragEnd={handleDragEnd}
         >
             <div className="h-full min-h-0 overflow-x-auto">
-                <div className="flex h-full min-h-0 items-stretch gap-4">
+                <div 
+                    className="flex h-full min-h-0 items-stretch gap-4"
+                    style={{ minWidth: `${boardMinWidth}px` }}
+                >
                     {columns.map((col) => (
                         <div
                             key={col.id}
-                            className="h-full min-h-0 w-[280px] shrink-0 sm:w-[300px] lg:w-[320px]"
+                            className="h-full min-h-0 flex-1"
                         >
                             <Column
                                 column={col}

@@ -97,7 +97,7 @@ const mockHandlers = {
     onMoveCard: vi.fn(),
 };
 
-describe("Board – lane layout maintains fixed width during panel resize", () => {
+describe("Board – lane layout maintains width during panel resize", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -117,7 +117,7 @@ describe("Board – lane layout maintains fixed width during panel resize", () =
         expect(scrollableContainer).toBeTruthy();
     });
 
-    it("lane wrappers have fixed width (not flex-based)", () => {
+    it("lane wrappers use flex-1 to fill available width", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -128,65 +128,11 @@ describe("Board – lane layout maintains fixed width during panel resize", () =
             { wrapper }
         );
 
-        const laneWithFixedWidth = container.querySelector('[class*="w-[280px]"]');
-        expect(laneWithFixedWidth).toBeTruthy();
-    });
-
-    it("lane wrappers have shrink-0 to never shrink", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const laneWrappers = container.querySelectorAll('[class*="shrink-0"]');
+        const laneWrappers = container.querySelectorAll('[class*="flex-1"][class*="h-full"]');
         expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("lane wrappers do not use flex-1 (no grow/shrink behavior)", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const lanesWithFlexOne = container.querySelectorAll('[class*="h-full"][class*="min-h-0"][class*="flex-1"]');
-        const lanesWithShrinkZero = container.querySelectorAll('[class*="h-full"][class*="min-h-0"][class*="shrink-0"]');
-        
-        let flexOneLanesCount = 0;
-        lanesWithFlexOne.forEach(el => {
-            if (el.className.includes("shrink-0") && el.className.includes("w-[")) {
-                flexOneLanesCount++;
-            }
-        });
-        expect(flexOneLanesCount).toBe(0);
-        expect(lanesWithShrinkZero.length).toBeGreaterThanOrEqual(4);
-    });
-
-    it("lanes have responsive fixed widths", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const lanesWithResponsiveWidth = container.querySelectorAll('[class*="sm:w-"][class*="lg:w-"]');
-        expect(lanesWithResponsiveWidth.length).toBeGreaterThanOrEqual(4);
-    });
-
-    it("renders all columns with fixed width and shrink-0", () => {
+    it("board flex container has inline min-width style to prevent shrinking", () => {
         const state = createMockBoardState(4);
         const { container } = render(
             <Board
@@ -197,8 +143,47 @@ describe("Board – lane layout maintains fixed width during panel resize", () =
             { wrapper }
         );
 
-        const columnElements = container.querySelectorAll('[class*="w-[280px]"][class*="shrink-0"]');
-        expect(columnElements.length).toBeGreaterThanOrEqual(4);
+        const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
+        expect(flexContainer).toBeTruthy();
+        
+        const style = flexContainer?.getAttribute("style");
+        expect(style).toContain("min-width");
+    });
+
+    it("calculates correct min-width based on column count", () => {
+        const state = createMockBoardState(4);
+        const { container } = render(
+            <Board
+                projectId="test-project"
+                state={state}
+                handlers={mockHandlers}
+            />,
+            { wrapper }
+        );
+
+        const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
+        const style = flexContainer?.getAttribute("style");
+        
+        const laneMinWidth = 280;
+        const laneGap = 16;
+        const expectedMinWidth = 4 * laneMinWidth + 3 * laneGap;
+        
+        expect(style).toContain(`min-width: ${expectedMinWidth}px`);
+    });
+
+    it("lanes do not have fixed width classes (uses flex-1 instead)", () => {
+        const state = createMockBoardState();
+        const { container } = render(
+            <Board
+                projectId="test-project"
+                state={state}
+                handlers={mockHandlers}
+            />,
+            { wrapper }
+        );
+
+        const fixedWidthElements = container.querySelectorAll('[class*="w-[280px]"]');
+        expect(fixedWidthElements.length).toBe(0);
     });
 
     it("board uses flex layout with gap for lanes", () => {
@@ -214,5 +199,23 @@ describe("Board – lane layout maintains fixed width during panel resize", () =
 
         const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
         expect(flexContainer).toBeTruthy();
+    });
+
+    it("min-width scales with different column counts", () => {
+        const state2 = createMockBoardState(2);
+        const { container: container2 } = render(
+            <Board
+                projectId="test-project"
+                state={state2}
+                handlers={mockHandlers}
+            />,
+            { wrapper }
+        );
+
+        const flexContainer2 = container2.querySelector('[class*="flex"][class*="gap-4"]');
+        const style2 = flexContainer2?.getAttribute("style");
+        
+        const expectedMinWidth2 = 2 * 280 + 1 * 16;
+        expect(style2).toContain(`min-width: ${expectedMinWidth2}px`);
     });
 });
