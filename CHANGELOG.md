@@ -1,3 +1,19 @@
+## [0.23.0](https://github.com/activadee/kanban-ai/compare/v0.22.2...v0.23.0) (2026-01-01)
+
+### Features
+
+* allow droid agents for card attempts ([#347](https://github.com/activadee/kanban-ai/issues/347)) ([6c3aef7](https://github.com/activadee/kanban-ai/commit/6c3aef75072e89880e4e9dbd19a4eaa40b446194))
+* **cli:** add auto-open browser feature ([#351](https://github.com/activadee/kanban-ai/issues/351)) ([7246561](https://github.com/activadee/kanban-ai/commit/72465618b4dcecdbc6891fe871370d80b8d0b3a0))
+* support pasting screenshots in the UI (KA-33) ([#349](https://github.com/activadee/kanban-ai/issues/349)) ([0f63d18](https://github.com/activadee/kanban-ai/commit/0f63d18972d316f02897d92627fee4ae4568b6f2)), closes [#33](https://github.com/activadee/kanban-ai/issues/33)
+
+### Chores
+
+* add CLAUDE.md symlinks pointing to AGENTS.md ([#350](https://github.com/activadee/kanban-ai/issues/350)) ([2780e17](https://github.com/activadee/kanban-ai/commit/2780e1730e7ff12ce653686054b665e67a938ba7))
+
+### Refactors
+
+* **server:** adopt unified handler pattern for Hono routes ([#348](https://github.com/activadee/kanban-ai/issues/348)) ([eeaa3d2](https://github.com/activadee/kanban-ai/commit/eeaa3d25d68a7c269010b7abc28b914133a9ee5f))
+
 ## [0.22.2](https://github.com/activadee/kanban-ai/compare/v0.22.1...v0.22.2) (2025-12-30)
 
 ### Bug Fixes
