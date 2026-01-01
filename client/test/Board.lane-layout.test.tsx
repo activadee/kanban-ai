@@ -97,7 +97,7 @@ const mockHandlers = {
     onMoveCard: vi.fn(),
 };
 
-describe("Board – lane layout maintains width during panel resize", () => {
+describe("Board – lane layout maintains fixed width during panel resize", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
@@ -117,7 +117,7 @@ describe("Board – lane layout maintains width during panel resize", () => {
         expect(scrollableContainer).toBeTruthy();
     });
 
-    it("lane wrappers have flex-1 to expand and fill available space", () => {
+    it("lane wrappers have fixed width (not flex-based)", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -128,11 +128,11 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const laneWrappers = container.querySelectorAll('[class*="flex-1"]');
-        expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
+        const laneWithFixedWidth = container.querySelector('[class*="w-[280px]"]');
+        expect(laneWithFixedWidth).toBeTruthy();
     });
 
-    it("lane wrappers have shrink-0 to prevent shrinking below min-width", () => {
+    it("lane wrappers have shrink-0 to never shrink", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -147,7 +147,7 @@ describe("Board – lane layout maintains width during panel resize", () => {
         expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("lane wrappers have min-width classes to maintain readable width", () => {
+    it("lane wrappers do not use flex-1 (no grow/shrink behavior)", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -158,11 +158,20 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const laneWithMinWidth = container.querySelector('[class*="min-w-[280px]"]');
-        expect(laneWithMinWidth).toBeTruthy();
+        const lanesWithFlexOne = container.querySelectorAll('[class*="h-full"][class*="min-h-0"][class*="flex-1"]');
+        const lanesWithShrinkZero = container.querySelectorAll('[class*="h-full"][class*="min-h-0"][class*="shrink-0"]');
+        
+        let flexOneLanesCount = 0;
+        lanesWithFlexOne.forEach(el => {
+            if (el.className.includes("shrink-0") && el.className.includes("w-[")) {
+                flexOneLanesCount++;
+            }
+        });
+        expect(flexOneLanesCount).toBe(0);
+        expect(lanesWithShrinkZero.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("lanes have responsive min-width classes", () => {
+    it("lanes have responsive fixed widths", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -173,11 +182,11 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const lanesWithResponsiveMinWidth = container.querySelectorAll('[class*="sm:min-w-"][class*="lg:min-w-"]');
-        expect(lanesWithResponsiveMinWidth.length).toBeGreaterThanOrEqual(4);
+        const lanesWithResponsiveWidth = container.querySelectorAll('[class*="sm:w-"][class*="lg:w-"]');
+        expect(lanesWithResponsiveWidth.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("renders all columns with proper flex and shrink-0 layout", () => {
+    it("renders all columns with fixed width and shrink-0", () => {
         const state = createMockBoardState(4);
         const { container } = render(
             <Board
@@ -188,7 +197,7 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const columnElements = container.querySelectorAll('[class*="flex-1"][class*="shrink-0"]');
+        const columnElements = container.querySelectorAll('[class*="w-[280px]"][class*="shrink-0"]');
         expect(columnElements.length).toBeGreaterThanOrEqual(4);
     });
 

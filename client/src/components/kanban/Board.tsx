@@ -249,7 +249,7 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
                     {columns.map((col) => (
                         <div
                             key={col.id}
-                            className="h-full min-h-0 flex-1 shrink-0 min-w-[280px] sm:min-w-[300px] lg:min-w-[320px]"
+                            className="h-full min-h-0 w-[280px] shrink-0 sm:w-[300px] lg:w-[320px]"
                         >
                             <Column
                                 column={col}
