@@ -4,7 +4,7 @@ title: API overview
 
 # API overview
 
-KanbanAI exposes a JSON HTTP API and a small WebSocket interface under a versioned `/api/v1` prefix (with a legacy `/api`
+KanbanAI exposes a JSON HTTP API and real-time interfaces (WebSocket and Server-Sent Events) under a versioned `/api/v1` prefix (with a legacy `/api`
 shim). This page gives a high-level map of the main resources and how they fit together.
 
 ## Base URLs
@@ -12,9 +12,15 @@ shim). This page gives a high-level map of the main resources and how they fit t
 - REST:
   - Development (default): `http://localhost:3000/api/v1`
   - Legacy shim: `http://localhost:3000/api`
-- WebSocket:
-  - Board channel: `ws://localhost:3000/api/v1/ws?boardId=<boardId>`
-  - Dashboard channel: `ws://localhost:3000/api/v1/ws/dashboard`
+- Real-time:
+  - WebSocket:
+    - Board channel: `ws://localhost:3000/api/v1/ws?boardId=<boardId>`
+    - Dashboard channel: `ws://localhost:3000/api/v1/ws/dashboard`
+  - Server-Sent Events (SSE):
+    - Board channel: `http://localhost:3000/api/v1/sse?boardId=<boardId>` (alternative to WebSocket)
+    - Dashboard channel: `http://localhost:3000/api/v1/sse` (global dashboard events)
+
+SSE provides a simpler HTTP-based alternative to WebSocket with automatic reconnection, better proxy support, and no special protocol handling.
 
 All endpoints below are rooted at `/api/v1`; paths are shown with the full prefix for clarity.
 
@@ -121,7 +127,9 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
       - Precedence: explicit `from`/`to` wins, otherwise a provided `timeRangePreset` is used before `range`.
     - The `DashboardOverview.meta` object includes `availableTimeRangePresets` (allowed presets) and `version` (forward-compatible version string).
     - The handler maps these parameters into the shared `DashboardTimeRange` type and echoes it on the response.
-  - WebSocket channel: `GET /api/v1/ws/dashboard` (see realtime docs).
+  - Real-time channels:
+    - WebSocket: `GET /api/v1/ws/dashboard` (see realtime docs).
+    - SSE: `GET /api/v1/sse` – subscribe to dashboard overview updates via Server-Sent Events.
 - Metrics:
   - `GET /api/v1/metrics` – minimal Prometheus-style metrics for liveness.
   - `GET /api/v1/healthz`, `GET /api/v1/readyz` – health probes.
