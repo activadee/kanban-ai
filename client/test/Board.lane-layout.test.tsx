@@ -97,12 +97,12 @@ const mockHandlers = {
     onMoveCard: vi.fn(),
 };
 
-describe("Board – lane layout for panel resizing", () => {
+describe("Board – lane layout maintains width during panel resize", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
 
-    it("does not have overflow-x-auto on the board container", () => {
+    it("has overflow-x-auto on board container for horizontal scrolling", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -112,15 +112,12 @@ describe("Board – lane layout for panel resizing", () => {
             />,
             { wrapper }
         );
-
-        const boardContainer = container.querySelector('[class*="overflow-hidden"]');
-        expect(boardContainer).toBeTruthy();
 
         const scrollableContainer = container.querySelector('[class*="overflow-x-auto"]');
-        expect(scrollableContainer).toBeNull();
+        expect(scrollableContainer).toBeTruthy();
     });
 
-    it("has overflow-hidden on the board container to prevent unwanted scrolling", () => {
+    it("lane wrappers have shrink-0 to prevent shrinking", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -131,26 +128,11 @@ describe("Board – lane layout for panel resizing", () => {
             { wrapper }
         );
 
-        const boardContainer = container.querySelector('[class*="overflow-hidden"]');
-        expect(boardContainer).toBeTruthy();
-    });
-
-    it("lane wrappers have min-w-0 to allow flex shrinking", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const laneWrappers = container.querySelectorAll('[class*="min-w-0"]');
+        const laneWrappers = container.querySelectorAll('[class*="shrink-0"]');
         expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("lane wrappers do not have fixed min-width classes that force scrolling", () => {
+    it("lane wrappers have fixed width classes", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -161,20 +143,11 @@ describe("Board – lane layout for panel resizing", () => {
             { wrapper }
         );
 
-        const fixedMinWidthPatterns = [
-            "min-w-[260px]",
-            "min-w-[280px]",
-            "min-w-[300px]",
-            "min-w-[320px]",
-        ];
-
-        for (const pattern of fixedMinWidthPatterns) {
-            const elementsWithFixedMinWidth = container.querySelectorAll(`[class*="${pattern}"]`);
-            expect(elementsWithFixedMinWidth.length).toBe(0);
-        }
+        const laneWithFixedWidth = container.querySelector('[class*="w-[280px]"]');
+        expect(laneWithFixedWidth).toBeTruthy();
     });
 
-    it("lane flex container uses w-full instead of min-w-full", () => {
+    it("lane wrappers do not have flex-1 which would allow shrinking", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -185,29 +158,17 @@ describe("Board – lane layout for panel resizing", () => {
             { wrapper }
         );
 
-        const flexContainerWithWFull = container.querySelector('[class*="flex"][class*="w-full"]');
-        expect(flexContainerWithWFull).toBeTruthy();
-
-        const flexContainerWithMinWFull = container.querySelector('[class*="flex"][class*="min-w-full"]');
-        expect(flexContainerWithMinWFull).toBeNull();
+        const flexContainers = container.querySelectorAll('[class*="flex"]');
+        let hasFlexOneOnLanes = false;
+        flexContainers.forEach((el) => {
+            if (el.className.includes("flex-1") && el.className.includes("h-full") && el.className.includes("shrink-0")) {
+                hasFlexOneOnLanes = true;
+            }
+        });
+        expect(hasFlexOneOnLanes).toBe(false);
     });
 
-    it("lanes use flex-1 and basis-0 for equal distribution", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const laneWrappers = container.querySelectorAll('[class*="flex-1"][class*="basis-0"]');
-        expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
-    });
-
-    it("renders all columns with proper layout classes", () => {
+    it("renders all columns with fixed width layout", () => {
         const state = createMockBoardState(4);
         const { container } = render(
             <Board
@@ -218,11 +179,11 @@ describe("Board – lane layout for panel resizing", () => {
             { wrapper }
         );
 
-        const columnElements = container.querySelectorAll('[class*="h-full"][class*="min-h-0"][class*="flex-1"]');
+        const columnElements = container.querySelectorAll('[class*="shrink-0"][class*="h-full"]');
         expect(columnElements.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("board layout adapts to container width without forcing scroll", () => {
+    it("board uses flex layout with gap for lanes", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -235,5 +196,20 @@ describe("Board – lane layout for panel resizing", () => {
 
         const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
         expect(flexContainer).toBeTruthy();
+    });
+
+    it("lanes maintain width regardless of container size", () => {
+        const state = createMockBoardState();
+        const { container } = render(
+            <Board
+                projectId="test-project"
+                state={state}
+                handlers={mockHandlers}
+            />,
+            { wrapper }
+        );
+
+        const lanesWithResponsiveWidth = container.querySelectorAll('[class*="sm:w-"][class*="lg:w-"]');
+        expect(lanesWithResponsiveWidth.length).toBeGreaterThanOrEqual(4);
     });
 });

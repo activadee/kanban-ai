@@ -244,12 +244,12 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="h-full min-h-0 overflow-hidden">
-                <div className="flex h-full min-h-0 w-full items-stretch gap-4">
+            <div className="h-full min-h-0 overflow-x-auto">
+                <div className="flex h-full min-h-0 items-stretch gap-4">
                     {columns.map((col) => (
                         <div
                             key={col.id}
-                            className="h-full min-h-0 flex-1 min-w-0 basis-0"
+                            className="h-full min-h-0 w-[280px] shrink-0 sm:w-[300px] lg:w-[320px]"
                         >
                             <Column
                                 column={col}
