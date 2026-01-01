@@ -3,15 +3,13 @@ import {
     defaultOpencodeProfile,
     type OpencodeProfile as SharedOpencodeProfile,
 } from 'shared'
+import {BaseProfileSchema} from '../../profiles/base'
 
-export const OpencodeProfileSchema = z.object({
-    appendPrompt: z.string().nullable().optional(),
-    inlineProfile: z.string().nullable().optional(),
+export const OpencodeProfileSchema = BaseProfileSchema.extend({
     agent: z.string().optional(),
     model: z.string().optional(),
     baseUrl: z.string().nullable().optional(),
     apiKey: z.string().nullable().optional(),
-    debug: z.boolean().optional(),
 })
 
 export type OpencodeProfile = z.infer<typeof OpencodeProfileSchema>

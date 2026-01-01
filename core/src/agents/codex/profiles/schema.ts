@@ -1,9 +1,8 @@
 import {z} from 'zod'
 import type {CodexProfile as SharedCodexProfile} from 'shared'
+import {BaseProfileSchema} from '../../profiles/base'
 
-export const CodexProfileSchema = z.object({
-    appendPrompt: z.string().nullable().optional(),
-    inlineProfile: z.string().nullable().optional(),
+export const CodexProfileSchema = BaseProfileSchema.extend({
     sandbox: z
         .enum(['read-only', 'workspace-write', 'danger-full-access', 'auto'])
         .optional(),
@@ -15,7 +14,6 @@ export const CodexProfileSchema = z.object({
     approvalPolicy: z.enum(['never', 'on-request', 'on-failure', 'untrusted']).optional(),
     additionalDirectories: z.array(z.string()).optional(),
     outputSchema: z.unknown().optional(),
-    debug: z.boolean().optional(),
 })
 
 export type CodexProfile = z.infer<typeof CodexProfileSchema>

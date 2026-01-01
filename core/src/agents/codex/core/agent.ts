@@ -1,7 +1,3 @@
-import {execFile} from 'node:child_process'
-import {promises as fs, constants as fsConstants} from 'node:fs'
-import {promisify} from 'node:util'
-
 import {
     Codex,
     type ThreadEvent,
@@ -17,10 +13,6 @@ import {
 } from '@openai/codex-sdk'
 import type {
     AgentContext,
-    InlineTaskContext,
-    InlineTaskInputByKind,
-    InlineTaskKind,
-    InlineTaskResultByKind,
     PrSummaryInlineInput,
     PrSummaryInlineResult,
     TicketEnhanceInput,
@@ -31,10 +23,12 @@ import {SdkAgent} from '../../sdk'
 import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
 import {StreamGrouper} from '../../sdk/stream-grouper'
+import {locateExecutable} from '../../sdk/executable'
+import {createEnhanceContext, createPrSummaryContext} from '../../sdk/context-factory'
+import {getEffectiveInlinePrompt} from '../../profiles/base'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, saveImagesToTempFiles} from '../../utils'
 
-type CodexInstallation = { executablePath: string }
-const execFileAsync = promisify(execFile)
+type CodexInstallation = {executablePath: string}
 const nowIso = () => new Date().toISOString()
 
 const normalizeForLog = (value: string) => value.replace(/\s+/g, ' ').trim()
@@ -265,42 +259,10 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         return base
     }
 
-    private async verifyExecutable(path: string): Promise<string> {
-        const candidate = path.trim()
-        if (!candidate.length) throw new Error('codex executable path is empty')
-        const mode = process.platform === 'win32' ? fsConstants.F_OK : fsConstants.X_OK
-        try {
-            await fs.access(candidate, mode)
-            return candidate
-        } catch (err) {
-            throw new Error(`codex executable not accessible at ${candidate}: ${String(err)}`)
-        }
-    }
-
-    private async locateExecutable(): Promise<string> {
-        const envPath = process.env.CODEX_PATH_OVERRIDE ?? process.env.CODEX_PATH
-        if (envPath) return this.verifyExecutable(envPath)
-
-        const locator = process.platform === 'win32' ? 'where' : 'which'
-        try {
-            const {stdout} = await execFileAsync(locator, ['codex'])
-            const candidate = stdout
-                .split(/\r?\n/)
-                .map((line) => line.trim())
-                .filter(Boolean)
-                .at(0)
-
-            if (candidate) return this.verifyExecutable(candidate)
-        } catch (err) {
-            // swallow and fall through to unified error below
-            void err
-        }
-
-        throw new Error('codex executable not found. Install the Codex CLI and ensure it is on PATH or set CODEX_PATH/CODEX_PATH_OVERRIDE.')
-    }
-
     protected async detectInstallation(_profile: CodexProfile, ctx: AgentContext): Promise<CodexInstallation> {
-        const executablePath = await this.locateExecutable()
+        const executablePath = await locateExecutable('codex', {
+            envVars: ['CODEX_PATH_OVERRIDE', 'CODEX_PATH'],
+        })
         ctx.emit({type: 'log', level: 'info', message: `[${this.key}] using codex executable: ${executablePath}`})
         return {executablePath}
     }
@@ -608,103 +570,65 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         }
     }
 
-    async run(ctx: AgentContext, profile: CodexProfile): Promise<number> {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Lifecycle hooks
+    // ─────────────────────────────────────────────────────────────────────────
+
+    protected onRunStart(ctx: AgentContext, profile: CodexProfile, mode: 'run' | 'resume'): void {
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
-        const prompt = this.buildPrompt(profile, ctx)
-        if (prompt) {
-            ctx.emit({
-                type: 'conversation',
-                item: {
-                    type: 'message',
-                    timestamp: new Date().toISOString(),
-                    role: 'user',
-                    text: prompt,
-                    format: 'markdown',
-                    profileId: ctx.profileId ?? null,
-                },
-            })
-        }
-        try {
-            return await super.run(ctx, profile)
-        } finally {
-            this.groupers.get(ctx.attemptId)?.flush(ctx)
-            this.groupers.delete(ctx.attemptId)
+
+        if (mode === 'run') {
+            const prompt = this.buildPrompt(profile, ctx)
+            if (prompt) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'message',
+                        timestamp: nowIso(),
+                        role: 'user',
+                        text: prompt,
+                        format: 'markdown',
+                        profileId: ctx.profileId ?? null,
+                    },
+                })
+            }
+        } else {
+            const prompt = (ctx.followupPrompt ?? '').trim()
+            if (prompt.length || (ctx.images && ctx.images.length > 0)) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'message',
+                        timestamp: nowIso(),
+                        role: 'user',
+                        text: prompt || '(image attached)',
+                        format: 'markdown',
+                        profileId: ctx.profileId ?? null,
+                        images: ctx.images,
+                    },
+                })
+            }
         }
     }
 
-    async resume(ctx: AgentContext, profile: CodexProfile): Promise<number> {
-        this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
-        const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length || (ctx.images && ctx.images.length > 0)) {
-            ctx.emit({
-                type: 'conversation',
-                item: {
-                    type: 'message',
-                    timestamp: new Date().toISOString(),
-                    role: 'user',
-                    text: prompt || '(image attached)',
-                    format: 'markdown',
-                    profileId: ctx.profileId ?? null,
-                    images: ctx.images,
-                },
-            })
-        }
-        try {
-            return await super.resume(ctx, profile)
-        } finally {
-            this.groupers.get(ctx.attemptId)?.flush(ctx)
-            this.groupers.delete(ctx.attemptId)
-        }
+    protected onRunEnd(ctx: AgentContext, _profile: CodexProfile, _mode: 'run' | 'resume'): void {
+        this.groupers.get(ctx.attemptId)?.flush(ctx)
+        this.groupers.delete(ctx.attemptId)
     }
 
-    async inline<K extends InlineTaskKind>(
-        kind: K,
-        input: InlineTaskInputByKind[K],
-        profile: CodexProfile,
-        _opts?: {context: InlineTaskContext; signal?: AbortSignal},
-    ): Promise<InlineTaskResultByKind[K]> {
-        if (kind === 'ticketEnhance') {
-            const result = await this.enhance(input as TicketEnhanceInput, profile)
-            return result as InlineTaskResultByKind[K]
-        }
-        if (kind === 'prSummary') {
-            const result = await this.summarizePullRequest(
-                input as PrSummaryInlineInput,
-                profile,
-                _opts?.signal,
-            )
-            return result as InlineTaskResultByKind[K]
-        }
-        throw new Error(`Codex inline kind ${kind} is not implemented`)
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Inline task implementations (used by SdkAgent.inline())
+    // ─────────────────────────────────────────────────────────────────────────
 
     async enhance(input: TicketEnhanceInput, profile: CodexProfile): Promise<TicketEnhanceResult> {
-        const enhanceCtx: AgentContext = {
-            attemptId: 'enhance-' + input.projectId,
-            boardId: input.boardId,
-            cardId: 'ticket',
-            worktreePath: input.repositoryPath,
-            repositoryPath: input.repositoryPath,
-            branchName: input.baseBranch,
-            baseBranch: input.baseBranch,
-            cardTitle: input.title,
-            cardDescription: input.description,
-            profileId: input.profileId ?? null,
-            sessionId: undefined,
-            followupPrompt: undefined,
-            signal: input.signal,
-            emit: () => {},
-        }
-
+        const enhanceCtx = createEnhanceContext(input)
         const installation = await this.detectInstallation(profile, enhanceCtx)
         const client = await this.createClient(profile, enhanceCtx, installation)
         const codex = client as Codex
         const thread = codex.startThread(this.threadOptions(profile, enhanceCtx))
 
-        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
-        const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
-        const effectiveAppend = inline.length > 0 ? inline : baseAppend
-        const prompt = buildTicketEnhancePrompt(input, effectiveAppend ?? undefined)
+        const effectiveAppend = getEffectiveInlinePrompt(profile)
+        const prompt = buildTicketEnhancePrompt(input, effectiveAppend)
         const turn = await thread.run(prompt, {signal: input.signal})
         const markdown = (turn.finalResponse || '').trim()
         if (!markdown) {
@@ -718,32 +642,14 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         profile: CodexProfile,
         signal?: AbortSignal,
     ): Promise<PrSummaryInlineResult> {
-        const summaryCtx: AgentContext = {
-            attemptId: `pr-summary-${input.repositoryPath}`,
-            boardId: 'pr-summary',
-            cardId: 'pr',
-            worktreePath: input.repositoryPath,
-            repositoryPath: input.repositoryPath,
-            branchName: input.headBranch,
-            baseBranch: input.baseBranch,
-            cardTitle: `PR from ${input.headBranch} into ${input.baseBranch}`,
-            cardDescription: undefined,
-            profileId: null,
-            sessionId: undefined,
-            followupPrompt: undefined,
-            signal: signal ?? new AbortController().signal,
-            emit: () => {},
-        }
-
+        const summaryCtx = createPrSummaryContext(input, signal)
         const installation = await this.detectInstallation(profile, summaryCtx)
         const client = await this.createClient(profile, summaryCtx, installation)
         const codex = client as Codex
         const thread = codex.startThread(this.threadOptions(profile, summaryCtx))
 
-        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
-        const baseAppend = typeof profile.appendPrompt === 'string' ? profile.appendPrompt : null
-        const effectiveAppend = inline.length > 0 ? inline : baseAppend
-        const prompt = buildPrSummaryPrompt(input, effectiveAppend ?? undefined)
+        const effectiveAppend = getEffectiveInlinePrompt(profile)
+        const prompt = buildPrSummaryPrompt(input, effectiveAppend)
         const turn = await thread.run(prompt, {signal: summaryCtx.signal})
         const markdown = (turn.finalResponse || '').trim()
         const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`

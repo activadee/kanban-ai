@@ -15,10 +15,6 @@ import type {
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
 import type {
     AgentContext,
-    InlineTaskContext,
-    InlineTaskInputByKind,
-    InlineTaskKind,
-    InlineTaskResultByKind,
     PrSummaryInlineInput,
     PrSummaryInlineResult,
     TicketEnhanceInput,
@@ -29,6 +25,8 @@ import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
+import {createEnhanceContext, createPrSummaryContext, createConsoleEmit} from '../../sdk/context-factory'
+import {getEffectiveInlinePrompt} from '../../profiles/base'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, imageToDataUrl} from '../../utils'
 
 const nowIso = () => new Date().toISOString()
@@ -268,16 +266,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         if (inline.length > 0) return inline
         if (typeof profile.appendPrompt === 'string' && profile.appendPrompt.trim().length) {
             return profile.appendPrompt.trim()
-        }
-        return undefined
-    }
-
-    private buildInlineAppendPrompt(profile: OpencodeProfile): string | undefined {
-        const inline = typeof profile.inlineProfile === 'string' ? profile.inlineProfile.trim() : ''
-        if (inline.length > 0) return inline
-        if (typeof profile.appendPrompt === 'string') {
-            const trimmed = profile.appendPrompt.trim()
-            if (trimmed.length > 0) return trimmed
         }
         return undefined
     }
@@ -728,61 +716,58 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         return text.trim()
     }
 
-    async inline<K extends InlineTaskKind>(
-        kind: K,
-        input: InlineTaskInputByKind[K],
-        profile: OpencodeProfile,
-        opts?: {context: InlineTaskContext; signal?: AbortSignal},
-    ): Promise<InlineTaskResultByKind[K]> {
-        if (kind === 'ticketEnhance') {
-            const result = await this.enhance(input as TicketEnhanceInput, profile)
-            return result as InlineTaskResultByKind[K]
+    // ─────────────────────────────────────────────────────────────────────────
+    // Lifecycle hooks
+    // ─────────────────────────────────────────────────────────────────────────
+
+    protected onRunStart(ctx: AgentContext, profile: OpencodeProfile, mode: 'run' | 'resume'): void {
+        this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
+
+        if (mode === 'run') {
+            const prompt = this.buildPrompt(profile, ctx)
+            if (prompt || (ctx.images && ctx.images.length > 0)) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'message',
+                        timestamp: nowIso(),
+                        role: 'user',
+                        text: prompt || '(image attached)',
+                        format: 'markdown',
+                        profileId: ctx.profileId ?? null,
+                        images: ctx.images,
+                    },
+                })
+            }
+        } else {
+            const prompt = (ctx.followupPrompt ?? '').trim()
+            if (prompt.length || (ctx.images && ctx.images.length > 0)) {
+                ctx.emit({
+                    type: 'conversation',
+                    item: {
+                        type: 'message',
+                        timestamp: nowIso(),
+                        role: 'user',
+                        text: prompt || '(image attached)',
+                        format: 'markdown',
+                        profileId: ctx.profileId ?? null,
+                        images: ctx.images,
+                    },
+                })
+            }
         }
-        if (kind === 'prSummary') {
-            const result = await this.summarizePullRequest(
-                input as PrSummaryInlineInput,
-                profile,
-                opts?.signal,
-            )
-            return result as InlineTaskResultByKind[K]
-        }
-        throw new Error(`OpenCode inline kind ${kind} is not implemented`)
     }
 
-    async enhance(input: TicketEnhanceInput, profile: OpencodeProfile): Promise<TicketEnhanceResult> {
-        const enhanceCtx: AgentContext = {
-            attemptId: `enhance-${input.projectId}`,
-            boardId: input.boardId,
-            cardId: 'ticket',
-            worktreePath: input.repositoryPath,
-            repositoryPath: input.repositoryPath,
-            branchName: input.baseBranch,
-            baseBranch: input.baseBranch,
-            cardTitle: input.title,
-            cardDescription: input.description,
-            ticketType: input.ticketType ?? null,
-            profileId: input.profileId ?? null,
-            sessionId: undefined,
-            followupPrompt: undefined,
-            signal: input.signal,
-            emit: (event) => {
-                if (event.type === 'log') {
-                    const level = event.level ?? 'info'
-                    const message = event.message
-                    if (level === 'error') {
-                        // eslint-disable-next-line no-console
-                        console.error(message)
-                    } else if (level === 'warn') {
-                        // eslint-disable-next-line no-console
-                        console.warn(message)
-                    } else {
-                        // eslint-disable-next-line no-console
-                        console.info(message)
-                    }
-                }
-            },
-        }
+    protected onRunEnd(ctx: AgentContext, _profile: OpencodeProfile, _mode: 'run' | 'resume'): void {
+        this.groupers.delete(ctx.attemptId)
+    }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Inline task implementations (used by SdkAgent.inline())
+    // ─────────────────────────────────────────────────────────────────────────
+
+    async enhance(input: TicketEnhanceInput, profile: OpencodeProfile): Promise<TicketEnhanceResult> {
+        const enhanceCtx = createEnhanceContext(input, createConsoleEmit())
         const installation = await this.detectInstallation(profile, enhanceCtx)
         const client = (await this.createClient(profile, enhanceCtx, installation)) as OpencodeClient
         const opencode = client
@@ -808,7 +793,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
-        const effectiveAppend = this.buildInlineAppendPrompt(profile)
+        const effectiveAppend = getEffectiveInlinePrompt(profile)
         const basePrompt = buildTicketEnhancePrompt(input, effectiveAppend)
         const inlineGuard =
             'IMPORTANT: Inline ticket enhancement only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
@@ -843,8 +828,8 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 },
                 signal: input.signal,
                 responseStyle: 'data',
-            throwOnError: true,
-        })) as unknown as SessionPromptResponse
+                throwOnError: true,
+            })) as unknown as SessionPromptResponse
         } catch (err) {
             const wrapped = asOpencodeError(err, 'OpenCode session prompt failed')
             enhanceCtx.emit({
@@ -894,41 +879,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         profile: OpencodeProfile,
         signal?: AbortSignal,
     ): Promise<PrSummaryInlineResult> {
-        const effectiveSignal = signal ?? new AbortController().signal
-
-        const summaryCtx: AgentContext = {
-            attemptId: `pr-summary-${input.repositoryPath}`,
-            boardId: 'pr-summary',
-            cardId: 'pr',
-            worktreePath: input.repositoryPath,
-            repositoryPath: input.repositoryPath,
-            branchName: input.headBranch,
-            baseBranch: input.baseBranch,
-            cardTitle: `PR from ${input.headBranch} into ${input.baseBranch}`,
-            cardDescription: undefined,
-            ticketType: null,
-            profileId: null,
-            sessionId: undefined,
-            followupPrompt: undefined,
-            signal: effectiveSignal,
-            emit: (event) => {
-                if (event.type === 'log') {
-                    const level = event.level ?? 'info'
-                    const message = event.message
-                    if (level === 'error') {
-                        // eslint-disable-next-line no-console
-                        console.error(message)
-                    } else if (level === 'warn') {
-                        // eslint-disable-next-line no-console
-                        console.warn(message)
-                    } else {
-                        // eslint-disable-next-line no-console
-                        console.info(message)
-                    }
-                }
-            },
-        }
-
+        const summaryCtx = createPrSummaryContext(input, signal, createConsoleEmit())
         const installation = await this.detectInstallation(profile, summaryCtx)
         const client = (await this.createClient(profile, summaryCtx, installation)) as OpencodeClient
         const opencode = client
@@ -938,7 +889,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             session = (await opencode.session.create({
                 query: {directory: installation.directory},
                 body: {title: summaryCtx.cardTitle},
-                signal: effectiveSignal,
+                signal: summaryCtx.signal,
                 responseStyle: 'data',
                 throwOnError: true,
             })) as unknown as SessionCreateResponse
@@ -954,7 +905,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
-        const effectiveAppend = this.buildInlineAppendPrompt(profile)
+        const effectiveAppend = getEffectiveInlinePrompt(profile)
         const basePrompt = buildPrSummaryPrompt(input, effectiveAppend)
         const inlineGuard =
             'IMPORTANT: Inline PR summary only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
@@ -979,7 +930,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                           ]
                         : [],
                 },
-                signal: effectiveSignal,
+                signal: summaryCtx.signal,
                 responseStyle: 'data',
                 throwOnError: true,
             })) as unknown as SessionPromptResponse
@@ -1007,62 +958,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         return {
             title: split.title,
             body: split.description,
-        }
-    }
-
-    async run(ctx: AgentContext, profile: OpencodeProfile): Promise<number> {
-        this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
-        const prompt = this.buildPrompt(profile, ctx)
-        if (prompt || (ctx.images && ctx.images.length > 0)) {
-            ctx.emit({
-                type: 'conversation',
-                item: {
-                    type: 'message',
-                    timestamp: nowIso(),
-                    role: 'user',
-                    text: prompt || '(image attached)',
-                    format: 'markdown',
-                    profileId: ctx.profileId ?? null,
-                    images: ctx.images,
-                },
-            })
-        }
-        try {
-            return await super.run(ctx, profile)
-        } finally {
-            this.groupers.delete(ctx.attemptId)
-        }
-    }
-
-    async resume(ctx: AgentContext, profile: OpencodeProfile): Promise<number> {
-        if (!ctx.sessionId) {
-            ctx.emit({
-                type: 'log',
-                level: 'error',
-                message: '[opencode] resume called without sessionId',
-            })
-            throw new Error('OpenCode resume requires sessionId')
-        }
-        this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
-        const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length || (ctx.images && ctx.images.length > 0)) {
-            ctx.emit({
-                type: 'conversation',
-                item: {
-                    type: 'message',
-                    timestamp: nowIso(),
-                    role: 'user',
-                    text: prompt || '(image attached)',
-                    format: 'markdown',
-                    profileId: ctx.profileId ?? null,
-                    images: ctx.images,
-                },
-            })
-        }
-        try {
-            return await super.resume(ctx, profile)
-        } finally {
-            this.groupers.delete(ctx.attemptId)
         }
     }
 }
