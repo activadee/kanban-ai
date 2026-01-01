@@ -116,8 +116,10 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
             return
         }
 
+        let cancelled = false
         setPathValidation('validating')
         const timer = setTimeout(() => {
+            if (cancelled) return
             const normalized = normalizePathInput(repository)
             if (normalized && (normalized.startsWith('/') || normalized.startsWith('~'))) {
                 setPathValidation('valid')
@@ -126,7 +128,10 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
             }
         }, 500)
 
-        return () => clearTimeout(timer)
+        return () => {
+            cancelled = true
+            clearTimeout(timer)
+        }
     }, [repository, modeChoice, mode])
 
     const handleRepoSelect = useCallback((entry: GitRepositoryEntry) => {

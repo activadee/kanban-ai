@@ -66,7 +66,7 @@ export function ProjectCard({project, onOpen, onEdit, onDelete, className, style
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="size-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                            className="size-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                             aria-label={`Project ${project.name} menu`}
                         >
                             <EllipsisVertical className="size-4"/>
