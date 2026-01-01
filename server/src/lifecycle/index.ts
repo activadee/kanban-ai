@@ -1,1 +1,1 @@
-export {registerShutdownHandlers, isShutdownInProgress, GRACEFUL_SHUTDOWN_TIMEOUT_MS} from './shutdown'
+export {registerShutdownHandlers, isShutdownInProgress, getExitCode, GRACEFUL_SHUTDOWN_TIMEOUT_MS} from './shutdown'

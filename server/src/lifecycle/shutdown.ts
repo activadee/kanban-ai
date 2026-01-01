@@ -6,6 +6,7 @@ const FORCED_EXIT_CODE = 1
 
 let shutdownInProgress = false
 let signalHandlersRegistered = false
+let exitCode = 0
 
 async function performGracefulShutdown(signal: string): Promise<void> {
     if (shutdownInProgress) {
@@ -16,7 +17,7 @@ async function performGracefulShutdown(signal: string): Promise<void> {
     const serverCount = getOpencodeServerCount()
     if (serverCount === 0) {
         log.info('shutdown', `received ${signal}, no OpenCode servers running`)
-        process.exit(0)
+        return
     }
 
     log.info('shutdown', `received ${signal}, shutting down ${serverCount} OpenCode server(s)...`)
@@ -26,16 +27,21 @@ async function performGracefulShutdown(signal: string): Promise<void> {
         process.exit(FORCED_EXIT_CODE)
     }, GRACEFUL_SHUTDOWN_TIMEOUT_MS)
 
+    forceExitTimer.unref()
+
     try {
         await shutdownOpencodeServers()
         clearTimeout(forceExitTimer)
         log.info('shutdown', 'graceful shutdown complete')
-        process.exit(0)
     } catch (err) {
         clearTimeout(forceExitTimer)
         log.error('shutdown', 'error during shutdown', {err})
-        process.exit(FORCED_EXIT_CODE)
+        exitCode = FORCED_EXIT_CODE
     }
+}
+
+export function getExitCode(): number {
+    return exitCode
 }
 
 export function registerShutdownHandlers(): void {
