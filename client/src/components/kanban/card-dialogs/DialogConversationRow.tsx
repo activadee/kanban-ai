@@ -33,8 +33,9 @@ export function DialogConversationRow({item}: { item: ConversationItem }) {
                     </>
                 }
                 contentClassName="text-xs text-muted-foreground"
-                text={item.text}
-            />
+            >
+                {item.text}
+            </CollapsibleThinkingBlock>
         )
     }
 

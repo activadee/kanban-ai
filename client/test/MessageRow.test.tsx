@@ -34,10 +34,8 @@ describe("MessageRow", () => {
 
             const bubble = container.querySelector('[data-slot="message-bubble"]')
             expect(bubble).not.toBeNull()
-            expect(bubble?.className).toContain("bg-primary")
-
-            const text = container.querySelector('[data-slot="message-text"]')
-            expect(text?.textContent).toBe("Hello, world!")
+            expect(bubble?.className).toContain("bg-teal")
+            expect(bubble?.textContent).toContain("Hello, world!")
         })
 
         it("renders assistant message with left alignment and gradient avatar", () => {
@@ -86,6 +84,58 @@ describe("MessageRow", () => {
             expect(screen.getByText("codex-pro")).not.toBeNull()
         })
 
+        it("displays agentKey/profileName format when profiles provided", () => {
+            const item: ConversationMessageItem = {
+                type: "message",
+                role: "assistant",
+                text: "Response from profile",
+                timestamp: new Date("2025-01-01T12:30:00Z").toISOString(),
+                profileId: "profile-123",
+            }
+            const profiles = [
+                {id: "profile-123", name: "My Custom Profile"},
+                {id: "profile-456", name: "Another Profile"},
+            ]
+
+            render(<MessageRow item={item} agentKey="codex" profiles={profiles}/>)
+
+            expect(screen.getByText("codex/My Custom Profile")).not.toBeNull()
+        })
+
+        it("displays profileName only when no agentKey provided", () => {
+            const item: ConversationMessageItem = {
+                type: "message",
+                role: "assistant",
+                text: "Response from profile",
+                timestamp: new Date("2025-01-01T12:30:00Z").toISOString(),
+                profileId: "profile-123",
+            }
+            const profiles = [
+                {id: "profile-123", name: "My Custom Profile"},
+            ]
+
+            render(<MessageRow item={item} profiles={profiles}/>)
+
+            expect(screen.getByText("My Custom Profile")).not.toBeNull()
+        })
+
+        it("falls back to profileId when not found in profiles array", () => {
+            const item: ConversationMessageItem = {
+                type: "message",
+                role: "assistant",
+                text: "Response from profile",
+                timestamp: new Date("2025-01-01T12:30:00Z").toISOString(),
+                profileId: "unknown-profile",
+            }
+            const profiles = [
+                {id: "profile-123", name: "My Custom Profile"},
+            ]
+
+            render(<MessageRow item={item} agentKey="codex" profiles={profiles}/>)
+
+            expect(screen.getByText("codex/unknown-profile")).not.toBeNull()
+        })
+
         it("renders images when present", () => {
             const item: ConversationMessageItem = {
                 type: "message",
@@ -130,9 +180,12 @@ describe("MessageRow", () => {
 
             const {container} = render(<MessageRow item={item}/>)
 
-            const block = container.querySelector('[data-slot="thinking-block"]') as HTMLDetailsElement
+            const block = container.querySelector('[data-slot="thinking-block"]')
             expect(block).not.toBeNull()
-            expect(block?.open).toBe(false)
+
+            const content = container.querySelector('[data-slot="thinking-content"]')
+            expect(content?.className).toContain("opacity-0")
+            expect(content?.className).toContain("grid-rows-[0fr]")
         })
 
         it("renders thinking block with title when provided", () => {

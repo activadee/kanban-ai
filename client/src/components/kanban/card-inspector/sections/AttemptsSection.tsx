@@ -8,6 +8,26 @@ import {ImageAttachment} from '@/components/ui/image-attachment'
 import {cn} from '@/lib/utils'
 import {MessageRow} from '../MessageRow'
 
+function AgentTypingIndicator() {
+    return (
+        <div className="agent-typing-indicator mb-3 flex items-center gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600">
+                <div className="agent-typing-core" />
+            </div>
+            <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm bg-gradient-to-r from-amber-500/10 to-orange-500/5 px-4 py-2.5">
+                <div className="agent-typing-orbs">
+                    <span className="agent-typing-orb" />
+                    <span className="agent-typing-orb" />
+                    <span className="agent-typing-orb" />
+                </div>
+                <span className="ml-1.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                    working
+                </span>
+            </div>
+        </div>
+    )
+}
+
 export type AttemptsSectionProps = {
     attempt: Attempt
     cardId: string
@@ -109,9 +129,15 @@ export function AttemptsSection({
                     <div className="text-muted-foreground">No messages yet…</div>
                 ) : (
                     conversation.map((item, index) => (
-                        <MessageRow key={item.id ?? `${item.timestamp}-${index}`} item={item}/>
+                        <MessageRow
+                            key={item.id ?? `${item.timestamp}-${index}`}
+                            item={item}
+                            agentKey={attemptAgent}
+                            profiles={followupProfiles}
+                        />
                     ))
                 )}
+                {attempt.status === 'running' && <AgentTypingIndicator />}
                 <div ref={messagesEndRef}/>
             </div>
             {!locked && attempt.sessionId ? (

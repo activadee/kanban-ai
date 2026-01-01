@@ -7,7 +7,7 @@ import {AttemptsSection} from "@/components/kanban/card-inspector/sections/Attem
 describe("AttemptsSection – thinking blocks", () => {
     afterEach(() => cleanup());
 
-    it("renders thinking blocks collapsed by default and relies on native <details> toggling", () => {
+    it("renders thinking blocks collapsed by default with grid animation", () => {
         const attempt: Attempt = {
             id: "att-1",
             cardId: "card-1",
@@ -56,18 +56,20 @@ describe("AttemptsSection – thinking blocks", () => {
             />,
         );
 
-        const details = document.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
-        const summary = document.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
-        const content = document.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
+        const block = document.querySelector('[data-slot="thinking-block"]');
+        const summary = document.querySelector('[data-slot="thinking-summary"]');
+        const content = document.querySelector('[data-slot="thinking-content"]');
 
-        expect(details).not.toBeNull();
+        expect(block).not.toBeNull();
         expect(summary).not.toBeNull();
         expect(content).not.toBeNull();
-        expect(details?.open).toBe(false);
 
-        details!.open = true;
-        fireEvent(details!, new Event("toggle"));
-        expect(details!.open).toBe(true);
-        expect(document.querySelector('[data-slot="thinking-content"]')).toBe(content);
+        expect(content?.className).toContain("opacity-0");
+        expect(content?.className).toContain("grid-rows-[0fr]");
+
+        fireEvent.click(summary!);
+
+        expect(content?.className).toContain("opacity-100");
+        expect(content?.className).toContain("grid-rows-[1fr]");
     });
 });

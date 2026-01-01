@@ -6,6 +6,7 @@ import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
 import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
 import {ImageAttachment} from '@/components/ui/image-attachment'
+import {Streamdown} from 'streamdown'
 import {
     User,
     Bot,
@@ -33,7 +34,7 @@ function RoleAvatar({role}: { role: 'user' | 'assistant' | 'system' }) {
             return (
                 <div
                     data-slot="message-avatar"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white"
                 >
                     <User className={iconClasses}/>
                 </div>
@@ -233,7 +234,29 @@ function OutputSection({
     )
 }
 
-export function MessageRow({item}: { item: ConversationItem }) {
+export type MessageRowProps = {
+    item: ConversationItem
+    agentKey?: string
+    profiles?: Array<{ id: string; name: string }>
+}
+
+function resolveProfileDisplay(
+    profileId: string | undefined,
+    agentKey: string | undefined,
+    profiles: Array<{ id: string; name: string }> | undefined,
+): string | null {
+    if (!profileId) return null
+    
+    const profile = profiles?.find(p => p.id === profileId)
+    const displayName = profile?.name ?? profileId
+    
+    if (agentKey) {
+        return `${agentKey}/${displayName}`
+    }
+    return displayName
+}
+
+export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
     const time = timestamp.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
 
@@ -257,7 +280,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
                         data-slot="message-bubble"
                         className={cn(
                             'group relative max-w-[85%] rounded-2xl px-3.5 py-2.5',
-                            isUser && 'rounded-tr-sm bg-primary text-primary-foreground',
+                            isUser && 'rounded-tr-sm bg-teal-600/90 text-white',
                             role === 'assistant' && 'rounded-tl-sm bg-muted/80 text-foreground',
                             isSystem && 'rounded-tl-sm border border-dashed border-border bg-transparent text-muted-foreground',
                         )}
@@ -267,7 +290,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
                                 data-slot="message-role"
                                 className={cn(
                                     'text-[10px] font-semibold uppercase tracking-wide',
-                                    isUser && 'text-primary-foreground/70',
+                                    isUser && 'text-white/70',
                                     role === 'assistant' && 'text-violet-600 dark:text-violet-400',
                                     isSystem && 'text-muted-foreground',
                                 )}
@@ -278,7 +301,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
                                 data-slot="message-time"
                                 className={cn(
                                     'text-[10px]',
-                                    isUser ? 'text-primary-foreground/50' : 'text-muted-foreground/70',
+                                    isUser ? 'text-white/50' : 'text-muted-foreground/70',
                                 )}
                             >
                                 {time}
@@ -287,23 +310,27 @@ export function MessageRow({item}: { item: ConversationItem }) {
                                 <Badge
                                     variant="outline"
                                     className={cn(
-                                        'h-4 px-1.5 text-[9px]',
-                                        isUser && 'border-primary-foreground/30 text-primary-foreground/70',
+                                        'h-4 gap-1 px-1.5 text-[9px]',
+                                        isUser && 'border-white/30 text-white/70',
                                     )}
                                 >
-                                    {item.profileId}
+                                    <Bot className="h-2.5 w-2.5" />
+                                    {resolveProfileDisplay(item.profileId, agentKey, profiles) ?? item.profileId}
                                 </Badge>
                             )}
                         </div>
-                        <div
+                        <Streamdown
                             data-slot="message-text"
                             className={cn(
-                                'whitespace-pre-wrap text-sm leading-relaxed',
-                                isUser && 'text-primary-foreground',
+                                'prose max-w-none',
+                                isUser 
+                                    ? 'prose-invert prose-p:text-white prose-headings:text-white prose-strong:text-white prose-code:text-white/90 prose-code:bg-white/10'
+                                    : 'dark:prose-invert',
                             )}
+                            shikiTheme={['github-light', 'github-dark']}
                         >
                             {text}
-                        </div>
+                        </Streamdown>
                         {images && images.length > 0 && (
                             <ImageAttachment images={images} variant="badge" size="sm" className="mt-2"/>
                         )}
@@ -339,10 +366,16 @@ export function MessageRow({item}: { item: ConversationItem }) {
                             <span className="text-[10px] text-muted-foreground">{time}</span>
                         </>
                     )}
-                    text={item.text}
                     className="message-row-thinking mb-3 border-amber-500/20 bg-gradient-to-r from-amber-50/40 to-transparent dark:from-amber-950/20"
-                    contentClassName="text-muted-foreground leading-relaxed"
-                />
+                    contentClassName="leading-relaxed"
+                >
+                    <Streamdown
+                        className="prose max-w-none dark:prose-invert"
+                        shikiTheme={['github-light', 'github-dark']}
+                    >
+                        {item.text}
+                    </Streamdown>
+                </CollapsibleThinkingBlock>
             )
         }
 
