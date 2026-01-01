@@ -30,7 +30,7 @@ core/src/agents/
 
 - `BaseProfileSchema`: Zod schema with common fields (`appendPrompt`, `inlineProfile`, `debug`)
 - `SdkAgent<P, I>`: Abstract base class implementing `Agent<P>` with:
-  - Lifecycle hooks: `onRunStart()`, `onRunEnd()`
+  - Lifecycle hooks: `onRunStart(ctx, profile, mode)`, `onRunEnd(ctx, profile, mode)` where `mode` is `'run'` or `'resume'`
   - Default `inline()` dispatch to `enhance()` / `summarizePullRequest()`
   - Template methods: `detectInstallation()`, `createClient()`, `startSession()`, `resumeSession()`, `handleEvent()`
 - `locateExecutable()`: Unified executable discovery with env vars and PATH fallback
@@ -122,7 +122,7 @@ droid/
     - All profile schemas extend `BaseProfileSchema` for consistent field handling.
 3. **Runners**
     - Agents implement `Agent.run` / `resume` via `SdkAgent` base class.
-    - Lifecycle hooks (`onRunStart`, `onRunEnd`) handle grouper setup/cleanup.
+    - Lifecycle hooks (`onRunStart(ctx, profile, mode)`, `onRunEnd(ctx, profile, mode)`) handle grouper setup/cleanup. The `mode` parameter is `'run'` or `'resume'`.
     - The attempts service calls into the agent and forwards streamed events via `emit`.
 
 ## Key Entry Points
@@ -138,21 +138,22 @@ droid/
 ## Implementing a New SDK Agent
 
 1. Create profile schema extending `BaseProfileSchema`:
-   ```typescript
-   export const MyAgentProfileSchema = BaseProfileSchema.extend({
-       // agent-specific fields
-   })
-   ```
+    ```typescript
+    export const MyAgentProfileSchema = BaseProfileSchema.extend({
+        // agent-specific fields
+    })
+    ```
 
 2. Create agent class extending `SdkAgent<P, I>`:
-   ```typescript
-   class MyAgentImpl extends SdkAgent<MyProfile, MyInstallation> {
-       key = 'MYAGENT' as const
-       // Implement: detectInstallation, createClient, startSession,
-       //            resumeSession, handleEvent
-       // Optional: onRunStart, onRunEnd, enhance, summarizePullRequest
-   }
-   ```
+    ```typescript
+    class MyAgentImpl extends SdkAgent<MyProfile, MyInstallation> {
+        key = 'MYAGENT' as const
+        // Implement: detectInstallation, createClient, startSession,
+        //            resumeSession, handleEvent
+        // Optional: onRunStart(ctx, profile, mode), onRunEnd(ctx, profile, mode),
+        //           enhance, summarizePullRequest
+    }
+    ```
 
 3. Register in the agent registry.
 
