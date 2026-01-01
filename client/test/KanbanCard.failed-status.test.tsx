@@ -53,7 +53,7 @@ describe("KanbanCard – failed status styling", () => {
         expect(badge).toBeNull();
     });
 
-    it("applies red styling when attempt status is failed", () => {
+    it("applies failed card class when attempt status is failed", () => {
         const { container } = render(
             <KanbanCard
                 card={baseCard}
@@ -62,33 +62,7 @@ describe("KanbanCard – failed status styling", () => {
             { wrapper }
         );
 
-        const cardElement = container.querySelector('[class*="bg-red-50/80"]');
-        expect(cardElement).toBeTruthy();
-    });
-
-    it("applies red dark mode styling when attempt status is failed", () => {
-        const { container } = render(
-            <KanbanCard
-                card={baseCard}
-                attemptStatus="failed"
-            />,
-            { wrapper }
-        );
-
-        const cardElement = container.querySelector('[class*="dark:bg-red-950/20"]');
-        expect(cardElement).toBeTruthy();
-    });
-
-    it("applies destructive ring styling when attempt status is failed", () => {
-        const { container } = render(
-            <KanbanCard
-                card={baseCard}
-                attemptStatus="failed"
-            />,
-            { wrapper }
-        );
-
-        const cardElement = container.querySelector('[class*="ring-destructive/40"]');
+        const cardElement = container.querySelector('.kanban-card--failed');
         expect(cardElement).toBeTruthy();
     });
 
@@ -101,7 +75,7 @@ describe("KanbanCard – failed status styling", () => {
             { wrapper }
         );
 
-        const cardElement = container.querySelector('[class*="bg-red-50/80"]');
+        const cardElement = container.querySelector('.kanban-card--failed');
         expect(cardElement).toBeNull();
     });
 
@@ -115,11 +89,11 @@ describe("KanbanCard – failed status styling", () => {
             { wrapper }
         );
 
-        const hasFailedBg = container.querySelector('[class*="bg-red-50/80"]');
-        const hasBlockedBg = container.querySelector('[class*="bg-rose-50/70"]');
+        const hasFailedClass = container.querySelector('.kanban-card--failed');
+        const hasBlockedClass = container.querySelector('.kanban-card--blocked');
 
-        expect(hasFailedBg).toBeTruthy();
-        expect(hasBlockedBg).toBeNull();
+        expect(hasFailedClass).toBeTruthy();
+        expect(hasBlockedClass).toBeNull();
     });
 
     it("does not render Failed badge when attempt status is undefined", () => {
@@ -144,19 +118,6 @@ describe("KanbanCard – failed status styling", () => {
         );
 
         const cardElement = container.querySelector('[class*="cursor-not-allowed"]');
-        expect(cardElement).toBeTruthy();
-    });
-
-    it("has opacity-70 when failed", () => {
-        const { container } = render(
-            <KanbanCard
-                card={baseCard}
-                attemptStatus="failed"
-            />,
-            { wrapper }
-        );
-
-        const cardElement = container.querySelector('[class*="opacity-70"]');
         expect(cardElement).toBeTruthy();
     });
 });

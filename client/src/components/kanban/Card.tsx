@@ -1,7 +1,4 @@
 import {useEffect, useMemo, useState} from 'react'
-import {Badge} from '@/components/ui/badge'
-import {Button} from '@/components/ui/button'
-import {Card as UICard, CardContent} from '@/components/ui/card'
 import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {
     DropdownMenu,
@@ -11,11 +8,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {Bot, EllipsisVertical, GitPullRequest, Sparkles, Loader2} from 'lucide-react'
+import {Bot, EllipsisVertical, GitPullRequest, Sparkles, Loader2, AlertCircle, Lock, Check} from 'lucide-react'
 import type {Card as TCard, AttemptStatus} from 'shared'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
-import {formatTicketType, ticketTypeBadgeClass} from '@/lib/ticketTypes'
+import {formatTicketType, ticketTypeBadgeClass, getTicketTypeColor} from '@/lib/ticketTypes'
 import {
     useCardAttempt,
     useOpenAttemptEditor,
@@ -70,22 +67,18 @@ export function KanbanCard({
     const hasGithubIssue = Boolean(card.githubIssue)
     const isEnhanced = card.isEnhanced
 
-    const cardClassName = useMemo(() => {
-        const baseClasses = isCardDisabled ? 'cursor-not-allowed opacity-70' : 'cursor-grab active:cursor-grabbing'
-        
-        if (isFailed) {
-            return `${baseClasses} border-destructive/70 bg-red-50/80 dark:bg-red-950/20 ring-1 ring-destructive/40`
+    const cardStateClasses = useMemo(() => {
+        const states: string[] = []
+        if (isCardDisabled) {
+            states.push('cursor-not-allowed')
+        } else {
+            states.push('cursor-grab active:cursor-grabbing')
         }
-        
-        if (blocked && !done) {
-            return `${baseClasses} border-destructive/40 bg-rose-50/70 dark:bg-rose-950/10`
-        }
-        
-        if (isEnhanced) {
-            return `${baseClasses} border-emerald-400/60 bg-emerald-50/50 dark:bg-emerald-950/15`
-        }
-        
-        return baseClasses
+        if (isFailed) states.push('kanban-card--failed')
+        else if (blocked && !done) states.push('kanban-card--blocked')
+        else if (isEnhanced) states.push('kanban-card--enhanced')
+        if (done) states.push('kanban-card--done')
+        return states.join(' ')
     }, [isCardDisabled, isFailed, blocked, done, isEnhanced])
 
     const showHeaderRow =
@@ -102,87 +95,79 @@ export function KanbanCard({
         Boolean(menuContext)
 
     const cardInner = (
-        <UICard className={cardClassName}>
-            <CardContent className="flex h-full flex-col gap-2 overflow-hidden p-3">
+        <div 
+            className={`kanban-card ${cardStateClasses} hover:shadow-md`}
+            data-ticket-type={card.ticketType ?? undefined}
+            style={{
+                '--ticket-type-color': getTicketTypeColor(card.ticketType),
+            } as React.CSSProperties}
+        >
+            <div className="flex h-full flex-col gap-2.5 p-3 pl-4">
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             {showType ? (
-                                <Badge
-                                    variant="outline"
-                                    className={`text-[10px] font-semibold tracking-tight ${ticketTypeBadgeClass(card.ticketType)}`}
-                                >
+                                <span className={ticketTypeBadgeClass(card.ticketType)}>
                                     {formatTicketType(card.ticketType)}
-                                </Badge>
+                                </span>
                             ) : null}
                             {card.ticketKey ? (
-                                <Badge variant="outline" className="text-[10px] font-semibold tracking-tight">
+                                <span className="kanban-badge kanban-badge--key">
                                     {card.ticketKey}
-                                </Badge>
-                            ) : null}
-                            {isEnhanced ? (
-                                <Badge
-                                    variant="outline"
-                                    className="border-emerald-500/60 text-[10px] font-semibold tracking-tight text-emerald-700 dark:text-emerald-300"
-                                >
-                                    Enhanced
-                                </Badge>
+                                </span>
                             ) : null}
                             {card.githubIssue ? (
-                                <Badge variant="outline" className="text-[10px] font-mono tracking-tight">
-                                    <a
-                                        href={card.githubIssue.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="hover:underline"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        #{card.githubIssue.issueNumber}
-                                    </a>
-                                </Badge>
+                                <a
+                                    href={card.githubIssue.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="kanban-badge kanban-badge--key hover:bg-accent hover:text-accent-foreground transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    #{card.githubIssue.issueNumber}
+                                </a>
+                            ) : null}
+                            {isEnhanced ? (
+                                <span className="kanban-badge kanban-badge--enhanced flex items-center gap-1">
+                                    <Check className="size-2.5" />
+                                    Enhanced
+                                </span>
                             ) : null}
                             {blocked && !done ? (
-                                <Badge
-                                    variant="outline"
-                                    className="border-destructive/50 text-destructive"
-                                >
+                                <span className="kanban-indicator--blocked">
+                                    <Lock className="size-2.5" />
                                     Blocked
-                                </Badge>
+                                </span>
                             ) : null}
                             {isEnhancing ? (
-                                <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                    <Loader2 className="size-3 animate-spin"/>
+                                <span className="kanban-spinner">
+                                    <Loader2 className="size-2.5 animate-spin"/>
                                     Enhancing
-                                </Badge>
+                                </span>
                             ) : null}
                             {isFailed ? (
-                                <Badge variant="outline" className="border-destructive/70 text-destructive">
+                                <span className="kanban-indicator--failed">
+                                    <AlertCircle className="size-2.5" />
                                     Failed
-                                </Badge>
+                                </span>
                             ) : null}
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 -mr-1">
                             {card.prUrl ? (
                                 <TooltipProvider delayDuration={200}>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                asChild
+                                            <a
+                                                href={card.prUrl}
+                                                target="_blank"
+                                                rel="noreferrer noopener"
+                                                onClick={(event) => event.stopPropagation()}
+                                                onPointerDown={(event) => event.stopPropagation()}
+                                                className="kanban-card-action kanban-card-action--pr"
                                                 aria-label="Open pull request"
-                                                className="text-muted-foreground"
                                             >
-                                                <a
-                                                    href={card.prUrl}
-                                                    target="_blank"
-                                                    rel="noreferrer noopener"
-                                                    onClick={(event) => event.stopPropagation()}
-                                                    onPointerDown={(event) => event.stopPropagation()}
-                                                >
-                                                    <GitPullRequest className="size-4"/>
-                                                </a>
-                                            </Button>
+                                                <GitPullRequest className="size-3.5"/>
+                                            </a>
                                         </TooltipTrigger>
                                         <TooltipContent align="end">Open pull request</TooltipContent>
                                     </Tooltip>
@@ -192,16 +177,8 @@ export function KanbanCard({
                                 <TooltipProvider delayDuration={200}>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <span className="inline-flex">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    disabled
-                                                    aria-label="Review with Agents coming soon"
-                                                    className="text-muted-foreground"
-                                                >
-                                                    <Bot className="size-4"/>
-                                                </Button>
+                                            <span className="kanban-card-action opacity-40 cursor-not-allowed">
+                                                <Bot className="size-3.5"/>
                                             </span>
                                         </TooltipTrigger>
                                         <TooltipContent align="end">
@@ -214,18 +191,17 @@ export function KanbanCard({
                                 <TooltipProvider delayDuration={200}>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="text-muted-foreground"
+                                            <button
+                                                type="button"
+                                                className="kanban-card-action kanban-card-action--sparkle"
                                                 onClick={(event) => {
                                                     event.stopPropagation()
                                                     onEnhancementClick()
                                                 }}
                                                 aria-label="View enhancement diff"
                                             >
-                                                <Sparkles className="size-4"/>
-                                            </Button>
+                                                <Sparkles className="size-3.5"/>
+                                            </button>
                                         </TooltipTrigger>
                                         <TooltipContent align="end">
                                             View enhancement diff
@@ -241,12 +217,12 @@ export function KanbanCard({
                 ) : null}
                 <div
                     title={card.title}
-                    className={`truncate text-sm font-medium leading-tight ${done ? 'line-through text-muted-foreground' : ''}`}
+                    className={`truncate text-[13px] font-medium leading-snug tracking-tight ${done ? 'line-through text-muted-foreground' : 'text-foreground'}`}
                 >
                     {card.title}
                 </div>
-            </CardContent>
-        </UICard>
+            </div>
+        </div>
     )
 
     return blockers.length > 0 && blocked && !done ? (
@@ -255,8 +231,11 @@ export function KanbanCard({
                 <TooltipTrigger asChild>{cardInner}</TooltipTrigger>
                 <TooltipContent align="start" className="max-w-xs">
                     <div className="text-xs">
-                        <div className="mb-1 font-medium">Depends on:</div>
-                        <ul className="list-inside list-disc space-y-1">
+                        <div className="mb-1.5 font-semibold flex items-center gap-1.5">
+                            <Lock className="size-3" />
+                            Depends on:
+                        </div>
+                        <ul className="list-inside list-disc space-y-1 text-muted-foreground">
                             {blockers.map((b) => (
                                 <li key={b} className="truncate">
                                     {b}
@@ -439,17 +418,16 @@ function KanbanCardMenu({card, context, disabled = false}: MenuProps) {
                 }}
             >
                 <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
+                    <button
+                        type="button"
+                        className="kanban-card-action"
                         aria-label={menuAriaLabel}
-                        className="ml-1 text-muted-foreground"
                         disabled={disabled}
                         onClick={(event) => event.stopPropagation()}
                         onPointerDown={(event) => event.stopPropagation()}
                     >
-                        <EllipsisVertical className="size-4"/>
-                    </Button>
+                        <EllipsisVertical className="size-3.5"/>
+                    </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>Ticket actions</DropdownMenuLabel>

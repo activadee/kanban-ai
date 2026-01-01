@@ -7,23 +7,86 @@ export const ticketTypeOptions: TicketTypeOption[] = TICKET_TYPES.map((type) => 
     label: TICKET_TYPE_LABELS[type],
 }))
 
-const badgeClassByType: Record<TicketType, string> = {
-    feat: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200 border-emerald-200/70 dark:border-emerald-800',
-    fix: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200 border-red-200/70 dark:border-red-800',
-    chore: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-200 border-slate-200/70 dark:border-slate-800',
-    docs: 'bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100 border-amber-200/70 dark:border-amber-800',
-    style: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200 border-indigo-200/70 dark:border-indigo-800',
-    refactor: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-200 border-fuchsia-200/70 dark:border-fuchsia-800',
-    perf: 'bg-orange-100 text-orange-900 dark:bg-orange-900/30 dark:text-orange-100 border-orange-200/70 dark:border-orange-800',
-    test: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200 border-blue-200/70 dark:border-blue-800',
-    build: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-900/30 dark:text-cyan-100 border-cyan-200/70 dark:border-cyan-800',
-    ci: 'bg-purple-100 text-purple-900 dark:bg-purple-900/30 dark:text-purple-100 border-purple-200/70 dark:border-purple-800',
-    revert: 'bg-rose-100 text-rose-900 dark:bg-rose-900/30 dark:text-rose-100 border-rose-200/70 dark:border-rose-800',
+const badgeStyleByType: Record<TicketType, { bg: string; text: string; border: string }> = {
+    feat: {
+        bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+        text: 'text-emerald-700 dark:text-emerald-300',
+        border: 'border-l-emerald-500',
+    },
+    fix: {
+        bg: 'bg-red-50 dark:bg-red-950/40',
+        text: 'text-red-700 dark:text-red-300',
+        border: 'border-l-red-500',
+    },
+    chore: {
+        bg: 'bg-slate-50 dark:bg-slate-900/50',
+        text: 'text-slate-600 dark:text-slate-300',
+        border: 'border-l-slate-400',
+    },
+    docs: {
+        bg: 'bg-amber-50 dark:bg-amber-950/40',
+        text: 'text-amber-700 dark:text-amber-200',
+        border: 'border-l-amber-500',
+    },
+    style: {
+        bg: 'bg-violet-50 dark:bg-violet-950/40',
+        text: 'text-violet-700 dark:text-violet-300',
+        border: 'border-l-violet-500',
+    },
+    refactor: {
+        bg: 'bg-fuchsia-50 dark:bg-fuchsia-950/40',
+        text: 'text-fuchsia-700 dark:text-fuchsia-300',
+        border: 'border-l-fuchsia-500',
+    },
+    perf: {
+        bg: 'bg-orange-50 dark:bg-orange-950/40',
+        text: 'text-orange-700 dark:text-orange-200',
+        border: 'border-l-orange-500',
+    },
+    test: {
+        bg: 'bg-blue-50 dark:bg-blue-950/40',
+        text: 'text-blue-700 dark:text-blue-300',
+        border: 'border-l-blue-500',
+    },
+    build: {
+        bg: 'bg-cyan-50 dark:bg-cyan-950/40',
+        text: 'text-cyan-700 dark:text-cyan-200',
+        border: 'border-l-cyan-500',
+    },
+    ci: {
+        bg: 'bg-purple-50 dark:bg-purple-950/40',
+        text: 'text-purple-700 dark:text-purple-200',
+        border: 'border-l-purple-500',
+    },
+    revert: {
+        bg: 'bg-rose-50 dark:bg-rose-950/40',
+        text: 'text-rose-700 dark:text-rose-200',
+        border: 'border-l-rose-500',
+    },
 }
 
 export function ticketTypeBadgeClass(type: TicketType | null | undefined): string {
-    if (!type) return 'bg-muted text-muted-foreground border-border'
-    return badgeClassByType[type] ?? 'bg-muted text-muted-foreground border-border'
+    if (!type) return 'kanban-badge kanban-badge--type bg-muted text-muted-foreground border-l-muted-foreground/30'
+    const style = badgeStyleByType[type]
+    if (!style) return 'kanban-badge kanban-badge--type bg-muted text-muted-foreground border-l-muted-foreground/30'
+    return `kanban-badge kanban-badge--type ${style.bg} ${style.text} ${style.border}`
+}
+
+export function getTicketTypeColor(type: TicketType | null | undefined): string {
+    const colorMap: Record<TicketType, string> = {
+        feat: 'var(--ticket-feat)',
+        fix: 'var(--ticket-fix)',
+        chore: 'var(--ticket-chore)',
+        docs: 'var(--ticket-docs)',
+        style: 'var(--ticket-style)',
+        refactor: 'var(--ticket-refactor)',
+        perf: 'var(--ticket-perf)',
+        test: 'var(--ticket-test)',
+        build: 'var(--ticket-build)',
+        ci: 'var(--ticket-ci)',
+        revert: 'var(--ticket-revert)',
+    }
+    return type ? colorMap[type] ?? 'transparent' : 'transparent'
 }
 
 export function formatTicketType(type: TicketType | null | undefined): string {
