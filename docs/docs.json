@@ -76,7 +76,7 @@
                     "dev/server-attempts",
                     "dev/server-git",
                     "dev/server-fs",
-                    "dev/server-ws",
+                    "dev/server-sse",
                     "dev/server-editor",
                     "dev/server-agents",
                     "dev/server-settings",
