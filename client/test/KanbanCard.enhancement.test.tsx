@@ -50,8 +50,10 @@ describe("KanbanCard – enhancement status", () => {
         expect(onEnhancementClick).toHaveBeenCalledTimes(1);
     });
 
-    it("shows Enhanced badge when card is enhanced", () => {
-        render(<KanbanCard card={{...baseCard, isEnhanced: true}} />);
-        expect(screen.getByText("Enhanced")).toBeTruthy();
+    it("shows enhanced bookmark indicator when card is enhanced", () => {
+        const { container } = render(<KanbanCard card={{...baseCard, isEnhanced: true}} />);
+        const bookmark = container.querySelector('.kanban-bookmark');
+        expect(bookmark).toBeTruthy();
+        expect(bookmark?.getAttribute('aria-label')).toBe('Enhanced ticket');
     });
 });

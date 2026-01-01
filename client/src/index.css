@@ -226,20 +226,26 @@
     animation: kanban-shimmer 6s ease-in-out infinite;
 }
 
-.kanban-card--enhanced::after {
-    content: '';
+/* Selected card state */
+.kanban-card--selected {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 2px var(--ring);
+}
+
+/* Enhanced bookmark indicator */
+.kanban-bookmark {
     position: absolute;
-    top: 0;
-    right: 0;
-    width: 24px;
-    height: 24px;
-    background: linear-gradient(
-        135deg,
-        transparent 50%,
-        var(--ticket-feat) 50%
-    );
-    opacity: 0.6;
-    border-radius: 0 0.5rem 0 0;
+    top: -1px;
+    right: 8px;
+    color: var(--ticket-feat);
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1));
+    z-index: 1;
+}
+
+.kanban-bookmark svg {
+    fill: var(--ticket-feat);
+    stroke: var(--card);
+    stroke-width: 1.5;
 }
 
 /* Failed card state */
@@ -351,17 +357,7 @@
     padding: 2px 6px;
 }
 
-/* Enhanced badge special styling */
-.kanban-badge--enhanced {
-    background: linear-gradient(135deg, oklch(0.92 0.08 145) 0%, oklch(0.95 0.05 145) 100%);
-    color: oklch(0.35 0.12 145);
-    border: none;
-}
 
-.dark .kanban-badge--enhanced {
-    background: linear-gradient(135deg, oklch(0.25 0.08 145) 0%, oklch(0.22 0.06 145) 100%);
-    color: oklch(0.80 0.12 145);
-}
 
 /* Blocked indicator */
 .kanban-indicator--blocked {

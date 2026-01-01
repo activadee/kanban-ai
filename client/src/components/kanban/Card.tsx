@@ -8,7 +8,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {Bot, EllipsisVertical, GitPullRequest, Sparkles, Loader2, AlertCircle, Lock, Check} from 'lucide-react'
+import {Bot, Bookmark, EllipsisVertical, GitPullRequest, Sparkles, Loader2, AlertCircle, Lock} from 'lucide-react'
 import type {Card as TCard, AttemptStatus} from 'shared'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
@@ -45,6 +45,7 @@ type Props = {
     onEnhancementClick?: () => void
     disabled?: boolean
     menuContext?: KanbanCardMenuContext
+    selected?: boolean
 }
 
 export function KanbanCard({
@@ -58,6 +59,7 @@ export function KanbanCard({
                                onEnhancementClick,
                                disabled = false,
                                menuContext,
+                               selected = false,
                            }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
@@ -74,12 +76,13 @@ export function KanbanCard({
         } else {
             states.push('cursor-grab active:cursor-grabbing')
         }
+        if (selected) states.push('kanban-card--selected')
         if (isFailed) states.push('kanban-card--failed')
         else if (blocked && !done) states.push('kanban-card--blocked')
         else if (isEnhanced) states.push('kanban-card--enhanced')
         if (done) states.push('kanban-card--done')
         return states.join(' ')
-    }, [isCardDisabled, isFailed, blocked, done, isEnhanced])
+    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -91,7 +94,6 @@ export function KanbanCard({
         isEnhancing ||
         isFailed ||
         isReady ||
-        isEnhanced ||
         Boolean(menuContext)
 
     const cardInner = (
@@ -102,6 +104,11 @@ export function KanbanCard({
                 '--ticket-type-color': getTicketTypeColor(card.ticketType),
             } as React.CSSProperties}
         >
+            {isEnhanced && (
+                <div className="kanban-bookmark" aria-label="Enhanced ticket">
+                    <Bookmark className="size-3.5" />
+                </div>
+            )}
             <div className="flex h-full flex-col gap-2.5 p-3 pl-4">
                 {showHeaderRow ? (
                     <div className="flex items-start justify-between gap-2">
@@ -127,12 +134,7 @@ export function KanbanCard({
                                     #{card.githubIssue.issueNumber}
                                 </a>
                             ) : null}
-                            {isEnhanced ? (
-                                <span className="kanban-badge kanban-badge--enhanced flex items-center gap-1">
-                                    <Check className="size-2.5" />
-                                    Enhanced
-                                </span>
-                            ) : null}
+
                             {blocked && !done ? (
                                 <span className="kanban-indicator--blocked">
                                     <Lock className="size-2.5" />
