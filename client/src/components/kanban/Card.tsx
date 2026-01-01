@@ -46,6 +46,7 @@ type Props = {
     disabled?: boolean
     menuContext?: KanbanCardMenuContext
     selected?: boolean
+    isInProgressLane?: boolean
 }
 
 export function KanbanCard({
@@ -60,10 +61,13 @@ export function KanbanCard({
                                disabled = false,
                                menuContext,
                                selected = false,
+                               isInProgressLane = false,
                            }: Props) {
     const isEnhancing = enhancementStatus === 'enhancing'
     const isReady = enhancementStatus === 'ready'
     const isFailed = attemptStatus === 'failed'
+    const isRunning = attemptStatus === 'running'
+    const showAnimatedBorder = isInProgressLane && isRunning
     const isCardDisabled = disabled || isEnhancing || isFailed
     const showType = card.ticketType !== undefined && card.ticketType !== null
     const hasGithubIssue = Boolean(card.githubIssue)
@@ -78,11 +82,12 @@ export function KanbanCard({
         }
         if (selected) states.push('kanban-card--selected')
         if (isFailed) states.push('kanban-card--failed')
+        else if (showAnimatedBorder) states.push('kanban-card--in-progress')
         else if (blocked && !done) states.push('kanban-card--blocked')
         else if (isEnhanced) states.push('kanban-card--enhanced')
         if (done) states.push('kanban-card--done')
         return states.join(' ')
-    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected])
+    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected, showAnimatedBorder])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -96,7 +101,7 @@ export function KanbanCard({
         isReady ||
         Boolean(menuContext)
 
-    const cardInner = (
+    const cardContent = (
         <div 
             className={`kanban-card ${cardStateClasses} hover:shadow-md`}
             data-ticket-type={card.ticketType ?? undefined}
@@ -237,7 +242,7 @@ export function KanbanCard({
     return blockers.length > 0 && blocked && !done ? (
         <TooltipProvider delayDuration={200}>
             <Tooltip>
-                <TooltipTrigger asChild>{cardInner}</TooltipTrigger>
+                <TooltipTrigger asChild>{cardContent}</TooltipTrigger>
                 <TooltipContent align="start" className="max-w-xs">
                     <div className="text-xs">
                         <div className="mb-1.5 font-semibold flex items-center gap-1.5">
@@ -255,7 +260,7 @@ export function KanbanCard({
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
-    ) : cardInner
+    ) : cardContent
 }
 
 type MenuProps = {

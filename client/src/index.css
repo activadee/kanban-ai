@@ -163,6 +163,22 @@
     50% { box-shadow: 0 0 0 4px var(--card-failed-glow), 0 1px 3px 0 rgb(0 0 0 / 0.05); }
 }
 
+@keyframes border-rotate {
+    0% { --border-angle: 0deg; }
+    100% { --border-angle: 360deg; }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+@property --border-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
 @layer components {
     .kanban-card {
         @apply relative rounded-lg overflow-visible border border-border;
@@ -336,5 +352,58 @@
 
     .dark .kanban-indicator--failed {
         background: oklch(0.25 0.07 25);
+    }
+
+    .kanban-card--in-progress {
+        --border-color: var(--ticket-type-color, #a3a3a3);
+        --border-width: 2px;
+        overflow: visible;
+    }
+
+    .kanban-card--in-progress::after {
+        content: "";
+        position: absolute;
+        inset: calc(var(--border-width) * -1);
+        border-radius: calc(var(--radius-lg) + var(--border-width));
+        padding: var(--border-width);
+        background: conic-gradient(
+            from var(--border-angle),
+            transparent 0%,
+            transparent 25%,
+            var(--border-color) 30%,
+            color-mix(in oklch, var(--border-color) 80%, white) 35%,
+            var(--border-color) 40%,
+            transparent 45%,
+            transparent 100%
+        );
+        -webkit-mask: 
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask: 
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        z-index: 1;
+        animation: 
+            border-rotate 2.5s linear infinite,
+            pulse-glow 2s ease-in-out infinite;
+        will-change: --border-angle;
+        pointer-events: none;
+    }
+
+    .dark .kanban-card--in-progress::after {
+        background: conic-gradient(
+            from var(--border-angle),
+            transparent 0%,
+            transparent 20%,
+            color-mix(in oklch, var(--border-color) 60%, transparent) 25%,
+            var(--border-color) 30%,
+            color-mix(in oklch, var(--border-color) 90%, white) 35%,
+            var(--border-color) 40%,
+            color-mix(in oklch, var(--border-color) 60%, transparent) 45%,
+            transparent 50%,
+            transparent 100%
+        );
     }
 }

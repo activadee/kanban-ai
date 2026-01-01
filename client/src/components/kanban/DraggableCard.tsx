@@ -100,6 +100,7 @@ export function DraggableCard({
                     onEdit: onEdit ? () => onEdit(card.id) : undefined,
                     onEnhanceTicket: onEnhance ? () => onEnhance(card.id) : undefined,
                 }}
+                isInProgressLane={lane === 'inProgress'}
             />
         </div>
     )
