@@ -133,7 +133,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         const droid = client as Droid
         const thread = droid.startThread(this.threadOptions(profile, ctx.worktreePath))
 
-        const hasImages = ctx.images && ctx.images.length > 0 && profile.enableImages !== false
+        const hasImages = ctx.images && ctx.images.length > 0
         let imagePaths: string[] = []
         let attachments: ImageAttachment[] | undefined
 
@@ -167,7 +167,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         const droid = client as Droid
         const thread = droid.resumeThread(sessionId, this.threadOptions(profile, ctx.worktreePath))
 
-        const hasImages = ctx.images && ctx.images.length > 0 && profile.enableImages !== false
+        const hasImages = ctx.images && ctx.images.length > 0
         let imagePaths: string[] = []
         let attachments: ImageAttachment[] | undefined
 
@@ -333,18 +333,9 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
 
         const hasImages = ctx.images && ctx.images.length > 0
-        const imagesEnabled = profile.enableImages !== false
-
-        if (hasImages && !imagesEnabled) {
-            ctx.emit({
-                type: 'log',
-                level: 'warn',
-                message: `[droid] ${ctx.images!.length} image(s) attached but enableImages is false - images will be ignored`,
-            })
-        }
 
         const prompt = this.buildPrompt(profile, ctx)
-        if (prompt || (hasImages && imagesEnabled)) {
+        if (prompt || hasImages) {
             ctx.emit({
                 type: 'conversation',
                 item: {
@@ -354,7 +345,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
                     text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
-                    images: hasImages && imagesEnabled ? ctx.images : undefined,
+                    images: hasImages ? ctx.images : undefined,
                 },
             })
         }
@@ -371,18 +362,9 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
 
         const hasImages = ctx.images && ctx.images.length > 0
-        const imagesEnabled = profile.enableImages !== false
-
-        if (hasImages && !imagesEnabled) {
-            ctx.emit({
-                type: 'log',
-                level: 'warn',
-                message: `[droid] ${ctx.images!.length} image(s) attached but enableImages is false - images will be ignored`,
-            })
-        }
 
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length || (hasImages && imagesEnabled)) {
+        if (prompt.length || hasImages) {
             ctx.emit({
                 type: 'conversation',
                 item: {
@@ -392,7 +374,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
                     text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
-                    images: hasImages && imagesEnabled ? ctx.images : undefined,
+                    images: hasImages ? ctx.images : undefined,
                 },
             })
         }

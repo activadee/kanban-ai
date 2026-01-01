@@ -15,7 +15,6 @@ export const DroidProfileSchema = z.object({
     skipPermissionsUnsafe: z.boolean().optional(),
     baseCommandOverride: z.string().nullable().optional(),
     debug: z.boolean().optional(),
-    enableImages: z.boolean().optional(),
 })
 
 export type DroidProfile = z.infer<typeof DroidProfileSchema>

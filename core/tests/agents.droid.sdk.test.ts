@@ -503,7 +503,7 @@ describe('DroidAgent SDK Integration', () => {
     })
 
     describe('image support', () => {
-        it('passes images as attachments when enableImages is true (default)', async () => {
+        it('passes images as attachments', async () => {
             const {DroidAgent} = await import('../src/agents/droid/core/agent')
 
             const events = [
@@ -524,7 +524,6 @@ describe('DroidAgent SDK Integration', () => {
                 appendPrompt: null,
                 model: 'test-model',
                 debug: false,
-                enableImages: true,
             }
 
             const ctx = createMockContext({
@@ -585,49 +584,6 @@ describe('DroidAgent SDK Integration', () => {
             expect(userMessage?.[0]?.item?.images).toEqual([testImage])
         })
 
-        it('skips images when enableImages is false', async () => {
-            const {DroidAgent} = await import('../src/agents/droid/core/agent')
-
-            const events = [
-                {type: 'completion', finalText: 'Done', numTurns: 1, durationMs: 100, session_id: 'sess-123', timestamp: Date.now()},
-            ]
-
-            mockStartThread.mockReturnValue({
-                runStreamed: mockRunStreamed,
-                id: 'sess-123',
-            })
-
-            mockRunStreamed.mockResolvedValue({
-                events: mockEventGenerator(events),
-                result: Promise.resolve({finalResponse: 'Done', isError: false, sessionId: 'sess-123', durationMs: 100, numTurns: 1, items: []}),
-            })
-
-            const profile = {
-                appendPrompt: null,
-                model: 'test-model',
-                debug: false,
-                enableImages: false,
-            }
-
-            const ctx = createMockContext({
-                images: [{data: 'dGVzdA==', mime: 'image/png' as const, name: 'test.png'}],
-            })
-            await DroidAgent.run(ctx, profile)
-
-            const emitCalls = (ctx.emit as ReturnType<typeof vi.fn>).mock.calls
-            const warningEvent = emitCalls.find(
-                (call) => call[0]?.type === 'log' && call[0]?.level === 'warn' && call[0]?.message?.includes('enableImages is false')
-            )
-            expect(warningEvent).toBeDefined()
-
-            expect(mockRunStreamed).toHaveBeenCalledWith(
-                expect.any(String),
-                expect.objectContaining({
-                    attachments: undefined,
-                })
-            )
-        })
-
         it('passes images as attachments in resume', async () => {
             const {DroidAgent} = await import('../src/agents/droid/core/agent')
 
@@ -649,7 +605,6 @@ describe('DroidAgent SDK Integration', () => {
                 appendPrompt: null,
                 model: 'test-model',
                 debug: false,
-                enableImages: true,
             }
 
             const ctx = createMockContext({

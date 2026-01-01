@@ -12,7 +12,6 @@ export type DroidProfile = {
     skipPermissionsUnsafe?: boolean
     baseCommandOverride?: string | null
     debug?: boolean
-    enableImages?: boolean
 }
 
-export const defaultDroidProfile: DroidProfile = {debug: false, enableImages: true}
+export const defaultDroidProfile: DroidProfile = {debug: false}

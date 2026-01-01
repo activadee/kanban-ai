@@ -58,30 +58,6 @@ Example Codex profile JSON using `xhigh`:
 }
 ```
 
-### Image support (Droid)
-
-The Droid agent supports image attachments in requests. Configure via profile settings:
-
-- `enableImages` (boolean, default: `true`): Controls whether images are passed to the Droid SDK.
-  - When enabled, attached images (PNG, JPEG, WebP up to 10MB each, max 5 per message) are saved to temp files
-    and passed to the SDK as file attachments.
-  - When disabled, images are ignored with a warning in the logs.
-  - Images are included in conversation items for attempt replay and history.
-
-Example Droid profile JSON with image support:
-
-```json
-{
-  "agent": "DROID",
-  "name": "Vision-enabled profile",
-  "config": {
-    "model": "gpt-4-vision",
-    "enableImages": true,
-    "reasoningEffort": "medium"
-  }
-}
-```
-
 ### Debug logging
 
 Agents can enable verbose debug logging via `config.debug: true` in the profile. When enabled:

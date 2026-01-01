@@ -46,8 +46,6 @@ KanbanAI's agent registry hosts multiple **coding agents**. The currently suppor
       Images are passed to the Droid SDK as file attachments and included in conversation items for replay.
   - Configuration:
     - Uses the same profile system as other agents.
-    - `enableImages` (boolean, default: `true`): Controls whether image attachments are passed to the Droid SDK.
-      When disabled, attached images are ignored with a warning.
 
 - **OpenCode**
   - Status: **Supported** (SDK-backed coding agent).
