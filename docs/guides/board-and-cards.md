@@ -13,6 +13,12 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - **In Progress**
   - **Review**
   - **Done**
+- Columns are visually distinguished by color-coded top borders that indicate their lane type:
+  - **Backlog** – amber border
+  - **In Progress** – blue border
+  - **Review** – violet border
+  - **Done** – emerald border
+  - Other columns – slate border
 - Columns are rendered in order across the screen. The header area shows:
   - Project name.
   - WebSocket connection status badge (Connected / Connecting… / Reconnecting…).
