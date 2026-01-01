@@ -406,4 +406,16 @@
             transparent 100%
         );
     }
+
+    .message-row-thinking {
+        transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .message-row-thinking:hover {
+        border-color: oklch(0.78 0.12 75 / 0.4);
+    }
+
+    .message-row-thinking[open] {
+        border-color: oklch(0.78 0.12 75 / 0.35);
+    }
 }
