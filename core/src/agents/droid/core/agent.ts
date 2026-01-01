@@ -24,6 +24,10 @@ import {locateExecutable} from '../../sdk/executable'
 import {createEnhanceContext, createPrSummaryContext} from '../../sdk/context-factory'
 import {getEffectiveInlinePrompt} from '../../profiles/base'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, saveImagesToTempFiles, cleanupTempImageFiles} from '../../utils'
+import {
+    handleEvent as handleEventImpl,
+    type ToolCallInfo,
+} from './handlers'
 
 type ImageAttachment = {path: string; type: 'image'}
 
@@ -38,7 +42,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> {
     capabilities = {resume: true}
 
     private groupers = new Map<string, StreamGrouper>()
-    private toolCalls = new Map<string, {name: string; startedAt: number; command?: string; cwd?: string}>()
+    private toolCalls = new Map<string, ToolCallInfo>()
 
     private debug(profile: DroidProfile, ctx: AgentContext, event: unknown) {
         if (!profile.debug) return
@@ -192,103 +196,21 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> {
         return this.groupers.get(id) as StreamGrouper
     }
 
-    protected handleEvent(event: unknown, ctx: AgentContext, _profile: DroidProfile): void {
-        if (!event || typeof event !== 'object') return
-        const ev = event as StreamEvent
-
-        if (isSystemInitEvent(ev)) {
-            ctx.emit({type: 'log', level: 'info', message: `[droid] session ${ev.session_id}`})
-            ctx.emit({type: 'session', id: ev.session_id})
-            return
-        }
-
-        if (isMessageEvent(ev)) {
-            const g = this.getGrouper(ctx.attemptId)
-            g.flushReasoning(ctx)
-            if (ev.role === 'assistant' && ev.text) {
-                ctx.emit({
-                    type: 'conversation',
-                    item: {
-                        type: 'message',
-                        timestamp: new Date(ev.timestamp).toISOString(),
-                        role: 'assistant',
-                        text: ev.text,
-                        format: 'markdown',
-                        profileId: ctx.profileId ?? null,
-                    },
-                })
-            }
-            return
-        }
-
-        if (isToolCallEvent(ev)) {
-            const g = this.getGrouper(ctx.attemptId)
-            g.flushReasoning(ctx)
-
-            const params = ev.parameters as Record<string, unknown>
-            this.toolCalls.set(ev.id, {
-                name: ev.toolName,
-                startedAt: ev.timestamp,
-                command: typeof params?.command === 'string' ? params.command : undefined,
-                cwd: typeof params?.cwd === 'string' ? params.cwd : undefined,
-            })
-            return
-        }
-
-        if (isToolResultEvent(ev)) {
-            const g = this.getGrouper(ctx.attemptId)
-            const call = this.toolCalls.get(ev.toolId) ?? this.toolCalls.get(ev.id)
-            this.toolCalls.delete(ev.toolId)
-            this.toolCalls.delete(ev.id)
-
-            const startedAt = call?.startedAt ?? ev.timestamp
-            const completedAt = ev.timestamp
-            const durationMs = completedAt - startedAt
-
-            ctx.emit({
-                type: 'conversation',
-                item: {
-                    type: 'tool',
-                    timestamp: new Date(ev.timestamp).toISOString(),
-                    tool: {
-                        name: call?.name ?? ev.toolName,
-                        command: call?.command ?? null,
-                        cwd: call?.cwd ?? null,
-                        status: ev.isError ? 'failed' : 'succeeded',
-                        startedAt: new Date(startedAt).toISOString(),
-                        completedAt: new Date(completedAt).toISOString(),
-                        durationMs,
-                        exitCode: null,
-                        stdout: ev.isError ? null : (ev.value ?? null),
-                        stderr: ev.isError ? (ev.value ?? null) : null,
-                        metadata: undefined,
-                    },
-                },
-            })
-            return
-        }
-
-        if (isTurnCompletedEvent(ev)) {
-            ctx.emit({type: 'log', level: 'info', message: `[droid] completed in ${ev.durationMs}ms`})
-            return
-        }
-
-        if (isTurnFailedEvent(ev)) {
-            ctx.emit({
-                type: 'conversation',
-                item: {
-                    type: 'error',
-                    timestamp: new Date(ev.timestamp).toISOString(),
-                    text: ev.error.message,
-                },
-            })
-            return
-        }
-
-        const eventType = (ev as {type?: string}).type
-        if (eventType) {
-            ctx.emit({type: 'log', level: 'info', message: `[droid] unhandled event: ${eventType}`})
-        }
+    protected handleEvent(event: unknown, ctx: AgentContext, profile: DroidProfile): void {
+        const grouper = this.getGrouper(ctx.attemptId)
+        handleEventImpl(
+            event,
+            ctx,
+            profile,
+            grouper,
+            this.toolCalls,
+            isSystemInitEvent,
+            isMessageEvent,
+            isToolCallEvent,
+            isToolResultEvent,
+            isTurnCompletedEvent,
+            isTurnFailedEvent,
+        )
     }
 
     // ─────────────────────────────────────────────────────────────────────────

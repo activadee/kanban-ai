@@ -1,14 +1,5 @@
 import type {
     Event,
-    EventMessagePartUpdated,
-    EventMessageUpdated,
-    EventSessionError,
-    EventTodoUpdated,
-    ReasoningPart,
-    TextPart,
-    ToolPart,
-    ToolState,
-    Todo,
     SessionCreateResponse,
     SessionPromptResponse,
 } from '@opencode-ai/sdk'
@@ -20,63 +11,27 @@ import type {
     TicketEnhanceInput,
     TicketEnhanceResult,
 } from '../../types'
-import type {AttemptTodoSummary} from 'shared'
 import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
-import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
 import {createEnhanceContext, createPrSummaryContext, createConsoleEmit} from '../../sdk/context-factory'
 import {getEffectiveInlinePrompt} from '../../profiles/base'
 import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, imageToDataUrl} from '../../utils'
+import {asOpencodeError} from './errors'
+import {
+    DEFAULT_OPENCODE_PORT,
+    getEffectivePort,
+    isValidPort,
+    OpencodeServerManager,
+    type ServerInstance,
+} from './server'
+import {
+    extractSessionId,
+    handleEvent as handleEventImpl,
+    type SessionEvent,
+} from './handlers'
 
 const nowIso = () => new Date().toISOString()
-
-function stringifyShort(value: unknown): string {
-    try {
-        const json = JSON.stringify(value)
-        if (!json) return ''
-        return json.length > 500 ? json.slice(0, 497) + '...' : json
-    } catch {
-        return ''
-    }
-}
-
-function describeOpencodeError(err: unknown): string {
-    if (err instanceof Error) {
-        return err.message || String(err)
-    }
-    if (typeof err === 'string') {
-        const trimmed = err.trim()
-        return trimmed || 'Unknown OpenCode error'
-    }
-    if (!err || typeof err !== 'object') {
-        return 'Unknown OpenCode error'
-    }
-
-    const record = err as Record<string, unknown>
-    const message = typeof record.message === 'string' ? record.message.trim() : ''
-    if (message) return message
-
-    const data = record.data
-    if (data && typeof data === 'object') {
-        const dataMsg = (data as Record<string, unknown>).message
-        if (typeof dataMsg === 'string') {
-            const trimmed = dataMsg.trim()
-            if (trimmed) return trimmed
-        }
-    }
-
-    const json = stringifyShort(err)
-    if (json) return json
-
-    return String(err)
-}
-
-function asOpencodeError(err: unknown, fallback: string): Error {
-    const msg = describeOpencodeError(err)
-    const message = msg && msg !== '[object Object]' ? msg : fallback
-    return err === undefined ? new Error(message) : new Error(message, {cause: err})
-}
 
 export type OpencodeInstallation = {
     mode: 'remote' | 'local'
@@ -85,38 +40,8 @@ export type OpencodeInstallation = {
     apiKey?: string
 }
 
-type SessionEvent = Event
-
-type ServerHandle = {
-    close: () => void
-}
-
-type ServerInstance = ServerHandle & {
-    url: string
-    port: number
-}
-
-// Default port for OpenCode server
-const DEFAULT_OPENCODE_PORT = 4097
-
-// Reserved ports that should not be used
-const RESERVED_PORTS = new Set([80, 443, 22, 25, 53, 110, 143, 993, 995, 3306, 5432, 6379, 8080, 8443])
-
-/**
- * Validates that a port number is within valid range and not reserved.
- * @param port - The port number to validate
- * @returns true if valid, false otherwise
- */
-export function isValidPort(port: unknown): port is number {
-    return typeof port === 'number' && Number.isInteger(port) && port >= 1 && port <= 65535 && !RESERVED_PORTS.has(port)
-}
-
-export function getEffectivePort(settingsPort: unknown): number {
-    return isValidPort(settingsPort) ? settingsPort : DEFAULT_OPENCODE_PORT
-}
-
-export {DEFAULT_OPENCODE_PORT}
-
+// Re-export utilities for backward compatibility
+export {DEFAULT_OPENCODE_PORT, isValidPort, getEffectivePort}
 
 export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation> {
     key = 'OPENCODE' as const
@@ -126,47 +51,17 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     capabilities = {resume: true}
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
-    private static readonly serversByPort = new Map<number, ServerInstance>()
-    private static shutdownInProgress = false
 
     static async shutdownAllServers(): Promise<void> {
-        if (OpencodeImpl.shutdownInProgress) {
-            return
-        }
-        OpencodeImpl.shutdownInProgress = true
-
-        const servers = Array.from(OpencodeImpl.serversByPort.entries())
-        if (servers.length === 0) {
-            OpencodeImpl.shutdownInProgress = false
-            return
-        }
-
-        const errors: Array<{port: number; error: unknown}> = []
-        const closePromises = servers.map(async ([port, server]) => {
-            try {
-                server.close()
-                OpencodeImpl.serversByPort.delete(port)
-            } catch (err) {
-                errors.push({port, error: err})
-                OpencodeImpl.serversByPort.delete(port)
-            }
-        })
-
-        await Promise.all(closePromises)
-        OpencodeImpl.shutdownInProgress = false
-
-        if (errors.length > 0) {
-            const errorMessages = errors.map((e) => `port ${e.port}: ${String(e.error)}`).join(', ')
-            throw new Error(`Failed to close OpenCode servers: ${errorMessages}`)
-        }
+        return OpencodeServerManager.shutdownAllServers()
     }
 
     static getActiveServerCount(): number {
-        return OpencodeImpl.serversByPort.size
+        return OpencodeServerManager.getActiveServerCount()
     }
 
     static isShuttingDown(): boolean {
-        return OpencodeImpl.shutdownInProgress
+        return OpencodeServerManager.isShuttingDown()
     }
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
@@ -202,16 +97,12 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<OpencodeClient> {
         if (installation.mode === 'remote' && installation.baseUrl) {
-            // Remote server is responsible for its own authentication; apiKey
-            // is not sent from this client.
             return createOpencodeClient({
                 baseUrl: installation.baseUrl,
                 directory: installation.directory,
             })
         }
 
-        // For local servers, mirror apiKey into the environment so the spawned
-        // `opencode` process can pick it up (e.g. OPENCODE_API_KEY).
         if (installation.apiKey && !process.env.OPENCODE_API_KEY) {
             process.env.OPENCODE_API_KEY = installation.apiKey
             ctx.emit({
@@ -225,9 +116,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const settingsPort = (await ensureAppSettings()).opencodePort
         const port = getEffectivePort(settingsPort)
 
-        // Check if we already have a server running on this port
-        const existingServer = OpencodeImpl.serversByPort.get(port)
-
+        const existingServer = OpencodeServerManager.getServer(port)
         if (existingServer) {
             ctx.emit({
                 type: 'log',
@@ -240,14 +129,13 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             })
         }
 
-        // No existing server on this port, start a new one
         const server = await createOpencodeServer({port})
         const serverInstance: ServerInstance = {
             close: server.close,
             url: server.url,
             port,
         }
-        OpencodeImpl.serversByPort.set(port, serverInstance)
+        OpencodeServerManager.setServer(port, serverInstance)
 
         ctx.emit({
             type: 'log',
@@ -271,10 +159,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     }
 
     private buildModelConfig(profile: OpencodeProfile):
-        | {
-              providerID: string
-              modelID: string
-          }
+        | {providerID: string; modelID: string}
         | undefined {
         const value = typeof profile.model === 'string' ? profile.model.trim() : ''
         if (!value) return undefined
@@ -382,8 +267,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
                 promptError = err
                 controller.abort()
             })
-
-        const extractSessionId = (event: SessionEvent) => this.extractSessionId(event)
 
         async function* stream() {
             try {
@@ -498,209 +381,9 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         })
     }
 
-    private extractSessionId(event: SessionEvent): string | undefined {
-        const properties = (event as {properties?: unknown}).properties
-        if (!properties || typeof properties !== 'object') return undefined
-        const props = properties as {sessionID?: unknown; sessionId?: unknown; info?: unknown; part?: unknown}
-
-        const direct = props.sessionID ?? props.sessionId
-        if (typeof direct === 'string') return direct
-
-        const info = props.info as {sessionID?: unknown; sessionId?: unknown} | undefined
-        const infoId = info?.sessionID ?? info?.sessionId
-        if (typeof infoId === 'string') return infoId
-
-        const part = props.part as {sessionID?: unknown; sessionId?: unknown} | undefined
-        const partId = part?.sessionID ?? part?.sessionId
-        if (typeof partId === 'string') return partId
-
-        return undefined
-    }
-
-    private mapToolState(state: ToolState): ShareToolState {
-        const metadataRaw = (state as {metadata?: unknown}).metadata
-        const inputRaw = (state as {input?: unknown}).input
-        const common: ShareToolState = {
-            status: state.status,
-            metadata: metadataRaw as ShareToolMetadata | undefined,
-            input: inputRaw as ShareToolInput | undefined,
-        }
-        if (state.status === 'completed') {
-            return {
-                ...common,
-                title: state.title,
-                output: state.output,
-            }
-        }
-        if (state.status === 'running') {
-            return {
-                ...common,
-                title: state.title,
-            }
-        }
-        if (state.status === 'error') {
-            return {
-                ...common,
-                title: state.error,
-                output: state.error,
-            }
-        }
-        return common
-    }
-
-    private handleMessageUpdated(event: EventMessageUpdated, ctx: AgentContext, profile: OpencodeProfile) {
-        const message = event.properties.info
-        const grouper = this.getGrouper(ctx)
-        grouper.ensureSession(message.sessionID, ctx)
-        grouper.recordMessageRole(message.sessionID, message.id, message.role, ctx)
-
-        const completed =
-            typeof (message as {time?: {completed?: unknown}}).time?.completed === 'number' ||
-            typeof (message as {finish?: unknown}).finish === 'string'
-        grouper.recordMessageCompleted(message.sessionID, message.id, completed, ctx)
-    }
-
-    private handleMessagePartUpdated(event: EventMessagePartUpdated, ctx: AgentContext, profile: OpencodeProfile) {
-        const part = event.properties.part
-        const grouper = this.getGrouper(ctx)
-
-        if (part.type === 'text') {
-            const textPart = part as TextPart
-            this.debug(
-                profile,
-                ctx,
-                `text part ${textPart.sessionID}/${textPart.messageID}/${textPart.id}: ${textPart.text.slice(0, 120)}`,
-            )
-            const completed = typeof textPart.time?.end === 'number'
-            grouper.recordTextPart(textPart.sessionID, textPart.messageID, textPart.id, textPart.text, completed, ctx)
-            return
-        }
-
-        if (part.type === 'reasoning') {
-            const reasoningPart = part as ReasoningPart
-            const completed = typeof reasoningPart.time?.end === 'number'
-            this.debug(
-                profile,
-                ctx,
-                `reasoning part ${reasoningPart.sessionID}/${reasoningPart.messageID}/${reasoningPart.id}: ${reasoningPart.text.slice(0, 120)}`,
-            )
-            grouper.recordReasoningPart(
-                reasoningPart.sessionID,
-                reasoningPart.messageID,
-                reasoningPart.id,
-                reasoningPart.text,
-                completed,
-                ctx,
-            )
-            return
-        }
-
-        if (part.type === 'tool') {
-            const toolPart = part as ToolPart
-            const shareContent: ShareToolContent = {
-                type: 'tool',
-                id: toolPart.id,
-                messageID: toolPart.messageID,
-                sessionID: toolPart.sessionID,
-                callID: toolPart.callID,
-                tool: toolPart.tool,
-                state: this.mapToolState(toolPart.state),
-            }
-            this.debug(
-                profile,
-                ctx,
-                `tool part ${toolPart.sessionID}/${toolPart.messageID}/${toolPart.id} tool=${toolPart.tool} status=${toolPart.state.status}`,
-            )
-            grouper.handleToolEvent(ctx, shareContent)
-        }
-    }
-
-    private handleTodoUpdated(event: EventTodoUpdated, ctx: AgentContext, profile: OpencodeProfile) {
-        this.debug(
-            profile,
-            ctx,
-            `todo.updated for session ${event.properties.sessionID} (${event.properties.todos.length} items)`,
-        )
-        const todos: AttemptTodoSummary = (() => {
-            const items = event.properties.todos.map((todo: Todo, index: number) => {
-                const id = todo.id && todo.id.trim().length ? todo.id : `todo-${index}`
-                const status = todo.status === 'completed' ? 'done' : 'open'
-                return {
-                    id,
-                    text: todo.content,
-                    status,
-                } as const
-            })
-            const total = items.length
-            const completedCount = items.filter((t) => t.status === 'done').length
-            return {
-                total,
-                completed: completedCount,
-                items,
-            }
-        })()
-
-        ctx.emit({type: 'todo', todos})
-    }
-
-    private handleSessionError(event: EventSessionError, ctx: AgentContext, profile: OpencodeProfile) {
-        const error = event.properties.error
-        if (!error) return
-        let message = 'OpenCode session error'
-        const name = error.name
-        const data = (error as {data?: unknown}).data as {message?: unknown} | undefined
-        if (typeof data?.message === 'string') {
-            message = data.message
-        } else if (typeof name === 'string' && name.length) {
-            message = name
-        }
-        this.debug(profile, ctx, `session.error: ${message}`)
-        ctx.emit({
-            type: 'conversation',
-            item: {
-                type: 'error',
-                timestamp: nowIso(),
-                text: message,
-            },
-        })
-        throw new Error(message)
-    }
-
     protected handleEvent(event: unknown, ctx: AgentContext, profile: OpencodeProfile): void {
-        if (!event || typeof event !== 'object' || typeof (event as {type?: unknown}).type !== 'string') return
-        const ev = event as SessionEvent
-
-        const targetSessionId = ctx.sessionId
-        const eventSessionId = this.extractSessionId(ev)
-        if (targetSessionId) {
-            if (!eventSessionId) {
-                this.debug(profile, ctx, `dropping event ${ev.type} (missing session id)`)
-                return
-            }
-            if (targetSessionId !== eventSessionId) {
-                this.debug(profile, ctx, `dropping event ${ev.type} session=${eventSessionId} (expected ${targetSessionId})`)
-                return
-            }
-        }
-
-        this.debug(profile, ctx, `event ${ev.type}${eventSessionId ? ` session=${eventSessionId}` : ''}`)
-
-        switch (ev.type) {
-            case 'message.updated':
-                this.handleMessageUpdated(ev as EventMessageUpdated, ctx, profile)
-                break
-            case 'message.part.updated':
-                this.handleMessagePartUpdated(ev as EventMessagePartUpdated, ctx, profile)
-                break
-            case 'todo.updated':
-                this.handleTodoUpdated(ev as EventTodoUpdated, ctx, profile)
-                break
-            case 'session.error':
-                this.handleSessionError(ev as EventSessionError, ctx, profile)
-                break
-            default:
-                break
-        }
+        const grouper = this.getGrouper(ctx)
+        handleEventImpl(event, ctx, profile, grouper, this.debug.bind(this))
     }
 
     private extractPromptMarkdown(response: SessionPromptResponse): string {
