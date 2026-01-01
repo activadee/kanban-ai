@@ -23,6 +23,7 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - A **Sort order** dropdown to change how tickets are displayed within each column.
   - A **Create Ticket** button to create a new card.
 - Cards surface status indicators through visual styling:
+  - **In Progress** cards with a running Attempt display an animated loading border around the card that rotates continuously, providing visual feedback that work is actively being processed.
   - **Blocked** cards show a lock icon with "Blocked" label and a diagonal stripe pattern on the left border.
   - **Failed** cards display an alert icon with "Failed" label and a pulsing glow animation when their latest Attempt has failed. Failed cards can be clicked to open the Card Inspector for review and retry.
   - **Enhanced** cards feature a green bookmark icon in the top-right corner with a subtle shimmer animation across the card.
