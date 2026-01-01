@@ -117,7 +117,22 @@ describe("Board – lane layout maintains width during panel resize", () => {
         expect(scrollableContainer).toBeTruthy();
     });
 
-    it("lane wrappers have shrink-0 to prevent shrinking", () => {
+    it("lane wrappers have flex-1 to expand and fill available space", () => {
+        const state = createMockBoardState();
+        const { container } = render(
+            <Board
+                projectId="test-project"
+                state={state}
+                handlers={mockHandlers}
+            />,
+            { wrapper }
+        );
+
+        const laneWrappers = container.querySelectorAll('[class*="flex-1"]');
+        expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it("lane wrappers have shrink-0 to prevent shrinking below min-width", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -132,7 +147,7 @@ describe("Board – lane layout maintains width during panel resize", () => {
         expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("lane wrappers have fixed width classes", () => {
+    it("lane wrappers have min-width classes to maintain readable width", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -143,11 +158,11 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const laneWithFixedWidth = container.querySelector('[class*="w-[280px]"]');
-        expect(laneWithFixedWidth).toBeTruthy();
+        const laneWithMinWidth = container.querySelector('[class*="min-w-[280px]"]');
+        expect(laneWithMinWidth).toBeTruthy();
     });
 
-    it("lane wrappers do not have flex-1 which would allow shrinking", () => {
+    it("lanes have responsive min-width classes", () => {
         const state = createMockBoardState();
         const { container } = render(
             <Board
@@ -158,17 +173,11 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const flexContainers = container.querySelectorAll('[class*="flex"]');
-        let hasFlexOneOnLanes = false;
-        flexContainers.forEach((el) => {
-            if (el.className.includes("flex-1") && el.className.includes("h-full") && el.className.includes("shrink-0")) {
-                hasFlexOneOnLanes = true;
-            }
-        });
-        expect(hasFlexOneOnLanes).toBe(false);
+        const lanesWithResponsiveMinWidth = container.querySelectorAll('[class*="sm:min-w-"][class*="lg:min-w-"]');
+        expect(lanesWithResponsiveMinWidth.length).toBeGreaterThanOrEqual(4);
     });
 
-    it("renders all columns with fixed width layout", () => {
+    it("renders all columns with proper flex and shrink-0 layout", () => {
         const state = createMockBoardState(4);
         const { container } = render(
             <Board
@@ -179,7 +188,7 @@ describe("Board – lane layout maintains width during panel resize", () => {
             { wrapper }
         );
 
-        const columnElements = container.querySelectorAll('[class*="shrink-0"][class*="h-full"]');
+        const columnElements = container.querySelectorAll('[class*="flex-1"][class*="shrink-0"]');
         expect(columnElements.length).toBeGreaterThanOrEqual(4);
     });
 
@@ -196,20 +205,5 @@ describe("Board – lane layout maintains width during panel resize", () => {
 
         const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
         expect(flexContainer).toBeTruthy();
-    });
-
-    it("lanes maintain width regardless of container size", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const lanesWithResponsiveWidth = container.querySelectorAll('[class*="sm:w-"][class*="lg:w-"]');
-        expect(lanesWithResponsiveWidth.length).toBeGreaterThanOrEqual(4);
     });
 });
