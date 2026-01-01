@@ -340,7 +340,7 @@ describe('Page headers are unified across pages', () => {
         hooksMocks.useRelativeTimeFormatter.mockReturnValue(() => 'just now')
     })
 
-    it('Projects page header is unified', () => {
+    it('Projects landing page has hero section with title', () => {
         render(
             <ProjectsLanding
                 projects={[]}
@@ -351,7 +351,8 @@ describe('Page headers are unified across pages', () => {
             />,
         )
 
-        expectUnifiedHeader('Projects')
+        expect(screen.getByRole('heading', {level: 1, name: 'Your Projects'})).toBeTruthy()
+        expect(screen.getByText(/Orchestrate AI agents across your repositories/)).toBeTruthy()
     })
 
     it('Dashboard page header is unified', () => {
