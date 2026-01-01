@@ -25,7 +25,7 @@
     "test:watch": "vitest watch"
   },
   "dependencies": {
-    "@activade/droid-sdk": "^0.0.2",
+    "@activade/droid-sdk": "^0.1.0",
     "@openai/codex-sdk": "^0.77.0",
     "@opencode-ai/sdk": "^1.0.129",
     "shared": "workspace:*",

@@ -33,12 +33,24 @@ vi.mock('node:child_process', () => ({
 vi.mock('node:fs', () => ({
     promises: {
         access: vi.fn().mockResolvedValue(undefined),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+        unlink: vi.fn().mockResolvedValue(undefined),
     },
     constants: {
         F_OK: 0,
         X_OK: 1,
     },
 }))
+
+vi.mock('../../src/agents/utils', async () => {
+    const actual = await vi.importActual('../../src/agents/utils')
+    return {
+        ...actual,
+        saveImagesToTempFiles: vi.fn().mockResolvedValue(['/tmp/test-image-0.png']),
+        cleanupTempImageFiles: vi.fn().mockResolvedValue(undefined),
+    }
+})
 
 function createMockContext(overrides: Partial<AgentContext> = {}): AgentContext {
     return {
@@ -487,6 +499,218 @@ describe('DroidAgent SDK Integration', () => {
                 (call) => call[0]?.type === 'log' && call[0]?.message?.includes('/custom/path/to/droid')
             )
             expect(logEvent).toBeDefined()
+        })
+    })
+
+    describe('image support', () => {
+        it('passes images as attachments when enableImages is true (default)', async () => {
+            const {DroidAgent} = await import('../src/agents/droid/core/agent')
+
+            const events = [
+                {type: 'completion', finalText: 'Done', numTurns: 1, durationMs: 100, session_id: 'sess-123', timestamp: Date.now()},
+            ]
+
+            mockStartThread.mockReturnValue({
+                runStreamed: mockRunStreamed,
+                id: 'sess-123',
+            })
+
+            mockRunStreamed.mockResolvedValue({
+                events: mockEventGenerator(events),
+                result: Promise.resolve({finalResponse: 'Done', isError: false, sessionId: 'sess-123', durationMs: 100, numTurns: 1, items: []}),
+            })
+
+            const profile = {
+                appendPrompt: null,
+                model: 'test-model',
+                debug: false,
+                enableImages: true,
+            }
+
+            const ctx = createMockContext({
+                images: [{data: 'dGVzdA==', mime: 'image/png' as const, name: 'test.png'}],
+            })
+            await DroidAgent.run(ctx, profile)
+
+            const emitCalls = (ctx.emit as ReturnType<typeof vi.fn>).mock.calls
+            const logEvent = emitCalls.find(
+                (call) => call[0]?.type === 'log' && call[0]?.message?.includes('including 1 image(s) in request')
+            )
+            expect(logEvent).toBeDefined()
+
+            expect(mockRunStreamed).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    attachments: expect.arrayContaining([
+                        expect.objectContaining({type: 'image'}),
+                    ]),
+                })
+            )
+        })
+
+        it('includes images in conversation item when running', async () => {
+            const {DroidAgent} = await import('../src/agents/droid/core/agent')
+
+            const events = [
+                {type: 'completion', finalText: 'Done', numTurns: 1, durationMs: 100, session_id: 'sess-123', timestamp: Date.now()},
+            ]
+
+            mockStartThread.mockReturnValue({
+                runStreamed: mockRunStreamed,
+                id: 'sess-123',
+            })
+
+            mockRunStreamed.mockResolvedValue({
+                events: mockEventGenerator(events),
+                result: Promise.resolve({finalResponse: 'Done', isError: false, sessionId: 'sess-123', durationMs: 100, numTurns: 1, items: []}),
+            })
+
+            const profile = {
+                appendPrompt: null,
+                model: 'test-model',
+                debug: false,
+            }
+
+            const testImage = {data: 'dGVzdA==', mime: 'image/png' as const, name: 'test.png'}
+            const ctx = createMockContext({
+                images: [testImage],
+            })
+            await DroidAgent.run(ctx, profile)
+
+            const emitCalls = (ctx.emit as ReturnType<typeof vi.fn>).mock.calls
+            const userMessage = emitCalls.find(
+                (call) => call[0]?.type === 'conversation' && call[0]?.item?.role === 'user'
+            )
+            expect(userMessage).toBeDefined()
+            expect(userMessage?.[0]?.item?.images).toEqual([testImage])
+        })
+
+        it('skips images when enableImages is false', async () => {
+            const {DroidAgent} = await import('../src/agents/droid/core/agent')
+
+            const events = [
+                {type: 'completion', finalText: 'Done', numTurns: 1, durationMs: 100, session_id: 'sess-123', timestamp: Date.now()},
+            ]
+
+            mockStartThread.mockReturnValue({
+                runStreamed: mockRunStreamed,
+                id: 'sess-123',
+            })
+
+            mockRunStreamed.mockResolvedValue({
+                events: mockEventGenerator(events),
+                result: Promise.resolve({finalResponse: 'Done', isError: false, sessionId: 'sess-123', durationMs: 100, numTurns: 1, items: []}),
+            })
+
+            const profile = {
+                appendPrompt: null,
+                model: 'test-model',
+                debug: false,
+                enableImages: false,
+            }
+
+            const ctx = createMockContext({
+                images: [{data: 'dGVzdA==', mime: 'image/png' as const, name: 'test.png'}],
+            })
+            await DroidAgent.run(ctx, profile)
+
+            const emitCalls = (ctx.emit as ReturnType<typeof vi.fn>).mock.calls
+            const warningEvent = emitCalls.find(
+                (call) => call[0]?.type === 'log' && call[0]?.level === 'warn' && call[0]?.message?.includes('enableImages is false')
+            )
+            expect(warningEvent).toBeDefined()
+
+            expect(mockRunStreamed).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    attachments: undefined,
+                })
+            )
+        })
+
+        it('passes images as attachments in resume', async () => {
+            const {DroidAgent} = await import('../src/agents/droid/core/agent')
+
+            const events = [
+                {type: 'completion', finalText: 'Done', numTurns: 1, durationMs: 100, session_id: 'sess-123', timestamp: Date.now()},
+            ]
+
+            mockResumeThread.mockReturnValue({
+                runStreamed: mockRunStreamed,
+                id: 'sess-123',
+            })
+
+            mockRunStreamed.mockResolvedValue({
+                events: mockEventGenerator(events),
+                result: Promise.resolve({finalResponse: 'Done', isError: false, sessionId: 'sess-123', durationMs: 100, numTurns: 1, items: []}),
+            })
+
+            const profile = {
+                appendPrompt: null,
+                model: 'test-model',
+                debug: false,
+                enableImages: true,
+            }
+
+            const ctx = createMockContext({
+                sessionId: 'sess-123',
+                followupPrompt: 'Continue',
+                images: [{data: 'dGVzdA==', mime: 'image/png' as const, name: 'test.png'}],
+            })
+            await DroidAgent.resume(ctx, profile)
+
+            const emitCalls = (ctx.emit as ReturnType<typeof vi.fn>).mock.calls
+            const logEvent = emitCalls.find(
+                (call) => call[0]?.type === 'log' && call[0]?.message?.includes('including 1 image(s) in followup')
+            )
+            expect(logEvent).toBeDefined()
+
+            expect(mockRunStreamed).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.objectContaining({
+                    attachments: expect.arrayContaining([
+                        expect.objectContaining({type: 'image'}),
+                    ]),
+                })
+            )
+        })
+
+        it('handles image-only messages (no text prompt)', async () => {
+            const {DroidAgent} = await import('../src/agents/droid/core/agent')
+
+            const events = [
+                {type: 'completion', finalText: 'Done', numTurns: 1, durationMs: 100, session_id: 'sess-123', timestamp: Date.now()},
+            ]
+
+            mockResumeThread.mockReturnValue({
+                runStreamed: mockRunStreamed,
+                id: 'sess-123',
+            })
+
+            mockRunStreamed.mockResolvedValue({
+                events: mockEventGenerator(events),
+                result: Promise.resolve({finalResponse: 'Done', isError: false, sessionId: 'sess-123', durationMs: 100, numTurns: 1, items: []}),
+            })
+
+            const profile = {
+                appendPrompt: null,
+                model: 'test-model',
+                debug: false,
+            }
+
+            const ctx = createMockContext({
+                sessionId: 'sess-123',
+                followupPrompt: '',
+                images: [{data: 'dGVzdA==', mime: 'image/png' as const, name: 'test.png'}],
+            })
+            await DroidAgent.resume(ctx, profile)
+
+            const emitCalls = (ctx.emit as ReturnType<typeof vi.fn>).mock.calls
+            const userMessage = emitCalls.find(
+                (call) => call[0]?.type === 'conversation' && call[0]?.item?.role === 'user'
+            )
+            expect(userMessage).toBeDefined()
+            expect(userMessage?.[0]?.item?.text).toBe('(image attached)')
         })
     })
 })

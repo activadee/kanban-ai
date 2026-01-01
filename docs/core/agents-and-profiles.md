@@ -42,8 +42,12 @@ KanbanAI's agent registry hosts multiple **coding agents**. The currently suppor
   - Capabilities:
     - Supports standard attempt operations (start, follow-up, stop).
     - Streams structured messages into the Attempt model.
+    - **Image support**: Accepts image attachments in requests (PNG, JPEG, WebP up to 10MB each, max 5 per message).
+      Images are passed to the Droid SDK as file attachments and included in conversation items for replay.
   - Configuration:
     - Uses the same profile system as other agents.
+    - `enableImages` (boolean, default: `true`): Controls whether image attachments are passed to the Droid SDK.
+      When disabled, attached images are ignored with a warning.
 
 - **OpenCode**
   - Status: **Supported** (SDK-backed coding agent).

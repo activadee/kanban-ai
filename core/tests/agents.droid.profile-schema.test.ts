@@ -64,4 +64,24 @@ describe('DroidProfileSchema', () => {
             expect(parsed.data.enabledTools).toEqual(['bash', 'read'])
         }
     })
+
+    it('accepts enableImages option', () => {
+        const parsedTrue = DroidProfileSchema.safeParse({enableImages: true})
+        expect(parsedTrue.success).toBe(true)
+        if (parsedTrue.success) {
+            expect(parsedTrue.data.enableImages).toBe(true)
+        }
+
+        const parsedFalse = DroidProfileSchema.safeParse({enableImages: false})
+        expect(parsedFalse.success).toBe(true)
+        if (parsedFalse.success) {
+            expect(parsedFalse.data.enableImages).toBe(false)
+        }
+
+        const parsedUndefined = DroidProfileSchema.safeParse({})
+        expect(parsedUndefined.success).toBe(true)
+        if (parsedUndefined.success) {
+            expect(parsedUndefined.data.enableImages).toBeUndefined()
+        }
+    })
 })

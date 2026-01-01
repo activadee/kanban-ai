@@ -29,7 +29,9 @@ import {SdkAgent, type SdkSession} from '../../sdk'
 import type {DroidProfile} from '../profiles/schema'
 import {DroidProfileSchema, defaultProfile} from '../profiles/schema'
 import {StreamGrouper} from '../../sdk/stream-grouper'
-import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, saveImagesToTempFiles, cleanupTempImageFiles} from '../../utils'
+
+type ImageAttachment = {path: string; type: 'image'}
 
 type DroidInstallation = {executablePath: string}
 const execFileAsync = promisify(execFile)
@@ -131,10 +133,24 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         const droid = client as Droid
         const thread = droid.startThread(this.threadOptions(profile, ctx.worktreePath))
 
-        const {events, result} = await thread.runStreamed(prompt)
+        const hasImages = ctx.images && ctx.images.length > 0 && profile.enableImages !== false
+        let imagePaths: string[] = []
+        let attachments: ImageAttachment[] | undefined
+
+        if (hasImages) {
+            imagePaths = await saveImagesToTempFiles(ctx.images!, `droid-${ctx.attemptId}`)
+            attachments = imagePaths.map((path) => ({path, type: 'image' as const}))
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[droid] including ${imagePaths.length} image(s) in request`,
+            })
+        }
+
+        const {events, result} = await thread.runStreamed(prompt, {attachments})
 
         return {
-            stream: this.wrapEventsWithResult(events, result, ctx, signal, profile),
+            stream: this.wrapEventsWithResult(events, result, ctx, signal, profile, imagePaths),
             sessionId: thread.id,
         }
     }
@@ -151,10 +167,24 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         const droid = client as Droid
         const thread = droid.resumeThread(sessionId, this.threadOptions(profile, ctx.worktreePath))
 
-        const {events, result} = await thread.runStreamed(prompt)
+        const hasImages = ctx.images && ctx.images.length > 0 && profile.enableImages !== false
+        let imagePaths: string[] = []
+        let attachments: ImageAttachment[] | undefined
+
+        if (hasImages) {
+            imagePaths = await saveImagesToTempFiles(ctx.images!, `droid-${ctx.attemptId}`)
+            attachments = imagePaths.map((path) => ({path, type: 'image' as const}))
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[droid] including ${imagePaths.length} image(s) in followup`,
+            })
+        }
+
+        const {events, result} = await thread.runStreamed(prompt, {attachments})
 
         return {
-            stream: this.wrapEventsWithResult(events, result, ctx, signal, profile),
+            stream: this.wrapEventsWithResult(events, result, ctx, signal, profile, imagePaths),
             sessionId: thread.id ?? sessionId,
         }
     }
@@ -165,6 +195,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         ctx: AgentContext,
         signal: AbortSignal,
         profile: DroidProfile,
+        tempImagePaths: string[] = [],
     ): AsyncIterable<unknown> {
         try {
             for await (const event of events) {
@@ -187,6 +218,10 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
             if (!signal.aborted) {
                 ctx.emit({type: 'log', level: 'error', message: `[droid] result error: ${String(err)}`})
             }
+        }
+
+        if (tempImagePaths.length > 0) {
+            await cleanupTempImageFiles(tempImagePaths)
         }
     }
 
@@ -297,25 +332,29 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
     async run(ctx: AgentContext, profile: DroidProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
 
-        if (ctx.images && ctx.images.length > 0) {
+        const hasImages = ctx.images && ctx.images.length > 0
+        const imagesEnabled = profile.enableImages !== false
+
+        if (hasImages && !imagesEnabled) {
             ctx.emit({
                 type: 'log',
                 level: 'warn',
-                message: `[droid] ${ctx.images.length} image(s) attached but Droid does not support multimodal input - images will be ignored`,
+                message: `[droid] ${ctx.images!.length} image(s) attached but enableImages is false - images will be ignored`,
             })
         }
 
         const prompt = this.buildPrompt(profile, ctx)
-        if (prompt) {
+        if (prompt || (hasImages && imagesEnabled)) {
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
+                    images: hasImages && imagesEnabled ? ctx.images : undefined,
                 },
             })
         }
@@ -331,25 +370,29 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         if (!ctx.sessionId) throw new Error('Droid resume requires sessionId')
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
 
-        if (ctx.images && ctx.images.length > 0) {
+        const hasImages = ctx.images && ctx.images.length > 0
+        const imagesEnabled = profile.enableImages !== false
+
+        if (hasImages && !imagesEnabled) {
             ctx.emit({
                 type: 'log',
                 level: 'warn',
-                message: `[droid] ${ctx.images.length} image(s) attached but Droid does not support multimodal input - images will be ignored`,
+                message: `[droid] ${ctx.images!.length} image(s) attached but enableImages is false - images will be ignored`,
             })
         }
 
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length) {
+        if (prompt.length || (hasImages && imagesEnabled)) {
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
+                    images: hasImages && imagesEnabled ? ctx.images : undefined,
                 },
             })
         }
