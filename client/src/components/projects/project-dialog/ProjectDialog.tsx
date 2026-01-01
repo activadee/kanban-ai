@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState, useMemo} from 'react'
-import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '@/components/ui/dialog'
+import {Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle} from '@/components/ui/dialog'
 import {Label} from '@/components/ui/label'
 import {Input} from '@/components/ui/input'
 import {Button} from '@/components/ui/button'
@@ -186,26 +186,20 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[560px]">
                 <DialogHeader>
-                    <DialogTitle>{isEditMode ? 'Edit project' : 'Create project'}</DialogTitle>
+                    <DialogTitle>{isEditMode ? 'Edit Project' : 'Create Project'}</DialogTitle>
                     <DialogDescription>{descriptions[mode]}</DialogDescription>
                 </DialogHeader>
 
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault()
-                        handleSubmit()
-                    }}
-                    className="space-y-5"
-                >
+                <div className="space-y-4">
                     {!isEditMode && (
-                        <div className="flex items-center justify-between gap-4">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">Project type</Label>
-                            <div className="inline-flex rounded-lg border border-border/60 bg-muted/30 p-1">
+                        <div className="space-y-2">
+                            <Label className="text-sm">Project type</Label>
+                            <div className="inline-flex w-full rounded-lg border border-border bg-muted/40 p-1">
                                 <button
                                     type="button"
                                     onClick={() => handleModeChange('existing')}
                                     className={cn(
-                                        'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
+                                        'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
                                         modeChoice === 'existing'
                                             ? 'bg-background text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -218,7 +212,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                     type="button"
                                     onClick={() => handleModeChange('blank')}
                                     className={cn(
-                                        'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all',
+                                        'flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
                                         modeChoice === 'blank'
                                             ? 'bg-background text-foreground shadow-sm'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -246,7 +240,6 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                             placeholder="My awesome project"
                             autoFocus
                             disabled={loading}
-                            className="focus-visible:ring-brand"
                         />
                     </div>
 
@@ -261,7 +254,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setPickerOpen(!pickerOpen)}
-                                    className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                    className="h-7 gap-1 px-2 text-xs"
                                 >
                                     Browse
                                     <ChevronDown className={cn(
@@ -273,7 +266,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                         </div>
 
                         {modeChoice === 'existing' && !isEditMode && pickerOpen && (
-                            <div className="rounded-lg border border-border/60 bg-muted/10 p-3 overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                            <div className="rounded-lg border border-border bg-muted/30 p-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
                                 <div className="mb-3 flex items-center gap-2">
                                     <div className="relative flex-1">
                                         <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/>
@@ -296,7 +289,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                     </Button>
                                 </div>
 
-                                <div className="max-h-[200px] space-y-1.5 overflow-y-auto">
+                                <div className="max-h-[180px] space-y-1 overflow-y-auto">
                                     {repoLoading && !reposLoaded ? (
                                         <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
                                             <Loader2 className="size-4 animate-spin"/>
@@ -318,8 +311,8 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                                 onClick={() => handleRepoSelect(entry)}
                                                 className={cn(
                                                     'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors',
-                                                    'hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand',
-                                                    repository === entry.path && 'bg-brand/10 text-brand'
+                                                    'hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                                                    repository === entry.path && 'bg-accent'
                                                 )}
                                             >
                                                 <FolderGit className="size-4 shrink-0 text-muted-foreground"/>
@@ -330,7 +323,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                                     </span>
                                                 </span>
                                                 {repository === entry.path && (
-                                                    <Check className="size-4 text-brand"/>
+                                                    <Check className="size-4 text-primary"/>
                                                 )}
                                             </button>
                                         ))
@@ -356,7 +349,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                 placeholder={placeholder}
                                 disabled={loading || isEditMode}
                                 className={cn(
-                                    'pr-9 font-mono text-sm focus-visible:ring-brand',
+                                    'pr-9 font-mono text-sm',
                                     pathValidation === 'valid' && 'border-green-500/50',
                                     pathValidation === 'invalid' && 'border-destructive/50'
                                 )}
@@ -387,32 +380,31 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                             {error}
                         </div>
                     )}
+                </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-2">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => onOpenChange(false)}
-                            disabled={loading}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={loading || (pathValidation !== 'valid' && pathValidation !== 'idle' && !isEditMode)}
-                            className="bg-brand text-brand-foreground hover:bg-brand/90"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="mr-2 size-4 animate-spin"/>
-                                    {isEditMode ? 'Saving...' : 'Creating...'}
-                                </>
-                            ) : (
-                                isEditMode ? 'Save changes' : 'Create project'
-                            )}
-                        </Button>
-                    </div>
-                </form>
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => onOpenChange(false)}
+                        disabled={loading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={loading || (pathValidation !== 'valid' && pathValidation !== 'idle' && !isEditMode)}
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="mr-2 size-4 animate-spin"/>
+                                {isEditMode ? 'Saving...' : 'Creating...'}
+                            </>
+                        ) : (
+                            isEditMode ? 'Save Changes' : 'Create Project'
+                        )}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )
