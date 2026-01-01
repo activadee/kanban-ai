@@ -184,7 +184,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[480px]">
+            <DialogContent className="sm:max-w-[560px]">
                 <DialogHeader>
                     <DialogTitle>{isEditMode ? 'Edit project' : 'Create project'}</DialogTitle>
                     <DialogDescription>{descriptions[mode]}</DialogDescription>
@@ -273,7 +273,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                         </div>
 
                         {modeChoice === 'existing' && !isEditMode && pickerOpen && (
-                            <div className="rounded-lg border border-border/60 bg-muted/10 p-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                            <div className="rounded-lg border border-border/60 bg-muted/10 p-3 overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
                                 <div className="mb-3 flex items-center gap-2">
                                     <div className="relative flex-1">
                                         <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"/>
@@ -323,9 +323,9 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                                 )}
                                             >
                                                 <FolderGit className="size-4 shrink-0 text-muted-foreground"/>
-                                                <span className="flex-1 truncate">
-                                                    <span className="font-medium">{entry.name}</span>
-                                                    <span className="ml-2 text-xs text-muted-foreground truncate">
+                                                <span className="flex-1 min-w-0">
+                                                    <span className="block font-medium truncate">{entry.name}</span>
+                                                    <span className="block text-xs text-muted-foreground truncate">
                                                         {entry.path}
                                                     </span>
                                                 </span>
