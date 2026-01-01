@@ -227,6 +227,15 @@
 /* Selected card state - Editorial Highlight */
 .kanban-card--selected {
     transform: translateX(2px);
+    box-shadow: 
+        0 4px 12px -2px rgb(0 0 0 / 0.08),
+        0 2px 4px -1px rgb(0 0 0 / 0.04);
+}
+
+.dark .kanban-card--selected {
+    box-shadow: 
+        0 4px 16px -2px rgb(0 0 0 / 0.3),
+        0 2px 6px -1px rgb(0 0 0 / 0.2);
 }
 
 .kanban-card--selected::before {
