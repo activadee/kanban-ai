@@ -80,8 +80,8 @@ vi.mock('@/hooks', async (importOriginal) => {
     }
 })
 
-vi.mock('@/lib/ws', () => ({
-    useKanbanWS: () => ({connected: true, reconnecting: false, state: undefined}),
+vi.mock('@/lib/sse', () => ({
+    useKanbanSSE: () => ({connected: true, reconnecting: false, state: undefined}),
 }))
 
 vi.mock('react-router-dom', async (importOriginal) => {

@@ -15,6 +15,7 @@ type Events = {
     attempt_pr: { attemptId: string; pr: import('shared').PRInfo }
     agent_profile: { kind: 'created' | 'updated' | 'deleted'; profileId: string; agent: string; label?: string | null }
     agent_registered: { agent: string; label?: string | null }
+    dashboard_overview: import('shared').DashboardOverview
 }
 
 class EventBus {

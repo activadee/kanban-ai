@@ -24,7 +24,7 @@ import type { MoveCardResponse } from "@/api/board";
 import type { BoardState } from "shared";
 import type { AttemptStatus } from "shared";
 import { boardKeys } from "@/hooks/board";
-import { useKanbanWS } from "@/lib/ws";
+import { useKanbanSSE } from "@/lib/sse";
 import { toast } from "@/components/ui/toast.tsx";
 import { eventBus } from "@/lib/events.ts";
 import { describeApiError } from "@/api/http";
@@ -67,7 +67,7 @@ export function ProjectBoardPage() {
         connected,
         reconnecting,
         state: socketState,
-    } = useKanbanWS(boardId ?? null);
+    } = useKanbanSSE(boardId ?? null);
     const [importOpen, setImportOpen] = useState(false);
     const [attemptStatusByCardId, setAttemptStatusByCardId] = useState<Record<string, AttemptStatus>>({});
 

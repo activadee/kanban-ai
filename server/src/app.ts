@@ -23,6 +23,8 @@ import {registerEventListeners} from './events/register'
 import {createDashboardRouter} from './dashboard/routes'
 import {registerWorktreeProvider} from './ports/worktree'
 import {dashboardWebsocketHandlers} from './ws/dashboard-handlers'
+import {kanbanSSEHandlers} from './sse/kanban-handlers'
+import {dashboardSSEHandlers} from './sse/dashboard-handlers'
 import {HTTPException} from 'hono/http-exception'
 import {ProblemError, problemJson} from './http/problem'
 import {log, applyLogConfig} from './log'
@@ -139,6 +141,10 @@ export const createApp = ({
         api.get('/ws', (c) => problemJson(c, {status: 503, detail: 'WebSocket support not configured'}))
         api.get('/ws/dashboard', (c) => problemJson(c, {status: 503, detail: 'WebSocket support not configured'}))
     }
+
+    // SSE endpoints (alternative to WebSocket, works over standard HTTP)
+    api.get('/sse', ...kanbanSSEHandlers)
+    api.get('/sse/dashboard', ...dashboardSSEHandlers)
 
     api.route('/metrics', createMetricsRouter())
 
