@@ -136,12 +136,9 @@ describe('AppSidebar Toggle Functionality', () => {
                 </Wrapper>,
             )
 
-            // PROJECT section navigation
             expect(screen.getByRole('button', {name: /dashboard/i})).toBeInTheDocument()
             expect(screen.getByRole('button', {name: /kanban board/i})).toBeInTheDocument()
-            expect(screen.getByRole('button', {name: /^agents$/i})).toBeInTheDocument()
-
-            // TOOLS section navigation
+            expect(screen.getByRole('button', {name: /agents/i})).toBeInTheDocument()
             expect(screen.getByRole('button', {name: /github issues/i})).toBeInTheDocument()
             expect(screen.getByRole('button', {name: /worktrees/i})).toBeInTheDocument()
         })

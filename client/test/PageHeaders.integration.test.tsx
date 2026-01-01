@@ -7,7 +7,7 @@ import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
 import {DashboardPage} from '@/pages/DashboardPage'
 import {ProjectBoardPage} from '@/pages/ProjectBoardPage'
 import {AppSettingsPage} from '@/pages/AppSettingsPage'
-import {AgentSettingsPage} from '@/pages/AgentSettingsPage'
+import {AgentsPage} from '@/pages/AgentsPage'
 import {AttemptDetailPage} from '@/pages/AttemptDetailPage'
 import {OnboardingPage} from '@/pages/OnboardingPage'
 import {ProjectsLanding} from '@/components/projects/ProjectsLanding'
@@ -382,16 +382,16 @@ describe('Page headers are unified across pages', () => {
         expectUnifiedHeader('Application Settings')
     })
 
-    it('Agent settings page header is unified', () => {
+    it('Agents page header is unified', () => {
         renderWithQueryClient(
-            <MemoryRouter initialEntries={['/agents/CODEX']}>
+            <MemoryRouter initialEntries={['/agents']}>
                 <Routes>
-                    <Route path="/agents/:agentKey" element={<AgentSettingsPage/>}/>
+                    <Route path="/agents" element={<AgentsPage/>}/>
                 </Routes>
             </MemoryRouter>,
         )
 
-        expectUnifiedHeader('CODEX Profiles')
+        expectUnifiedHeader('Agents')
     })
 
     it('Attempt detail page header is unified', () => {

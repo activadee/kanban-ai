@@ -19,9 +19,7 @@ import {cn} from '@/lib/utils'
 import {ProjectSettingsDrawer} from '@/components/projects/ProjectSettingsDrawer'
 import {ProjectDeleteDialog} from '@/components/projects/ProjectDeleteDialog'
 import type {ProjectSummary} from 'shared'
-import {useAgents} from '@/hooks'
 import {NavButton} from './sidebar/NavButton'
-import {AgentsSection} from './sidebar/AgentsSection'
 import {GitHubAccountBox} from './sidebar/GitHubAccountBox'
 import {ProjectSelector} from './sidebar/ProjectSelector'
 import {SectionLabel} from './sidebar/SectionLabel'
@@ -51,7 +49,6 @@ export function AppSidebar({
     const hasActiveProject = Boolean(activeProjectId)
 
     const groupedProjects = useMemo(() => projects, [projects])
-    const agentsQuery = useAgents()
 
     useKeyboardShortcuts()
 
@@ -143,19 +140,18 @@ export function AppSidebar({
                     >
                         <Kanban className="size-5" />
                     </Button>
+                    
+                    <div className="h-px w-8 bg-border/60 my-1" />
                     <Button
                         variant="ghost"
                         size="icon"
-                        className={cn('size-8', isProjectRoute('/agents') && 'bg-muted')}
-                        onClick={() => navigateToProjectRoute('/agents')}
+                        className={cn('size-8', location.pathname === '/agents' && 'bg-muted')}
+                        onClick={() => navigate('/agents')}
                         title="Agents (A)"
                         aria-label="Agents"
-                        disabled={!hasActiveProject}
                     >
                         <Bot className="size-5" />
                     </Button>
-                    
-                    <div className="h-px w-8 bg-border/60 my-1" />
                     <Button
                         variant="ghost"
                         size="icon"
@@ -244,19 +240,19 @@ export function AppSidebar({
                             active={isProjectRoute('')}
                             onClick={() => navigateToProjectRoute('')}
                         />
-                        <NavButton
-                            icon={Bot}
-                            label="Agents"
-                            shortcut="A"
-                            active={isProjectRoute('/agents')}
-                            onClick={() => navigateToProjectRoute('/agents')}
-                        />
                     </div>
 
                     <div className="my-4 h-px bg-border/60" />
 
                     <SectionLabel>Tools</SectionLabel>
                     <div className="space-y-1">
+                        <NavButton
+                            icon={Bot}
+                            label="Agents"
+                            shortcut="A"
+                            active={location.pathname === '/agents'}
+                            onClick={() => navigate('/agents')}
+                        />
                         <NavButton
                             icon={GitPullRequestDraft}
                             label="GitHub Issues"
@@ -272,10 +268,6 @@ export function AppSidebar({
                             onClick={() => navigateToProjectRoute('/worktrees')}
                         />
                     </div>
-
-                    <div className="my-4 h-px bg-border/60" />
-
-                    <AgentsSection agents={agentsQuery.data?.agents ?? []} />
 
                     <div className="mt-auto space-y-3 pt-4">
                         {onCreateTicket && hasActiveProject && (
