@@ -52,7 +52,7 @@ Both interfaces deliver the same event types and message shapes.
   - Messages are shaped according to `shared/src/types/kanban.ts` and include enough data for the client to update local state without refetching.
   - Card envelopes include `isEnhanced` and `disableAutoCloseOnPRMerge` so badges and auto-close opt-outs stay in sync with real-time updates.
 - Heartbeats:
-  - Server sends `heartbeat` events every 30 seconds to keep connections alive.
+  - Server sends `heartbeat` events every 15 seconds to keep connections alive.
   - Client uses exponential backoff (1.5s base, max 12s, up to 8 attempts) for reconnection.
 
 ### WebSocket (alternative)
@@ -95,7 +95,7 @@ Both interfaces deliver the same event types and message shapes.
   - The SSE stream is **read-only**.
   - When relevant events occur (e.g. attempts complete, boards change), listeners recompute the overview and push an updated snapshot down the stream.
 - Heartbeats:
-  - Server sends `heartbeat` events every 30 seconds.
+  - Server sends `heartbeat` events every 15 seconds.
 
 ### WebSocket (alternative)
 
@@ -137,7 +137,7 @@ Both SSE and WebSocket deliver the same event types:
 |-------|-------------|
 | `hello` | Initial connection acknowledgment with server timestamp |
 | `state` | Full board state snapshot (SSE) or board state changes |
-| `heartbeat` | Keep-alive signal (SSE every 30s) |
+| `heartbeat` | Keep-alive signal (SSE every 15s) |
 | `attempt_started` | New attempt initiated for a card |
 | `attempt_status` | Attempt status changed |
 | `attempt_log` | Log message from attempt |

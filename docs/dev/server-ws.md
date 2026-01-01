@@ -1,33 +1,11 @@
-# Real-time Module (WebSocket & SSE)
+# Real-time Module (SSE)
 
 ## Purpose
 
-- Provide the Hono WebSocket upgrade handler for project boards.
 - Provide SSE (Server-Sent Events) handlers as the primary real-time interface.
-- Broadcast domain events (board changes, attempt updates, git notifications, agent/profile updates) to connected
-  clients without direct coupling.
+- Broadcast domain events (board changes, attempt updates, git notifications, agent/profile updates) to connected clients without direct coupling.
 
 ## Data & Event Flow
-
-### WebSocket (`ws/`)
-
-1. **Connection Lifecycle (`ws/kanban-handlers.ts`, `ws/dashboard-handlers.ts`)**
-    - Board sockets (`ws/kanban-handlers.ts`):
-        - Validate project/board access.
-        - Send a `hello` envelope (`{"type":"hello","payload":{"serverTime":"<ISO 8601>"}}`).
-        - Send the initial board `state` payload and recent attempt envelopes.
-        - Handle `get_state`, card CRUD, and heartbeat (`ping`/`pong`) messages, including `update_card` commands that surface `isEnhanced` and `disableAutoCloseOnPRMerge` payloads.
-    - Dashboard sockets (`ws/dashboard-handlers.ts`):
-        - Register the socket on the fixed `dashboard` channel.
-        - Send a `hello` envelope (`{"type":"hello","payload":{"serverTime":"<ISO 8601>"}}`).
-        - Then send the latest `DashboardOverview` snapshot as `{"type":"dashboard_overview","payload":<DashboardOverview>}`.
-        - The dashboard channel is read-only; incoming messages are ignored.
-2. **Event Broadcasting (`ws/listeners.ts`)**
-    - Subscribes to `board.state.changed`, `attempt.*`, `git.*`, `github.pr.created`, `agent.profile.changed`, and
-      `agent.registered`.
-    - Uses the websocket bus to broadcast typed messages defined in `shared/src/types/kanban.ts` (including `dashboard_overview` envelopes and new agent messages).
-3. **Channel Management (`ws/bus.ts`)**
-    - Maintains per-project socket sets and supports global fan-out (via `'*'` channel) for agent events.
 
 ### SSE (`sse/`)
 
@@ -37,14 +15,14 @@
         - Sends `hello` event with server timestamp.
         - Sends initial `state` payload with board snapshot.
         - Sends recent attempt statuses.
-        - Sends periodic heartbeats (30s interval).
+        - Sends periodic heartbeats (15s interval).
     - Dashboard SSE (`sse/handlers.ts`):
         - Global endpoint without boardId.
         - Sends `hello` event on connection.
         - Sends initial `dashboard_overview` payload.
-        - Sends periodic heartbeats (30s interval).
+        - Sends periodic heartbeats (15s interval).
 2. **Event Broadcasting (`sse/listeners.ts`)**
-    - Subscribes to the same domain events as WebSocket listeners.
+    - Subscribes to `board.state.changed`, `attempt.*`, `git.*`, `github.pr.created`, `agent.profile.changed`, and `agent.registered`.
     - Broadcasts events to SSE connections via the SSE bus (`sse/bus.ts`).
     - Supports per-board channels and global fan-out for agent events.
 3. **Channel Management (`sse/bus.ts`)**
@@ -55,29 +33,42 @@
 
 ## Key Entry Points
 
-### WebSocket
-
-- `ws/kanban-handlers.ts`: handshake + command routing for board sockets.
-- `ws/dashboard-handlers.ts`: dashboard overview socket (read-only).
-- `ws/listeners.ts`: event-to-socket translation.
-- `ws/bus.ts`: socket registry and broadcast helper.
-
-### SSE
-
 - `sse/handlers.ts`: SSE endpoint handler for both board and dashboard streams.
-- `sse/listeners.ts`: event-to-SSE translation (mirrors ws/listeners.ts).
+- `sse/listeners.ts`: event-to-SSE translation.
 - `sse/bus.ts`: SSE connection registry and broadcast helper.
 
 ## Client Integration
 
 - Client uses `useKanbanSSE` hook (`client/src/lib/sse.ts`) for board updates.
 - Client uses `useDashboardSSE` hook (`client/src/lib/sse.ts`) for dashboard updates.
-- Both hooks implement automatic reconnection with exponential backoff.
+- Both hooks implement automatic reconnection with exponential backoff (1.5s base, max 12s, up to 8 attempts).
+
+## Message Types
+
+SSE messages use the `SseMsg` type defined in `shared/src/types/kanban.ts`:
+
+| Event | Description |
+|-------|-------------|
+| `hello` | Initial connection acknowledgment with server timestamp |
+| `state` | Full board state snapshot |
+| `heartbeat` | Keep-alive signal (every 15s) |
+| `attempt_started` | New attempt initiated for a card |
+| `attempt_status` | Attempt status changed |
+| `attempt_log` | Log message from attempt |
+| `conversation_item` | New conversation message in attempt |
+| `attempt_session` | Worktree session recorded |
+| `attempt_todos` | Attempt todo list updated |
+| `git_status` | Git status changed |
+| `git_commit` | New commit created |
+| `git_push` | Changes pushed to remote |
+| `attempt_pr` | Pull request created from attempt |
+| `agent_profile` | Agent profile created/updated/deleted |
+| `agent_registered` | New agent registered |
+| `dashboard_overview` | Dashboard metrics snapshot (dashboard channel) |
 
 ## Open Tasks
 
-- Replace mutation-initiated `get_state` fetches with event-driven board diffs once available.
 - Provide tests ensuring each event type broadcasts the expected real-time payload.
 ---
-title: Server: Real-time module (WebSocket & SSE)
+title: Server: Real-time module (SSE)
 ---
