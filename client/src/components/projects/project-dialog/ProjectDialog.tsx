@@ -198,8 +198,8 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                     className="space-y-5"
                 >
                     {!isEditMode && (
-                        <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Project type</Label>
+                        <div className="flex items-center justify-between gap-4">
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wide shrink-0">Project type</Label>
                             <div className="inline-flex rounded-lg border border-border/60 bg-muted/30 p-1">
                                 <button
                                     type="button"
@@ -246,7 +246,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                             placeholder="My awesome project"
                             autoFocus
                             disabled={loading}
-                            className="focus-visible:ring-[hsl(var(--brand))]"
+                            className="focus-visible:ring-brand"
                         />
                     </div>
 
@@ -318,8 +318,8 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                                 onClick={() => handleRepoSelect(entry)}
                                                 className={cn(
                                                     'flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors',
-                                                    'hover:bg-[hsl(var(--brand)/0.1)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[hsl(var(--brand))]',
-                                                    repository === entry.path && 'bg-[hsl(var(--brand)/0.1)] text-[hsl(var(--brand))]'
+                                                    'hover:bg-brand/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand',
+                                                    repository === entry.path && 'bg-brand/10 text-brand'
                                                 )}
                                             >
                                                 <FolderGit className="size-4 shrink-0 text-muted-foreground"/>
@@ -330,7 +330,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                                     </span>
                                                 </span>
                                                 {repository === entry.path && (
-                                                    <Check className="size-4 text-[hsl(var(--brand))]"/>
+                                                    <Check className="size-4 text-brand"/>
                                                 )}
                                             </button>
                                         ))
@@ -356,7 +356,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                                 placeholder={placeholder}
                                 disabled={loading || isEditMode}
                                 className={cn(
-                                    'pr-9 font-mono text-sm focus-visible:ring-[hsl(var(--brand))]',
+                                    'pr-9 font-mono text-sm focus-visible:ring-brand',
                                     pathValidation === 'valid' && 'border-green-500/50',
                                     pathValidation === 'invalid' && 'border-destructive/50'
                                 )}
@@ -400,7 +400,7 @@ export function ProjectDialog({open, mode, project, loading = false, onOpenChang
                         <Button
                             type="submit"
                             disabled={loading || (pathValidation !== 'valid' && pathValidation !== 'idle' && !isEditMode)}
-                            className="bg-[hsl(var(--brand))] text-white hover:bg-[hsl(var(--brand)/0.9)]"
+                            className="bg-brand text-brand-foreground hover:bg-brand/90"
                         >
                             {loading ? (
                                 <>
