@@ -6,20 +6,10 @@ import {
     type DashboardOverview,
     type DashboardTimeRangePreset,
     type DashboardTimeRangeQuery,
-    type WsMsg,
 } from 'shared'
 import {getDashboardOverview} from '@/api/dashboard'
 import {dashboardKeys} from '@/lib/queryClient'
 import {resolveApiBase} from '@/lib/env'
-
-function resolveDashboardWsUrl() {
-    const explicit = import.meta.env.VITE_WS_URL as string | undefined
-    if (explicit) return `${explicit.replace(/\/?$/, '')}/dashboard`
-
-    // Keep websocket origin/port in lockstep with the REST API base.
-    const apiBase = resolveApiBase()
-    return apiBase.replace(/^http/i, 'ws') + '/ws/dashboard'
-}
 
 type Options = Partial<UseQueryOptions<DashboardOverview>>
 
@@ -28,7 +18,7 @@ type DashboardOverviewOptions = Options & {
      * Optional preset controlling the dashboard time window.
      *
      * When omitted, the backend falls back to its default range. The hook
-     * keeps the default preset on the legacy cache key so that WebSocket
+     * keeps the default preset on the legacy cache key so that SSE
      * updates wired via `useDashboardStream` continue to work without
      * changes.
      */
@@ -135,12 +125,23 @@ export function useDashboardMetrics(options?: DashboardOverviewOptions): {
 
 export type DashboardStreamStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'error'
 
+const RECONNECT_BASE_DELAY_MS = 1_500
+const RECONNECT_MAX_DELAY_MS = 12_000
+
+function resolveDashboardSseUrl() {
+    const explicit = import.meta.env.VITE_SSE_URL as string | undefined
+    if (explicit) return explicit.replace(/\/?$/, '')
+    const apiBase = resolveApiBase()
+    return apiBase + '/sse'
+}
+
 export function useDashboardStream(enabled = true): {
     status: DashboardStreamStatus
 } {
     const queryClient = useQueryClient()
-    const url = useMemo(() => resolveDashboardWsUrl(), [])
+    const url = useMemo(() => resolveDashboardSseUrl(), [])
 
+    const eventSourceRef = useRef<EventSource | null>(null)
     const reconnectTimerRef = useRef<number | null>(null)
     const reconnectAttemptsRef = useRef(0)
     const shouldReconnectRef = useRef(false)
@@ -149,7 +150,6 @@ export function useDashboardStream(enabled = true): {
 
     useEffect(() => {
         let disposed = false
-        let ws: WebSocket | null = null
 
         const clearReconnectTimer = () => {
             if (reconnectTimerRef.current !== null) {
@@ -163,9 +163,7 @@ export function useDashboardStream(enabled = true): {
             if (reconnectTimerRef.current !== null) return
 
             const attempt = reconnectAttemptsRef.current
-            const baseDelay = 1_500
-            const maxDelay = 12_000
-            const delay = Math.min(baseDelay * 2 ** attempt, maxDelay)
+            const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** attempt, RECONNECT_MAX_DELAY_MS)
 
             reconnectTimerRef.current = window.setTimeout(() => {
                 reconnectTimerRef.current = null
@@ -175,47 +173,40 @@ export function useDashboardStream(enabled = true): {
             }, delay)
         }
 
-        const handleMessage = (event: MessageEvent) => {
-            try {
-                const raw =
-                    typeof event.data === 'string'
-                        ? event.data
-                        : new TextDecoder().decode(event.data as ArrayBuffer)
-                const msg = JSON.parse(raw) as WsMsg
-                if (msg.type === 'dashboard_overview') {
-                    queryClient.setQueryData(dashboardKeys.overview(), msg.payload)
-                }
-            } catch (error) {
-                console.warn('[dashboard] ignored malformed websocket payload', error)
-            }
-        }
-
-        const handleCloseOrError = () => {
-            if (disposed) return
-            setStatus((current) => (current === 'open' ? 'reconnecting' : 'error'))
-            scheduleReconnect()
-        }
-
         function connect() {
-            if (!enabled || disposed) {
+            if (!enabled || disposed || !shouldReconnectRef.current) {
                 return
             }
 
             clearReconnectTimer()
             setStatus((current) => (current === 'idle' ? 'connecting' : 'reconnecting'))
 
-            const socket = new WebSocket(url)
-            ws = socket
+            const eventSource = new EventSource(url)
+            eventSourceRef.current = eventSource
 
-            socket.addEventListener('open', () => {
-                if (disposed || ws !== socket) return
+            eventSource.onopen = () => {
+                if (disposed || eventSourceRef.current !== eventSource) return
                 reconnectAttemptsRef.current = 0
                 setStatus('open')
-            })
+            }
 
-            socket.addEventListener('message', handleMessage)
-            socket.addEventListener('close', handleCloseOrError)
-            socket.addEventListener('error', handleCloseOrError)
+            eventSource.onerror = () => {
+                if (disposed) return
+                eventSource.close()
+                eventSourceRef.current = null
+                setStatus((current) => (current === 'open' ? 'reconnecting' : 'error'))
+                scheduleReconnect()
+            }
+
+            eventSource.addEventListener('dashboard_overview', (event) => {
+                if (disposed) return
+                try {
+                    const data = JSON.parse((event as MessageEvent).data)
+                    queryClient.setQueryData(dashboardKeys.overview(), data)
+                } catch (error) {
+                    console.warn('[dashboard] ignored malformed SSE payload', error)
+                }
+            })
         }
 
         shouldReconnectRef.current = enabled
@@ -230,12 +221,12 @@ export function useDashboardStream(enabled = true): {
             disposed = true
             shouldReconnectRef.current = false
             clearReconnectTimer()
-            if (ws) {
+            if (eventSourceRef.current) {
                 try {
-                    ws.close()
+                    eventSourceRef.current.close()
                 } catch {
                 }
-                ws = null
+                eventSourceRef.current = null
             }
         }
     }, [enabled, queryClient, url])

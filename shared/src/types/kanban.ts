@@ -54,61 +54,28 @@ export interface BoardState {
     cards: Record<CardId, Card>
 }
 
-// WebSocket message envelope
-export type WsMsg =
+// SSE message types (server-to-client only)
+export type SseMsg =
     | { type: 'hello'; payload: { serverTime: string } }
     | { type: 'state'; payload: BoardState }
-    | { type: 'get_state' }
-    | { type: 'ping'; payload?: { ts?: string } }
-    | { type: 'pong'; payload?: { ts?: string } }
-    | { type: 'create_card'; payload: { columnId: ColumnId; title: string; description?: string; ticketType?: TicketType | null } }
-    | { type: 'move_card'; payload: { cardId: CardId; toColumnId: ColumnId; toIndex: number } }
-    | {
-    type: 'update_card';
-    payload: {
-        cardId: CardId;
-        title?: string;
-        description?: string;
-        ticketType?: TicketType | null;
-        isEnhanced?: boolean;
-        disableAutoCloseOnPRMerge?: boolean;
-    }
-}
-    | { type: 'delete_card'; payload: { cardId: CardId } }
-    // Attempt event envelopes broadcast by server; client may ignore until UI lands
+    | { type: 'heartbeat'; payload: { ts: string } }
+    // Attempt event envelopes broadcast by server
     | { type: 'attempt_started'; payload: { attemptId: string; cardId: string } }
     | { type: 'attempt_status'; payload: { attemptId: string; cardId?: string; status: import('./runner').AttemptStatus } }
-    | {
-    type: 'attempt_log';
-    payload: { attemptId: string; level: 'info' | 'warn' | 'error'; message: string; ts: string }
-}
+    | { type: 'attempt_log'; payload: { attemptId: string; level: 'info' | 'warn' | 'error'; message: string; ts: string } }
     | { type: 'conversation_item'; payload: { attemptId: string; item: ConversationItem } }
     | { type: 'attempt_session'; payload: { attemptId: string; sessionId: string } }
     | { type: 'attempt_todos'; payload: { attemptId: string; todos: AttemptTodoSummary } }
-    | { type: 'git:status' }
+    // Git events
+    | { type: 'git_status'; payload: Record<string, never> }
     | { type: 'git_commit'; payload: { attemptId: string; shortSha: string; subject: string; ts: string } }
     | { type: 'git_push'; payload: { attemptId: string; remote: string; branch: string; ts: string } }
     | { type: 'attempt_pr'; payload: { attemptId: string; pr: import('./git').PRInfo } }
-    | {
-    type: 'agent_profile'
-    payload: {
-        kind: 'created' | 'updated' | 'deleted'
-        profileId: string
-        agent: string
-        label?: string | null
-    }
-}
-    | {
-    type: 'agent_registered'
-    payload: {
-        agent: string
-        label?: string | null
-    }
-}
-    | {
-    type: 'dashboard_overview'
-    payload: DashboardOverview
-}
+    // Agent events
+    | { type: 'agent_profile'; payload: { kind: 'created' | 'updated' | 'deleted'; profileId: string; agent: string; label?: string | null } }
+    | { type: 'agent_registered'; payload: { agent: string; label?: string | null } }
+    // Dashboard events
+    | { type: 'dashboard_overview'; payload: DashboardOverview }
 
 export const initialBoard = (): BoardState => {
     const now = new Date().toISOString()
@@ -137,7 +104,7 @@ export const initialBoard = (): BoardState => {
     }
     const c3: Card = {
         id: mkId('card', 3),
-        title: 'Wire WebSockets',
+        title: 'Wire SSE',
         description: 'Realtime board sync',
         isEnhanced: false,
         createdAt: now,

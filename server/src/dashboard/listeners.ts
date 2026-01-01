@@ -1,5 +1,5 @@
 import type {AppEventBus} from '../events/bus'
-import {broadcast} from '../ws/bus'
+import {broadcast} from '../sse/bus'
 import {getDashboardOverview} from 'core'
 import {log} from '../log'
 
@@ -13,7 +13,7 @@ function scheduleBroadcast() {
     setTimeout(async () => {
         try {
             const overview = await getDashboardOverview()
-            broadcast(CHANNEL_ID, JSON.stringify({type: 'dashboard_overview', payload: overview}))
+            broadcast(CHANNEL_ID, 'dashboard_overview', overview)
         } catch (error) {
             log.error('dashboard', 'broadcast failed', {err: error})
         } finally {
