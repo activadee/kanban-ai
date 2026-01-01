@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, act } from "@testing-library/react";
 import { Board } from "@/components/kanban/Board";
 import type { BoardState, ColumnKey } from "shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -98,67 +98,209 @@ const mockHandlers = {
 };
 
 describe("Board – lane layout maintains width during panel resize", () => {
+    let originalOffsetWidth: PropertyDescriptor | undefined;
+
     beforeEach(() => {
         vi.clearAllMocks();
+        originalOffsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth");
     });
 
-    it("has overflow-x-auto on scroll container for horizontal scrolling", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
-
-        const scrollableContainer = container.querySelector('[class*="overflow-x-auto"]');
-        expect(scrollableContainer).toBeTruthy();
+    afterEach(() => {
+        if (originalOffsetWidth) {
+            Object.defineProperty(HTMLElement.prototype, "offsetWidth", originalOffsetWidth);
+        }
     });
 
-    it("lane wrappers use flex-1 to distribute space evenly", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
+    describe("structural layout", () => {
+        it("has overflow-x-auto on scroll container for horizontal scrolling", () => {
+            const state = createMockBoardState();
+            const { container } = render(
+                <Board
+                    projectId="test-project"
+                    state={state}
+                    handlers={mockHandlers}
+                />,
+                { wrapper }
+            );
 
-        const laneWrappers = container.querySelectorAll('[class*="flex-1"][class*="h-full"]');
-        expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
+            const scrollableContainer = container.querySelector('[class*="overflow-x-auto"]');
+            expect(scrollableContainer).toBeTruthy();
+        });
+
+        it("lane wrappers use flex-1 to distribute space evenly", () => {
+            const state = createMockBoardState();
+            const { container } = render(
+                <Board
+                    projectId="test-project"
+                    state={state}
+                    handlers={mockHandlers}
+                />,
+                { wrapper }
+            );
+
+            const laneWrappers = container.querySelectorAll('[class*="flex-1"][class*="h-full"]');
+            expect(laneWrappers.length).toBeGreaterThanOrEqual(4);
+        });
+
+        it("board uses flex layout with gap-4 for lanes", () => {
+            const state = createMockBoardState();
+            const { container } = render(
+                <Board
+                    projectId="test-project"
+                    state={state}
+                    handlers={mockHandlers}
+                />,
+                { wrapper }
+            );
+
+            const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
+            expect(flexContainer).toBeTruthy();
+        });
     });
 
-    it("board uses flex layout with gap-4 for lanes", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
+    describe("width capture and preservation", () => {
+        it("captures container width on mount and applies it as minWidth", async () => {
+            const mockWidth = 1200;
+            Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+                configurable: true,
+                get() {
+                    return mockWidth;
+                },
+            });
 
-        const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
-        expect(flexContainer).toBeTruthy();
-    });
+            const state = createMockBoardState();
+            let container: HTMLElement;
+            
+            await act(async () => {
+                const result = render(
+                    <Board
+                        projectId="test-project"
+                        state={state}
+                        handlers={mockHandlers}
+                    />,
+                    { wrapper }
+                );
+                container = result.container;
+            });
 
-    it("scroll container has a ref for width capture", () => {
-        const state = createMockBoardState();
-        const { container } = render(
-            <Board
-                projectId="test-project"
-                state={state}
-                handlers={mockHandlers}
-            />,
-            { wrapper }
-        );
+            const flexContainer = container!.querySelector('[class*="flex"][class*="gap-4"]');
+            expect(flexContainer).toBeTruthy();
+            
+            const style = flexContainer?.getAttribute("style");
+            expect(style).toContain(`min-width: ${mockWidth}px`);
+        });
 
-        const scrollContainer = container.querySelector('[class*="overflow-x-auto"]');
-        expect(scrollContainer).toBeTruthy();
+        it("preserves captured width even when container would shrink (simulating panel open)", async () => {
+            const initialWidth = 1200;
+            let currentWidth = initialWidth;
+            
+            Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+                configurable: true,
+                get() {
+                    return currentWidth;
+                },
+            });
+
+            const state = createMockBoardState();
+            let container: HTMLElement;
+            
+            await act(async () => {
+                const result = render(
+                    <Board
+                        projectId="test-project"
+                        state={state}
+                        handlers={mockHandlers}
+                    />,
+                    { wrapper }
+                );
+                container = result.container;
+            });
+
+            const flexContainer = container!.querySelector('[class*="flex"][class*="gap-4"]');
+            const initialStyle = flexContainer?.getAttribute("style");
+            expect(initialStyle).toContain(`min-width: ${initialWidth}px`);
+
+            currentWidth = 800;
+            
+            await act(async () => {
+                window.dispatchEvent(new Event("resize"));
+            });
+
+            const styleAfterResize = flexContainer?.getAttribute("style");
+            expect(styleAfterResize).toContain(`min-width: ${initialWidth}px`);
+            expect(styleAfterResize).not.toContain(`min-width: ${currentWidth}px`);
+        });
+
+        it("does not apply minWidth style when container width is 0 (JSDOM default)", () => {
+            Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+                configurable: true,
+                get() {
+                    return 0;
+                },
+            });
+
+            const state = createMockBoardState();
+            const { container } = render(
+                <Board
+                    projectId="test-project"
+                    state={state}
+                    handlers={mockHandlers}
+                />,
+                { wrapper }
+            );
+
+            const flexContainer = container.querySelector('[class*="flex"][class*="gap-4"]');
+            const style = flexContainer?.getAttribute("style");
+            expect(style).toBeNull();
+        });
+
+        it("captures width only once (does not re-capture on re-renders)", async () => {
+            const initialWidth = 1200;
+            let currentWidth = initialWidth;
+            
+            Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+                configurable: true,
+                get() {
+                    return currentWidth;
+                },
+            });
+
+            const state = createMockBoardState();
+            let container: HTMLElement;
+            let rerender: (ui: React.ReactElement) => void;
+            
+            await act(async () => {
+                const result = render(
+                    <Board
+                        projectId="test-project"
+                        state={state}
+                        handlers={mockHandlers}
+                    />,
+                    { wrapper }
+                );
+                container = result.container;
+                rerender = result.rerender;
+            });
+
+            const flexContainer = container!.querySelector('[class*="flex"][class*="gap-4"]');
+            const initialStyle = flexContainer?.getAttribute("style");
+            expect(initialStyle).toContain(`min-width: ${initialWidth}px`);
+            
+            currentWidth = 800;
+            
+            await act(async () => {
+                rerender(
+                    <Board
+                        projectId="test-project"
+                        state={state}
+                        handlers={mockHandlers}
+                    />
+                );
+            });
+
+            const styleAfterRerender = flexContainer?.getAttribute("style");
+            expect(styleAfterRerender).toContain(`min-width: ${initialWidth}px`);
+            expect(styleAfterRerender).not.toContain(`min-width: 800px`);
+        });
     });
 });
