@@ -165,7 +165,7 @@
 
 @layer components {
     .kanban-card {
-        @apply relative rounded-lg overflow-visible;
+        @apply relative rounded-lg overflow-visible border border-border;
         background: var(--card);
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
