@@ -44,6 +44,7 @@ describe("GithubIssueSyncSection", () => {
                 githubIssueSyncState="open"
                 githubIssueSyncIntervalMinutes={15}
                 githubIssueAutoCreateEnabled={false}
+                autoCloseTicketOnPRMerge={false}
                 onChange={() => {}}
             />,
         );
@@ -53,9 +54,8 @@ describe("GithubIssueSyncSection", () => {
         }) as HTMLElement;
         expect(checkbox.getAttribute("disabled")).toBeNull();
 
-        // Interval input remains disabled until sync is explicitly enabled.
         const intervalInput = screen.getByLabelText(
-            /Sync interval \(minutes\)/i,
+            /Sync Interval/i,
         ) as HTMLInputElement;
         expect(intervalInput.disabled).toBe(true);
     });
@@ -71,12 +71,13 @@ describe("GithubIssueSyncSection", () => {
                 githubIssueSyncState="open"
                 githubIssueSyncIntervalMinutes={15}
                 githubIssueAutoCreateEnabled={false}
+                autoCloseTicketOnPRMerge={false}
                 onChange={() => {}}
             />,
         );
 
         const helper = screen.getByText(
-            /Connect GitHub and configure the repo to enable automatic issue sync/i,
+            /Connect your GitHub account in global settings to enable sync features/i,
         );
         expect(helper).not.toBeNull();
 
