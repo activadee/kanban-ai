@@ -192,7 +192,6 @@
 .kanban-card {
     position: relative;
     border-radius: 0.5rem;
-    border: 1px solid var(--border);
     background: var(--card);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
@@ -215,7 +214,6 @@
 
 /* Enhanced card state */
 .kanban-card--enhanced {
-    border-color: var(--card-enhanced-border);
     background: linear-gradient(
         135deg,
         var(--card) 0%,
@@ -229,9 +227,6 @@
 /* Selected card state - Editorial Highlight */
 .kanban-card--selected {
     transform: translateX(2px);
-    box-shadow: 
-        0 4px 12px -2px rgb(0 0 0 / 0.08),
-        0 2px 4px -1px rgb(0 0 0 / 0.04);
 }
 
 .kanban-card--selected::before {
@@ -239,12 +234,6 @@
     box-shadow: 
         4px 0 12px -2px var(--ticket-type-color, var(--primary)),
         2px 0 4px -1px var(--ticket-type-color, var(--primary));
-}
-
-.dark .kanban-card--selected {
-    box-shadow: 
-        0 4px 16px -2px rgb(0 0 0 / 0.3),
-        0 2px 6px -1px rgb(0 0 0 / 0.2);
 }
 
 .dark .kanban-card--selected::before {
@@ -282,7 +271,6 @@
 
 /* Failed card state */
 .kanban-card--failed {
-    border-color: var(--card-failed-border);
     background: var(--card);
     animation: kanban-attention-pulse 2s ease-in-out infinite;
 }
@@ -294,7 +282,6 @@
 
 /* Blocked card state */
 .kanban-card--blocked {
-    border-color: var(--card-blocked-border);
     opacity: 0.85;
 }
 
