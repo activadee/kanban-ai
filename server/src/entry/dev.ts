@@ -7,6 +7,7 @@ import { createEventBus } from '../events/bus'
 import { startGithubIssueSyncScheduler } from '../github/sync'
 import { startGithubPrAutoCloseScheduler } from '../github/pr-auto-close.sync'
 import { projectsService, settingsService } from 'core'
+import { registerShutdownHandlers } from '../lifecycle'
 
 if (import.meta.main) {
   const run = async () => {
@@ -46,6 +47,7 @@ if (import.meta.main) {
     const { url, dbFile } = await startServer({ config, fetch: app.fetch, websocket })
     startGithubIssueSyncScheduler({ events })
     startGithubPrAutoCloseScheduler({ events })
+    registerShutdownHandlers()
     log.info('server', 'listening', { url, dbFile, mode: 'dev' })
   }
   run().catch((error) => {

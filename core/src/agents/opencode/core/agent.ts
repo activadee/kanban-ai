@@ -129,6 +129,38 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
 
     private readonly groupers = new Map<string, OpencodeGrouper>()
     private static readonly serversByPort = new Map<number, ServerInstance>()
+    private static shutdownInProgress = false
+
+    static async shutdownAllServers(): Promise<void> {
+        if (OpencodeImpl.shutdownInProgress) {
+            return
+        }
+        OpencodeImpl.shutdownInProgress = true
+
+        const servers = Array.from(OpencodeImpl.serversByPort.entries())
+        if (servers.length === 0) {
+            OpencodeImpl.shutdownInProgress = false
+            return
+        }
+
+        const closePromises = servers.map(async ([port, server]) => {
+            try {
+                server.close()
+                OpencodeImpl.serversByPort.delete(port)
+            } catch { }
+        })
+
+        await Promise.all(closePromises)
+        OpencodeImpl.shutdownInProgress = false
+    }
+
+    static getActiveServerCount(): number {
+        return OpencodeImpl.serversByPort.size
+    }
+
+    static isShuttingDown(): boolean {
+        return OpencodeImpl.shutdownInProgress
+    }
 
     protected async detectInstallation(profile: OpencodeProfile, ctx: AgentContext): Promise<OpencodeInstallation> {
         const directory = ctx.worktreePath
