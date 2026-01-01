@@ -210,14 +210,14 @@ export function useKanbanSSE(boardId: string | null) {
 }
 
 /**
- * SSE hook for dashboard - listens to global events
+ * SSE hook for dashboard - listens to global events (no boardId = dashboard mode)
  */
 export function useDashboardSSE() {
     const baseUrl = useMemo(() => {
         const explicit = import.meta.env.VITE_SSE_URL as string | undefined
         if (explicit) return explicit.replace(/\/?$/, '')
         const apiBase = resolveApiBase()
-        return apiBase + '/sse/dashboard'
+        return apiBase + '/sse'
     }, [])
 
     const eventSourceRef = useRef<EventSource | null>(null)
