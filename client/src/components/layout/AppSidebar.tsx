@@ -218,7 +218,7 @@ export function AppSidebar({
                     <div className="my-4 h-px bg-border/60" />
 
                     <SectionLabel>Project</SectionLabel>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <NavButton
                             icon={LayoutDashboard}
                             label="Dashboard"
@@ -245,7 +245,7 @@ export function AppSidebar({
                     <div className="my-4 h-px bg-border/60" />
 
                     <SectionLabel>Tools</SectionLabel>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                         <NavButton
                             icon={Bot}
                             label="Agents"
@@ -346,7 +346,7 @@ export function AppSidebar({
             <>
                 <Sheet open={mobileOpen} onOpenChange={onMobileOpenChange}>
                     <SheetContent side="left" className="w-64 p-0 pt-12">
-                        <div className="flex h-full flex-col bg-muted/20">
+                        <div className="flex h-full flex-col bg-background">
                             {sidebarContent}
                         </div>
                     </SheetContent>
@@ -360,7 +360,7 @@ export function AppSidebar({
         <>
             <aside
                 className={cn(
-                    'hidden md:flex h-full flex-col border-r border-border/60 bg-muted/20 transition-all duration-300 ease-in-out',
+                    'hidden md:flex h-full flex-col border-r border-border/60 bg-background transition-all duration-300 ease-in-out',
                     isCollapsed ? 'w-16' : 'w-64'
                 )}
                 aria-expanded={!isCollapsed}

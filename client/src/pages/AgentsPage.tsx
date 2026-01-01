@@ -2,10 +2,10 @@ import {useMemo, useState} from 'react'
 import {Bot, Pencil, Plus, Settings2, Sparkles, Trash2, Zap} from 'lucide-react'
 import {useQueryClient} from '@tanstack/react-query'
 import {PageHeader} from '@/components/layout/PageHeader'
+import {MasterDetailLayout, type MasterDetailItem} from '@/components/layout/MasterDetailLayout'
 import {Button} from '@/components/ui/button'
 import {Badge} from '@/components/ui/badge'
 import {Card} from '@/components/ui/card'
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {
     Dialog,
     DialogContent,
@@ -23,7 +23,6 @@ import {
     useDeleteAgentProfile,
 } from '@/hooks'
 import {agentKeys} from '@/lib/queryClient'
-import {cn} from '@/lib/utils'
 import type {AgentProfileRow} from 'shared'
 
 export function AgentsPage() {
@@ -52,6 +51,20 @@ export function AgentsPage() {
 
     const activeProfiles = activeAgent ? (profilesByAgent[activeAgent] ?? []) : []
     const activeAgentData = agents.find((a) => a.key === activeAgent)
+
+    const agentItems: MasterDetailItem[] = useMemo(
+        () =>
+            agents.map((agent) => {
+                const count = profilesByAgent[agent.key]?.length ?? 0
+                return {
+                    id: agent.key,
+                    label: agent.label,
+                    subtitle: `${count} profile${count !== 1 ? 's' : ''}`,
+                    icon: Bot,
+                }
+            }),
+        [agents, profilesByAgent]
+    )
 
     const createMutation = useCreateAgentProfile({
         onSuccess: () => {
@@ -97,211 +110,139 @@ export function AgentsPage() {
                 description="Configure AI coding agents and manage their profiles"
             />
 
-            <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
-                <div className="hidden w-72 shrink-0 border-r border-border/40 bg-muted/10 md:block">
-                    <div className="flex h-full flex-col">
-                        <div className="border-b border-border/40 px-4 py-3">
-                            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                Available Agents
-                            </h2>
+            <MasterDetailLayout
+                title="Available Agents"
+                items={agentItems}
+                activeId={activeAgent}
+                onSelect={setSelectedAgent}
+                loading={agentsQuery.isLoading}
+                emptyState={
+                    <div className="flex h-32 flex-col items-center justify-center gap-2 text-center">
+                        <Bot className="size-8 text-muted-foreground/50" />
+                        <p className="text-sm text-muted-foreground">No agents registered</p>
+                    </div>
+                }
+            >
+                {activeAgent && activeAgentData ? (
+                    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+                        <div className="mb-6 sm:mb-8">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex items-center gap-3 sm:gap-4">
+                                    <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10 sm:size-14">
+                                        <Bot className="size-6 text-primary sm:size-7" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-xl font-semibold sm:text-2xl">{activeAgentData.label}</h1>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                            <Badge variant="outline" className="font-mono text-xs">
+                                                {activeAgentData.key}
+                                            </Badge>
+                                            {activeAgentData.capabilities?.resume && (
+                                                <Badge variant="secondary" className="gap-1 text-xs">
+                                                    <Zap className="size-3" />
+                                                    Resume
+                                                </Badge>
+                                            )}
+                                            {activeAgentData.capabilities?.mcp && (
+                                                <Badge variant="secondary" className="gap-1 text-xs">
+                                                    <Sparkles className="size-3" />
+                                                    MCP
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button 
+                                    className="w-full sm:w-auto"
+                                    onClick={() => {
+                                        setEditingProfile(null)
+                                        setDialogOpen(true)
+                                    }}
+                                >
+                                    <Plus className="mr-2 size-4" />
+                                    New Profile
+                                </Button>
+                            </div>
                         </div>
-                        
-                        <div className="flex-1 overflow-y-auto p-2">
-                            {agentsQuery.isLoading ? (
-                                <div className="flex h-32 items-center justify-center">
-                                    <div className="text-sm text-muted-foreground">Loading...</div>
-                                </div>
-                            ) : agents.length === 0 ? (
-                                <div className="flex h-32 flex-col items-center justify-center gap-2 text-center">
-                                    <Bot className="size-8 text-muted-foreground/50" />
-                                    <p className="text-sm text-muted-foreground">No agents registered</p>
-                                </div>
+
+                        <div>
+                            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground sm:mb-4">
+                                Profiles
+                            </h2>
+
+                            {activeProfiles.length === 0 ? (
+                                <Card className="border-dashed">
+                                    <div className="flex flex-col items-center justify-center py-8 text-center sm:py-12">
+                                        <div className="mb-3 rounded-full bg-muted/50 p-3 sm:mb-4 sm:p-4">
+                                            <Settings2 className="size-6 text-muted-foreground/60 sm:size-8" />
+                                        </div>
+                                        <h3 className="mb-1 font-semibold">No profiles yet</h3>
+                                        <p className="mb-4 max-w-sm px-4 text-sm text-muted-foreground">
+                                            Create your first profile to customize how {activeAgentData.label} behaves.
+                                        </p>
+                                        <Button variant="outline" onClick={() => {
+                                            setEditingProfile(null)
+                                            setDialogOpen(true)
+                                        }}>
+                                            <Plus className="mr-2 size-4" />
+                                            Create Profile
+                                        </Button>
+                                    </div>
+                                </Card>
                             ) : (
-                                <div className="space-y-1">
-                                    {agents.map((agent) => {
-                                        const count = profilesByAgent[agent.key]?.length ?? 0
-                                        const isActive = activeAgent === agent.key
-                                        
-                                        return (
-                                            <button
-                                                key={agent.key}
-                                                onClick={() => setSelectedAgent(agent.key)}
-                                                className={cn(
-                                                    'group flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition hover:bg-muted/70',
-                                                    isActive
-                                                        ? 'bg-muted text-foreground shadow-sm'
-                                                        : 'text-muted-foreground'
-                                                )}
-                                            >
-                                                <div className={cn(
-                                                    'flex size-9 items-center justify-center rounded-lg transition-colors',
-                                                    isActive ? 'bg-background' : 'bg-muted/60 group-hover:bg-muted'
-                                                )}>
-                                                    <Bot className="size-4" />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="font-medium truncate">{agent.label}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {count} profile{count !== 1 ? 's' : ''}
+                                <div className="space-y-2 sm:space-y-3">
+                                    {activeProfiles.map((profile) => (
+                                        <Card
+                                            key={profile.id}
+                                            className="transition-all duration-150 hover:border-border hover:shadow-sm"
+                                        >
+                                            <div className="flex items-center justify-between p-3 sm:p-4">
+                                                <div className="flex items-center gap-3 sm:gap-4">
+                                                    <div className="flex size-9 items-center justify-center rounded-lg bg-muted/60 sm:size-10">
+                                                        <Settings2 className="size-4 text-muted-foreground" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium">{profile.name}</div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            Updated {formatRelativeTime(profile.updatedAt)}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </button>
-                                        )
-                                    })}
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setEditingProfile(profile)
+                                                            setDialogOpen(true)
+                                                        }}
+                                                    >
+                                                        <Pencil className="size-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => setDeletingProfile(profile)}
+                                                    >
+                                                        <Trash2 className="size-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    ))}
                                 </div>
                             )}
                         </div>
                     </div>
-                </div>
-
-                <div className="border-b border-border/40 p-4 md:hidden">
-                    <Select value={activeAgent ?? ''} onValueChange={setSelectedAgent}>
-                        <SelectTrigger className="w-full">
-                            <div className="flex items-center gap-2">
-                                <Bot className="size-4" />
-                                <SelectValue placeholder="Select an agent" />
-                            </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {agents.map((agent) => {
-                                const count = profilesByAgent[agent.key]?.length ?? 0
-                                return (
-                                    <SelectItem key={agent.key} value={agent.key}>
-                                        <div className="flex items-center gap-2">
-                                            <span>{agent.label}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                ({count} profile{count !== 1 ? 's' : ''})
-                                            </span>
-                                        </div>
-                                    </SelectItem>
-                                )
-                            })}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="flex-1 overflow-y-auto">
-                    {activeAgent && activeAgentData ? (
-                        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-                            <div className="mb-6 sm:mb-8">
-                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                    <div className="flex items-center gap-3 sm:gap-4">
-                                        <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10 sm:size-14">
-                                            <Bot className="size-6 text-primary sm:size-7" />
-                                        </div>
-                                        <div>
-                                            <h1 className="text-xl font-semibold sm:text-2xl">{activeAgentData.label}</h1>
-                                            <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                                <Badge variant="outline" className="font-mono text-xs">
-                                                    {activeAgentData.key}
-                                                </Badge>
-                                                {activeAgentData.capabilities?.resume && (
-                                                    <Badge variant="secondary" className="gap-1 text-xs">
-                                                        <Zap className="size-3" />
-                                                        Resume
-                                                    </Badge>
-                                                )}
-                                                {activeAgentData.capabilities?.mcp && (
-                                                    <Badge variant="secondary" className="gap-1 text-xs">
-                                                        <Sparkles className="size-3" />
-                                                        MCP
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Button 
-                                        className="w-full sm:w-auto"
-                                        onClick={() => {
-                                            setEditingProfile(null)
-                                            setDialogOpen(true)
-                                        }}
-                                    >
-                                        <Plus className="mr-2 size-4" />
-                                        New Profile
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground sm:mb-4">
-                                    Profiles
-                                </h2>
-
-                                {activeProfiles.length === 0 ? (
-                                    <Card className="border-dashed">
-                                        <div className="flex flex-col items-center justify-center py-8 text-center sm:py-12">
-                                            <div className="mb-3 rounded-full bg-muted/50 p-3 sm:mb-4 sm:p-4">
-                                                <Settings2 className="size-6 text-muted-foreground/60 sm:size-8" />
-                                            </div>
-                                            <h3 className="mb-1 font-semibold">No profiles yet</h3>
-                                            <p className="mb-4 max-w-sm px-4 text-sm text-muted-foreground">
-                                                Create your first profile to customize how {activeAgentData.label} behaves.
-                                            </p>
-                                            <Button variant="outline" onClick={() => {
-                                                setEditingProfile(null)
-                                                setDialogOpen(true)
-                                            }}>
-                                                <Plus className="mr-2 size-4" />
-                                                Create Profile
-                                            </Button>
-                                        </div>
-                                    </Card>
-                                ) : (
-                                    <div className="space-y-2 sm:space-y-3">
-                                        {activeProfiles.map((profile) => (
-                                            <Card
-                                                key={profile.id}
-                                                className="transition-all duration-150 hover:border-border hover:shadow-sm"
-                                            >
-                                                <div className="flex items-center justify-between p-3 sm:p-4">
-                                                    <div className="flex items-center gap-3 sm:gap-4">
-                                                        <div className="flex size-9 items-center justify-center rounded-lg bg-muted/60 sm:size-10">
-                                                            <Settings2 className="size-4 text-muted-foreground" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium">{profile.name}</div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                Updated {formatRelativeTime(profile.updatedAt)}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                setEditingProfile(profile)
-                                                                setDialogOpen(true)
-                                                            }}
-                                                        >
-                                                            <Pencil className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => setDeletingProfile(profile)}
-                                                        >
-                                                            <Trash2 className="size-4 text-destructive" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </Card>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                ) : (
+                    <div className="flex h-full items-center justify-center p-8">
+                        <div className="text-center">
+                            <Bot className="mx-auto mb-4 size-12 text-muted-foreground/30" />
+                            <p className="text-muted-foreground">Select an agent to view profiles</p>
                         </div>
-                    ) : (
-                        <div className="flex h-full items-center justify-center p-8">
-                            <div className="text-center">
-                                <Bot className="mx-auto mb-4 size-12 text-muted-foreground/30" />
-                                <p className="text-muted-foreground">Select an agent to view profiles</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                )}
+            </MasterDetailLayout>
 
             <ProfileFormDialog
                 open={dialogOpen}

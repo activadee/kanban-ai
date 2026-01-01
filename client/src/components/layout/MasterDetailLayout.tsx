@@ -31,7 +31,7 @@ export function MasterDetailLayout({
 }: MasterDetailLayoutProps) {
     return (
         <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
-            <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-sidebar md:block">
+            <aside className="hidden w-60 shrink-0 border-r border-border/50 bg-background md:block">
                 <div className="flex h-full flex-col">
                     <header className="px-5 py-4">
                         <h2 className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
@@ -126,7 +126,7 @@ export function MasterDetailLayout({
                 </div>
             </aside>
 
-            <div className="border-b border-border/50 bg-sidebar p-3 md:hidden">
+            <div className="border-b border-border/50 bg-background p-3 md:hidden">
                 <Select value={activeId ?? ''} onValueChange={onSelect}>
                     <SelectTrigger className="w-full bg-sidebar-accent/50 border-sidebar-border hover:bg-sidebar-accent transition-colors">
                         <SelectValue placeholder={`Select ${title.toLowerCase()}`} />
