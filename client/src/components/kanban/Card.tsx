@@ -105,9 +105,16 @@ export function KanbanCard({
             } as React.CSSProperties}
         >
             {isEnhanced && (
-                <div className="kanban-bookmark" aria-label="Enhanced ticket">
-                    <Bookmark className="size-3.5" />
-                </div>
+                <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="kanban-bookmark" aria-label="Enhanced ticket">
+                                <Bookmark className="size-3.5" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent align="end">Enhanced ticket</TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             )}
             <div className="flex h-full flex-col gap-2.5 p-3 pl-4">
                 {showHeaderRow ? (
