@@ -90,11 +90,23 @@ export const columnRelations = relations(columns, ({one, many}) => ({
     cards: many(cards),
 }))
 
+export const cardImages = sqliteTable('card_images', {
+    cardId: text('card_id').primaryKey().references(() => cards.id, {onDelete: 'cascade'}),
+    imagesJson: text('images_json').notNull(),
+    createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
+})
+
 export const cardRelations = relations(cards, ({one}) => ({
     column: one(columns, {fields: [cards.columnId], references: [columns.id]}),
+    images: one(cardImages, {fields: [cards.id], references: [cardImages.cardId]}),
+}))
+
+export const cardImagesRelations = relations(cardImages, ({one}) => ({
+    card: one(cards, {fields: [cardImages.cardId], references: [cards.id]}),
 }))
 
 export type Board = typeof boards.$inferSelect
 export type ProjectSettingsRow = typeof projectSettings.$inferSelect
 export type Column = typeof columns.$inferSelect
 export type Card = typeof cards.$inferSelect
+export type CardImagesRow = typeof cardImages.$inferSelect

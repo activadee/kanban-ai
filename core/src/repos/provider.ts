@@ -11,6 +11,7 @@ import type {
     DependenciesRepo,
     EnhancementsRepo,
     DashboardRepo,
+    CardImagesRepo,
 } from './interfaces'
 
 let _provider: RepoProvider | null = null
@@ -70,6 +71,10 @@ export function getEnhancementsRepo(): EnhancementsRepo {
 
 export function getDashboardRepo(): DashboardRepo {
     return getRepoProvider().dashboard
+}
+
+export function getCardImagesRepo(): CardImagesRepo {
+    return getRepoProvider().cardImages
 }
 
 export function withRepoTx<T>(fn: (provider: RepoProvider) => Promise<T>): Promise<T> {

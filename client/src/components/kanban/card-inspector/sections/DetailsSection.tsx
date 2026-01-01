@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react'
+import type {MessageImage} from 'shared'
 import {Button} from '@/components/ui/button'
 import {CardDetailsForm, type DetailsValues} from '../CardDetailsForm'
 import {Bot} from 'lucide-react'
@@ -15,6 +16,12 @@ export type DetailsSectionProps = {
     deleting: boolean
     gitSection?: ReactNode
     onEnhanceInBackground?: () => void
+    existingImages?: MessageImage[]
+    imagesLoading?: boolean
+    pendingImages?: MessageImage[]
+    onAddImages?: (files: File[]) => Promise<void>
+    onRemoveImage?: (index: number) => void
+    canAddMoreImages?: boolean
 }
 
 export function DetailsSection({
@@ -29,6 +36,12 @@ export function DetailsSection({
                                    deleting,
                                    gitSection,
                                    onEnhanceInBackground,
+                                   existingImages,
+                                   imagesLoading,
+                                   pendingImages,
+                                   onAddImages,
+                                   onRemoveImage,
+                                   canAddMoreImages,
                                }: DetailsSectionProps) {
     return (
         <>
@@ -38,6 +51,12 @@ export function DetailsSection({
                 locked={locked}
                 availableCards={availableCards}
                 cardsIndex={cardsIndex}
+                existingImages={existingImages}
+                imagesLoading={imagesLoading}
+                pendingImages={pendingImages}
+                onAddImages={onAddImages}
+                onRemoveImage={onRemoveImage}
+                canAddMoreImages={canAddMoreImages}
             />
             <div className="flex items-center gap-2">
                 <Button

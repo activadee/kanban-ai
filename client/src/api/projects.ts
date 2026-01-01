@@ -10,6 +10,7 @@ import type {
     TicketKeyPreview,
     TicketType,
     CardEnhancementSuggestion,
+    MessageImage,
 } from 'shared'
 import {SERVER_URL} from '@/lib/env'
 import {parseApiResponse} from '@/api/http'
@@ -21,6 +22,7 @@ export type EnhanceTicketRequestParams = {
     agent?: string
     profileId?: string
     ticketType?: TicketType | null
+    images?: MessageImage[]
 }
 
 export type EnhanceTicketResponse = {
@@ -111,7 +113,7 @@ export async function importGithubIssues(boardId: string, payload: ImportIssuesR
 }
 
 export async function enhanceTicketRequest(params: EnhanceTicketRequestParams): Promise<EnhanceTicketResponse> {
-    const {projectId, title, description, agent, profileId, ticketType} = params
+    const {projectId, title, description, agent, profileId, ticketType, images} = params
 
     const res = await fetch(`${SERVER_URL}/projects/${projectId}/tickets/enhance`, {
         method: 'POST',
@@ -122,6 +124,7 @@ export async function enhanceTicketRequest(params: EnhanceTicketRequestParams): 
             agent,
             profileId,
             ticketType,
+            images,
         }),
     })
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bot } from "lucide-react";
+import { Bot, Loader2 } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -12,10 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
+import { ImageAttachment } from "@/components/ui/image-attachment";
 import type { CardFormValues, BaseDialogProps } from "./types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TicketType } from "shared";
 import { ticketTypeOptions } from "@/lib/ticketTypes";
+import { useImagePaste, useCardImages } from "@/hooks";
 
 type EditProps = BaseDialogProps & {
     cardTitle: string;
@@ -43,6 +46,8 @@ export function EditCardDialog({
     cardTicketType,
     onSubmit,
     onDelete,
+    projectId,
+    cardId,
     onEnhanceInBackground,
     autoEnhanceOnOpen = false,
 }: EditProps) {
@@ -56,6 +61,15 @@ export function EditCardDialog({
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [hasAutoEnhanced, setHasAutoEnhanced] = useState(false);
+    
+    const { data: existingImages, isLoading: imagesLoading } = useCardImages(
+        open ? projectId : undefined,
+        open ? cardId : undefined,
+        { enabled: open && Boolean(cardId) }
+    );
+    
+    const existingCount = existingImages?.length ?? 0;
+    const {pendingImages, addImagesFromClipboard, addImagesFromDataTransfer, removeImage, clearImages, canAddMore} = useImagePaste(undefined, existingCount);
 
     useEffect(() => {
         if (open) {
@@ -65,8 +79,9 @@ export function EditCardDialog({
                 ticketType: cardTicketType ?? null,
             });
             setHasAutoEnhanced(false);
+            clearImages();
         }
-    }, [open, cardTitle, cardDescription, cardTicketType]);
+    }, [open, cardTitle, cardDescription, cardTicketType, clearImages]);
 
     const handleEnhanceInBackground = async () => {
         if (!values.title.trim()) return;
@@ -77,14 +92,32 @@ export function EditCardDialog({
                 description: values.description.trim(),
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
+                images: pendingImages.length > 0 ? pendingImages : undefined,
             };
             await onSubmit(payload);
             if (onEnhanceInBackground) {
                 await onEnhanceInBackground(payload);
             }
             onOpenChange(false);
+            clearImages();
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleDescriptionPaste = async (e: React.ClipboardEvent) => {
+        const clipboardEvent = e.nativeEvent as ClipboardEvent;
+        const errors = await addImagesFromClipboard(clipboardEvent);
+        if (errors.length > 0) {
+            toast({title: 'Image error', description: errors[0].message, variant: 'destructive'});
+        }
+    };
+
+    const handleDescriptionDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        const errors = await addImagesFromDataTransfer(e.dataTransfer);
+        if (errors.length > 0) {
+            toast({title: 'Image error', description: errors[0].message, variant: 'destructive'});
         }
     };
 
@@ -99,12 +132,15 @@ export function EditCardDialog({
         if (!values.title.trim()) return;
         try {
             setSaving(true);
+            const allImages = [...(existingImages ?? []), ...pendingImages];
             await onSubmit({
                 title: values.title.trim(),
                 description: values.description.trim(),
                 ticketType: values.ticketType ?? null,
+                images: allImages.length > 0 ? allImages : undefined,
             });
             onOpenChange(false);
+            clearImages();
         } finally {
             setSaving(false);
         }
@@ -158,7 +194,36 @@ export function EditCardDialog({
                                     description: event.target.value,
                                 }))
                             }
+                            onPaste={handleDescriptionPaste}
+                            onDrop={handleDescriptionDrop}
+                            onDragOver={(e) => e.preventDefault()}
+                            placeholder={canAddMore ? "Describe the task... (paste or drop images here)" : "Describe the task..."}
                         />
+                        {imagesLoading && (
+                            <div className="flex items-center gap-2 mt-2 text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-xs">Loading images...</span>
+                            </div>
+                        )}
+                        {existingImages && existingImages.length > 0 && !imagesLoading && (
+                            <div className="mt-2 space-y-1">
+                                <ImageAttachment images={existingImages} variant="thumbnail" size="sm" />
+                                <p className="text-xs text-muted-foreground">{existingImages.length} saved</p>
+                            </div>
+                        )}
+                        {pendingImages.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                                <ImageAttachment 
+                                    images={pendingImages} 
+                                    variant="thumbnail" 
+                                    size="sm"
+                                    onRemove={removeImage}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {pendingImages.length} new (sent with "Enhance in background")
+                                </p>
+                            </div>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="edit-card-type">Type</Label>

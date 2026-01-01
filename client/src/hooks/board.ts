@@ -1,8 +1,9 @@
 import {useMutation, useQuery, type UseMutationOptions, type UseQueryOptions} from '@tanstack/react-query'
-import type {BoardState, GithubIssueStatsResponse} from 'shared'
+import type {BoardState, GithubIssueStatsResponse, MessageImage} from 'shared'
 import {
     fetchBoardState,
     fetchGithubIssueStats,
+    fetchCardImages,
     createCard,
     updateCard,
     deleteCard,
@@ -15,6 +16,7 @@ export const boardKeys = {
     all: ['board'] as const,
     state: (boardId: string) => [...boardKeys.all, boardId] as const,
     githubIssueStats: (boardId: string) => [...boardKeys.all, boardId, 'github-issue-stats'] as const,
+    cardImages: (boardId: string, cardId: string) => [...boardKeys.all, boardId, 'cards', cardId, 'images'] as const,
 }
 
 type BoardOptions = Partial<UseQueryOptions<BoardState>>
@@ -22,13 +24,13 @@ type BoardOptions = Partial<UseQueryOptions<BoardState>>
 type CreateArgs = {
     boardId: string;
     columnId: string;
-    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; createGithubIssue?: boolean }
+    values: { title: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; createGithubIssue?: boolean; images?: import('shared').MessageImage[] }
 }
 
 type UpdateArgs = {
     boardId: string;
     cardId: string;
-    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; isEnhanced?: boolean }
+    values: { title?: string; description?: string | null; dependsOn?: string[]; ticketType?: import('shared').TicketType | null; isEnhanced?: boolean; images?: import('shared').MessageImage[] }
 }
 
 type DeleteArgs = { boardId: string; cardId: string }
@@ -94,6 +96,18 @@ export function useMoveCard(options?: MoveOptions) {
                          toColumnId,
                          toIndex
                      }: MoveArgs) => moveCard(boardId, cardId, toColumnId, toIndex),
+        ...options,
+    })
+}
+
+type CardImagesOptions = Partial<UseQueryOptions<MessageImage[]>>
+
+export function useCardImages(boardId: string | undefined, cardId: string | undefined, options?: CardImagesOptions) {
+    const enabled = Boolean(boardId && cardId)
+    return useQuery({
+        queryKey: boardId && cardId ? boardKeys.cardImages(boardId, cardId) : ['board', 'cards', 'images', 'disabled'],
+        queryFn: () => fetchCardImages(boardId!, cardId!),
+        enabled,
         ...options,
     })
 }

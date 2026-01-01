@@ -1,9 +1,11 @@
 import {z} from "zod";
 import {
     TICKET_TYPES,
+    MAX_IMAGES_PER_MESSAGE,
     type CreateProjectRequest,
     type UpdateProjectRequest,
 } from "shared";
+import {messageImageSchema} from "../attempts/attempts.schemas";
 
 const ticketTypeSchema = z
     .string()
@@ -90,6 +92,13 @@ export const enhanceTicketSchema = z.object({
     agent: z.string().optional(),
     profileId: z.string().optional(),
     ticketType: ticketTypeSchema,
+    /** Optional array of image attachments for AI context */
+    images: z
+        .array(messageImageSchema)
+        .max(MAX_IMAGES_PER_MESSAGE, {
+            message: `Maximum ${MAX_IMAGES_PER_MESSAGE} images allowed per request`,
+        })
+        .optional(),
 });
 
 export const setCardEnhancementSchema = z.object({
@@ -109,6 +118,7 @@ export const createCardSchema = z.object({
     dependsOn: z.array(z.string()).optional(),
     ticketType: ticketTypeSchema,
     createGithubIssue: z.boolean().optional(),
+    images: z.array(messageImageSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
 });
 
 export const updateCardSchema = z
@@ -121,6 +131,7 @@ export const updateCardSchema = z
         ticketType: ticketTypeSchema,
         isEnhanced: z.boolean().optional(),
         disableAutoCloseOnPRMerge: z.boolean().optional(),
+        images: z.array(messageImageSchema).max(MAX_IMAGES_PER_MESSAGE).optional(),
     })
     .superRefine((data, ctx) => {
         const hasContent =
@@ -129,7 +140,8 @@ export const updateCardSchema = z
             data.dependsOn !== undefined ||
             data.ticketType !== undefined ||
             data.isEnhanced !== undefined ||
-            data.disableAutoCloseOnPRMerge !== undefined;
+            data.disableAutoCloseOnPRMerge !== undefined ||
+            data.images !== undefined;
         const wantsMove = data.columnId !== undefined || data.index !== undefined;
 
         if (wantsMove && (data.columnId === undefined || data.index === undefined)) {

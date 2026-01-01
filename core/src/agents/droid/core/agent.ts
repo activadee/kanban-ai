@@ -296,6 +296,15 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
 
     async run(ctx: AgentContext, profile: DroidProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
+
+        if (ctx.images && ctx.images.length > 0) {
+            ctx.emit({
+                type: 'log',
+                level: 'warn',
+                message: `[droid] ${ctx.images.length} image(s) attached but Droid does not support multimodal input - images will be ignored`,
+            })
+        }
+
         const prompt = this.buildPrompt(profile, ctx)
         if (prompt) {
             ctx.emit({
@@ -321,6 +330,15 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
     async resume(ctx: AgentContext, profile: DroidProfile): Promise<number> {
         if (!ctx.sessionId) throw new Error('Droid resume requires sessionId')
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: false}))
+
+        if (ctx.images && ctx.images.length > 0) {
+            ctx.emit({
+                type: 'log',
+                level: 'warn',
+                message: `[droid] ${ctx.images.length} image(s) attached but Droid does not support multimodal input - images will be ignored`,
+            })
+        }
+
         const prompt = (ctx.followupPrompt ?? '').trim()
         if (prompt.length) {
             ctx.emit({

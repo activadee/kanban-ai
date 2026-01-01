@@ -31,7 +31,7 @@ import {SdkAgent} from '../../sdk'
 import type {CodexProfile} from '../profiles/schema'
 import {CodexProfileSchema, defaultProfile} from '../profiles/schema'
 import {StreamGrouper} from '../../sdk/stream-grouper'
-import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, saveImagesToTempFiles} from '../../utils'
 
 type CodexInstallation = { executablePath: string }
 const execFileAsync = promisify(execFile)
@@ -368,13 +368,30 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
         _installation: CodexInstallation,
     ) {
         const codex = client as Codex
+        const hasImages = ctx.images && ctx.images.length > 0
         this.debug(profile, ctx, () => ({
             event: 'session.resume',
             sessionId,
             prompt_len: typeof prompt === 'string' ? prompt.length : null,
+            image_count: hasImages ? ctx.images!.length : 0,
         }))
         const thread = codex.resumeThread(sessionId, this.threadOptions(profile, ctx))
-        const {events} = await thread.runStreamed(prompt, {outputSchema: profile.outputSchema, signal})
+
+        let input: string | Array<{type: 'text'; text: string} | {type: 'local_image'; path: string}> = prompt
+        if (hasImages) {
+            const imagePaths = await saveImagesToTempFiles(ctx.images!, `codex-${ctx.attemptId}`)
+            input = [
+                {type: 'text' as const, text: prompt},
+                ...imagePaths.map((path) => ({type: 'local_image' as const, path})),
+            ]
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[codex] including ${imagePaths.length} image(s) in followup`,
+            })
+        }
+
+        const {events} = await thread.runStreamed(input, {outputSchema: profile.outputSchema, signal})
         return {stream: events as AsyncIterable<unknown>, sessionId: thread.id ?? undefined}
     }
 
@@ -618,16 +635,17 @@ class CodexImpl extends SdkAgent<CodexProfile, CodexInstallation> {
     async resume(ctx: AgentContext, profile: CodexProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new StreamGrouper({emitThinkingImmediately: true}))
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length) {
+        if (prompt.length || (ctx.images && ctx.images.length > 0)) {
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: new Date().toISOString(),
                     role: 'user',
-                    text: prompt,
+                    text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
+                    images: ctx.images,
                 },
             })
         }

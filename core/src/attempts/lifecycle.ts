@@ -1,4 +1,4 @@
-import type {AttemptStatus, ConversationItem, AttemptTodoSummary} from 'shared'
+import type {AttemptStatus, ConversationItem, AttemptTodoSummary, MessageImage} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getRepositoryPath, getBoardById, getCardById} from '../projects/repo'
@@ -6,6 +6,7 @@ import {getWorktreePath, getWorktreePathByNames} from '../ports/worktree'
 import {getAgent} from '../agents/registry'
 import {renderBranchName} from '../git/branch'
 import {settingsService} from '../settings/service'
+import {getCardImages} from '../repos/card-images'
 import {
     getAttemptById,
     getAttemptForCard,
@@ -174,6 +175,11 @@ export async function startAttempt(
     const allowDevScriptToFail = settings.allowDevScriptToFail ?? false
     const allowCleanupScriptToFail = settings.allowCleanupScriptToFail ?? false
 
+    const cardImagesRow = await getCardImages(input.cardId)
+    const cardImages: MessageImage[] = cardImagesRow?.imagesJson
+        ? (JSON.parse(cardImagesRow.imagesJson) as MessageImage[])
+        : []
+
     events.publish('attempt.queued', {
         attemptId: id,
         boardId: input.boardId,
@@ -199,6 +205,7 @@ export async function startAttempt(
             cardTitle: cardRow?.title ?? '(untitled)',
             cardDescription: cardRow?.description ?? null,
             ticketType: cardRow?.ticketType ?? null,
+            images: cardImages.length > 0 ? cardImages : undefined,
             automation: {
                 copyScript,
                 setupScript,
@@ -279,6 +286,7 @@ export async function followupAttempt(
     prompt: string,
     profileId: string | undefined,
     events: AppEventBus,
+    images?: MessageImage[],
 ) {
     const base = await getAttemptById(attemptId)
     if (!base) throw new Error('Attempt not found')
@@ -350,6 +358,7 @@ export async function followupAttempt(
             cardDescription: null,
             sessionId: base.sessionId,
             followupPrompt: prompt,
+            images,
             automation: {
                 copyScript,
                 setupScript,

@@ -284,6 +284,7 @@ export function ProjectBoardPage() {
                                         dependsOn: values.dependsOn ?? [],
                                         ticketType: values.ticketType ?? null,
                                         createGithubIssue: values.createGithubIssue === true,
+                                        images: values.images,
                                     },
                                 });
                                 if (result.githubIssueError) {
@@ -321,6 +322,7 @@ export function ProjectBoardPage() {
                                         dependsOn: values.dependsOn ?? [],
                                         ticketType: values.ticketType ?? null,
                                         createGithubIssue: values.createGithubIssue === true,
+                                        images: values.images,
                                     },
                                 });
                                 const cardId = result.cardId;
@@ -339,6 +341,7 @@ export function ProjectBoardPage() {
                                         title: values.title,
                                         description: values.description,
                                         ticketType: values.ticketType,
+                                        images: values.images,
                                     }).catch((err) => {
                                         console.error("Background enhancement failed", err);
                                     });
@@ -377,6 +380,7 @@ export function ProjectBoardPage() {
                                             values.description || undefined,
                                         dependsOn: values.dependsOn,
                                         ticketType: values.ticketType,
+                                        images: values.images,
                                     },
                                 });
                             } catch (err) {
@@ -453,6 +457,7 @@ export function ProjectBoardPage() {
                                     title: values.title,
                                     description: values.description,
                                     ticketType: values.ticketType,
+                                    images: values.images,
                                 });
                             } catch (err) {
                                 console.error(

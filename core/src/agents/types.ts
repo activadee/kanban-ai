@@ -1,5 +1,5 @@
 import type {z} from 'zod'
-import type {ConversationItem, AttemptTodoSummary, TicketType} from 'shared'
+import type {ConversationItem, AttemptTodoSummary, TicketType, MessageImage} from 'shared'
 
 export type AgentCapabilities = {
     resume?: boolean
@@ -21,6 +21,7 @@ export type AgentContext = {
     profileId?: string | null
     sessionId?: string
     followupPrompt?: string
+    images?: MessageImage[]
     signal: AbortSignal
     emit: (
         event:
@@ -41,6 +42,7 @@ export type TicketEnhanceInput = {
     description: string
     ticketType?: TicketType | null
     profileId?: string | null
+    images?: MessageImage[]
     signal: AbortSignal
 }
 

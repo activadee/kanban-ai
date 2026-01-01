@@ -15,20 +15,43 @@ import type {
 
 type EchoProfile = Record<string, never>
 
+const nowIso = () => new Date().toISOString()
+
 class EchoImpl implements Agent<EchoProfile> {
     key = 'ECHO' as const
     label = 'Echo Agent'
     defaultProfile: EchoProfile = {}
     profileSchema = z.object({}).strict()
 
-    async run(_ctx: AgentContext, _profile: EchoProfile): Promise<number> {
-        // Echo agent is intended only for tests; no-op run.
+    async run(ctx: AgentContext, _profile: EchoProfile): Promise<number> {
+        this.echoImages(ctx)
         return 0
     }
 
-    async resume(_ctx: AgentContext, _profile: EchoProfile): Promise<number> {
-        // Echo agent is intended only for tests; no-op resume.
+    async resume(ctx: AgentContext, _profile: EchoProfile): Promise<number> {
+        this.echoImages(ctx)
         return 0
+    }
+
+    private echoImages(ctx: AgentContext): void {
+        if (!ctx.images || ctx.images.length === 0) return
+
+        const imagesSummary = ctx.images.map((img, i) => {
+            const sizeKb = Math.round((img.data.length * 3) / 4 / 1024)
+            return `${i + 1}. ${img.name ?? 'unnamed'} (${img.mime}, ~${sizeKb}KB)`
+        }).join('\n')
+
+        ctx.emit({
+            type: 'conversation',
+            item: {
+                type: 'message',
+                timestamp: nowIso(),
+                role: 'assistant',
+                text: `[ECHO] Received ${ctx.images.length} image(s):\n${imagesSummary}`,
+                format: 'markdown',
+                profileId: null,
+            },
+        })
     }
 
     async inline<K extends InlineTaskKind>(

@@ -1,4 +1,4 @@
-import type {TicketType} from 'shared'
+import type {TicketType, MessageImage} from 'shared'
 
 export type CardFormValues = {
     title: string
@@ -6,6 +6,7 @@ export type CardFormValues = {
     dependsOn?: string[]
     ticketType?: TicketType | null
     createGithubIssue?: boolean
+    images?: MessageImage[]
 }
 
 export type BaseDialogProps = {

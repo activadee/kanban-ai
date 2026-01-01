@@ -38,6 +38,14 @@ const { useProjectGithubOriginMock } = vi.hoisted(() => {
 vi.mock("@/hooks", () => ({
     useNextTicketKey: useNextTicketKeyMock,
     useProjectSettings: useProjectSettingsMock,
+    useImagePaste: () => ({
+        pendingImages: [],
+        addImagesFromClipboard: vi.fn().mockResolvedValue([]),
+        addImagesFromDataTransfer: vi.fn().mockResolvedValue([]),
+        removeImage: vi.fn(),
+        clearImages: vi.fn(),
+        canAddMore: true,
+    }),
 }));
 
 vi.mock("@/hooks/github", () => ({

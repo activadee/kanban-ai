@@ -1,4 +1,4 @@
-import type {ProjectSummary, TicketType} from 'shared'
+import type {ProjectSummary, TicketType, MessageImage} from 'shared'
 import {projectsService} from '../projects/service'
 import {ensureProjectSettings} from '../projects/settings/service'
 import {getAgent} from './registry'
@@ -20,6 +20,7 @@ export type AgentEnhanceTicketOptions = {
     profileId?: string
     signal?: AbortSignal
     ticketType?: TicketType | null
+    images?: MessageImage[]
 }
 
 function resolveBoardId(opts: AgentEnhanceTicketOptions, project: ProjectSummary): string {
@@ -141,6 +142,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
         description: opts.description,
         ticketType: opts.ticketType ?? null,
         profileId,
+        images: opts.images,
         signal,
     }
 

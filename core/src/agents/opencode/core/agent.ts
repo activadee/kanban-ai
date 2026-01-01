@@ -29,7 +29,7 @@ import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
 import type {ShareToolContent, ShareToolInput, ShareToolMetadata, ShareToolState} from '../protocol/types'
-import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown} from '../../utils'
+import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, imageToDataUrl} from '../../utils'
 
 const nowIso = () => new Date().toISOString()
 
@@ -281,14 +281,28 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const system = this.buildSystemPrompt(profile)
         const model = this.buildModelConfig(profile)
         const trimmedPrompt = prompt.trim()
-        const parts = trimmedPrompt
-            ? [
-                  {
-                      type: 'text' as const,
-                      text: trimmedPrompt,
-                  },
-              ]
-            : []
+
+        const parts: Array<{type: 'text'; text: string} | {type: 'file'; mime: string; url: string; filename?: string}> = []
+
+        if (trimmedPrompt) {
+            parts.push({type: 'text' as const, text: trimmedPrompt})
+        }
+
+        if (ctx.images && ctx.images.length > 0) {
+            for (const image of ctx.images) {
+                parts.push({
+                    type: 'file' as const,
+                    mime: image.mime,
+                    url: imageToDataUrl(image),
+                    filename: image.name,
+                })
+            }
+            ctx.emit({
+                type: 'log',
+                level: 'info',
+                message: `[opencode] including ${ctx.images.length} image(s) in message`,
+            })
+        }
 
         const grouper = this.getGrouper(ctx)
         const debug = (message: string) => this.debug(profile, ctx, message)
@@ -958,16 +972,17 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     async run(ctx: AgentContext, profile: OpencodeProfile): Promise<number> {
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
         const prompt = this.buildPrompt(profile, ctx)
-        if (prompt) {
+        if (prompt || (ctx.images && ctx.images.length > 0)) {
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
+                    images: ctx.images,
                 },
             })
         }
@@ -989,16 +1004,17 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         }
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
         const prompt = (ctx.followupPrompt ?? '').trim()
-        if (prompt.length) {
+        if (prompt.length || (ctx.images && ctx.images.length > 0)) {
             ctx.emit({
                 type: 'conversation',
                 item: {
                     type: 'message',
                     timestamp: nowIso(),
                     role: 'user',
-                    text: prompt,
+                    text: prompt || '(image attached)',
                     format: 'markdown',
                     profileId: ctx.profileId ?? null,
+                    images: ctx.images,
                 },
             })
         }

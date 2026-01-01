@@ -5,6 +5,7 @@ import {cn} from '@/lib/utils'
 import {Button} from '@/components/ui/button'
 import {decodeBase64Stream} from '@/lib/encoding'
 import {CollapsibleThinkingBlock} from '@/components/kanban/conversation/CollapsibleThinkingBlock'
+import {ImageAttachment} from '@/components/ui/image-attachment'
 
 export function MessageRow({item}: { item: ConversationItem }) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
@@ -13,7 +14,7 @@ export function MessageRow({item}: { item: ConversationItem }) {
 
     switch (item.type) {
         case 'message': {
-            const {role, text} = item
+            const {role, text, images} = item
             const badgeVariant: 'default' | 'secondary' | 'outline' = role === 'assistant' ? 'secondary' : role === 'user' ? 'default' : 'outline'
             return (
                 <div className="mb-2 rounded bg-background p-2">
@@ -24,6 +25,9 @@ export function MessageRow({item}: { item: ConversationItem }) {
                             <span className="text-xs text-muted-foreground">profile: {item.profileId}</span> : null}
                     </div>
                     <div className="whitespace-pre-wrap text-sm">{text}</div>
+                    {images && images.length > 0 ? (
+                        <ImageAttachment images={images} variant="badge" size="sm" className="mt-2" />
+                    ) : null}
                 </div>
             )
         }

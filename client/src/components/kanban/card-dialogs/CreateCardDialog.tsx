@@ -7,8 +7,10 @@ import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Checkbox} from '@/components/ui/checkbox'
+import {toast} from '@/components/ui/toast'
+import {ImageAttachment} from '@/components/ui/image-attachment'
 import {projectsKeys} from '@/lib/queryClient'
-import {useNextTicketKey, useProjectSettings} from '@/hooks'
+import {useNextTicketKey, useProjectSettings, useImagePaste} from '@/hooks'
 import {DependenciesPicker} from '@/components/kanban/DependenciesPicker'
 import type {CardFormValues, BaseDialogProps} from './types'
 import type {TicketType} from 'shared'
@@ -45,6 +47,7 @@ export function CreateCardDialog({
     const [columnId, setColumnId] = useState<string>(defaultColumnId ?? columns[0]?.id ?? '')
     const [submitting, setSubmitting] = useState(false)
     const queryClient = useQueryClient()
+    const {pendingImages, addImagesFromClipboard, addImagesFromDataTransfer, removeImage, clearImages, canAddMore} = useImagePaste()
 
     const previewQuery = useNextTicketKey(projectId, {
         enabled: open && Boolean(projectId),
@@ -68,8 +71,9 @@ export function CreateCardDialog({
         if (!open) {
             setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
+            clearImages()
         }
-    }, [open, columns, defaultColumnId])
+    }, [open, columns, defaultColumnId, clearImages])
 
     const handleSubmit = async () => {
         if (!values.title.trim() || !columnId) return
@@ -81,10 +85,12 @@ export function CreateCardDialog({
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
                 createGithubIssue: values.createGithubIssue === true && canCreateGithubIssue,
+                images: pendingImages.length > 0 ? pendingImages : undefined,
             })
             onOpenChange(false)
             setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
+            clearImages()
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
             setSubmitting(false)
@@ -102,13 +108,33 @@ export function CreateCardDialog({
                 dependsOn: values.dependsOn ?? [],
                 ticketType: values.ticketType ?? null,
                 createGithubIssue: values.createGithubIssue === true && canCreateGithubIssue,
+                images: pendingImages.length > 0 ? pendingImages : undefined,
             })
             onOpenChange(false)
             setValues({title: '', description: '', dependsOn: [], ticketType: defaultTicketType, createGithubIssue: false})
             setColumnId(defaultColumnId ?? columns[0]?.id ?? '')
+            clearImages()
             await queryClient.invalidateQueries({queryKey: projectsKeys.nextTicketKey(projectId)})
         } finally {
             setSubmitting(false)
+        }
+    }
+
+    const handleDescriptionPaste = async (e: React.ClipboardEvent) => {
+        if (!canAddMore) return
+        const clipboardEvent = e.nativeEvent as ClipboardEvent
+        const errors = await addImagesFromClipboard(clipboardEvent)
+        if (errors.length > 0) {
+            toast({title: 'Image error', description: errors[0].message, variant: 'destructive'})
+        }
+    }
+
+    const handleDescriptionDrop = async (e: React.DragEvent) => {
+        if (!canAddMore) return
+        e.preventDefault()
+        const errors = await addImagesFromDataTransfer(e.dataTransfer)
+        if (errors.length > 0) {
+            toast({title: 'Image error', description: errors[0].message, variant: 'destructive'})
         }
     }
 
@@ -150,7 +176,25 @@ export function CreateCardDialog({
                             rows={4}
                             value={values.description}
                             onChange={(e) => setValues((p) => ({...p, description: e.target.value}))}
+                            onPaste={handleDescriptionPaste}
+                            onDrop={handleDescriptionDrop}
+                            onDragOver={(e) => e.preventDefault()}
+                            placeholder={canAddMore ? 'Describe the task... (paste or drop images here)' : 'Describe the task...'}
                         />
+                        {pendingImages.length > 0 && (
+                            <ImageAttachment 
+                                images={pendingImages} 
+                                variant="thumbnail" 
+                                size="sm"
+                                onRemove={removeImage}
+                                className="mt-2"
+                            />
+                        )}
+                        {pendingImages.length > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                                {pendingImages.length} image{pendingImages.length !== 1 ? 's' : ''} attached
+                            </p>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="card-type">Type</Label>

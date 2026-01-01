@@ -69,7 +69,9 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
 
 - Attempts stream messages as they run.
 - You can send follow-up prompts by typing into the input and pressing send.
+- **Images**: You can attach images to follow-up prompts by pasting from clipboard (Ctrl/Cmd+V) or dragging image files onto the input area. Attached images appear as thumbnails below the input and are sent along with your prompt. Supported formats: PNG, JPEG, WebP (max 10MB each, up to 5 images per message).
 - "Thinking" entries (the agent's planning/analysis steps) now surface as collapsible blocks that default to their header summary (using the provided title or the first line of text alongside the timestamp); click the header to expand and read the full reasoning text.
+- Images sent by you or the agent appear as compact badges in the conversation stream; click a badge to preview the image in a lightbox.
 - Controls:
    - **Stop Attempt**:
      - Sends a stop request to the server.
@@ -77,7 +79,7 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
    - **Profile selection for follow-ups**:
      - The follow-up panel can let you switch to a different profile for further messages (when supported).
 
-Use this tab to direct the agent, clarify requirements, and iterate on changes.
+Use this tab to direct the agent, clarify requirements with text and images, and iterate on changes.
 
 ## Processes tab
 

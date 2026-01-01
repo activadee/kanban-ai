@@ -2,6 +2,29 @@ export type ConversationTextFormat = 'markdown' | 'plaintext'
 
 export type ConversationRole = 'user' | 'assistant' | 'system'
 
+/**
+ * Supported MIME types for message images.
+ */
+export type MessageImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp'
+
+/**
+ * An image attached to a conversation message.
+ */
+export interface MessageImage {
+    /**
+     * Base64-encoded image data (without data URL prefix).
+     */
+    data: string
+    /**
+     * MIME type of the image.
+     */
+    mime: MessageImageMimeType
+    /**
+     * Optional filename for the image.
+     */
+    name?: string
+}
+
 export type AutomationStage = 'copy_files' | 'setup' | 'dev' | 'cleanup'
 
 export type AutomationStatus = 'running' | 'succeeded' | 'failed'
@@ -24,6 +47,7 @@ export type ConversationMessageItem = ConversationItemBase & {
      * When applicable, indicates which profile was used to produce the message.
      */
     profileId?: string | null
+    images?: MessageImage[]
 }
 
 export type ConversationThinkingItem = ConversationItemBase & {

@@ -1,6 +1,7 @@
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
 import {attempts, projectDeps, projectsRepo} from 'core'
+import type {MessageImage} from 'shared'
 import {problemJson} from '../http/problem'
 import {log} from '../log'
 import {createHandlers} from '../lib/factory'
@@ -51,7 +52,11 @@ export const postAttemptMessageHandlers = createHandlers(
     zValidator('json', attemptMessageSchema),
     async (c) => {
         const {id} = c.req.valid('param')
-        const {prompt, profileId} = c.req.valid('json')
+        const {prompt, profileId, images} = c.req.valid('json') as {
+            prompt: string
+            profileId?: string
+            images?: MessageImage[]
+        }
         try {
             const attempt = await attempts.getAttempt(id)
             if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
@@ -68,7 +73,7 @@ export const postAttemptMessageHandlers = createHandlers(
             } catch {}
 
             const events = c.get('events')
-            await attempts.followupAttempt(id, prompt, profileId, {events})
+            await attempts.followupAttempt(id, prompt, profileId, {events, images})
             return c.json({ok: true}, 201)
         } catch (err) {
             return problemJson(c, {
