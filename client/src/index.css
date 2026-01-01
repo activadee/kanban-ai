@@ -226,10 +226,42 @@
     animation: kanban-shimmer 6s ease-in-out infinite;
 }
 
-/* Selected card state */
+/* Selected card state - Editorial Highlight */
 .kanban-card--selected {
-    border-color: var(--ring);
-    box-shadow: 0 0 0 2px var(--ring);
+    transform: translateX(2px);
+    box-shadow: 
+        0 4px 12px -2px rgb(0 0 0 / 0.08),
+        0 2px 4px -1px rgb(0 0 0 / 0.04);
+}
+
+.kanban-card--selected::before {
+    width: 6px !important;
+    box-shadow: 
+        4px 0 12px -2px var(--ticket-type-color, var(--primary)),
+        2px 0 4px -1px var(--ticket-type-color, var(--primary));
+}
+
+.dark .kanban-card--selected {
+    box-shadow: 
+        0 4px 16px -2px rgb(0 0 0 / 0.3),
+        0 2px 6px -1px rgb(0 0 0 / 0.2);
+}
+
+.dark .kanban-card--selected::before {
+    box-shadow: 
+        6px 0 16px -2px var(--ticket-type-color, var(--primary)),
+        3px 0 6px -1px var(--ticket-type-color, var(--primary));
+}
+
+/* Selected + Done - muted selection */
+.kanban-card--selected.kanban-card--done {
+    transform: translateX(1px);
+    opacity: 0.7;
+}
+
+.kanban-card--selected.kanban-card--done::before {
+    width: 5px !important;
+    opacity: 0.5;
 }
 
 /* Enhanced bookmark indicator */
