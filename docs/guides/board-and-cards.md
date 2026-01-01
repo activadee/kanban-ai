@@ -22,11 +22,14 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - Title: "Kanban Board".
   - A **Sort order** dropdown to change how tickets are displayed within each column.
   - A **Create Ticket** button to create a new card.
-- Cards surface status indicators through badges and styling:
-  - **Blocked** cards show a red "Blocked" badge and rose-colored background.
-  - **Failed** cards show a red "Failed" badge with destructive styling (red border and background) when their latest Attempt has failed. Failed cards can be clicked to open the Card Inspector for review and retry.
-  - **Enhanced** cards display a green "Enhanced" badge and emerald highlight.
-  - **Enhancing** cards show a spinner badge while background enhancement is running.
+- Cards surface status indicators through visual styling:
+  - **Blocked** cards show a lock icon with "Blocked" label and a diagonal stripe pattern on the left border.
+  - **Failed** cards display an alert icon with "Failed" label and a pulsing glow animation when their latest Attempt has failed. Failed cards can be clicked to open the Card Inspector for review and retry.
+  - **Enhanced** cards feature a green bookmark icon in the top-right corner with a subtle shimmer animation across the card.
+  - **Enhancing** cards show a spinner icon while background enhancement is running.
+  - **Done** cards appear with reduced opacity and a grayscale filter.
+  - **Selected** cards display a ring outline around them.
+  - Each card also has a colored left border that indicates its ticket type (e.g., feat, fix, chore, docs).
 
 ### Sorting tickets
 
@@ -58,8 +61,8 @@ which creates the card and immediately queues a background enhancement job. Whil
 card surfaces an **Enhancing** badge and cannot be dragged. When the suggestion is ready, a sparkles icon appears on the
 card; clicking it opens the enhancement diff dialog to compare the persisted title/description with the AI suggestion.
 Accepting the suggestion updates the card, while rejecting it just clears the pending enhancement so you can try again
-later. Accepted enhancements also flip the card's `isEnhanced` flag, which renders a green **Enhanced** badge and a
-subtle highlight in the header row so polished tickets remain visible even after you reload the board.
+later. Accepted enhancements also flip the card's `isEnhanced` flag, which renders a green bookmark icon at the top-right
+corner with a shimmer animation so polished tickets remain visible even after you reload the board.
 
 You can also create cards directly in a column using column-specific controls (e.g. "Add card") where present.
 

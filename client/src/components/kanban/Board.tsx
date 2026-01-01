@@ -266,6 +266,7 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
                             <Column
                                 column={col}
                                 state={state}
+                                selectedCardId={resolvedSelectedId}
                                 enhancementStatusByCardId={
                                     enhancementStatusByCardId
                                 }

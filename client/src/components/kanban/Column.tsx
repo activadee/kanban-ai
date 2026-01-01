@@ -13,6 +13,7 @@ type Props = {
     column: TColumn
     state: BoardState
     onSelectCard: (cardId: string) => void
+    selectedCardId?: string | null
     enhancementStatusByCardId?: Record<string, CardEnhancementStatus>
     attemptStatusByCardId?: Record<string, AttemptStatus>
     onCardEnhancementClick?: (cardId: string) => void
@@ -27,6 +28,7 @@ export function Column({
                            column,
                            state,
                            onSelectCard,
+                           selectedCardId,
                            enhancementStatusByCardId,
                            attemptStatusByCardId,
                            onCardEnhancementClick,
@@ -98,6 +100,7 @@ export function Column({
                                 showAgentComingSoon={isReviewColumn}
                                 blocked={blocked}
                                 blockers={blockerLabels}
+                                selected={selectedCardId === c.id}
                                 enhancementStatus={enhancementStatusByCardId?.[c.id]}
                                 attemptStatus={attemptStatusByCardId?.[c.id]}
                                 onCardEnhancementClick={onCardEnhancementClick}

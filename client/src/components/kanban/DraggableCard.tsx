@@ -16,6 +16,7 @@ type Props = {
     showAgentComingSoon?: boolean
     blocked?: boolean
     blockers?: string[]
+    selected?: boolean
     onSelect?: (cardId: string) => void
     enhancementStatus?: CardEnhancementStatus
     attemptStatus?: AttemptStatus
@@ -33,6 +34,7 @@ export function DraggableCard({
                                   showAgentComingSoon,
                                   blocked,
                                   blockers,
+                                  selected,
                                   onSelect,
                                   enhancementStatus,
                                   attemptStatus,
@@ -81,6 +83,7 @@ export function DraggableCard({
                 showAgentComingSoon={showAgentComingSoon}
                 blocked={blocked}
                 blockers={blockers}
+                selected={selected}
                 enhancementStatus={enhancementStatus}
                 attemptStatus={attemptStatus}
                 onEnhancementClick={

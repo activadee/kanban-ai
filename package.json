@@ -43,7 +43,7 @@
         "build:prod": "bun run scripts/build-drizzle-migration-bundle.ts && bun run build:client && bun run build:server && bun run scripts/copy-static.ts && bun run scripts/build-static-bundle.ts",
         "build:binary": "bun run build:prod && bun build --compile --target=bun-linux-x64 server/dist/src/entry/prod.js --outfile dist/kanban-ai-linux-x64 && bun build --compile --target=bun-linux-arm64 server/dist/src/entry/prod.js --outfile dist/kanban-ai-linux-arm64 && bun build --compile --target=bun-darwin-arm64 server/dist/src/entry/prod.js --outfile dist/kanban-ai-darwin-arm64 && bun build --compile --target=bun-windows-x64 server/dist/src/entry/prod.js --outfile dist/kanban-ai-win-x64",
         "prod": "bun run build:prod && bun run server/dist/src/entry/prod.js",
-        "build": "turbo build",
+        "build": "turbo build --no-cache",
         "build:client": "turbo build --filter=client",
         "build:server": "turbo build --filter=server",
         "lint": "turbo lint",
