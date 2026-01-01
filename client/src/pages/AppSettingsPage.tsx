@@ -1,5 +1,6 @@
 import {toast} from '@/components/ui/toast'
 import {Button} from '@/components/ui/button'
+import {Badge} from '@/components/ui/badge'
 import {useEffect, useMemo, useState} from 'react'
 import type {CheckedState} from '@radix-ui/react-checkbox'
 import {useAppSettings, useGithubAppConfig, useSaveGithubAppConfig, useUpdateAppSettings, useValidateEditorPath} from '@/hooks'
@@ -9,9 +10,11 @@ import {EditorSettingsSection} from './app-settings/EditorSettingsSection'
 import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
 import {OpencodeAgentSettingsSection} from './app-settings/OpencodeAgentSettingsSection'
-import {GithubAppCredentialsFields} from '@/components/github/GithubAppCredentialsFields'
+import {GithubOAuthSection} from './app-settings/GithubOAuthSection'
 import {describeApiError} from '@/api/http'
 import {PageHeader} from '@/components/layout/PageHeader'
+import {MasterDetailLayout, type MasterDetailItem} from '@/components/layout/MasterDetailLayout'
+import {Settings, Terminal, GitBranch, Github, Bot, Key} from 'lucide-react'
 
 type FormState = {
     theme: 'system' | 'light' | 'dark'
@@ -39,6 +42,17 @@ type GithubAppForm = {
     updatedAt: string | null
 }
 
+const SETTINGS_ITEMS: MasterDetailItem[] = [
+    {id: 'general', label: 'General', subtitle: 'Theme, language, notifications', icon: Settings},
+    {id: 'editor', label: 'Editor', subtitle: 'External editor command', icon: Terminal},
+    {id: 'git', label: 'Git Defaults', subtitle: 'User, email, branch template', icon: GitBranch},
+    {id: 'github', label: 'GitHub', subtitle: 'PR templates, autolink', icon: Github},
+    {id: 'opencode', label: 'OpenCode Agent', subtitle: 'Port configuration', icon: Bot},
+    {id: 'oauth', label: 'GitHub OAuth', subtitle: 'Client ID and secret', icon: Key},
+]
+
+type SectionId = (typeof SETTINGS_ITEMS)[number]['id']
+
 export function AppSettingsPage() {
     const {data, isLoading} = useAppSettings()
     const validateEditor = useValidateEditorPath()
@@ -47,6 +61,8 @@ export function AppSettingsPage() {
     const [editorValidationStatus, setEditorValidationStatus] = useState<'valid' | 'invalid' | 'pending' | null>(null)
     const [appCredForm, setAppCredForm] = useState<GithubAppForm | null>(null)
     const [appCredInitial, setAppCredInitial] = useState<GithubAppForm | null>(null)
+    const [activeSection, setActiveSection] = useState<SectionId>('general')
+    const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle')
 
     const initial = useMemo(() => {
         if (!data) return null
@@ -96,6 +112,7 @@ export function AppSettingsPage() {
     const updateSettings = useUpdateAppSettings({
         onSuccess: (result) => {
             toast({title: 'Settings saved', variant: 'success'})
+            setStatus('saved')
             const next: FormState = {
                 theme: result.theme,
                 language: result.language,
@@ -117,6 +134,7 @@ export function AppSettingsPage() {
         onError: (err) => {
             const {title, description} = describeApiError(err, 'Save failed')
             toast({title, description, variant: 'destructive'})
+            setStatus('error')
         },
     })
 
@@ -142,6 +160,7 @@ export function AppSettingsPage() {
 
     const save = () => {
         if (!form) return
+        setStatus('idle')
         const payload: UpdateAppSettingsRequest = {
             theme: form.theme,
             language: form.language,
@@ -235,128 +254,188 @@ export function AppSettingsPage() {
         })
     }, [form?.editorCommand])
 
+    const handleReset = () => {
+        if (initial) setForm(initial)
+        setStatus('idle')
+    }
+
+    const handleOAuthReset = () => {
+        if (appCredInitial) setAppCredForm(appCredInitial)
+    }
+
+    const handleOAuthSave = () => {
+        if (!appCredForm) return
+        saveGithubApp.mutate({
+            clientId: appCredForm.clientId.trim(),
+            clientSecret:
+                appCredForm.secretAction === 'unchanged'
+                    ? undefined
+                    : appCredForm.secretAction === 'clear'
+                        ? null
+                        : appCredForm.clientSecret.trim() || null,
+        })
+    }
+
     if (isLoading && !data) {
-        return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Loading settings…</div>
+        return (
+            <div className="flex h-full items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                    <p className="text-sm text-muted-foreground">Loading settings...</p>
+                </div>
+            </div>
+        )
     }
 
     if (data && !form) setForm(initial)
 
+    const renderContent = () => {
+        if (!form) return null
+
+        const contentWrapper = (children: React.ReactNode) => (
+            <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+                {children}
+            </div>
+        )
+
+        switch (activeSection) {
+            case 'general':
+                return contentWrapper(
+                    <GeneralSettingsSection
+                        form={form}
+                        onChange={(p) => {
+                            setForm({...form, ...p})
+                            setStatus('idle')
+                        }}
+                        onDesktopToggle={(v) => handleDesktopToggle(v)}
+                    />
+                )
+            case 'editor':
+                return contentWrapper(
+                    <EditorSettingsSection
+                        editorCommand={form.editorCommand}
+                        validationStatus={editorValidationStatus}
+                        onChange={(v) => {
+                            setForm({...form, editorCommand: v})
+                            setStatus('idle')
+                        }}
+                    />
+                )
+            case 'git':
+                return contentWrapper(
+                    <GitDefaultsSection
+                        form={{
+                            gitUserName: form.gitUserName,
+                            gitUserEmail: form.gitUserEmail,
+                            branchTemplate: form.branchTemplate,
+                        }}
+                        onChange={(p) => {
+                            setForm({...form, ...p})
+                            setStatus('idle')
+                        }}
+                    />
+                )
+            case 'github':
+                return contentWrapper(
+                    <GithubSettingsSection
+                        form={{
+                            ghAutolinkTickets: form.ghAutolinkTickets,
+                            ghPrTitleTemplate: form.ghPrTitleTemplate,
+                            ghPrBodyTemplate: form.ghPrBodyTemplate,
+                        }}
+                        onChange={(p) => {
+                            setForm({...form, ...p})
+                            setStatus('idle')
+                        }}
+                    />
+                )
+            case 'opencode':
+                return contentWrapper(
+                    <OpencodeAgentSettingsSection
+                        form={{opencodePort: form.opencodePort}}
+                        onChange={(p) => {
+                            setForm({...form, ...p})
+                            setStatus('idle')
+                        }}
+                    />
+                )
+            case 'oauth':
+                return contentWrapper(
+                    <GithubOAuthSection
+                        form={appCredForm}
+                        onChange={(patch: Partial<GithubAppForm>) =>
+                            setAppCredForm(appCredForm ? {
+                                ...appCredForm,
+                                ...patch,
+                                secretAction: patch.clientSecret !== undefined ? 'update' : appCredForm.secretAction,
+                            } : null)
+                        }
+                        onClearSecret={(clear: boolean) =>
+                            setAppCredForm(appCredForm ? {
+                                ...appCredForm,
+                                clientSecret: '',
+                                secretAction: clear ? 'clear' : 'unchanged',
+                            } : null)
+                        }
+                        dirty={appCredDirty ?? false}
+                        saving={saveGithubApp.isPending}
+                        onReset={handleOAuthReset}
+                        onSave={handleOAuthSave}
+                    />
+                )
+            default:
+                return null
+        }
+    }
+
     return (
-        <div className="flex h-full flex-col overflow-auto bg-background">
+        <div className="flex h-full flex-col overflow-hidden bg-background">
             <PageHeader
                 title="Application Settings"
                 description="Manage global preferences and defaults. Project settings can override some of these values."
-                containerClassName="max-w-5xl"
+                actions={
+                    activeSection !== 'oauth' ? (
+                        <>
+                            {status === 'saved' && (
+                                <Badge variant="secondary" className="gap-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    Saved
+                                </Badge>
+                            )}
+                            {status === 'error' && (
+                                <Badge variant="outline" className="border-destructive/60 text-destructive">
+                                    Save failed
+                                </Badge>
+                            )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleReset}
+                                disabled={!dirty || updateSettings.isPending}
+                            >
+                                Reset
+                            </Button>
+                            <Button
+                                size="sm"
+                                disabled={!dirty || updateSettings.isPending || editorValidationStatus === 'invalid'}
+                                onClick={save}
+                            >
+                                {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        </>
+                    ) : null
+                }
             />
 
-            <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-
-                {form && (
-                    <>
-                        <div className="divide-y rounded-md border">
-                            <GeneralSettingsSection form={form} onChange={(p) => setForm({...form, ...p})}
-                                                    onDesktopToggle={(v) => handleDesktopToggle(v)}/>
-                            <EditorSettingsSection editorCommand={form.editorCommand}
-                                                   validationStatus={editorValidationStatus}
-                                                   onChange={(v) => setForm({...form, editorCommand: v})}/>
-                            <GitDefaultsSection form={{
-                                gitUserName: form.gitUserName,
-                                gitUserEmail: form.gitUserEmail,
-                                branchTemplate: form.branchTemplate
-                            }} onChange={(p) => setForm({...form, ...p})}/>
-                            <GithubSettingsSection form={{
-                                ghAutolinkTickets: form.ghAutolinkTickets,
-                                ghPrTitleTemplate: form.ghPrTitleTemplate,
-                                ghPrBodyTemplate: form.ghPrBodyTemplate
-                            }} onChange={(p) => setForm({...form, ...p})}/>
-                            <OpencodeAgentSettingsSection form={{opencodePort: form.opencodePort}}
-                                                           onChange={(p) => setForm({...form, ...p})}/>
-                        </div>
-                        {appCredForm ? (
-                            <div className="rounded-md border p-6">
-                                <div className="mb-4">
-                                    <h2 className="text-base font-medium">GitHub OAuth App</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        Client ID and secret used for GitHub device flow. Values are stored locally in the app database.
-                                    </p>
-                                </div>
-                                <GithubAppCredentialsFields
-                                    value={appCredForm}
-                                    onChange={(patch) =>
-                                        setAppCredForm({
-                                            ...appCredForm,
-                                            ...patch,
-                                            secretAction: patch.clientSecret !== undefined ? 'update' : appCredForm.secretAction,
-                                        })
-                                    }
-                                    disabled={saveGithubApp.isPending}
-                                />
-                                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                                    <label className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-border"
-                                            checked={appCredForm.secretAction === 'clear'}
-                                            onChange={(e) =>
-                                                setAppCredForm({
-                                                    ...appCredForm,
-                                                    clientSecret: '',
-                                                    secretAction: e.target.checked ? 'clear' : 'unchanged',
-                                                })
-                                            }
-                                        />
-                                        Remove stored secret (fall back to env)
-                                    </label>
-                                </div>
-                                <div className="mt-4 flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        disabled={!appCredDirty || saveGithubApp.isPending}
-                                        onClick={() => {
-                                            if (appCredInitial) setAppCredForm(appCredInitial)
-                                        }}
-                                    >
-                                        Reset
-                                    </Button>
-                                    <Button
-                                        disabled={
-                                            !appCredDirty ||
-                                            saveGithubApp.isPending ||
-                                            !appCredForm.clientId.trim()
-                                        }
-                                        onClick={() => saveGithubApp.mutate({
-                                            clientId: appCredForm.clientId.trim(),
-                                            clientSecret:
-                                                appCredForm.secretAction === 'unchanged'
-                                                    ? undefined
-                                                    : appCredForm.secretAction === 'clear'
-                                                        ? null
-                                                        : appCredForm.clientSecret.trim() || null,
-                                        })}
-                                    >
-                                        {saveGithubApp.isPending ? 'Saving…' : 'Save GitHub app'}
-                                    </Button>
-                                </div>
-                            </div>
-                        ) : null}
-                    </>
-                )}
-
-                <div className="flex items-center justify-end gap-2">
-                    <Button
-                        variant="outline"
-                        disabled={!dirty || updateSettings.isPending}
-                        onClick={() => {
-                            if (initial) setForm(initial)
-                        }}
-                    >
-                        Reset
-                    </Button>
-                    <Button disabled={!dirty || updateSettings.isPending || editorValidationStatus === 'invalid'} onClick={save}>
-                        {updateSettings.isPending ? 'Saving…' : 'Save changes'}
-                    </Button>
-                </div>
-            </div>
+            <MasterDetailLayout
+                title="Settings"
+                items={SETTINGS_ITEMS}
+                activeId={activeSection}
+                onSelect={(id) => setActiveSection(id as SectionId)}
+                loading={isLoading}
+            >
+                {renderContent()}
+            </MasterDetailLayout>
         </div>
     )
 }

@@ -136,12 +136,11 @@ describe('AppSidebar Toggle Functionality', () => {
                 </Wrapper>,
             )
 
-            // Dashboard button - unique in the sidebar
             expect(screen.getByRole('button', {name: /dashboard/i})).toBeInTheDocument()
-            // Find the Projects nav button by its kanban icon (distinguishes it from projects list header)
-            const projectsButton = document.body.querySelector('button.w-full:has(.lucide-kanban)')
-            expect(projectsButton).toBeInTheDocument()
-            expect(projectsButton).toHaveTextContent(/projects/i)
+            expect(screen.getByRole('button', {name: /kanban board/i})).toBeInTheDocument()
+            expect(screen.getByRole('button', {name: /agents/i})).toBeInTheDocument()
+            expect(screen.getByRole('button', {name: /github issues/i})).toBeInTheDocument()
+            expect(screen.getByRole('button', {name: /worktrees/i})).toBeInTheDocument()
         })
     })
 
@@ -232,8 +231,10 @@ describe('AppSidebar Toggle Functionality', () => {
             // Wait for the collapsed state buttons with aria-labels
             await waitFor(() => {
                 expect(screen.getByRole('button', {name: /^dashboard$/i})).toBeInTheDocument()
-                expect(screen.getByRole('button', {name: /^projects$/i})).toBeInTheDocument()
-                expect(screen.getByRole('button', {name: /^create project$/i})).toBeInTheDocument()
+                expect(screen.getByRole('button', {name: /^kanban board$/i})).toBeInTheDocument()
+                expect(screen.getByRole('button', {name: /^agents$/i})).toBeInTheDocument()
+                expect(screen.getByRole('button', {name: /^github issues$/i})).toBeInTheDocument()
+                expect(screen.getByRole('button', {name: /^worktrees$/i})).toBeInTheDocument()
                 expect(screen.getByRole('button', {name: /^settings$/i})).toBeInTheDocument()
             })
         })

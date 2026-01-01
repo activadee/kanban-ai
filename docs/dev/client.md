@@ -60,10 +60,40 @@ export default tseslint.config({
 
 ## Project Settings layout
 
-- The `ProjectSettingsPanel` component renders its header (title, project name, primary actions) and footer outside a dedicated scrollable content area.
-- The main settings body uses a `ScrollArea` that fills the available vertical space (`flex-1 min-h-0` + `overflow-y-auto`) so all sections remain reachable on smaller viewports.
-- In the dialog variant (`ProjectSettingsDialog`), the surrounding `DialogContent` is non-scrollable (`scrollable={false}`) so vertical scrolling is owned by the Project Settings content area instead of the entire modal.
-- The same panel is reused in the right-hand drawer (`ProjectSettingsDrawer`), where the drawer shell provides height and the panel’s internal scroll region handles overflow, avoiding nested vertical scrollbars.
+Project settings have been moved from dialog/drawer variants to a dedicated page at `/projects/:projectId/settings`.
+
+- The `ProjectSettingsPage` component provides a full-page settings experience with 5 sections:
+  - **General** - Project name, repository URL, and ticket numbering
+  - **Agents** - Default agent selection
+  - **Scripts** - Pre/post ticket enhancement scripts
+  - **GitHub** - Issue sync and auto-close settings
+  - **Inline Agents** - Configure inline agent behavior
+- The page uses `MasterDetailLayout` for consistent sidebar navigation
+- Settings sections use a consistent card-based layout with polished typography
+- Each section component (`TicketNumberingForm`, `RepositoryDefaultsForm`, `AgentDefaultsForm`, `ScriptsForm`, `GithubIssueSyncSection`, `InlineAgentForm`) follows the same design pattern
+
+## MasterDetailLayout
+
+The `MasterDetailLayout` component provides a consistent sidebar navigation pattern used across the application:
+
+- **Sidebar** - Left navigation panel with sections and navigation items
+- **Header** - Top bar with page title and actions
+- **Main content** - Scrollable content area
+
+This layout is used by:
+- `ProjectSettingsPage` - Project settings with section navigation
+- `AgentsPage` - Agent selection and management
+
+## New Pages
+
+The sidebar refactor introduced several new dedicated pages:
+
+- `/projects/:projectId/dashboard` - Project-specific dashboard with metrics
+- `/projects/:projectId/agents` - Project-specific agent management
+- `/projects/:projectId/github-issues` - GitHub issue viewing and syncing
+- `/projects/:projectId/worktrees` - Git worktree management
+- `/projects/:projectId/settings` - Full-page project settings (replaced dialog/drawer)
+
 ---
 title: Client overview
 ---

@@ -2,7 +2,12 @@ import {BrowserRouter, Navigate, Outlet, Route, Routes} from 'react-router-dom'
 import {useEffect} from 'react'
 import {ProjectsPage} from '@/pages/ProjectsPage'
 import {ProjectBoardPage} from '@/pages/ProjectBoardPage'
-import {AgentSettingsPage} from '@/pages/AgentSettingsPage'
+import {ProjectDashboardPage} from '@/pages/ProjectDashboardPage'
+import {AgentsPage} from '@/pages/AgentsPage'
+import {GitHubIssuesPage} from '@/pages/GitHubIssuesPage'
+import {WorktreesPage} from '@/pages/WorktreesPage'
+import {ProjectSettingsPage} from '@/pages/ProjectSettingsPage'
+
 import {DashboardPage} from '@/pages/DashboardPage'
 import {AppSettingsPage} from '@/pages/AppSettingsPage'
 import {OnboardingPage} from '@/pages/OnboardingPage'
@@ -71,8 +76,12 @@ function App() {
                             <Route path="dashboard" element={<DashboardPage/>}/>
                             <Route path="projects" element={<ProjectsPage/>}/>
                             <Route path="projects/:projectId" element={<ProjectBoardPage/>}/>
+                            <Route path="projects/:projectId/dashboard" element={<ProjectDashboardPage/>}/>
+                            <Route path="projects/:projectId/settings" element={<ProjectSettingsPage/>}/>
+                            <Route path="agents" element={<AgentsPage/>}/>
+                            <Route path="projects/:projectId/github-issues" element={<GitHubIssuesPage/>}/>
+                            <Route path="projects/:projectId/worktrees" element={<WorktreesPage/>}/>
                             <Route path="attempts/:attemptId" element={<AttemptDetailPage/>}/>
-                            <Route path="agents/:agentKey" element={<AgentSettingsPage/>}/>
                             <Route path="settings" element={<AppSettingsPage/>}/>
                             <Route path="*" element={<Navigate to="/" replace/>}/>
                         </Route>

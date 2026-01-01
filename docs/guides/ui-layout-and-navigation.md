@@ -18,14 +18,39 @@ The layout adapts to different screen sizes, with the inspector sliding in as a 
 
 ## Sidebar navigation
 
-The left sidebar provides quick access to the main areas of KanbanAI:
+The left sidebar provides quick access to projects and tools. The sidebar has been redesigned with a project-context-aware pattern:
 
-- **Dashboard** - Mission Control with KPIs, live agent activity, inbox, and project health
-- **Projects** - Your kanban boards organized by project
-- **Project list** - Scrollable list of all projects with quick access to settings
-- **Agents** - View registered agents and their status
-- **GitHub account** - Connection status and quick access to manage GitHub integration
-- **Settings** - Global app settings and preferences
+### Sidebar sections
+
+The sidebar is organized into two main sections:
+
+- **PROJECT section** - Core project navigation:
+  - **Dashboard** - Project-specific metrics and KPIs
+  - **Kanban Board** - Your task board for this project
+  - **Agents** - Manage agents for this project
+- **TOOLS section** - Utility tools:
+  - **GitHub Issues** - View and sync GitHub issues
+  - **Worktrees** - Manage git worktrees
+
+### Project selector
+
+At the top of the sidebar, a project dropdown selector allows you to:
+
+- Quickly switch between your projects
+- See the current project path and repository
+- Access project settings directly from the selector
+
+### Keyboard shortcuts
+
+Power users can navigate quickly using keyboard shortcuts (when no input is focused):
+
+| Key | Action | Route |
+|-----|--------|-------|
+| `D` | Go to Project Dashboard | `/projects/:projectId/dashboard` |
+| `K` | Go to Kanban Board | `/projects/:projectId` |
+| `A` | Go to Agents | `/projects/:projectId/agents` |
+| `G` | Go to GitHub Issues | `/projects/:projectId/github-issues` |
+| `W` | Go to Worktrees | `/projects/:projectId/worktrees` |
 
 ### Collapsible sidebar
 
@@ -33,24 +58,25 @@ The sidebar can be collapsed to maximize your workspace area:
 
 - **Toggle button** - Click the collapse/expand icon in the sidebar header
 - **Collapsed mode** - Shows icon-only navigation for quick access to main areas
-- **Expanded mode** - Shows full labels and additional context (project names, GitHub account details, etc.)
+- **Expanded mode** - Shows full labels and additional context (section labels, project name)
 - **Persistent state** - Your collapsed preference is saved in browser localStorage and remembered across sessions
 
 #### Expanded sidebar (default)
 
 In the expanded state (width: 256px), the sidebar displays:
 
-- Full navigation labels (Dashboard, Projects)
-- Complete project list with names
+- Project selector dropdown with current project name and path
+- Navigation sections (PROJECT, TOOLS) with section labels
+- Full navigation labels with keyboard shortcuts
+- Create Ticket button at the bottom
 - GitHub account box with username and avatar
-- Full Settings label
-- Additional controls (Refresh, Create project)
+- Settings button
 
 #### Collapsed sidebar
 
 In the collapsed state (width: 64px), the sidebar displays:
 
-- Icon-only navigation buttons with tooltips
+- Icon-only navigation buttons with tooltips showing labels and shortcuts
 - Simplified GitHub connection button
 - All navigation remains accessible via tooltips on hover
 
@@ -77,11 +103,23 @@ The GitHub account box appears at the bottom of the sidebar and adapts to the co
 
 Clicking the GitHub account box opens a dialog where you can view account details or disconnect your GitHub integration.
 
+### Create Ticket button
+
+The Create Ticket button is located at the bottom of the sidebar, making it easily accessible from any page within a project. Clicking it opens a dialog to create a new ticket in the current project.
+
+### Global vs Project navigation
+
+KanbanAI maintains two levels of navigation:
+
+- **Global navigation** - The main sidebar always shows project-aware navigation when a project is selected
+- **Project dashboard** - A dedicated `/projects/:projectId/dashboard` route provides project-specific metrics
+- **Global dashboard** - The `/dashboard` route provides mission control with KPIs across all projects
+
 ## Card inspector (right panel)
 
 When you select a card on a project board, the card inspector opens on the right side of the screen:
 
-- **Desktop**: Opens as a side panel that shares space with the board. A vertical handle lets you resize the panel width (approximately 22%–65% of viewport)
+- **Desktop**: Opens as a side panel that shares space with the board. A vertical handle lets you resize the panel width (approximately 22%-65% of viewport)
 - **Mobile**: Opens as a full-height sheet that slides in from the right
 
 The inspector width is persisted in browser storage, so your preferred size is restored when you return to the board.
