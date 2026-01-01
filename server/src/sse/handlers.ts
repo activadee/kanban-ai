@@ -8,7 +8,8 @@ import {addConnection, removeConnection, type SSEConnection} from './bus'
 const {ensureBoardExists, getBoardState} = tasks
 const {listAttemptsForBoard} = attemptsRepo
 
-const HEARTBEAT_INTERVAL_MS = 30_000
+// Send heartbeat frequently enough to keep connection alive
+const HEARTBEAT_INTERVAL_MS = 15_000
 const DASHBOARD_CHANNEL = 'dashboard'
 
 async function verifyBoardAccess(boardId: string) {

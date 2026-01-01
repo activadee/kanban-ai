@@ -52,6 +52,8 @@ export async function startServer(options: StartOptions): Promise<StartResult> {
     port: config.port,
     fetch: options.fetch,
     websocket: options.websocket,
+    // SSE connections are long-lived; disable idle timeout
+    idleTimeout: 255, // max value in seconds (0 disables but may cause issues)
   })
 
   const url = `http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${server.port}`
