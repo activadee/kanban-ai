@@ -1,4 +1,4 @@
-import {useMemo, useState} from 'react'
+import {useEffect, useMemo, useState} from 'react'
 import {useLocation, useNavigate, useParams} from 'react-router-dom'
 import {
     LayoutDashboard,
@@ -51,8 +51,17 @@ export function AppSidebar({
     const isMobile = useIsMobile()
 
     const [isCollapsed, setIsCollapsed] = useLocalStorage('app-sidebar-collapsed', false)
+    const [lastProjectId, setLastProjectId] = useLocalStorage<string | null>('app-last-project-id', null)
 
-    const activeProjectId = params.projectId ?? null
+    const urlProjectId = params.projectId ?? null
+    
+    useEffect(() => {
+        if (urlProjectId) {
+            setLastProjectId(urlProjectId)
+        }
+    }, [urlProjectId, setLastProjectId])
+
+    const activeProjectId = urlProjectId ?? lastProjectId
     const hasActiveProject = Boolean(activeProjectId)
 
     const groupedProjects = useMemo(() => projects, [projects])
