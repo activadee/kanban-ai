@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState, useImperativeHandle, forwardRef, useRef, useCallback} from "react";
+import {useEffect, useLayoutEffect, useMemo, useState, useImperativeHandle, forwardRef, useRef} from "react";
 import {Column} from "./Column";
 import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
@@ -238,9 +238,14 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
         setSelectedId(initialSelectedCardId);
     }, [initialSelectedCardId]);
 
-    const laneMinWidth = 280;
-    const laneGap = 16;
-    const boardMinWidth = columns.length * laneMinWidth + (columns.length - 1) * laneGap;
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [capturedWidth, setCapturedWidth] = useState<number | null>(null);
+
+    useLayoutEffect(() => {
+        if (scrollContainerRef.current && capturedWidth === null) {
+            setCapturedWidth(scrollContainerRef.current.offsetWidth);
+        }
+    }, [capturedWidth]);
 
     const boardContent = (
         <DndContext
@@ -248,10 +253,10 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
         >
-            <div className="h-full min-h-0 overflow-x-auto">
-                <div 
+            <div ref={scrollContainerRef} className="h-full min-h-0 overflow-x-auto">
+                <div
                     className="flex h-full min-h-0 items-stretch gap-4"
-                    style={{ minWidth: `${boardMinWidth}px` }}
+                    style={capturedWidth ? { minWidth: `${capturedWidth}px` } : undefined}
                 >
                     {columns.map((col) => (
                         <div
