@@ -1,8 +1,4 @@
-import type {
-    Event,
-    SessionCreateResponse,
-    SessionPromptResponse,
-} from '@opencode-ai/sdk'
+import type {SessionCreateResponse} from '@opencode-ai/sdk'
 import {createOpencodeClient, createOpencodeServer, type OpencodeClient} from '@opencode-ai/sdk'
 import type {
     AgentContext,
@@ -14,10 +10,6 @@ import type {
 import {SdkAgent, type SdkSession} from '../../sdk'
 import {OpencodeProfileSchema, defaultProfile, type OpencodeProfile} from '../profiles/schema'
 import {OpencodeGrouper} from '../runtime/grouper'
-import {createEnhanceContext, createPrSummaryContext, createConsoleEmit} from '../../sdk/context-factory'
-import {getEffectiveInlinePrompt} from '../../profiles/base'
-import {buildPrSummaryPrompt, buildTicketEnhancePrompt, splitTicketMarkdown, imageToDataUrl} from '../../utils'
-import {asOpencodeError} from './errors'
 import {
     DEFAULT_OPENCODE_PORT,
     getEffectivePort,
@@ -25,11 +17,9 @@ import {
     OpencodeServerManager,
     type ServerInstance,
 } from './server'
-import {
-    extractSessionId,
-    handleEvent as handleEventImpl,
-    type SessionEvent,
-} from './handlers'
+import {handleEvent as handleEventImpl} from './handlers'
+import {createSessionStream} from './streaming'
+import {enhance as enhanceImpl, summarizePullRequest as summarizePrImpl, type InlineContext} from './inline'
 
 const nowIso = () => new Date().toISOString()
 
@@ -158,9 +148,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         return undefined
     }
 
-    private buildModelConfig(profile: OpencodeProfile):
-        | {providerID: string; modelID: string}
-        | undefined {
+    private buildModelConfig(profile: OpencodeProfile): {providerID: string; modelID: string} | undefined {
         const value = typeof profile.model === 'string' ? profile.model.trim() : ''
         if (!value) return undefined
         const slash = value.indexOf('/')
@@ -171,153 +159,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             providerID: value.slice(0, slash),
             modelID: value.slice(slash + 1),
         }
-    }
-
-    private async createSessionStream(
-        opencode: OpencodeClient,
-        installation: OpencodeInstallation,
-        profile: OpencodeProfile,
-        ctx: AgentContext,
-        signal: AbortSignal,
-        sessionId: string,
-        prompt: string,
-    ): Promise<AsyncIterable<SessionEvent>> {
-        const controller = new AbortController()
-        const onAbort = () => controller.abort()
-        if (signal.aborted) onAbort()
-        else signal.addEventListener('abort', onAbort, {once: true})
-
-        const events = await opencode.event.subscribe({
-            query: {directory: installation.directory},
-            signal: controller.signal,
-        })
-
-        const system = this.buildSystemPrompt(profile)
-        const model = this.buildModelConfig(profile)
-        const trimmedPrompt = prompt.trim()
-
-        const parts: Array<{type: 'text'; text: string} | {type: 'file'; mime: string; url: string; filename?: string}> = []
-
-        if (trimmedPrompt) {
-            parts.push({type: 'text' as const, text: trimmedPrompt})
-        }
-
-        if (ctx.images && ctx.images.length > 0) {
-            for (const image of ctx.images) {
-                parts.push({
-                    type: 'file' as const,
-                    mime: image.mime,
-                    url: imageToDataUrl(image),
-                    filename: image.name,
-                })
-            }
-            ctx.emit({
-                type: 'log',
-                level: 'info',
-                message: `[opencode] including ${ctx.images.length} image(s) in message`,
-            })
-        }
-
-        const grouper = this.getGrouper(ctx)
-        const debug = (message: string) => this.debug(profile, ctx, message)
-        const POST_PROMPT_IDLE_TIMEOUT_MS = 60_000
-
-        let promptDone = false
-        let promptError: unknown | null = null
-        let idleSeen = false
-        let sawTargetSession = false
-        let timedOut = false
-
-        let postPromptTimer: ReturnType<typeof setTimeout> | null = null
-        const resetPostPromptTimer = () => {
-            if (postPromptTimer) clearTimeout(postPromptTimer)
-            postPromptTimer = setTimeout(() => {
-                timedOut = true
-                controller.abort()
-            }, POST_PROMPT_IDLE_TIMEOUT_MS)
-        }
-
-        const promptPromise = opencode.session.prompt({
-            path: {id: sessionId},
-            query: {directory: installation.directory},
-            body: {
-                agent: profile.agent,
-                model,
-                system,
-                tools: undefined,
-                parts,
-            },
-            signal: controller.signal,
-            responseStyle: 'data',
-            throwOnError: true,
-        })
-
-        void promptPromise
-            .then(() => {
-                promptDone = true
-                if (!idleSeen) resetPostPromptTimer()
-            })
-            .catch((err) => {
-                promptDone = true
-                const aborted =
-                    signal.aborted ||
-                    controller.signal.aborted ||
-                    (err as {name?: unknown} | null)?.name === 'AbortError'
-                if (aborted) return
-                promptError = err
-                controller.abort()
-            })
-
-        async function* stream() {
-            try {
-                for await (const raw of events.stream) {
-                    const ev = raw as SessionEvent
-                    const evSessionId = extractSessionId(ev)
-
-                    if (ev.type === 'session.idle') {
-                        if (evSessionId === sessionId || (!evSessionId && sawTargetSession && promptDone)) {
-                            idleSeen = true
-                            yield ev
-                            break
-                        }
-                        debug(`dropping session.idle${evSessionId ? ` session=${evSessionId}` : ''}`)
-                        continue
-                    }
-
-                    if (!evSessionId) {
-                        debug(`dropping event ${ev.type} (missing session id)`)
-                        continue
-                    }
-                    if (evSessionId !== sessionId) continue
-
-                    sawTargetSession = true
-                    yield ev
-                    if (promptDone && !idleSeen) resetPostPromptTimer()
-                }
-            } catch (err) {
-                const aborted =
-                    signal.aborted ||
-                    controller.signal.aborted ||
-                    (err as {name?: unknown} | null)?.name === 'AbortError'
-                if (!aborted) throw err
-            } finally {
-                if (postPromptTimer) clearTimeout(postPromptTimer)
-                signal.removeEventListener('abort', onAbort)
-                controller.abort()
-                grouper.flush(ctx)
-            }
-
-            await Promise.resolve()
-
-            if (signal.aborted) throw new Error('aborted')
-            if (timedOut) throw new Error('[opencode] timed out waiting for session.idle')
-            if (promptError) throw promptError
-            if (!idleSeen && !promptDone) {
-                throw new Error('[opencode] event stream ended before completion')
-            }
-        }
-
-        return stream()
     }
 
     protected async startSession(
@@ -345,7 +186,19 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
             message: `[opencode] created session ${session.id}`,
         })
 
-        const stream = await this.createSessionStream(opencode, installation, profile, ctx, signal, session.id, prompt)
+        const stream = await createSessionStream({
+            opencode,
+            installation,
+            profile,
+            ctx,
+            signal,
+            sessionId: session.id,
+            prompt,
+            grouper: this.getGrouper(ctx),
+            buildSystemPrompt: () => this.buildSystemPrompt(profile),
+            buildModelConfig: () => this.buildModelConfig(profile),
+            debug: (msg) => this.debug(profile, ctx, msg),
+        })
         return {stream, sessionId: session.id}
     }
 
@@ -359,7 +212,19 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         installation: OpencodeInstallation,
     ): Promise<SdkSession> {
         const opencode = client as OpencodeClient
-        const stream = await this.createSessionStream(opencode, installation, profile, ctx, signal, sessionId, prompt)
+        const stream = await createSessionStream({
+            opencode,
+            installation,
+            profile,
+            ctx,
+            signal,
+            sessionId,
+            prompt,
+            grouper: this.getGrouper(ctx),
+            buildSystemPrompt: () => this.buildSystemPrompt(profile),
+            buildModelConfig: () => this.buildModelConfig(profile),
+            debug: (msg) => this.debug(profile, ctx, msg),
+        })
         return {stream, sessionId}
     }
 
@@ -385,23 +250,6 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         const grouper = this.getGrouper(ctx)
         handleEventImpl(event, ctx, profile, grouper, this.debug.bind(this))
     }
-
-    private extractPromptMarkdown(response: SessionPromptResponse): string {
-        const targetMessageId = response.info.id
-        let text = ''
-
-        for (const part of response.parts) {
-            if (part.type === 'text' && part.messageID === targetMessageId) {
-                text += part.text
-            }
-        }
-
-        return text.trim()
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Lifecycle hooks
-    // ─────────────────────────────────────────────────────────────────────────
 
     protected onRunStart(ctx: AgentContext, profile: OpencodeProfile, mode: 'run' | 'resume'): void {
         this.groupers.set(ctx.attemptId, new OpencodeGrouper(ctx.worktreePath))
@@ -445,116 +293,17 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         this.groupers.delete(ctx.attemptId)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Inline task implementations (used by SdkAgent.inline())
-    // ─────────────────────────────────────────────────────────────────────────
+    private getInlineContext(): InlineContext {
+        return {
+            detectInstallation: this.detectInstallation.bind(this),
+            createClient: this.createClient.bind(this) as InlineContext['createClient'],
+            buildSystemPrompt: this.buildSystemPrompt.bind(this),
+            buildModelConfig: this.buildModelConfig.bind(this),
+        }
+    }
 
     async enhance(input: TicketEnhanceInput, profile: OpencodeProfile): Promise<TicketEnhanceResult> {
-        const enhanceCtx = createEnhanceContext(input, createConsoleEmit())
-        const installation = await this.detectInstallation(profile, enhanceCtx)
-        const client = (await this.createClient(profile, enhanceCtx, installation)) as OpencodeClient
-        const opencode = client
-
-        let session: SessionCreateResponse
-        try {
-            session = (await opencode.session.create({
-                query: {directory: installation.directory},
-                body: {title: enhanceCtx.cardTitle},
-                signal: input.signal,
-                responseStyle: 'data',
-                throwOnError: true,
-            })) as unknown as SessionCreateResponse
-        } catch (err) {
-            const wrapped = asOpencodeError(err, 'OpenCode session create failed')
-            enhanceCtx.emit({
-                type: 'log',
-                level: 'error',
-                message: `[opencode] inline ticketEnhance session create failed: ${wrapped.message}`,
-            })
-            throw wrapped
-        }
-
-        const system = this.buildSystemPrompt(profile)
-        const model = this.buildModelConfig(profile)
-        const effectiveAppend = getEffectiveInlinePrompt(profile)
-        const basePrompt = buildTicketEnhancePrompt(input, effectiveAppend)
-        const inlineGuard =
-            'IMPORTANT: Inline ticket enhancement only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines ticket body, no extra commentary.'
-        const prompt = `${basePrompt}\n\n${inlineGuard}`
-
-        if (profile.debug) {
-            enhanceCtx.emit({
-                type: 'log',
-                level: 'info',
-                message: `[opencode:inline] ticketEnhance sending prompt (length=${prompt.length}) for project=${input.projectId} board=${input.boardId}`,
-            })
-        }
-
-        let response: SessionPromptResponse
-        try {
-            response = (await opencode.session.prompt({
-                path: {id: session.id},
-                query: {directory: installation.directory},
-                body: {
-                    agent: profile.agent,
-                    model,
-                    system,
-                    tools: undefined,
-                    parts: prompt
-                        ? [
-                              {
-                                  type: 'text' as const,
-                                  text: prompt,
-                              },
-                          ]
-                        : [],
-                },
-                signal: input.signal,
-                responseStyle: 'data',
-                throwOnError: true,
-            })) as unknown as SessionPromptResponse
-        } catch (err) {
-            const wrapped = asOpencodeError(err, 'OpenCode session prompt failed')
-            enhanceCtx.emit({
-                type: 'log',
-                level: 'error',
-                message: `[opencode] inline ticketEnhance failed: ${wrapped.message}`,
-            })
-            throw wrapped
-        }
-
-        const markdown = this.extractPromptMarkdown(response)
-        if (profile.debug) {
-            enhanceCtx.emit({
-                type: 'log',
-                level: 'info',
-                message: `[opencode:inline] ticketEnhance received markdown (length=${markdown.length}) for project=${input.projectId}`,
-            })
-        }
-
-        if (!markdown) {
-            if (profile.debug) {
-                enhanceCtx.emit({
-                    type: 'log',
-                    level: 'warn',
-                    message:
-                        '[opencode:inline] ticketEnhance received empty response, falling back to original title/description',
-                })
-            }
-            return {
-                title: input.title,
-                description: input.description,
-            }
-        }
-        const result = splitTicketMarkdown(markdown, input.title, input.description)
-        if (profile.debug) {
-            enhanceCtx.emit({
-                type: 'log',
-                level: 'info',
-                message: `[opencode:inline] ticketEnhance final result title="${result.title}" descriptionLength=${result.description.length}`,
-            })
-        }
-        return result
+        return enhanceImpl(input, profile, this.getInlineContext())
     }
 
     async summarizePullRequest(
@@ -562,86 +311,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         profile: OpencodeProfile,
         signal?: AbortSignal,
     ): Promise<PrSummaryInlineResult> {
-        const summaryCtx = createPrSummaryContext(input, signal, createConsoleEmit())
-        const installation = await this.detectInstallation(profile, summaryCtx)
-        const client = (await this.createClient(profile, summaryCtx, installation)) as OpencodeClient
-        const opencode = client
-
-        let session: SessionCreateResponse
-        try {
-            session = (await opencode.session.create({
-                query: {directory: installation.directory},
-                body: {title: summaryCtx.cardTitle},
-                signal: summaryCtx.signal,
-                responseStyle: 'data',
-                throwOnError: true,
-            })) as unknown as SessionCreateResponse
-        } catch (err) {
-            const wrapped = asOpencodeError(err, 'OpenCode session create failed')
-            summaryCtx.emit({
-                type: 'log',
-                level: 'error',
-                message: `[opencode] inline prSummary session create failed: ${wrapped.message}`,
-            })
-            throw wrapped
-        }
-
-        const system = this.buildSystemPrompt(profile)
-        const model = this.buildModelConfig(profile)
-        const effectiveAppend = getEffectiveInlinePrompt(profile)
-        const basePrompt = buildPrSummaryPrompt(input, effectiveAppend)
-        const inlineGuard =
-            'IMPORTANT: Inline PR summary only. Do not edit or create files. Respond only with Markdown, first line "# <Title>", remaining lines PR body, no extra commentary.'
-        const prompt = `${basePrompt}\n\n${inlineGuard}`
-
-        let response: SessionPromptResponse
-        try {
-            response = (await opencode.session.prompt({
-                path: {id: session.id},
-                query: {directory: installation.directory},
-                body: {
-                    agent: profile.agent,
-                    model,
-                    system,
-                    tools: undefined,
-                    parts: prompt
-                        ? [
-                              {
-                                  type: 'text' as const,
-                                  text: prompt,
-                              },
-                          ]
-                        : [],
-                },
-                signal: summaryCtx.signal,
-                responseStyle: 'data',
-                throwOnError: true,
-            })) as unknown as SessionPromptResponse
-        } catch (err) {
-            const wrapped = asOpencodeError(err, 'OpenCode session prompt failed')
-            summaryCtx.emit({
-                type: 'log',
-                level: 'error',
-                message: `[opencode] inline prSummary failed: ${wrapped.message}`,
-            })
-            throw wrapped
-        }
-
-        const fallbackTitle = `PR from ${input.headBranch} into ${input.baseBranch}`
-        const fallbackBody = `Changes from ${input.baseBranch} to ${input.headBranch} in ${input.repositoryPath}`
-
-        const markdown = this.extractPromptMarkdown(response)
-        if (!markdown) {
-            return {
-                title: fallbackTitle,
-                body: fallbackBody,
-            }
-        }
-        const split = splitTicketMarkdown(markdown, fallbackTitle, fallbackBody)
-        return {
-            title: split.title,
-            body: split.description,
-        }
+        return summarizePrImpl(input, profile, signal, this.getInlineContext())
     }
 }
 
