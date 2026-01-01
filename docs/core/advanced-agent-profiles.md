@@ -64,6 +64,7 @@ Agents can enable verbose debug logging via `config.debug: true` in the profile.
 
 - Codex emits structured debug records in Attempt logs prefixed with `[codex:debug]` (including a timestamp and event context).
 - OpenCode emits verbose records prefixed with `[opencode:debug]`.
+- Droid emits verbose records prefixed with `[droid:debug]`.
 
 Keep debug disabled in normal use; it can produce a high volume of logs. Debug output is intended for troubleshooting and avoids dumping full tool payloads where possible.
 
