@@ -223,6 +223,7 @@ export function useDashboardSSE() {
     const eventSourceRef = useRef<EventSource | null>(null)
     const reconnectTimerRef = useRef<number | null>(null)
     const reconnectAttemptsRef = useRef(0)
+    const shouldReconnectRef = useRef(false)
 
     const [connected, setConnected] = useState(false)
 
@@ -237,20 +238,20 @@ export function useDashboardSSE() {
         }
 
         function scheduleReconnect() {
-            if (disposed) return
+            if (!shouldReconnectRef.current || disposed) return
             if (reconnectTimerRef.current !== null) return
             const attempt = reconnectAttemptsRef.current
             const delay = Math.min(RECONNECT_BASE_DELAY_MS * 2 ** attempt, RECONNECT_MAX_DELAY_MS)
             reconnectTimerRef.current = window.setTimeout(() => {
                 reconnectTimerRef.current = null
-                if (disposed) return
+                if (!shouldReconnectRef.current || disposed) return
                 reconnectAttemptsRef.current = Math.min(attempt + 1, 8)
                 connect()
             }, delay)
         }
 
         function connect() {
-            if (disposed) return
+            if (!shouldReconnectRef.current || disposed) return
             clearReconnectTimer()
 
             const eventSource = new EventSource(baseUrl)
@@ -296,10 +297,13 @@ export function useDashboardSSE() {
             })
         }
 
+        shouldReconnectRef.current = true
+        reconnectAttemptsRef.current = 0
         connect()
 
         return () => {
             disposed = true
+            shouldReconnectRef.current = false
             clearReconnectTimer()
             if (eventSourceRef.current) {
                 try {

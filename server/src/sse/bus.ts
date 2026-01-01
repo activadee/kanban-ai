@@ -19,6 +19,29 @@ export function removeConnection(channelId: string, conn: SSEConnection) {
     if (!set.size) channels.delete(channelId)
 }
 
+/**
+ * Close all SSE connections. Call during graceful shutdown.
+ */
+export function closeAllConnections() {
+    for (const set of channels.values()) {
+        for (const conn of set) {
+            conn.aborted = true
+        }
+    }
+    channels.clear()
+}
+
+/**
+ * Get count of active connections (for monitoring/debugging)
+ */
+export function getConnectionCount(): number {
+    let count = 0
+    for (const set of channels.values()) {
+        count += set.size
+    }
+    return count
+}
+
 export function broadcast(channelId: string, event: string, data: unknown) {
     const msg = JSON.stringify(data)
 
