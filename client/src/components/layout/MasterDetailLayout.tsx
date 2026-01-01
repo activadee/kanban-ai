@@ -149,15 +149,8 @@ export function MasterDetailLayout({
                                     >
                                         <item.icon className="size-4" strokeWidth={activeId === item.id ? 2 : 1.75} />
                                     </span>
-                                    <span className="flex flex-col">
-                                        <span className={cn('text-[13px]', activeId === item.id && 'font-medium')}>
-                                            {item.label}
-                                        </span>
-                                        {item.subtitle && (
-                                            <span className="text-[11px] text-muted-foreground/60">
-                                                {item.subtitle}
-                                            </span>
-                                        )}
+                                    <span className={cn('text-[13px]', activeId === item.id && 'font-medium')}>
+                                        {item.label}
                                     </span>
                                 </span>
                             </SelectItem>
