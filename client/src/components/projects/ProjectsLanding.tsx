@@ -3,6 +3,7 @@ import {Card} from '@/components/ui/card'
 import {Plus} from 'lucide-react'
 import {ProjectCard, type Project} from './ProjectCard'
 import {EmptyProjects} from './EmptyProjects'
+import {PageHeader} from '@/components/layout/PageHeader'
 
 interface ProjectsLandingProps {
     projects: Project[]
@@ -42,6 +43,23 @@ function ProjectCardSkeleton() {
     )
 }
 
+function ProjectStats({activeCount, totalCount}: {activeCount: number; totalCount: number}) {
+    if (totalCount === 0) return null
+
+    return (
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+                <span className="size-2 animate-pulse rounded-full bg-brand"/>
+                <span className="font-medium text-foreground">{activeCount}</span> active
+            </span>
+            <span className="text-border">|</span>
+            <span>
+                <span className="font-medium text-foreground">{totalCount}</span> total
+            </span>
+        </div>
+    )
+}
+
 export function ProjectsLanding({
     projects,
     onSelect,
@@ -56,47 +74,18 @@ export function ProjectsLanding({
 
     return (
         <div className="flex h-full flex-col overflow-auto bg-background text-foreground">
-            <section className="relative overflow-hidden border-b border-border/40">
-                <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-primary/3"/>
-                <div
-                    className="absolute inset-0 opacity-[0.02]"
-                    style={{
-                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23888888' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                    }}
-                />
-                <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                        <div className="space-y-2">
-                            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-                                Your Projects
-                            </h1>
-                            <p className="max-w-lg text-sm text-muted-foreground">
-                                Orchestrate AI agents across your repositories. Each project connects to a git workspace where agents turn tickets into pull requests.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-col items-start gap-3 md:items-end">
-                            <Button size="default" className="gap-2" onClick={onCreate}>
-                                <Plus className="size-4"/>
-                                Create Project
-                            </Button>
-
-                            {!loading && !error && totalCount > 0 && (
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="size-2 animate-pulse rounded-full bg-brand"/>
-                                        <span className="font-medium text-foreground">{activeCount}</span> active
-                                    </span>
-                                    <span className="text-border">|</span>
-                                    <span>
-                                        <span className="font-medium text-foreground">{totalCount}</span> total
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </section>
+            <PageHeader
+                title="Projects"
+                description="Manage your projects and orchestrate AI agents across repositories."
+                actions={
+                    <Button size="sm" className="gap-1.5" onClick={onCreate}>
+                        <Plus className="size-4"/>
+                        Create Project
+                    </Button>
+                }
+            >
+                {!loading && !error && <ProjectStats activeCount={activeCount} totalCount={totalCount} />}
+            </PageHeader>
 
             <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
                 {loading ? (
