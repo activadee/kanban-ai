@@ -19,7 +19,8 @@ import {
 } from './server'
 import {handleEvent as handleEventImpl} from './handlers'
 import {createSessionStream} from './streaming'
-import {enhance as enhanceImpl, summarizePullRequest as summarizePrImpl, type InlineContext} from './inline'
+import * as inlineTasks from './inline'
+import type {InlineContext} from './inline'
 
 const nowIso = () => new Date().toISOString()
 
@@ -303,7 +304,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
     }
 
     async enhance(input: TicketEnhanceInput, profile: OpencodeProfile): Promise<TicketEnhanceResult> {
-        return enhanceImpl(input, profile, this.getInlineContext())
+        return inlineTasks.enhance(input, profile, this.getInlineContext())
     }
 
     async summarizePullRequest(
@@ -311,7 +312,7 @@ export class OpencodeImpl extends SdkAgent<OpencodeProfile, OpencodeInstallation
         profile: OpencodeProfile,
         signal?: AbortSignal,
     ): Promise<PrSummaryInlineResult> {
-        return summarizePrImpl(input, profile, signal, this.getInlineContext())
+        return inlineTasks.summarizePullRequest(input, profile, signal, this.getInlineContext())
     }
 }
 

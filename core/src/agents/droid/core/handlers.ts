@@ -57,7 +57,7 @@ export function handleToolCallEvent(
     grouper: StreamGrouper,
     toolCalls: Map<string, ToolCallInfo>,
 ): void {
-    grouper.flushReasoning({} as AgentContext) // Flush without emitting
+    grouper.clearReasoning()
     const params = ev.parameters as Record<string, unknown>
     toolCalls.set(ev.id, {
         name: ev.toolName,
