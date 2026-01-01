@@ -221,7 +221,7 @@ class DroidImpl extends SdkAgent<DroidProfile, DroidInstallation> implements Age
         }
 
         if (tempImagePaths.length > 0) {
-            await cleanupTempImageFiles(tempImagePaths)
+            await cleanupTempImageFiles(tempImagePaths).catch(() => {})
         }
     }
 
