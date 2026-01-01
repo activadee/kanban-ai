@@ -3,6 +3,7 @@ import {useLocation, useNavigate, useParams} from 'react-router-dom'
 import {
     LayoutDashboard,
     Kanban,
+    Settings2,
     Settings,
     RefreshCw,
     Plus,
@@ -16,7 +17,6 @@ import {
 import {useProjectsNav} from '@/contexts/useProjectsNav'
 import {Button} from '@/components/ui/button'
 import {cn} from '@/lib/utils'
-import {ProjectSettingsDrawer} from '@/components/projects/ProjectSettingsDrawer'
 import {ProjectDeleteDialog} from '@/components/projects/ProjectDeleteDialog'
 import type {ProjectSummary} from 'shared'
 import {NavButton} from './sidebar/NavButton'
@@ -44,7 +44,6 @@ export function AppSidebar({
     const location = useLocation()
     const params = useParams<{projectId: string}>()
     const {projects, loading, refresh, deleteMutation} = useProjectsNav()
-    const [settingsProject, setSettingsProject] = useState<ProjectSummary | null>(null)
     const [deleteProject, setDeleteProject] = useState<ProjectSummary | null>(null)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -122,6 +121,17 @@ export function AppSidebar({
                         disabled={!hasActiveProject}
                     >
                         <Kanban className="size-5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('size-8', isProjectRoute('/settings') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('/settings')}
+                        title="Project Settings (S)"
+                        aria-label="Project Settings"
+                        disabled={!hasActiveProject}
+                    >
+                        <Settings2 className="size-5" />
                     </Button>
                     
                     <div className="h-px w-8 bg-border/60 my-1" />
@@ -223,6 +233,13 @@ export function AppSidebar({
                             active={isProjectRoute('')}
                             onClick={() => navigateToProjectRoute('')}
                         />
+                        <NavButton
+                            icon={Settings2}
+                            label="Project Settings"
+                            shortcut="S"
+                            active={isProjectRoute('/settings')}
+                            onClick={() => navigateToProjectRoute('/settings')}
+                        />
                     </div>
 
                     <div className="my-4 h-px bg-border/60" />
@@ -293,13 +310,6 @@ export function AppSidebar({
 
     const dialogs = (
         <>
-            <ProjectSettingsDrawer
-                projectId={settingsProject?.id ?? null}
-                open={Boolean(settingsProject)}
-                onOpenChange={(open) => {
-                    if (!open) setSettingsProject(null)
-                }}
-            />
             <ProjectDeleteDialog
                 open={Boolean(deleteProject)}
                 project={deleteProject}

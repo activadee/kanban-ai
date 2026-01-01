@@ -6,9 +6,13 @@ type ShortcutMap = Record<string, string>
 const PROJECT_SHORTCUTS: ShortcutMap = {
     d: 'dashboard',
     k: '', // Kanban board is the root project route
-    a: 'agents',
     g: 'github-issues',
     w: 'worktrees',
+    s: 'settings',
+}
+
+const GLOBAL_SHORTCUTS: ShortcutMap = {
+    a: '/agents',
 }
 
 /**
@@ -23,10 +27,6 @@ export function useKeyboardShortcuts() {
 
     const handleKeyDown = useCallback(
         (event: KeyboardEvent) => {
-            // Skip if no project is selected
-            if (!projectId) return
-
-            // Skip if modifier keys are pressed (allow Cmd+K, Ctrl+K, etc.)
             if (event.metaKey || event.ctrlKey || event.altKey) return
 
             // Skip if user is typing in an input
@@ -42,8 +42,17 @@ export function useKeyboardShortcuts() {
             }
 
             const key = event.key.toLowerCase()
-            const route = PROJECT_SHORTCUTS[key]
 
+            const globalRoute = GLOBAL_SHORTCUTS[key]
+            if (globalRoute !== undefined) {
+                event.preventDefault()
+                navigate(globalRoute)
+                return
+            }
+
+            if (!projectId) return
+
+            const route = PROJECT_SHORTCUTS[key]
             if (route !== undefined) {
                 event.preventDefault()
                 const path = route
