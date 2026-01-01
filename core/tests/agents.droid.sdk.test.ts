@@ -230,7 +230,7 @@ describe('DroidAgent SDK Integration', () => {
 
             const ctx = createMockContext({sessionId: undefined})
 
-            await expect(DroidAgent.resume(ctx, profile)).rejects.toThrow('Droid resume requires sessionId')
+            await expect(DroidAgent.resume(ctx, profile)).rejects.toThrow('DROID resume requires sessionId')
         })
     })
 
