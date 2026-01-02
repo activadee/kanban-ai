@@ -47,35 +47,39 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
         return distanceFromBottom <= bottomThreshold
     }, [bottomThreshold])
 
-    const scrollToBottom = useCallback((immediate = false) => {
+    const scrollToBottom = useCallback(() => {
         isProgrammaticScrollRef.current = true
         
         const doScroll = () => {
             if (targetRef.current) {
                 targetRef.current.scrollIntoView({
-                    behavior: immediate ? 'auto' : scrollBehavior,
+                    behavior: scrollBehavior,
                     block: 'end',
                 })
             } else if (containerRef.current) {
                 containerRef.current.scrollTo({
                     top: containerRef.current.scrollHeight,
-                    behavior: immediate ? 'auto' : scrollBehavior,
+                    behavior: scrollBehavior,
                 })
             }
         }
         
         doScroll()
         
-        setTimeout(() => {
-            doScroll()
-        }, 50)
+        const retryIfNeeded = () => {
+            if (!checkIsAtBottom()) {
+                doScroll()
+            }
+        }
+        
+        setTimeout(retryIfNeeded, 100)
+        setTimeout(retryIfNeeded, 250)
         
         setTimeout(() => {
-            doScroll()
             isProgrammaticScrollRef.current = false
             isAtBottomRef.current = true
-        }, 150)
-    }, [scrollBehavior])
+        }, 300)
+    }, [scrollBehavior, checkIsAtBottom])
 
     const handleScroll = useCallback(() => {
         if (isProgrammaticScrollRef.current) {
@@ -129,19 +133,18 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
 
 export function useAutoScrollEffect(
     isEnabled: boolean,
-    scrollToBottom: (immediate?: boolean) => void,
+    scrollToBottom: () => void,
     trigger: unknown,
 ) {
     const prevTriggerRef = useRef<unknown>(undefined)
 
     useEffect(() => {
-        const isInitialLoad = prevTriggerRef.current === undefined
         const triggerChanged = prevTriggerRef.current !== trigger
         prevTriggerRef.current = trigger
 
         if (isEnabled && triggerChanged) {
             requestAnimationFrame(() => {
-                scrollToBottom(isInitialLoad)
+                scrollToBottom()
             })
         }
     }, [isEnabled, scrollToBottom, trigger])

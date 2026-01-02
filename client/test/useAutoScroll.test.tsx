@@ -308,7 +308,6 @@ describe('useAutoScrollEffect', () => {
         vi.runAllTimers()
         
         expect(scrollToBottom).toHaveBeenCalledTimes(1)
-        expect(scrollToBottom).toHaveBeenCalledWith(true)
     })
 
     it('does not scroll on initial load when autoscroll is disabled', () => {
@@ -336,7 +335,6 @@ describe('useAutoScrollEffect', () => {
         vi.runAllTimers()
         
         expect(scrollToBottom).toHaveBeenCalledTimes(1)
-        expect(scrollToBottom).toHaveBeenCalledWith(false)
     })
 
     it('does not scroll when trigger changes but autoscroll is disabled', () => {
