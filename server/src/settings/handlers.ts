@@ -21,6 +21,10 @@ const updateSettingsSchema = z.object({
     ghPrBodyTemplate: z.string().nullable().optional(),
     ghAutolinkTickets: z.boolean().optional(),
     opencodePort: z.number().int().min(1).max(65535).optional(),
+    streamdownAssistantEnabled: z.boolean().optional(),
+    streamdownUserEnabled: z.boolean().optional(),
+    streamdownSystemEnabled: z.boolean().optional(),
+    streamdownThinkingEnabled: z.boolean().optional(),
 })
 
 export const getAppSettingsHandlers = createHandlers(async (c) => {
