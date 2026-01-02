@@ -34,7 +34,7 @@ describe("MessageRow", () => {
 
             const bubble = container.querySelector('[data-slot="message-bubble"]')
             expect(bubble).not.toBeNull()
-            expect(bubble?.className).toContain("bg-teal")
+            expect(bubble?.className).toContain("from-teal")
             expect(bubble?.textContent).toContain("Hello, world!")
         })
 
@@ -280,7 +280,7 @@ describe("MessageRow", () => {
 
             const {container: container1} = render(<MessageRow item={succeededItem}/>)
             const successIndicator = container1.querySelector('[data-slot="status-indicator"]')
-            expect(successIndicator?.textContent).toContain("success")
+            expect(successIndicator?.textContent).toContain("done")
             expect(successIndicator?.className).toContain("text-emerald")
 
             cleanup()
@@ -336,7 +336,7 @@ describe("MessageRow", () => {
 
             const toggle = container.querySelector('[data-slot="output-toggle"]')
             expect(toggle).not.toBeNull()
-            expect(toggle?.textContent).toBe("Reveal")
+            expect(toggle?.textContent).toBe("Show")
 
             fireEvent.click(toggle!)
 
@@ -485,11 +485,11 @@ describe("MessageRow", () => {
 
             const row = container.querySelector('[data-slot="message-row"]')
             expect(row?.className).toContain("animate-in")
-            expect(row?.className).toContain("fade-in-0")
-            expect(row?.className).toContain("slide-in-from-bottom-2")
+            expect(row?.className).toContain("fade-in-50")
+            expect(row?.className).toContain("slide-in-from-bottom-1")
         })
 
-        it("applies animation classes to thinking block", () => {
+        it("applies transition classes to thinking block", () => {
             const item: ConversationThinkingItem = {
                 type: "thinking",
                 text: "Analyzing...",
@@ -499,12 +499,11 @@ describe("MessageRow", () => {
             const {container} = render(<MessageRow item={item}/>)
 
             const block = container.querySelector('[data-slot="thinking-block"]')
-            expect(block?.className).toContain("animate-in")
-            expect(block?.className).toContain("fade-in-0")
-            expect(block?.className).toContain("slide-in-from-bottom-2")
+            expect(block?.className).toContain("transition-all")
+            expect(block?.className).toContain("duration-200")
         })
 
-        it("applies animation classes to tool section", () => {
+        it("applies transition classes to tool section", () => {
             const item: ConversationToolItem = {
                 type: "tool",
                 timestamp: new Date().toISOString(),
@@ -518,12 +517,11 @@ describe("MessageRow", () => {
             const {container} = render(<MessageRow item={item}/>)
 
             const section = container.querySelector('[data-slot="collapsible-section"]')
-            expect(section?.className).toContain("animate-in")
-            expect(section?.className).toContain("fade-in-0")
-            expect(section?.className).toContain("slide-in-from-bottom-2")
+            expect(section?.className).toContain("transition-all")
+            expect(section?.className).toContain("duration-200")
         })
 
-        it("applies animation classes to automation section", () => {
+        it("applies transition classes to automation section", () => {
             const item: ConversationAutomationItem = {
                 type: "automation",
                 stage: "setup",
@@ -540,9 +538,8 @@ describe("MessageRow", () => {
             const {container} = render(<MessageRow item={item}/>)
 
             const section = container.querySelector('[data-slot="collapsible-section"]')
-            expect(section?.className).toContain("animate-in")
-            expect(section?.className).toContain("fade-in-0")
-            expect(section?.className).toContain("slide-in-from-bottom-2")
+            expect(section?.className).toContain("transition-all")
+            expect(section?.className).toContain("duration-200")
         })
 
         it("applies animation classes to error row", () => {
@@ -556,8 +553,8 @@ describe("MessageRow", () => {
 
             const row = container.querySelector('[data-slot="error-row"]')
             expect(row?.className).toContain("animate-in")
-            expect(row?.className).toContain("fade-in-0")
-            expect(row?.className).toContain("slide-in-from-bottom-2")
+            expect(row?.className).toContain("fade-in-50")
+            expect(row?.className).toContain("slide-in-from-bottom-1")
         })
     })
 

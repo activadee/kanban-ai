@@ -15,72 +15,46 @@ vi.mock("@/components/kanban/card-inspector/useCardInspectorState", () => ({
     useCardInspectorState: mocks.useCardInspectorStateMock,
 }));
 
-vi.mock("@/components/ui/tabs", () => {
-    const TabsContext = React.createContext<{ value?: string; onValueChange?: (v: string) => void }>({});
-
-    const Tabs = ({ value, onValueChange, children, className, ...props }: any) => (
-        <TabsContext.Provider value={{ value, onValueChange }}>
-            <div data-slot="tabs" className={className} {...props}>
-                {children}
-            </div>
-        </TabsContext.Provider>
-    );
-
-    const TabsList = ({ children, className, ...props }: any) => (
-        <div role="tablist" data-slot="tabs-list" className={className} {...props}>
-            {children}
-        </div>
-    );
-
-    const TabsTrigger = ({ value: triggerValue, children, className, ...props }: any) => {
-        const ctx = React.useContext(TabsContext);
-        const active = ctx.value === triggerValue;
-        return (
-            <button
-                role="tab"
-                data-slot="tabs-trigger"
-                data-state={active ? "active" : "inactive"}
-                aria-selected={active}
-                className={className}
-                onClick={() => ctx.onValueChange?.(triggerValue)}
-                {...props}
-            >
-                {children}
-            </button>
-        );
-    };
-
-    const TabsContent = ({ value: contentValue, children, className, ...props }: any) => {
-        const ctx = React.useContext(TabsContext);
-        const active = ctx.value === contentValue;
-        return active ? (
-            <div role="tabpanel" data-slot="tabs-content" data-state="active" className={className} {...props}>
-                {children}
-            </div>
-        ) : (
-            <div data-slot="tabs-content" data-state="inactive" hidden className={className} {...props} />
-        );
-    };
-
-    return { Tabs, TabsList, TabsTrigger, TabsContent };
-});
+vi.mock("@/components/ui/sheet", () => ({
+    Sheet: ({ children, open }: any) => open ? <div data-testid="sheet">{children}</div> : null,
+    SheetContent: ({ children }: any) => <div data-testid="sheet-content">{children}</div>,
+    SheetHeader: ({ children }: any) => <div>{children}</div>,
+    SheetTitle: ({ children }: any) => <div>{children}</div>,
+}));
 
 let mockInspectorState: UseCardInspectorStateResult;
 
 vi.mock("@/components/kanban/card-inspector/InspectorHeader", () => ({
-    InspectorHeader: ({ actions }: { actions?: React.ReactNode }) => (
+    InspectorHeader: ({ actions, viewMode, onViewModeChange, hasAttempt }: any) => (
         <div data-testid="inspector-header">
             InspectorHeader
             {actions}
+            {viewMode && onViewModeChange && (
+                <div data-testid="view-mode-toggle">
+                    <button 
+                        data-testid="chat-view-btn"
+                        data-active={viewMode === 'conversation'}
+                        onClick={() => onViewModeChange('conversation')}
+                    >
+                        {hasAttempt ? 'Chat' : 'Start'}
+                    </button>
+                    <button 
+                        data-testid="details-view-btn"
+                        data-active={viewMode === 'details'}
+                        onClick={() => onViewModeChange('details')}
+                    >
+                        Details
+                    </button>
+                </div>
+            )}
         </div>
     ),
 }));
 
-vi.mock("@/components/kanban/card-inspector/sections/DetailsSection", () => ({
-    DetailsSection: ({ gitSection }: { gitSection?: React.ReactNode }) => (
-        <div data-testid="details-section">
-            DetailsSection
-            {gitSection}
+vi.mock("@/components/kanban/card-inspector/TicketDetailsPanel", () => ({
+    TicketDetailsPanel: () => (
+        <div data-testid="ticket-details-panel">
+            TicketDetailsPanel
         </div>
     ),
 }));
@@ -94,13 +68,15 @@ vi.mock("@/components/kanban/card-inspector/sections/GitSection", () => ({
 
 vi.mock("@/components/kanban/card-inspector/AttemptToolbar", () => ({
     AttemptToolbar: ({
-                         attempt,
-                         onOpenEditor,
-                         onOpenChanges,
-                         onOpenCommit,
-                         onOpenPr,
-                         onOpenMerge,
-                     }: any) =>
+        attempt,
+        onOpenEditor,
+        onOpenChanges,
+        onOpenCommit,
+        onOpenPr,
+        onOpenMerge,
+        onOpenProcesses,
+        onOpenLogs,
+    }: any) =>
         attempt ? (
             <div data-testid="attempt-toolbar">
                 <button type="button" onClick={onOpenEditor}>Open editor</button>
@@ -108,28 +84,36 @@ vi.mock("@/components/kanban/card-inspector/AttemptToolbar", () => ({
                 <button type="button" onClick={onOpenCommit}>Commit…</button>
                 <button type="button" onClick={onOpenPr}>PR…</button>
                 <button type="button" onClick={onOpenMerge}>Merge</button>
+                {onOpenProcesses && <button type="button" onClick={onOpenProcesses}>Processes</button>}
+                {onOpenLogs && <button type="button" onClick={onOpenLogs}>Logs</button>}
             </div>
         ) : null,
 }));
 
 vi.mock("@/components/kanban/card-inspector/AttemptCreateForm", () => ({
-    AttemptCreateForm: () => <div>AttemptCreateForm</div>,
+    AttemptCreateForm: () => <div data-testid="attempt-create-form">AttemptCreateForm</div>,
 }));
 
 vi.mock("@/components/kanban/card-inspector/sections/AttemptsSection", () => ({
-    AttemptsSection: () => <div>AttemptsSection</div>,
+    AttemptsSection: () => <div data-testid="attempts-section">AttemptsSection</div>,
 }));
 
 vi.mock("@/components/kanban/card-inspector/sections/ActivitySection", () => ({
     ActivitySection: ({ onViewLogs }: { onViewLogs: () => void }) => (
-        <button type="button" onClick={onViewLogs}>
-            View logs
-        </button>
+        <div data-testid="activity-section">
+            <button type="button" onClick={onViewLogs}>
+                View logs
+            </button>
+        </div>
     ),
 }));
 
 vi.mock("@/components/kanban/card-inspector/LogsPane", () => ({
-    LogsPane: () => <div>LogsPane</div>,
+    LogsPane: () => <div data-testid="logs-pane">LogsPane</div>,
+}));
+
+vi.mock("@/lib/ticketTypes", () => ({
+    getTicketTypeColor: () => "transparent",
 }));
 
 const baseCard: Card = {
@@ -163,12 +147,19 @@ const createInspectorState = (
     overrides: Partial<UseCardInspectorStateResult> = {},
 ): UseCardInspectorStateResult => {
     const baseDetails = {
-        values: { title: baseCard.title, description: baseCard.description ?? "", dependsOn: baseCard.dependsOn ?? [] },
+        values: { title: baseCard.title, description: baseCard.description ?? "", dependsOn: baseCard.dependsOn ?? [], ticketType: null },
         setValues: vi.fn(),
         saving: false,
         deleting: false,
         handleSave: vi.fn(),
         handleDelete: vi.fn(),
+        existingImages: [],
+        imagesLoading: false,
+        pendingImages: [],
+        addImages: vi.fn(),
+        removeImage: vi.fn(),
+        clearImages: vi.fn(),
+        canAddMoreImages: true,
     };
 
     const baseHeader = {
@@ -190,8 +181,15 @@ const createInspectorState = (
         setFollowup: vi.fn(),
         sendFollowup: vi.fn(),
         sendFollowupPending: false,
+        pendingImages: [],
+        addImages: vi.fn(),
+        removeImage: vi.fn(),
+        clearImages: vi.fn(),
+        canAddMoreImages: true,
         startAttempt: vi.fn(),
+        retryAttempt: vi.fn(),
         starting: false,
+        retrying: false,
         stopAttempt: vi.fn(),
         stopping: false,
         handleAgentSelect: vi.fn(),
@@ -239,7 +237,7 @@ const renderInspector = (card: Card = baseCard) =>
         />,
     );
 
-describe("CardInspector – top-level Ticket/Attempts tabs", () => {
+describe("CardInspector – view mode toggle and side sheets", () => {
     beforeEach(() => {
         cleanup();
         vi.clearAllMocks();
@@ -248,27 +246,7 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
         mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
     });
 
-    it("shows Ticket tab by default when no attempt exists and isolates ticket details", async () => {
-        renderInspector();
-
-        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
-        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
-
-        expect(ticketTab.getAttribute("data-state")).toBe("active");
-        expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
-
-        expect(screen.getByTestId("details-section")).not.toBeNull();
-        expect(screen.queryByText("AttemptCreateForm")).toBeNull();
-
-        fireEvent.click(attemptsTab);
-
-        await waitFor(() => expect(attemptsTab.getAttribute("data-state")).toBe("active"));
-
-        expect(screen.getByText("AttemptCreateForm")).not.toBeNull();
-        expect(screen.queryByTestId("details-section")).toBeNull();
-    });
-
-    it("shows Attempts tab by default when an attempt exists", async () => {
+    it("shows conversation view by default when an attempt exists", async () => {
         mockInspectorState = createInspectorState({
             attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
         });
@@ -276,177 +254,19 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
 
         renderInspector();
 
-        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
-        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
-
         await waitFor(() => {
-            expect(attemptsTab.getAttribute("data-state")).toBe("active");
-            expect(ticketTab.getAttribute("data-state")).toBe("inactive");
+            expect(screen.getByTestId("attempts-section")).not.toBeNull();
         });
-
-        expect(screen.getByText("AttemptsSection")).not.toBeNull();
-        expect(screen.queryByText("AttemptCreateForm")).toBeNull();
     });
 
-    it("switches to Attempts after attempt data loads for the current card", async () => {
+    it("shows create form when no attempt exists in conversation view", async () => {
         mockInspectorState = createInspectorState();
         mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
 
-        const { rerender } = renderInspector();
-
-        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
-        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
-
-        expect(ticketTab.getAttribute("data-state")).toBe("active");
-        expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
-
-        mockInspectorState = createInspectorState({
-            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
-        });
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        rerender(
-            <CardInspector
-                projectId="proj-1"
-                card={baseCard}
-                onUpdate={async () => {}}
-                onDelete={async () => {}}
-            />,
-        );
+        renderInspector();
 
         await waitFor(() => {
-            expect(attemptsTab.getAttribute("data-state")).toBe("active");
-            expect(ticketTab.getAttribute("data-state")).toBe("inactive");
-        });
-    });
-
-    it("recalculates top-level tab when switching to a card without an attempt", async () => {
-        mockInspectorState = createInspectorState({
-            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
-        });
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        const { rerender } = renderInspector();
-
-        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
-        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
-
-        // Move away from the default to ensure reset happens.
-        fireEvent.click(ticketTab);
-
-        await waitFor(() => expect(ticketTab.getAttribute("data-state")).toBe("active"));
-
-        const nextCard: Card = {
-            ...baseCard,
-            id: "card-2",
-            title: "Next Card",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-
-        mockInspectorState = createInspectorState();
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        rerender(
-            <CardInspector
-                projectId="proj-1"
-                card={nextCard}
-                onUpdate={async () => {}}
-                onDelete={async () => {}}
-            />,
-        );
-
-        await waitFor(() => {
-            expect(ticketTab.getAttribute("data-state")).toBe("active");
-            expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
-        });
-    });
-
-    it("defaults to Attempts tab with inner Messages tab when switching to a card with an attempt", async () => {
-        mockInspectorState = createInspectorState({
-            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
-        });
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        const { rerender } = renderInspector();
-
-        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
-        fireEvent.click(screen.getByRole("tab", { name: /Processes/i }));
-
-        await waitFor(() => expect(screen.getByRole("tab", { name: /Processes/i }).getAttribute("data-state")).toBe("active"));
-
-        fireEvent.click(screen.getByRole("tab", { name: /Ticket/i }));
-        await waitFor(() => expect(screen.getByRole("tab", { name: /Ticket/i }).getAttribute("data-state")).toBe("active"));
-
-        const nextCard: Card = {
-            ...baseCard,
-            id: "card-2",
-            title: "Next Card",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-
-        mockInspectorState = createInspectorState({
-            attempt: { ...createInspectorState().attempt, attempt: { ...baseAttempt, id: "att-2", cardId: "card-2" } },
-        });
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        rerender(
-            <CardInspector
-                projectId="proj-1"
-                card={nextCard}
-                onUpdate={async () => {}}
-                onDelete={async () => {}}
-            />,
-        );
-
-        await waitFor(() => {
-            expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active");
-        });
-
-        const messagesTab = screen.getByRole("tab", { name: /Messages/i });
-        expect(messagesTab.getAttribute("data-state")).toBe("active");
-    });
-
-    it("does not keep Attempts active when switching to a card without an attempt even if previous attempt lingers", async () => {
-        mockInspectorState = createInspectorState({
-            attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
-        });
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        const { rerender } = renderInspector();
-
-        const ticketTab = screen.getByRole("tab", { name: /Ticket/i });
-        const attemptsTab = screen.getByRole("tab", { name: /Attempts/i });
-
-        await waitFor(() => expect(attemptsTab.getAttribute("data-state")).toBe("active"));
-
-        const nextCard: Card = {
-            ...baseCard,
-            id: "card-2",
-            title: "Next Card",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-
-        // Simulate stale attempt data that still references the old card.
-        mockInspectorState = createInspectorState({
-            attempt: { ...createInspectorState().attempt, attempt: { ...baseAttempt, cardId: "card-1" } },
-        });
-        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
-
-        rerender(
-            <CardInspector
-                projectId="proj-1"
-                card={nextCard}
-                onUpdate={async () => {}}
-                onDelete={async () => {}}
-            />,
-        );
-
-        await waitFor(() => {
-            expect(ticketTab.getAttribute("data-state")).toBe("active");
-            expect(attemptsTab.getAttribute("data-state")).toBe("inactive");
+            expect(screen.getByTestId("attempt-create-form")).not.toBeNull();
         });
     });
 
@@ -459,12 +279,6 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
         renderInspector();
 
         expect(screen.getByTestId("attempt-toolbar")).not.toBeNull();
-
-        // Switch tabs to ensure header actions persist.
-        fireEvent.click(screen.getByRole("tab", { name: /Ticket/i }));
-        await waitFor(() => expect(screen.getByRole("tab", { name: /Ticket/i }).getAttribute("data-state")).toBe("active"));
-
-        expect(screen.getByTestId("attempt-toolbar")).not.toBeNull();
     });
 
     it("does not show header attempt actions when no attempt exists", () => {
@@ -473,15 +287,13 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
         expect(screen.queryByTestId("attempt-toolbar")).toBeNull();
     });
 
-    it("opens git dialogs from header actions even on the Attempts tab", async () => {
+    it("opens git dialogs from header actions", async () => {
         mockInspectorState = createInspectorState({
             attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
         });
         mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
 
         renderInspector();
-
-        await waitFor(() => expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active"));
 
         fireEvent.click(screen.getByRole("button", { name: "Changes" }));
         expect(mockInspectorState.git.setChangesOpen).toHaveBeenCalledWith(true);
@@ -490,7 +302,7 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
         expect(mockInspectorState.git.handleOpenEditor).toHaveBeenCalled();
     });
 
-    it("keeps git dialog hosts mounted regardless of active tab", async () => {
+    it("keeps git dialog hosts mounted", async () => {
         mockInspectorState = createInspectorState({
             attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
         });
@@ -500,42 +312,21 @@ describe("CardInspector – top-level Ticket/Attempts tabs", () => {
 
         expect(screen.getByTestId("git-section")).not.toBeNull();
         expect(mocks.gitSectionProps.at(-1)?.changesOpen).toBe(false);
-
-        fireEvent.click(screen.getByRole("tab", { name: /Ticket/i }));
-        await waitFor(() =>
-            expect(screen.getByRole("tab", { name: /Ticket/i }).getAttribute("data-state")).toBe("active"),
-        );
-
-        fireEvent.click(screen.getByRole("tab", { name: /Attempts/i }));
-        await waitFor(() =>
-            expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active"),
-        );
-
-        expect(screen.getByTestId("git-section")).not.toBeNull();
-        expect(mocks.gitSectionProps.at(-1)?.changesOpen).toBe(false);
     });
 
-    it("View logs switches only the inner attempt tab", async () => {
+    it("can switch between conversation and details views", async () => {
         mockInspectorState = createInspectorState({
             attempt: { ...createInspectorState().attempt, attempt: baseAttempt },
         });
+        mocks.useCardInspectorStateMock.mockImplementation(() => mockInspectorState);
 
         renderInspector();
 
-        fireEvent.click(screen.getByRole("tab", { name: /Attempts/i }));
+        const detailsBtn = screen.getByTestId("details-view-btn");
+        fireEvent.click(detailsBtn);
 
-        await waitFor(() =>
-            expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active"),
-        );
-
-        fireEvent.click(screen.getByRole("tab", { name: /Processes/i }));
-
-        const logsTab = screen.getByRole("tab", { name: /Logs/i });
-        expect(logsTab.getAttribute("data-state")).toBe("inactive");
-
-        fireEvent.click(screen.getByRole("button", { name: /View logs/i }));
-
-        expect(screen.getByRole("tab", { name: /Attempts/i }).getAttribute("data-state")).toBe("active");
-        expect(logsTab.getAttribute("data-state")).toBe("active");
+        await waitFor(() => {
+            expect(screen.getByTestId("ticket-details-panel")).not.toBeNull();
+        });
     });
 });

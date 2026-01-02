@@ -3,6 +3,7 @@ import {Column} from "./Column";
 import type {BoardState, Column as ColumnType} from "shared";
 import type {AttemptStatus} from "shared";
 import {Button} from "@/components/ui/button";
+
 import {DndContext, DragOverlay} from "@dnd-kit/core";
 import {KanbanCard} from "./Card";
 import {CreateCardDialog, EditCardDialog, type CardFormValues} from "./CardDialogs";
@@ -87,7 +88,7 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
     projectId,
     state,
     handlers,
-    sortOrder = 'custom',
+    sortOrder = "custom",
     enhancementStatusByCardId,
     attemptStatusByCardId,
     onCardEnhancementClick,
@@ -118,6 +119,7 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
     const [selectedId, setSelectedId] = useState<string | null>(
         initialSelectedCardId ?? null,
     );
+
     const resolvedSelectedId = useMemo(
         () => (selectedId && state.cards[selectedId] ? selectedId : null),
         [selectedId, state.cards],
@@ -289,6 +291,8 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
 
     return (
         <div className="flex h-full min-h-0 flex-col">
+
+
             {totalCards === 0 && (
                 <div className="mb-6 flex items-center justify-center">
                     <div className="flex w-full max-w-xl flex-col items-center gap-4 rounded-2xl border border-border/60 bg-muted/10 p-8 text-center">
