@@ -153,10 +153,18 @@ export function useAutoScrollEffect(
         const triggerChanged = prevTriggerRef.current !== trigger
         prevTriggerRef.current = trigger
 
+        let rafId: number | undefined
+
         if (isEnabled && triggerChanged) {
-            requestAnimationFrame(() => {
+            rafId = requestAnimationFrame(() => {
                 scrollToBottom()
             })
+        }
+
+        return () => {
+            if (rafId !== undefined) {
+                cancelAnimationFrame(rafId)
+            }
         }
     }, [isEnabled, scrollToBottom, trigger])
 }

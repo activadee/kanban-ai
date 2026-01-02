@@ -386,4 +386,28 @@ describe('useAutoScrollEffect', () => {
         
         expect(scrollToBottom).toHaveBeenCalledTimes(1)
     })
+
+    it('cancels requestAnimationFrame on unmount', () => {
+        const scrollToBottom = vi.fn()
+        const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame')
+        
+        const {unmount} = renderHook(() => useAutoScrollEffect(true, scrollToBottom, 1))
+        
+        unmount()
+        
+        expect(cancelAnimationFrameSpy).toHaveBeenCalled()
+        cancelAnimationFrameSpy.mockRestore()
+    })
+
+    it('does not call scrollToBottom after unmount', () => {
+        const scrollToBottom = vi.fn()
+        
+        const {unmount} = renderHook(() => useAutoScrollEffect(true, scrollToBottom, 1))
+        
+        unmount()
+        
+        vi.runAllTimers()
+        
+        expect(scrollToBottom).not.toHaveBeenCalled()
+    })
 })
