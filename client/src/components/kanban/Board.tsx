@@ -443,7 +443,7 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
                                         defaultSize={`${inspectorSize.defaultSize}`}
                                     >
                                         <div 
-                                            className="inspector-wrapper flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4 shadow-xl"
+                                            className="inspector-wrapper flex h-full min-h-0 flex-col gap-3 rounded-lg border border-border/60 bg-muted/10 p-4"
                                             style={{
                                                 '--ticket-type-color': getTicketTypeColor(inspectorData.card.ticketType),
                                             } as React.CSSProperties}
