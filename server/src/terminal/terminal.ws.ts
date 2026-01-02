@@ -49,7 +49,8 @@ export async function handleTerminalWebSocket(
                 for (const client of session!.clients) {
                     try {
                         client.send(message)
-                    } catch {
+                    } catch (err) {
+                        log.warn('terminal', 'failed to send data to client', {cardId, err})
                     }
                 }
             })
@@ -59,7 +60,8 @@ export async function handleTerminalWebSocket(
                 for (const client of session!.clients) {
                     try {
                         client.send(message)
-                    } catch {
+                    } catch (err) {
+                        log.warn('terminal', 'failed to send exit to client', {cardId, err})
                     }
                 }
                 terminalService.destroySession(cardId, 'process_exit')

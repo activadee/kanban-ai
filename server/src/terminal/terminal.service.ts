@@ -51,13 +51,19 @@ class TerminalService {
 
         const shell = getDefaultShell()
 
-        const pty = spawn(shell, [], {
-            name: 'xterm-256color',
-            cols,
-            rows,
-            cwd: worktreePath,
-            env: {...process.env, TERM: 'xterm-256color'},
-        })
+        let pty: IPty
+        try {
+            pty = spawn(shell, [], {
+                name: 'xterm-256color',
+                cols,
+                rows,
+                cwd: worktreePath,
+                env: {...process.env, TERM: 'xterm-256color'},
+            })
+        } catch (err) {
+            log.error('terminal', 'failed to spawn pty', {cardId, shell, worktreePath, err})
+            throw new Error(`Failed to spawn terminal: ${err instanceof Error ? err.message : String(err)}`)
+        }
 
         const session: TerminalSession = {
             cardId,

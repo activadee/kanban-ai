@@ -31,21 +31,29 @@ export function useTerminal({
     const terminalRef = useRef<HTMLDivElement | null>(null)
     const xtermRef = useRef<Terminal | null>(null)
     const fitAddonRef = useRef<FitAddon | null>(null)
+    const webLinksAddonRef = useRef<WebLinksAddon | null>(null)
     const wsRef = useRef<WebSocket | null>(null)
     const [status, setStatus] = useState<TerminalStatus>('disconnected')
-    const statusRef = useRef<TerminalStatus>(status)
-    statusRef.current = status
+    const closedRef = useRef(false)
 
     const cleanup = useCallback(() => {
+        closedRef.current = true
         if (wsRef.current) {
             wsRef.current.close()
             wsRef.current = null
+        }
+        if (fitAddonRef.current) {
+            fitAddonRef.current.dispose()
+            fitAddonRef.current = null
+        }
+        if (webLinksAddonRef.current) {
+            webLinksAddonRef.current.dispose()
+            webLinksAddonRef.current = null
         }
         if (xtermRef.current) {
             xtermRef.current.dispose()
             xtermRef.current = null
         }
-        fitAddonRef.current = null
     }, [])
 
     const sendMessage = useCallback((msg: TerminalInputMessage) => {
@@ -66,6 +74,7 @@ export function useTerminal({
         if (!terminalRef.current) return
         cleanup()
 
+        closedRef.current = false
         setStatus('connecting')
 
         const term = new Terminal({
@@ -93,6 +102,7 @@ export function useTerminal({
 
         xtermRef.current = term
         fitAddonRef.current = fitAddon
+        webLinksAddonRef.current = webLinksAddon
 
         const wsUrl = getTerminalWebSocketUrl(cardId, projectId)
         const ws = new WebSocket(wsUrl)
@@ -131,7 +141,7 @@ export function useTerminal({
         }
 
         ws.onclose = () => {
-            if (statusRef.current !== 'error') {
+            if (!closedRef.current) {
                 setStatus('disconnected')
             }
         }
