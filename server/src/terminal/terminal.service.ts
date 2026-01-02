@@ -48,8 +48,19 @@ class TerminalService {
                 env: {...process.env, TERM: 'xterm-256color'},
             })
         } catch (err) {
+            const message = err instanceof Error ? err.message : String(err)
             log.error('terminal', 'failed to spawn pty', {cardId, shell, worktreePath, err})
-            throw new Error(`Failed to spawn terminal: ${err instanceof Error ? err.message : String(err)}`)
+
+            if (message.includes('ENOENT') || message.toLowerCase().includes('not found')) {
+                throw new Error(`Shell not found: ${shell}. Please ensure the shell is installed.`)
+            }
+            if (message.includes('EACCES') || message.toLowerCase().includes('permission')) {
+                throw new Error(`Permission denied for shell: ${shell}`)
+            }
+            if (message.includes('ENOTDIR') || message.toLowerCase().includes('not a directory')) {
+                throw new Error(`Invalid working directory: ${worktreePath}`)
+            }
+            throw new Error(`Failed to spawn terminal: ${message}`)
         }
 
         const session: TerminalSession = {

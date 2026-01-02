@@ -148,6 +148,11 @@ export function useTerminal({
         ws.onclose = () => {
             if (!closedRef.current) {
                 setStatus('disconnected')
+                setTimeout(() => {
+                    if (!closedRef.current && terminalRef.current) {
+                        connect()
+                    }
+                }, 3000)
             }
         }
 

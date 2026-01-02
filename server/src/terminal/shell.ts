@@ -1,15 +1,21 @@
 /**
  * Detect the default shell based on platform and environment.
- * - Windows: PowerShell > COMSPEC (cmd.exe) > powershell.exe fallback
- * - Unix: SHELL env > bash fallback
+ * - Windows: PowerShell (if in COMSPEC) > COMSPEC (cmd.exe) > cmd.exe fallback
+ * - Unix: SHELL env > /bin/sh fallback
  */
 export function getDefaultShell(): string {
     const isWindows = process.platform === 'win32'
 
     if (isWindows) {
-        const comspecIncludesPowershell = process.env.COMSPEC?.toLowerCase().includes('powershell')
-        return comspecIncludesPowershell ? process.env.COMSPEC! : 'powershell.exe'
+        const comspec = process.env.COMSPEC
+        // If COMSPEC points to PowerShell, use it
+        if (comspec?.toLowerCase().includes('powershell')) {
+            return comspec
+        }
+        // Otherwise use COMSPEC (usually cmd.exe) or fall back to cmd.exe
+        return comspec || 'cmd.exe'
     }
 
-    return process.env.SHELL || 'bash'
+    // Unix: Use SHELL env or fall back to /bin/sh (more portable than bash)
+    return process.env.SHELL || '/bin/sh'
 }

@@ -16,9 +16,9 @@ describe('getDefaultShell', () => {
         const isWindows = process.platform === 'win32'
 
         if (isWindows) {
-            it('returns powershell.exe by default on Windows', () => {
+            it('returns cmd.exe by default on Windows when COMSPEC not set', () => {
                 delete process.env.COMSPEC
-                expect(getDefaultShell()).toBe('powershell.exe')
+                expect(getDefaultShell()).toBe('cmd.exe')
             })
 
             it('returns COMSPEC when it contains powershell', () => {
@@ -26,9 +26,9 @@ describe('getDefaultShell', () => {
                 expect(getDefaultShell()).toBe('C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe')
             })
 
-            it('returns powershell.exe when COMSPEC is cmd.exe', () => {
+            it('returns COMSPEC (cmd.exe) when COMSPEC does not contain powershell', () => {
                 process.env.COMSPEC = 'C:\\Windows\\System32\\cmd.exe'
-                expect(getDefaultShell()).toBe('powershell.exe')
+                expect(getDefaultShell()).toBe('C:\\Windows\\System32\\cmd.exe')
             })
         } else {
             it('returns SHELL env when set', () => {
@@ -36,9 +36,9 @@ describe('getDefaultShell', () => {
                 expect(getDefaultShell()).toBe('/bin/zsh')
             })
 
-            it('returns bash when SHELL is not set', () => {
+            it('returns /bin/sh when SHELL is not set', () => {
                 delete process.env.SHELL
-                expect(getDefaultShell()).toBe('bash')
+                expect(getDefaultShell()).toBe('/bin/sh')
             })
 
             it('respects custom SHELL values', () => {
