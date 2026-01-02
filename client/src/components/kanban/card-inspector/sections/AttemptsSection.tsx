@@ -1,13 +1,15 @@
-import {useEffect, useRef, useState} from 'react'
+import {useState} from 'react'
 import type {AgentKey, Attempt, ConversationItem, MessageImage} from 'shared'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Badge} from '@/components/ui/badge'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {ImageAttachment} from '@/components/ui/image-attachment'
 import {cn} from '@/lib/utils'
 import {MessageRow, type StreamdownSettings} from '../MessageRow'
-import {Send, Square, RotateCcw, Bot, Sparkles} from 'lucide-react'
+import {useAutoScroll, useAutoScrollEffect} from '@/hooks/useAutoScroll'
+import {Send, Square, RotateCcw, Bot, Sparkles, ArrowDownToLine} from 'lucide-react'
 
 function AgentTypingIndicator() {
     return (
@@ -96,19 +98,19 @@ export function AttemptsSection({
     canAddMoreImages,
     streamdownSettings,
 }: AttemptsSectionProps) {
-    const messagesContainerRef = useRef<HTMLDivElement | null>(null)
-    const messagesEndRef = useRef<HTMLDivElement | null>(null)
-    const initialScrolledForCardRef = useRef<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
 
-    useEffect(() => {
-        if (!conversation.length) return
-        if (initialScrolledForCardRef.current === cardId) return
-        initialScrolledForCardRef.current = cardId
-        requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({behavior: 'auto', block: 'end'})
-        })
-    }, [conversation.length, cardId])
+    const autoScroll = useAutoScroll({
+        storageKey: 'kanbanai:attempts-autoscroll-enabled',
+        defaultEnabled: true,
+        bottomThreshold: 80,
+    })
+
+    useAutoScrollEffect(
+        autoScroll.isEnabled,
+        autoScroll.scrollToBottom,
+        `${cardId}:${conversation.length}`,
+    )
 
     const handlePaste = (e: React.ClipboardEvent) => {
         if (e.clipboardData.files.length > 0) {
@@ -159,13 +161,43 @@ export function AttemptsSection({
                     <span className="font-medium">{attempt.agent || 'Agent'}</span>
                 </div>
                 <AttemptStatusBadge status={attempt.status} />
-                <span className="text-[10px] text-muted-foreground font-mono ml-auto">
-                    {attempt.id.slice(0, 8)}
-                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    onClick={autoScroll.toggle}
+                                    className={cn(
+                                        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                                        autoScroll.isEnabled
+                                            ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                    )}
+                                    aria-label={autoScroll.isEnabled ? "Disable auto-scroll" : "Enable auto-scroll"}
+                                    aria-pressed={autoScroll.isEnabled}
+                                    data-testid="autoscroll-toggle"
+                                >
+                                    <ArrowDownToLine className="h-3 w-3" />
+                                    <span data-testid="autoscroll-status">
+                                        {autoScroll.isEnabled ? "AUTO" : "OFF"}
+                                    </span>
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">
+                                {autoScroll.isEnabled ? "Auto-scroll enabled (click to disable)" : "Auto-scroll disabled (click to enable)"}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                        {attempt.id.slice(0, 8)}
+                    </span>
+                </div>
             </div>
 
             <div
-                ref={messagesContainerRef}
+                ref={autoScroll.containerRef}
+                onScroll={autoScroll.handleScroll}
                 className="flex-1 min-h-0 overflow-auto p-3 scroll-smooth"
             >
                 {conversation.length === 0 ? (
@@ -193,7 +225,7 @@ export function AttemptsSection({
                     </div>
                 )}
                 {attempt.status === 'running' && <AgentTypingIndicator />}
-                <div ref={messagesEndRef} />
+                <div ref={autoScroll.targetRef} />
             </div>
 
             {showFollowupInput && (
