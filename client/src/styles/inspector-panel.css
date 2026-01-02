@@ -3,38 +3,45 @@
         --inspector-accent: transparent;
     }
 
-    /* Left edge accent bar - solid colored strip */
-    .inspector-panel::before {
+    /* Wrapper with accent glow - applied to outer container in Board.tsx */
+    .inspector-wrapper {
+        --inspector-accent: transparent;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Left edge accent bar - solid colored strip on the wrapper */
+    .inspector-wrapper::before {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
         bottom: 0;
-        width: 2px;
+        width: 3px;
         background: var(--inspector-accent);
         pointer-events: none;
         z-index: 10;
-        opacity: 0.9;
+        border-radius: 0.5rem 0 0 0.5rem;
     }
 
     /* Glow emanating from left edge - editorial/premium feel */
-    .inspector-panel::after {
+    .inspector-wrapper::after {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
         bottom: 0;
-        width: 120px;
+        width: 80px;
         background: linear-gradient(
             to right,
-            color-mix(in oklch, var(--inspector-accent) 18%, transparent) 0%,
-            color-mix(in oklch, var(--inspector-accent) 10%, transparent) 20%,
-            color-mix(in oklch, var(--inspector-accent) 5%, transparent) 45%,
-            color-mix(in oklch, var(--inspector-accent) 2%, transparent) 70%,
+            color-mix(in oklch, var(--inspector-accent) 15%, transparent) 0%,
+            color-mix(in oklch, var(--inspector-accent) 8%, transparent) 30%,
+            color-mix(in oklch, var(--inspector-accent) 3%, transparent) 60%,
             transparent 100%
         );
         pointer-events: none;
         z-index: 0;
+        border-radius: 0.5rem 0 0 0.5rem;
     }
 
     @keyframes inspector-fade-in {

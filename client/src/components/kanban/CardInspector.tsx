@@ -10,7 +10,6 @@ import {useCardInspectorState} from './card-inspector/useCardInspectorState'
 import type {CardFormValues} from './CardDialogs'
 import {AttemptToolbar} from './card-inspector/AttemptToolbar'
 import {TicketDetailsPanel} from './card-inspector/TicketDetailsPanel'
-import {getTicketTypeColor} from '@/lib/ticketTypes'
 import {cn} from '@/lib/utils'
 import {Sheet, SheetContent, SheetHeader, SheetTitle} from '@/components/ui/sheet'
 import {Layers, ScrollText} from 'lucide-react'
@@ -78,7 +77,6 @@ export function CardInspector({
         }
     }, [attempt.attempt?.id])
 
-    const accentColor = getTicketTypeColor(card.ticketType)
     const hasAttempt = Boolean(attempt.attempt)
 
     return (
@@ -87,11 +85,8 @@ export function CardInspector({
                 "inspector-panel group/inspector relative flex h-full flex-col",
                 "bg-gradient-to-b from-background via-background to-muted/20",
             )}
-            style={{
-                '--inspector-accent': accentColor,
-            } as React.CSSProperties}
         >
-            <div className="relative z-[1] flex h-full flex-col gap-0 pl-2">
+            <div className="flex h-full flex-col gap-0">
                 <div className="shrink-0 border-b border-border/40 pb-3 pt-1">
                     <InspectorHeader
                         card={card}
