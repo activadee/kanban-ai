@@ -82,6 +82,61 @@ describe('agents/utils buildPrSummaryPrompt', () => {
         expect(prompt).toContain('Diff summary (files and stats):')
         expect(prompt).toContain('3 files changed')
     })
+
+    it('enforces maximum 5 bulletpoints in summary instructions', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+        })
+
+        expect(prompt).toContain('maximum 5 bulletpoints')
+    })
+
+    it('enforces concise bulletpoint length (1-2 lines max)', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+        })
+
+        expect(prompt).toContain('1-2 lines maximum')
+        expect(prompt).toContain('concise')
+    })
+
+    it('prioritizes high-impact changes in instructions', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+        })
+
+        expect(prompt).toContain('most impactful changes')
+        expect(prompt).toContain('omit trivial')
+    })
+
+    it('requires clear actionable language in bulletpoints', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+        })
+
+        expect(prompt).toContain('actionable language')
+        expect(prompt).toMatch(/Add.*Fix.*Update.*Remove/s)
+    })
+
+    it('maintains proper Markdown formatting requirements', () => {
+        const prompt = buildPrSummaryPrompt({
+            repositoryPath: '/tmp/repo',
+            baseBranch: 'main',
+            headBranch: 'feature/test',
+        })
+
+        expect(prompt).toContain('Markdown')
+        expect(prompt).toContain('First line: # <')
+        expect(prompt).toContain('Respond only with the PR Markdown content')
+    })
 })
 
 describe('agents/utils buildTicketEnhancePrompt', () => {
