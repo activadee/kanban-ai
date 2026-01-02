@@ -3,14 +3,35 @@
         --inspector-accent: transparent;
     }
 
+    /* Left edge accent bar - solid colored strip */
     .inspector-panel::before {
         content: '';
         position: absolute;
-        inset: 0;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--inspector-accent);
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0.9;
+    }
+
+    /* Glow emanating from left edge - editorial/premium feel */
+    .inspector-panel::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 120px;
         background: linear-gradient(
-            180deg,
-            transparent 0%,
-            color-mix(in oklch, var(--inspector-accent) 3%, transparent) 100%
+            to right,
+            color-mix(in oklch, var(--inspector-accent) 18%, transparent) 0%,
+            color-mix(in oklch, var(--inspector-accent) 10%, transparent) 20%,
+            color-mix(in oklch, var(--inspector-accent) 5%, transparent) 45%,
+            color-mix(in oklch, var(--inspector-accent) 2%, transparent) 70%,
+            transparent 100%
         );
         pointer-events: none;
         z-index: 0;

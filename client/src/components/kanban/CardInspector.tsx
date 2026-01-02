@@ -89,12 +89,9 @@ export function CardInspector({
             )}
             style={{
                 '--inspector-accent': accentColor,
-                boxShadow: accentColor 
-                    ? `inset 3px 0 12px -4px ${accentColor}40`
-                    : undefined,
             } as React.CSSProperties}
         >
-            <div className="flex h-full flex-col gap-0 pl-1">
+            <div className="relative z-[1] flex h-full flex-col gap-0 pl-2">
                 <div className="shrink-0 border-b border-border/40 pb-3 pt-1">
                     <InspectorHeader
                         card={card}
