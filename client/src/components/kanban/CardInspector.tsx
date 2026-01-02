@@ -53,7 +53,7 @@ export function CardInspector({
         onDelete,
     })
 
-    const {details, header, attempt, git, activity} = inspectorState
+    const {details, header, attempt, git, activity, streamdownSettings} = inspectorState
 
     const [viewMode, setViewMode] = useState<ViewMode>('conversation')
     const [processesOpen, setProcessesOpen] = useState(false)
@@ -215,6 +215,7 @@ export function CardInspector({
                                     addImages={attempt.addImages}
                                     removeImage={attempt.removeImage}
                                     canAddMoreImages={attempt.canAddMoreImages}
+                                    streamdownSettings={streamdownSettings}
                                 />
                             )}
                         </div>

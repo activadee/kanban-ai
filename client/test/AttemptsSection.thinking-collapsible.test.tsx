@@ -127,7 +127,7 @@ describe("AttemptsSection – thinking blocks", () => {
         const typingIndicator = document.querySelector('.agent-typing-indicator');
         expect(typingIndicator).not.toBeNull();
         expect(typingIndicator?.className).toContain("animate-in");
-        expect(typingIndicator?.className).toContain("fade-in-0");
+        expect(typingIndicator?.className).toContain("fade-in-50");
         expect(typingIndicator?.className).toContain("slide-in-from-bottom-2");
     });
 });
