@@ -3,6 +3,22 @@ import type {ServerWebSocket} from 'bun'
 import type {TerminalInfo, TerminalCloseReason} from 'shared'
 import {log} from '../log'
 
+/**
+ * Detect the default shell based on platform and environment.
+ * - Windows: PowerShell > COMSPEC (cmd.exe) > powershell.exe fallback
+ * - Unix: SHELL env > bash fallback
+ */
+export function getDefaultShell(): string {
+    const isWindows = process.platform === 'win32'
+
+    if (isWindows) {
+        const comspecIncludesPowershell = process.env.COMSPEC?.toLowerCase().includes('powershell')
+        return comspecIncludesPowershell ? process.env.COMSPEC! : 'powershell.exe'
+    }
+
+    return process.env.SHELL || 'bash'
+}
+
 interface TerminalSession {
     cardId: string
     projectId: string
@@ -33,7 +49,7 @@ class TerminalService {
             throw new Error(`Terminal session already exists for card ${cardId}`)
         }
 
-        const shell = process.env.SHELL || 'bash'
+        const shell = getDefaultShell()
 
         const pty = spawn(shell, [], {
             name: 'xterm-256color',
