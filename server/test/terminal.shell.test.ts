@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it} from 'vitest'
-import {getDefaultShell} from '../src/terminal/terminal.service'
+import {getDefaultShell} from '../src/terminal/shell'
 
 describe('getDefaultShell', () => {
     const originalEnv = {...process.env}

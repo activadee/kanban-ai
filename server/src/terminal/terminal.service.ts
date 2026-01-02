@@ -2,22 +2,9 @@ import {spawn, type IPty} from '@zenyr/bun-pty'
 import type {ServerWebSocket} from 'bun'
 import type {TerminalInfo, TerminalCloseReason} from 'shared'
 import {log} from '../log'
+import {getDefaultShell} from './shell'
 
-/**
- * Detect the default shell based on platform and environment.
- * - Windows: PowerShell > COMSPEC (cmd.exe) > powershell.exe fallback
- * - Unix: SHELL env > bash fallback
- */
-export function getDefaultShell(): string {
-    const isWindows = process.platform === 'win32'
-
-    if (isWindows) {
-        const comspecIncludesPowershell = process.env.COMSPEC?.toLowerCase().includes('powershell')
-        return comspecIncludesPowershell ? process.env.COMSPEC! : 'powershell.exe'
-    }
-
-    return process.env.SHELL || 'bash'
-}
+export {getDefaultShell}
 
 interface TerminalSession {
     cardId: string
