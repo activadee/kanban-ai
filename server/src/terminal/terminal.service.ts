@@ -135,7 +135,8 @@ class TerminalService {
         for (const ws of session.clients) {
             try {
                 ws.close(1000, `Terminal closed: ${reason}`)
-            } catch {
+            } catch (err) {
+                log.warn('terminal', 'failed to close WebSocket', {cardId, err})
             }
         }
 

@@ -34,6 +34,7 @@ export function useTerminal({
     const webLinksAddonRef = useRef<WebLinksAddon | null>(null)
     const wsRef = useRef<WebSocket | null>(null)
     const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const retryCountRef = useRef(0)
     const [status, setStatus] = useState<TerminalStatus>('disconnected')
     const closedRef = useRef(false)
 
@@ -114,6 +115,7 @@ export function useTerminal({
         wsRef.current = ws
 
         ws.onopen = () => {
+            retryCountRef.current = 0
             setStatus('connected')
             const {cols, rows} = term
             sendMessage({type: 'resize', cols, rows})
@@ -140,7 +142,8 @@ export function useTerminal({
             }
         }
 
-        ws.onerror = () => {
+        ws.onerror = (event) => {
+            console.error('WebSocket error:', event)
             setStatus('error')
             onError?.('WebSocket connection error')
         }
@@ -148,11 +151,17 @@ export function useTerminal({
         ws.onclose = () => {
             if (!closedRef.current) {
                 setStatus('disconnected')
-                setTimeout(() => {
-                    if (!closedRef.current && terminalRef.current) {
-                        connect()
-                    }
-                }, 3000)
+                // Reconnect with exponential backoff, up to MAX_RECONNECT_RETRIES
+                const MAX_RECONNECT_RETRIES = 5
+                if (retryCountRef.current < MAX_RECONNECT_RETRIES) {
+                    const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 30000)
+                    retryCountRef.current++
+                    setTimeout(() => {
+                        if (!closedRef.current && terminalRef.current) {
+                            connect()
+                        }
+                    }, delay)
+                }
             }
         }
 
