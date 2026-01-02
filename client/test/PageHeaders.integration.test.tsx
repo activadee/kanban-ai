@@ -260,7 +260,7 @@ function expectUnifiedHeader(title: string) {
     const header = screen.getByTestId('page-header')
     expect(header.getAttribute('data-component')).toBe('PageHeader')
     expect(header.className).toContain('border-b')
-    expect(header.className).toContain('bg-card/60')
+    expect(header.className).toContain('bg-gradient-to-b')
     expect(screen.getByRole('heading', {level: 1, name: title})).toBeTruthy()
 }
 

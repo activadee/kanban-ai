@@ -19,15 +19,16 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
   - **Review** – violet border
   - **Done** – emerald border
   - Other columns – slate border
-- Columns are rendered in order across the screen. The header area shows:
-  - Project name.
+- Columns are rendered in order across the screen. The page header shows:
+  - Project name (with "Kanban Board" as a small label above it).
   - WebSocket connection status badge (Connected / Connecting… / Reconnecting…).
   - An **Import GitHub issues** button for the current board.
-- Card titles inside the columns are truncated to a single line to keep cards from growing vertically, and hovering over a card reveals the full title in a tooltip so long text remains discoverable.
-- The board header in the main content shows:
-  - Title: "Kanban Board".
   - A **Sort order** dropdown to change how tickets are displayed within each column.
-  - A **Create Ticket** button to create a new card.
+- Card titles inside the columns are truncated to a single line to keep cards from growing vertically, and hovering over a card reveals the full title in a tooltip so long text remains discoverable.
+- The page header includes:
+  - Title: the project name (with "Kanban Board" kicker above it).
+  - Sort order dropdown in the controls area.
+  - A **Create Ticket** button in the actions area.
 - Cards surface status indicators through visual styling:
   - **In Progress** cards with a running Attempt display an animated loading border around the card that rotates continuously, providing visual feedback that work is actively being processed.
   - **Blocked** cards show a lock icon with "Blocked" label and a diagonal stripe pattern on the left border.
@@ -40,7 +41,7 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
 
 ### Sorting tickets
 
-- The board header includes a **Sort order** dropdown with three options:
+- The page header includes a **Sort order** dropdown in the controls area with three options:
   - **Newest first** – displays tickets in each column ordered by creation date, with the most recently created tickets at the top (default).
   - **Oldest first** – displays tickets in each column ordered by creation date, with the oldest tickets at the top.
   - **Custom order** – maintains the manual order you set via drag & drop, so cards stay in the exact positions you arrange them.

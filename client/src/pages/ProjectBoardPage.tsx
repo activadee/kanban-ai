@@ -3,6 +3,13 @@ import { useNavigate, useParams, useSearchParams, useOutletContext } from "react
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Board, type BoardHandle } from "@/components/kanban/Board";
 import type { AppLayoutContext } from "@/components/layout/AppLayout";
 import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnhancementDialog";
@@ -28,8 +35,9 @@ import { useKanbanSSE } from "@/lib/sse";
 import { toast } from "@/components/ui/toast.tsx";
 import { eventBus } from "@/lib/events.ts";
 import { describeApiError } from "@/api/http";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowDownNarrowWide, ArrowUpNarrowWide, List } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { getSortOrder, setSortOrder, type CardSortOrder } from "@/lib/sortOrder";
 
 export function ProjectBoardPage() {
     const { projectId } = useParams<{ projectId: string }>();
@@ -70,6 +78,12 @@ export function ProjectBoardPage() {
     } = useKanbanSSE(boardId ?? null);
     const [importOpen, setImportOpen] = useState(false);
     const [attemptStatusByCardId, setAttemptStatusByCardId] = useState<Record<string, AttemptStatus>>({});
+    const [sortOrder, setSortOrderState] = useState<CardSortOrder>(getSortOrder);
+
+    const handleSortOrderChange = useCallback((order: CardSortOrder) => {
+        setSortOrderState(order);
+        setSortOrder(order);
+    }, []);
 
     const invalidateBoard = () => {
         if (!boardId) return;
@@ -238,11 +252,40 @@ export function ProjectBoardPage() {
     return (
         <div className="flex h-full min-h-0 flex-col bg-background">
             <PageHeader
+                variant="compact"
+                kicker="Kanban Board"
                 title={project.name}
                 titleAccessory={<VersionIndicator />}
+                controls={
+                    <Select value={sortOrder} onValueChange={handleSortOrderChange}>
+                        <SelectTrigger className="h-8 w-[150px] text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="newest-first">
+                                <span className="flex items-center gap-2">
+                                    <ArrowDownNarrowWide className="size-3.5" />
+                                    Newest first
+                                </span>
+                            </SelectItem>
+                            <SelectItem value="oldest-first">
+                                <span className="flex items-center gap-2">
+                                    <ArrowUpNarrowWide className="size-3.5" />
+                                    Oldest first
+                                </span>
+                            </SelectItem>
+                            <SelectItem value="custom">
+                                <span className="flex items-center gap-2">
+                                    <List className="size-3.5" />
+                                    Custom order
+                                </span>
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                }
                 actions={
                     <>
-                        <Badge variant={connectionBadgeVariant}>
+                        <Badge variant={connectionBadgeVariant} className="text-xs">
                             {connectionLabel}
                         </Badge>
                         <Button
@@ -274,6 +317,7 @@ export function ProjectBoardPage() {
                         projectId={project.id}
                         state={boardState}
                         initialSelectedCardId={initialSelectedCardId}
+                        sortOrder={sortOrder}
                         enhancementStatusByCardId={
                             enhancementStatusByCardId
                         }

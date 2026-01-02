@@ -38,7 +38,7 @@ describe('PageHeader', () => {
         expect(header.getAttribute('data-component')).toBe('PageHeader')
         expect(header.className).toContain('border-b')
 
-        const container = header.querySelector('div')
+        const container = header.querySelector('div:not(.absolute)')
         expect(container).toBeTruthy()
         expect(container?.className).toContain('sm:px-6')
         expect(container?.className).toContain('lg:px-8')
