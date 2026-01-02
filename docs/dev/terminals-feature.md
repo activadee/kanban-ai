@@ -1,8 +1,7 @@
 # Terminals Feature - Implementation Plan
 
-> **Status**: In Progress  
-> **Branch**: `feature/terminals-tool`  
-> **Created**: 2026-01-02
+> **Status**: Completed (PR #377)
+> **Branch**: `dcb5dad`
 
 ## Overview
 
@@ -49,19 +48,19 @@ Terminals are automatically destroyed when:
 
 ### REST Endpoints
 
-| Method | Endpoint                                | Description                        |
-| ------ | --------------------------------------- | ---------------------------------- |
-| GET    | `/api/v1/projects/:projectId/terminals` | List active terminals for project  |
-| GET    | `/api/v1/projects/:projectId/terminals/eligible` | List cards eligible for terminals |
-| GET    | `/api/v1/terminals/:cardId`             | Get terminal info                  |
-| POST   | `/api/v1/terminals/:cardId/resize`      | Resize terminal                    |
-| DELETE | `/api/v1/terminals/:cardId`             | Force close terminal               |
+| Method | Endpoint                                                      | Description                            |
+| ------ | ------------------------------------------------------------- | -------------------------------------- |
+| GET    | `/api/v1/projects/:projectId/terminals`                       | List active terminals for project      |
+| GET    | `/api/v1/projects/:projectId/terminals/eligible`              | List cards eligible for terminals      |
+| GET    | `/api/v1/terminals/:cardId`                                   | Get terminal info                      |
+| POST   | `/api/v1/terminals/:cardId/resize`                            | Resize terminal                        |
+| DELETE | `/api/v1/terminals/:cardId`                                   | Force close terminal                   |
 
 ### WebSocket Endpoint
 
-| Endpoint                          | Description                 |
-| --------------------------------- | --------------------------- |
-| `ws://.../api/v1/terminals/:cardId/ws` | Bidirectional terminal I/O |
+| Endpoint                                              | Description                 |
+| ------------------------------------------------------ | --------------------------- |
+| `/terminals/:cardId/ws?projectId=:projectId`           | Bidirectional terminal I/O  |
 
 ### WebSocket Protocol
 
@@ -122,15 +121,17 @@ client/src/pages/
 **Backend:**
 - `server/package.json` - add `@zenyr/bun-pty`
 - `server/src/app.ts` - mount terminal routes
+- `server/src/start.ts` - WebSocket upgrade handler
 - `server/src/events/index.ts` - add TerminalEventMap
 - `server/src/events/register.ts` - register terminal listeners
-- `server/src/entry/dev.ts` - add WebSocket handling
+- `server/src/events/types/terminal-events.ts` - terminal event types
 - `shared/src/types/index.ts` - export terminal types
 
 **Frontend:**
-- `client/package.json` - add xterm dependencies
+- `client/package.json` - add xterm, @xterm/addon-fit, @xterm/addon-web-links
 - `client/src/components/layout/AppSidebar.tsx` - add Terminals nav
-- `client/src/App.tsx` - add route
+- `client/src/components/layout/MasterDetailLayout.tsx` - extend with renderItem, sidebarFooter, sidebarClassName props and generic type support
+- `client/src/App.tsx` - add terminals route
 
 ---
 
@@ -148,43 +149,45 @@ bun add xterm @xterm/addon-fit @xterm/addon-web-links
 
 ---
 
-## Implementation Phases
+## MasterDetailLayout Extensions
 
-### Phase 1: Backend Infrastructure
+The `MasterDetailLayout` component was extended in this PR to support the Terminals feature:
 
-1. Add `@zenyr/bun-pty` dependency
-2. Create shared terminal types (`shared/src/types/terminal.ts`)
-3. Create terminal event types (`server/src/events/types/terminal-events.ts`)
-4. Update event index to include TerminalEventMap
-5. Create terminal service (`server/src/terminal/terminal.service.ts`)
-6. Create terminal schemas (`server/src/terminal/terminal.schemas.ts`)
-7. Create terminal handlers (`server/src/terminal/terminal.handlers.ts`)
-8. Create WebSocket handler (`server/src/terminal/terminal.ws.ts`)
-9. Create terminal routes (`server/src/terminal/routes.ts`)
-10. Create event listeners (`server/src/terminal/listeners.ts`)
-11. Mount routes in app.ts
-12. Register listeners in events/register.ts
-13. Add WebSocket support to server entry
+### New Props
 
-### Phase 2: Frontend
+| Prop | Type | Description |
+|------|------|-------------|
+| `renderItem` | `(item: T, isActive: boolean, defaultRender: () => ReactNode) => ReactNode` | Custom item rendering with access to default render |
+| `sidebarFooter` | `ReactNode` | Slot for Quick Launch section |
+| `sidebarClassName` | `string` | Additional CSS classes for sidebar |
+| `disabled` | `boolean` | Optional disabled state for MasterDetailItem |
 
-1. Add xterm dependencies
-2. Create terminal API client (`client/src/api/terminals.ts`)
-3. Create useTerminal hook (`client/src/components/Terminal/useTerminal.ts`)
-4. Create Terminal component (`client/src/components/Terminal/Terminal.tsx`)
-5. Create TerminalPanel component (`client/src/components/Terminal/TerminalPanel.tsx`)
-6. Create TerminalsToolWindow (`client/src/components/Terminal/TerminalsToolWindow.tsx`)
-7. Create index exports
-8. Create TerminalsPage
-9. Add route to App.tsx
-10. Add navigation to AppSidebar
+### Generic Type Support
 
-### Phase 3: Testing & Polish
+The component now supports generic typing:
+```typescript
+<MasterDetailLayout<TerminalItem>
+  items={items}
+  activeId={activeId}
+  onSelect={handleSelect}
+>
+  {children}
+</MasterDetailLayout<TerminalItem>>
+```
 
-1. Manual testing of terminal functionality
-2. Test card move auto-cleanup
-3. Test multi-client scenario
-4. Test reconnection behavior
+Where `TerminalItem extends MasterDetailItem`.
+
+---
+
+## Terminals Page UI
+
+The Terminals page features a modern design with:
+
+- **PageHeader** with title, description, and "Live" badge indicator
+- **Multi-terminal grid layout**: `grid-cols-1 lg:grid-cols-2 xl:grid-cols-3`
+- **Status badges**: Ready/Connected indicators with color-coded states
+- **Maximize/restore actions** for terminal panels
+- **Scanline overlay effect** for terminal aesthetic
 
 ---
 
@@ -203,33 +206,33 @@ bun add xterm @xterm/addon-fit @xterm/addon-web-links
 
 ```
 User clicks "Open Terminal" for card
-         │
-         ▼
-WebSocket connects to /terminals/:cardId/ws
-         │
-         ▼
-Server checks card eligibility
-         │
-         ├── Not eligible → Close with error code
-         │
-         ▼
+          │
+          ▼
+WebSocket connects to /terminals/:cardId/ws?projectId=:projectId
+          │
+          ▼
+Server checks card eligibility (worktree exists, attempt in valid state)
+          │
+          ├── Not eligible → Close with error code 4001
+          │
+          ▼
 Get or create TerminalSession
-         │
-         ▼
+          │
+          ▼
 Add client to session.clients
-         │
-         ▼
+          │
+          ▼
 PTY output → broadcast to all clients
-         │
-         ▼
+          │
+          ▼
 Client input → write to PTY
-         │
-         ▼
+          │
+          ▼
 On disconnect → remove client
-         │
-         ├── clients.size > 0 → keep session
-         │
-         ▼
+          │
+          ├── clients.size > 0 → keep session
+          │
+          ▼
 clients.size === 0 → destroy session
 ```
 
@@ -238,27 +241,27 @@ clients.size === 0 → destroy session
 ## Cleanup Event Flow
 
 ```
-card.moved event (to Backlog/Done)
-         │
-         ▼
+card.moved event (to Backlog/Done or attempt fails/stops)
+          │
+          ▼
 Check if terminal session exists
-         │
-         ├── No → ignore
-         │
-         ▼
-Check if new column is eligible
-         │
-         ├── Yes → keep session
-         │
-         ▼
-No → destroySession(cardId, 'card_moved')
-         │
-         ▼
+          │
+          ├── No → ignore
+          │
+          ▼
+Check if new column is eligible / attempt status valid
+          │
+          ├── Yes → keep session
+          │
+          ▼
+No → destroySession(cardId, 'card_moved' | 'attempt_ended')
+          │
+          ▼
 Close all WebSocket clients
-         │
-         ▼
+          │
+          ▼
 Kill PTY process
-         │
-         ▼
+          │
+          ▼
 Publish 'terminal.closed' event
 ```

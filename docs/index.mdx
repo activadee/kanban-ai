@@ -22,7 +22,7 @@ This page gives you a tour of the main product features and how they fit togethe
 - **Standard workflow columns** – Boards are seeded with Backlog, In Progress, Review, and Done, with sensible defaults managed by the server.
 - **Drag‑and‑drop cards** – Reorder tasks within a column or move them between columns using a modern kanban UI.
 - **Task details** – For each card you can edit title, description, and an optional ticket key (e.g. `ABC‑123`) that shows up prominently in the UI.
-- **Task dependencies** – Cards can depend on other cards on the same board. Blocked cards can’t move to In Progress, and the UI explains why when a move fails.
+- **Task dependencies** – Cards can depend on other cards on the same board. Blocked cards can't move to In Progress, and the UI explains why when a move fails.
 - **Automatic column transitions** – When an Attempt starts, completes successfully, or fails, the board listeners move cards between columns to reflect the current state of work.
 - **Real‑time updates** – Boards are backed by WebSockets; changes from other clients, GitHub imports, and Attempt events stream live without manual refresh.
 ### [AI Attempts (agentic runs)](core/ai-attempts)
@@ -31,7 +31,7 @@ This page gives you a tour of the main product features and how they fit togethe
 - **Conversation view** – The Messages tab shows streaming agent output and lets you send follow‑up prompts while the Attempt is active.
 - **Processes & dev automation** – The Processes tab summarizes dev automation (e.g. project dev scripts) and lets you re‑run them or stop long‑running work.
 - **Logs tab** – Structured Attempt logs (including dev script output) are available in a dedicated Logs tab for debugging and auditing.
-- **Follow‑ups and stopping** – You can send follow‑up prompts against the same Attempt session or stop an Attempt that’s running too long.
+- **Follow‑ups and stopping** – You can send follow‑up prompts against the same Attempt session or stop an Attempt that's running too long.
 ### [Agents & profiles](core/agents-and-profiles)
 - **Agent registry** – The server exposes a registry of agents (currently focused on the Codex SDK‑based agent) that can run Attempts.
 - **Configurable profiles** – Define agent profiles with different models, temperature, tools, or sandbox settings and reuse them across projects.
@@ -41,31 +41,36 @@ This page gives you a tour of the main product features and how they fit togethe
 - **Diff viewer** – For an active Attempt, open a Changes dialog that shows the current diff produced by the agent in its worktree.
 - **Commit from the UI** – Compose commit messages and commit all Attempt changes directly from the app; git events are emitted so status stays fresh.
 - **Branch & merge helpers** – Attempts track their branch and base branch; you can run a merge‑base flow from the UI before opening a PR.
-- **Open in editor** – Launch your preferred editor at the Attempt’s worktree path, with editor detection and environment setup handled on the server.
+- **Open in editor** – Launch your preferred editor at the Attempt's worktree path, with editor detection and environment setup handled on the server.
 ### [GitHub integration](core/github-integration)
-- **Device‑flow login** – Authenticate with GitHub via device flow, handled by the server’s auth module.
-- **Import issues as cards** – Use the “Import GitHub issues” action on a board to pull issues into Backlog as cards, with titles and ticket keys derived from GitHub.
+- **Device‑flow login** – Authenticate with GitHub via device flow, handled by the server's auth module.
+- **Import issues as cards** – Use the "Import GitHub issues" action on a board to pull issues into Backlog as cards, with titles and ticket keys derived from GitHub.
 - **Create Pull Requests** – From a card with an active Attempt, open a PR dialog that targets the Attempt branch, pre‑fills title and body, and ties the PR back to the card.
-- **Connection status** – The Dashboard shows whether you’re connected to GitHub and which account is active.
+- **Connection status** – The Dashboard shows whether you're connected to GitHub and which account is active.
 ### [Dashboard](core/dashboard)
 - **High-level metrics** – See total projects, active Attempts, attempts in the selected time range (default last 7 days), and open cards, all scoped to the Mission Control window you choose.
 - **Live Agent Activity** – One card merging live `Active attempts` with recent attempt history; every row shows status badges, project/agent metadata, relative timestamps, and links back to boards so you can reconcile the totals with what agents have been doing.
 - **Project Health** – Per-project rows track repository slug/path, total cards, open cards, and active attempts for the chosen preset (links point back to each board).
 - **Inbox** – Actionable `review`, `failed`, and `stuck` buckets derived from `DashboardInbox` that surface reminders, failures, and stuck work in the same time range; tabs for **All/Review/Failed/Stuck** show counts, the selected filter is remembered in session storage, skeletons/error banners guard loading states, and each row exposes attempt, PR, and retry actions alongside the usual relative timestamp.
-- **Agents & System** – Replaces the legacy System status card with GitHub connectivity and per-agent summary rows that honor the current preset (attempts in range, success rate, last activity, and an “inactive in this range” hint when appropriate).
+- **Agents & System** – Replaces the legacy System status card with GitHub connectivity and per-agent summary rows that honor the current preset (attempts in range, success rate, last activity, and an "inactive in this range" hint when appropriate).
 - **Time range presets** – Mission Control exposes a preset selector (`Last 24 hours`, `Last 7 days`, `Last 30 days`) that scopes metrics, inbox items, and agent stats; switching presets refetches the snapshot with a dedicated query key so the WebSocket stream stays live on the default range.
 - **User-facing guide** – See the [Mission Control dashboard guide](guides/dashboard-ui) for a tour of each panel, time range behavior, and typical workflows.
 ### [Onboarding & settings](core/onboarding-and-settings)
 - **First‑run onboarding** – When no onboarding record exists, users are guided through theme/language, telemetry, notifications, editor and git defaults, GitHub templates, and GitHub OAuth configuration.
 - **GitHub setup** – Onboarding supports configuring the GitHub OAuth app (client ID/secret) and completing the device flow before entering the workspace.
 - **App settings** – After onboarding, global settings can be revisited under `/settings` to adjust preferences, editor defaults, git defaults, and automation behavior.
-- **Project settings** – Each project has settings for base branch, remote, default agent/profile, and automation flags (e.g. auto‑commit + optional auto‑push on successful Attempt completion, plus “Allow scripts to fail” for non‑blocking automation).
+- **Project settings** – Each project has settings for base branch, remote, default agent/profile, and automation flags (e.g. auto‑commit + optional auto‑push on successful Attempt completion, plus "Allow scripts to fail" for non‑blocking automation).
 ### [Quality‑of‑life features](core/quality-of-life)
 - **Auto‑start agent on In Progress** – Optionally start an Attempt automatically when moving a card from Backlog to In Progress.
 - **Auto‑commit and auto‑push** – When enabled, successful Attempts can trigger an automatic commit (and optional push) using the latest agent message as commit content.
 - **Dependency‑aware moves** – Moving a blocked card shows helpful toasts explaining which dependencies must be completed first.
-- **Realtime board sync** – WebSocket listeners broadcast board, Attempt, git, and agent events to all connected clients.
+- **Realtime board sync** – WebSocket listeners broadcast board, Attempt, git, agent, and terminal events to all connected clients.
 - **Readable logging** – Server logs are human‑readable lines with scopes (e.g. `[github:repos] failed`) and optional key/value context, with log level controlled by `LOG_LEVEL` / `KANBANAI_DEBUG` / `DEBUG`.
+### Terminals
+- **Built‑in terminal access** – Open PTY terminals directly in your card's worktree directory from the Terminals tool.
+- **Multi‑terminal grid** – Run multiple terminals side‑by‑side in a responsive grid layout (1 column on mobile, 2 on lg, 3 on xl).
+- **Status indicators** – Visual badges show connecting, connected, disconnected, and error states.
+- **Auto‑cleanup** – Terminals are automatically destroyed when cards move out of "In Progress" or "Review", or when attempts end/fail.
 
 ## API & realtime
 

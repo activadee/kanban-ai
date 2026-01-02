@@ -16,6 +16,7 @@ shim). This page gives a high-level map of the main resources and how they fit t
   - WebSocket:
     - Board channel: `ws://localhost:3000/api/v1/ws?boardId=<boardId>`
     - Dashboard channel: `ws://localhost:3000/api/v1/ws/dashboard`
+    - Terminal channel: `ws://localhost:3000/terminals/<cardId>/ws?projectId=<projectId>`
   - Server-Sent Events (SSE):
     - Board channel: `http://localhost:3000/api/v1/sse?boardId=<boardId>` (alternative to WebSocket)
     - Dashboard channel: `http://localhost:3000/api/v1/sse` (global dashboard events)
@@ -140,5 +141,21 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
   - `currentVersion` is derived from `KANBANAI_VERSION` or the nearest `kanban-ai` `package.json`.
   - `latestVersion` is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`), cached for ~15 minutes, and falls back to `currentVersion` when the lookup fails.
   - `updateAvailable` lets clients know when a newer release exists so UI can prompt for restart.
+
+## Terminals
+
+> Terminals are available for cards in "In Progress" or "Review" columns with active worktrees.
+
+- Project terminals:
+  - `GET /api/v1/projects/:projectId/terminals` – list active terminals for a project.
+  - `GET /api/v1/projects/:projectId/terminals/eligible` – list cards eligible for terminal access.
+- Card terminals:
+  - `GET /api/v1/terminals/:cardId` – get terminal session info.
+  - `POST /api/v1/terminals/:cardId/resize` – resize terminal (cols, rows).
+  - `DELETE /api/v1/terminals/:cardId` – force close a terminal.
+- WebSocket:
+  - `ws://host/terminals/:cardId/ws?projectId=:projectId` – bidirectional terminal I/O.
+  - Client → Server: `{type: 'data', data: string}` or `{type: 'resize', cols, rows}`.
+  - Server → Client: `{type: 'data', data: string}`, `{type: 'exit', code}`, or `{type: 'error', message}`.
 
 For realtime message shapes and WebSocket usage, see `core/realtime-and-websockets.md`.

@@ -85,6 +85,8 @@ KanbanAI uses Server-Sent Events (SSE) as the real-time interface. SSE provides 
 | `attempt_pr` | Pull request created from attempt |
 | `agent_profile` | Agent profile created/updated/deleted |
 | `agent_registered` | New agent registered |
+| `terminal_opened` | Terminal session opened for a card |
+| `terminal_closed` | Terminal session closed |
 | `dashboard_overview` | Dashboard metrics snapshot (dashboard channel) |
 
 For details on which events are emitted and how they relate to domain models, see:

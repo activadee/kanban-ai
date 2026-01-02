@@ -1,5 +1,8 @@
 # Terminals Feature Implementation Plan
 
+> **Deprecated**: This planning document contains outdated information.
+> See [terminals-feature.md](./terminals-feature.md) for the actual implementation details.
+
 ## Overview
 
 A "Terminals" tool for KanbanAI that opens PTY terminals in git worktree directories for cards in "In Progress" or "Review" columns.
