@@ -23,7 +23,6 @@ import {useBoardDnd} from "./board/useBoardDnd";
 import {makeIsCardBlocked} from "./board/isCardBlocked";
 import type {CardEnhancementStatus} from "@/hooks/tickets";
 import {getSortOrder, setSortOrder, type CardSortOrder} from "@/lib/sortOrder";
-import {getTicketTypeColor} from "@/lib/ticketTypes";
 
 export type BoardHandlers = {
     onCreateCard: (
@@ -434,10 +433,7 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
                                     </ResizablePanel>
                                     <ResizableHandle
                                         withHandle
-                                        className="w-1.5 transition-colors duration-200"
-                                        style={{
-                                            backgroundColor: getTicketTypeColor(inspectorData.card.ticketType) || 'var(--border)',
-                                        }}
+                                        className="bg-border/70 w-1"
                                     />
                                     <ResizablePanel
                                         id="kanban-inspector"
