@@ -12,6 +12,7 @@ import {
     Bot,
     GitPullRequestDraft,
     GitBranch,
+    Terminal,
     HelpCircle,
 } from 'lucide-react'
 import {useProjectsNav} from '@/contexts/useProjectsNav'
@@ -167,6 +168,17 @@ export function AppSidebar({
                     >
                         <GitBranch className="size-5" />
                     </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn('size-8', isProjectRoute('/terminals') && 'bg-muted')}
+                        onClick={() => navigateToProjectRoute('/terminals')}
+                        title="Terminals (T)"
+                        aria-label="Terminals"
+                        disabled={!hasActiveProject}
+                    >
+                        <Terminal className="size-5" />
+                    </Button>
 
                     <div className="flex-1" />
 
@@ -266,6 +278,13 @@ export function AppSidebar({
                             shortcut="W"
                             active={isProjectRoute('/worktrees')}
                             onClick={() => navigateToProjectRoute('/worktrees')}
+                        />
+                        <NavButton
+                            icon={Terminal}
+                            label="Terminals"
+                            shortcut="T"
+                            active={isProjectRoute('/terminals')}
+                            onClick={() => navigateToProjectRoute('/terminals')}
                         />
                     </div>
 

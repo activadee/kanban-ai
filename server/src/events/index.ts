@@ -6,6 +6,7 @@ import type {GitEventMap} from './types/git-events'
 import type {ProjectEventMap} from './types/project-events'
 import type {SettingsEventMap} from './types/settings-events'
 import type {TaskEventMap} from './types/task-events'
+import type {TerminalEventMap} from './types/terminal-events'
 
 export type AppEventMap = ProjectEventMap &
     TaskEventMap &
@@ -14,7 +15,8 @@ export type AppEventMap = ProjectEventMap &
     SettingsEventMap &
     EditorEventMap &
     AgentEventMap &
-    DashboardEventMap
+    DashboardEventMap &
+    TerminalEventMap
 
 export type AppEventName = keyof AppEventMap
 export type AppEventPayload<Name extends AppEventName> = AppEventMap[Name]
