@@ -6,6 +6,7 @@ import {ProjectDashboardPage} from '@/pages/ProjectDashboardPage'
 import {AgentsPage} from '@/pages/AgentsPage'
 import {GitHubIssuesPage} from '@/pages/GitHubIssuesPage'
 import {WorktreesPage} from '@/pages/WorktreesPage'
+import {TerminalsPage} from '@/pages/TerminalsPage'
 import {ProjectSettingsPage} from '@/pages/ProjectSettingsPage'
 
 import {DashboardPage} from '@/pages/DashboardPage'
@@ -81,6 +82,7 @@ function App() {
                             <Route path="agents" element={<AgentsPage/>}/>
                             <Route path="projects/:projectId/github-issues" element={<GitHubIssuesPage/>}/>
                             <Route path="projects/:projectId/worktrees" element={<WorktreesPage/>}/>
+                            <Route path="projects/:projectId/terminals" element={<TerminalsPage/>}/>
                             <Route path="attempts/:attemptId" element={<AttemptDetailPage/>}/>
                             <Route path="settings" element={<AppSettingsPage/>}/>
                             <Route path="*" element={<Navigate to="/" replace/>}/>

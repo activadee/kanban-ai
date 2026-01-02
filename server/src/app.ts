@@ -16,6 +16,7 @@ import {createGithubProjectRouter} from './github/pr-routes'
 import {createEditorsRouter} from './editor/routes'
 import {createAppSettingsRouter} from './settings/routes'
 import {createOnboardingRouter} from './onboarding/routes'
+import {createTerminalRouter, createProjectTerminalRouter} from './terminal/routes'
 import {createEventBus, type AppEventBus} from './events/bus'
 import {registerEventListeners} from './events/register'
 import {createDashboardRouter} from './dashboard/routes'
@@ -108,6 +109,7 @@ export const createApp = ({
     api.route('/boards', createBoardsRouter())
     // GitHub PR endpoints under /projects/:projectId/pull-requests
     api.route('/projects', createGithubProjectRouter())
+    api.route('/projects/:projectId/terminals', createProjectTerminalRouter())
     api.route('/auth/github', createGithubRouter())
     api.route('/fs', createFilesystemRouter())
     api.route('/attempts', createAttemptsRouter())
@@ -117,6 +119,7 @@ export const createApp = ({
     api.route('/dashboard', createDashboardRouter())
     api.route('/onboarding', createOnboardingRouter())
     api.route('/version', createVersionRouter())
+    api.route('/terminals', createTerminalRouter())
 
     // SSE endpoint for real-time updates
     // With boardId: board-specific events; without: global/dashboard events
