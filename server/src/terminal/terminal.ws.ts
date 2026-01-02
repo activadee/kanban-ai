@@ -109,8 +109,7 @@ export function handleTerminalMessage(ws: ServerWebSocket<WSData>, message: stri
             terminalService.resize(cardId, parsed.cols, parsed.rows)
         }
     } catch {
-        const data = typeof message === 'string' ? message : message.toString()
-        terminalService.write(cardId, data)
+        log.warn('terminal', 'received invalid message format, ignoring', {cardId})
     }
 }
 

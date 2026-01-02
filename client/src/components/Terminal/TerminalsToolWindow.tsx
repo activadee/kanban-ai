@@ -16,6 +16,7 @@ import {MasterDetailLayout, type MasterDetailItem} from '@/components/layout/Mas
 import {getEligibleCards, closeTerminal} from '@/api/terminals'
 import type {EligibleTerminalCard} from 'shared'
 import {cn} from '@/lib/utils'
+import {toast} from '@/components/ui/toast'
 
 export interface TerminalsToolWindowProps {
     projectId: string
@@ -56,7 +57,12 @@ export function TerminalsToolWindow({projectId, className}: TerminalsToolWindowP
     const handleCloseTerminal = useCallback(async (cardId: string) => {
         try {
             await closeTerminal(cardId)
-        } catch {
+        } catch (err) {
+            toast({
+                title: 'Failed to close terminal',
+                description: err instanceof Error ? err.message : 'The terminal session may still be active on the server.',
+                variant: 'destructive',
+            })
         }
         setOpenTerminals((prev) => prev.filter((t) => t.cardId !== cardId))
         refetch()

@@ -33,11 +33,16 @@ export function useTerminal({
     const fitAddonRef = useRef<FitAddon | null>(null)
     const webLinksAddonRef = useRef<WebLinksAddon | null>(null)
     const wsRef = useRef<WebSocket | null>(null)
+    const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [status, setStatus] = useState<TerminalStatus>('disconnected')
     const closedRef = useRef(false)
 
     const cleanup = useCallback(() => {
         closedRef.current = true
+        if (resizeTimeoutRef.current) {
+            clearTimeout(resizeTimeoutRef.current)
+            resizeTimeoutRef.current = null
+        }
         if (wsRef.current) {
             wsRef.current.close()
             wsRef.current = null
@@ -151,7 +156,12 @@ export function useTerminal({
         })
 
         term.onResize(({cols, rows}) => {
-            sendMessage({type: 'resize', cols, rows})
+            if (resizeTimeoutRef.current) {
+                clearTimeout(resizeTimeoutRef.current)
+            }
+            resizeTimeoutRef.current = setTimeout(() => {
+                sendMessage({type: 'resize', cols, rows})
+            }, 100)
         })
     }, [cardId, projectId, cleanup, sendMessage, onExit, onError])
 

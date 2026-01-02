@@ -3,11 +3,11 @@ import {terminalService} from './terminal.service'
 import {projectsRepo} from 'core'
 import {log} from '../log'
 
-const ELIGIBLE_COLUMNS = ['in progress', 'review']
+const ELIGIBLE_COLUMNS = new Set(['in progress', 'review'])
 
 function isEligibleColumn(title: string): boolean {
     const normalized = title.toLowerCase().trim()
-    return ELIGIBLE_COLUMNS.some((col) => normalized.includes(col))
+    return ELIGIBLE_COLUMNS.has(normalized)
 }
 
 export function registerTerminalListeners(bus: AppEventBus) {
