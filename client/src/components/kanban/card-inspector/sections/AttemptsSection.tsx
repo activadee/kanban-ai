@@ -6,7 +6,7 @@ import {Button} from '@/components/ui/button'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
 import {ImageAttachment} from '@/components/ui/image-attachment'
 import {cn} from '@/lib/utils'
-import {MessageRow} from '../MessageRow'
+import {MessageRow, type StreamdownSettings} from '../MessageRow'
 
 function AgentTypingIndicator() {
     return (
@@ -49,6 +49,7 @@ export type AttemptsSectionProps = {
     addImages: (files: File[]) => Promise<void>
     removeImage: (index: number) => void
     canAddMoreImages: boolean
+    streamdownSettings?: StreamdownSettings
 }
 
 
@@ -74,6 +75,7 @@ export function AttemptsSection({
                                     addImages,
                                     removeImage,
                                     canAddMoreImages,
+                                    streamdownSettings,
                                 }: AttemptsSectionProps) {
     const messagesContainerRef = useRef<HTMLDivElement | null>(null)
     const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -133,6 +135,7 @@ export function AttemptsSection({
                             item={item}
                             agentKey={attemptAgent}
                             profiles={followupProfiles}
+                            streamdownSettings={streamdownSettings}
                         />
                     ))
                 )}

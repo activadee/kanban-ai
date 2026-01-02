@@ -11,10 +11,11 @@ import {GitDefaultsSection} from './app-settings/GitDefaultsSection'
 import {GithubSettingsSection} from './app-settings/GithubSettingsSection'
 import {OpencodeAgentSettingsSection} from './app-settings/OpencodeAgentSettingsSection'
 import {GithubOAuthSection} from './app-settings/GithubOAuthSection'
+import {StreamdownSettingsSection} from './app-settings/StreamdownSettingsSection'
 import {describeApiError} from '@/api/http'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {MasterDetailLayout, type MasterDetailItem} from '@/components/layout/MasterDetailLayout'
-import {Settings, Terminal, GitBranch, Github, Bot, Key} from 'lucide-react'
+import {Settings, Terminal, GitBranch, Github, Bot, Key, FileText} from 'lucide-react'
 
 type FormState = {
     theme: 'system' | 'light' | 'dark'
@@ -31,6 +32,10 @@ type FormState = {
     ghPrBodyTemplate: string
     ghAutolinkTickets: boolean
     opencodePort: number
+    streamdownAssistantEnabled: boolean
+    streamdownUserEnabled: boolean
+    streamdownSystemEnabled: boolean
+    streamdownThinkingEnabled: boolean
 }
 
 type GithubAppForm = {
@@ -44,6 +49,7 @@ type GithubAppForm = {
 
 const SETTINGS_ITEMS: MasterDetailItem[] = [
     {id: 'general', label: 'General', subtitle: 'Theme, language, notifications', icon: Settings},
+    {id: 'rendering', label: 'Rendering', subtitle: 'Message display options', icon: FileText},
     {id: 'editor', label: 'Editor', subtitle: 'External editor command', icon: Terminal},
     {id: 'git', label: 'Git Defaults', subtitle: 'User, email, branch template', icon: GitBranch},
     {id: 'github', label: 'GitHub', subtitle: 'PR templates, autolink', icon: Github},
@@ -81,6 +87,10 @@ export function AppSettingsPage() {
             ghPrBodyTemplate: data.ghPrBodyTemplate ?? '',
             ghAutolinkTickets: data.ghAutolinkTickets,
             opencodePort: data.opencodePort,
+            streamdownAssistantEnabled: data.streamdownAssistantEnabled,
+            streamdownUserEnabled: data.streamdownUserEnabled,
+            streamdownSystemEnabled: data.streamdownSystemEnabled,
+            streamdownThinkingEnabled: data.streamdownThinkingEnabled,
         } satisfies FormState
     }, [data])
 
@@ -128,6 +138,10 @@ export function AppSettingsPage() {
                 ghPrBodyTemplate: result.ghPrBodyTemplate ?? '',
                 ghAutolinkTickets: result.ghAutolinkTickets,
                 opencodePort: result.opencodePort,
+                streamdownAssistantEnabled: result.streamdownAssistantEnabled,
+                streamdownUserEnabled: result.streamdownUserEnabled,
+                streamdownSystemEnabled: result.streamdownSystemEnabled,
+                streamdownThinkingEnabled: result.streamdownThinkingEnabled,
             }
             setForm(next)
         },
@@ -176,6 +190,10 @@ export function AppSettingsPage() {
             ghPrBodyTemplate: form.ghPrBodyTemplate.trim() || null,
             ghAutolinkTickets: form.ghAutolinkTickets,
             opencodePort: form.opencodePort,
+            streamdownAssistantEnabled: form.streamdownAssistantEnabled,
+            streamdownUserEnabled: form.streamdownUserEnabled,
+            streamdownSystemEnabled: form.streamdownSystemEnabled,
+            streamdownThinkingEnabled: form.streamdownThinkingEnabled,
         }
         updateSettings.mutate(payload)
     }
@@ -308,6 +326,21 @@ export function AppSettingsPage() {
                             setStatus('idle')
                         }}
                         onDesktopToggle={(v) => handleDesktopToggle(v)}
+                    />
+                )
+            case 'rendering':
+                return contentWrapper(
+                    <StreamdownSettingsSection
+                        form={{
+                            streamdownAssistantEnabled: form.streamdownAssistantEnabled,
+                            streamdownUserEnabled: form.streamdownUserEnabled,
+                            streamdownSystemEnabled: form.streamdownSystemEnabled,
+                            streamdownThinkingEnabled: form.streamdownThinkingEnabled,
+                        }}
+                        onChange={(p) => {
+                            setForm({...form, ...p})
+                            setStatus('idle')
+                        }}
                     />
                 )
             case 'editor':

@@ -234,10 +234,18 @@ function OutputSection({
     )
 }
 
+export type StreamdownSettings = {
+    streamdownAssistantEnabled: boolean
+    streamdownUserEnabled: boolean
+    streamdownSystemEnabled: boolean
+    streamdownThinkingEnabled: boolean
+}
+
 export type MessageRowProps = {
     item: ConversationItem
     agentKey?: string
     profiles?: Array<{ id: string; name: string }>
+    streamdownSettings?: StreamdownSettings
 }
 
 function resolveProfileDisplay(
@@ -256,7 +264,14 @@ function resolveProfileDisplay(
     return displayName
 }
 
-export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
+const defaultStreamdownSettings: StreamdownSettings = {
+    streamdownAssistantEnabled: true,
+    streamdownUserEnabled: true,
+    streamdownSystemEnabled: true,
+    streamdownThinkingEnabled: true,
+}
+
+export function MessageRow({item, agentKey, profiles, streamdownSettings = defaultStreamdownSettings}: MessageRowProps) {
     const timestamp = Number.isNaN(Date.parse(item.timestamp)) ? new Date() : new Date(item.timestamp)
     const time = timestamp.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
 
@@ -265,6 +280,11 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
             const {role, text, images} = item
             const isUser = role === 'user'
             const isSystem = role === 'system'
+            const useStreamdown = role === 'assistant' 
+                ? streamdownSettings.streamdownAssistantEnabled
+                : role === 'user'
+                    ? streamdownSettings.streamdownUserEnabled
+                    : streamdownSettings.streamdownSystemEnabled
 
             return (
                 <div
@@ -319,18 +339,30 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
                                 </Badge>
                             )}
                         </div>
-                        <Streamdown
-                            data-slot="message-text"
-                            className={cn(
-                                'prose max-w-none',
-                                isUser 
-                                    ? 'prose-invert prose-p:text-white prose-headings:text-white prose-strong:text-white prose-code:text-white/90 prose-code:bg-white/10'
-                                    : 'dark:prose-invert',
-                            )}
-                            shikiTheme={['github-light', 'github-dark']}
-                        >
-                            {text}
-                        </Streamdown>
+                        {useStreamdown ? (
+                            <Streamdown
+                                data-slot="message-text"
+                                className={cn(
+                                    'prose max-w-none',
+                                    isUser 
+                                        ? 'prose-invert prose-p:text-white prose-headings:text-white prose-strong:text-white prose-code:text-white/90 prose-code:bg-white/10'
+                                        : 'dark:prose-invert',
+                                )}
+                                shikiTheme={['github-light', 'github-dark']}
+                            >
+                                {text}
+                            </Streamdown>
+                        ) : (
+                            <div
+                                data-slot="message-text"
+                                className={cn(
+                                    'whitespace-pre-wrap text-sm leading-relaxed',
+                                    isUser && 'text-white',
+                                )}
+                            >
+                                {text}
+                            </div>
+                        )}
                         {images && images.length > 0 && (
                             <ImageAttachment images={images} variant="badge" size="sm" className="mt-2"/>
                         )}
@@ -369,12 +401,18 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
                     className="message-row-thinking mb-3 border-amber-500/20 bg-gradient-to-r from-amber-50/40 to-transparent dark:from-amber-950/20"
                     contentClassName="leading-relaxed"
                 >
-                    <Streamdown
-                        className="prose max-w-none dark:prose-invert"
-                        shikiTheme={['github-light', 'github-dark']}
-                    >
-                        {item.text}
-                    </Streamdown>
+                    {streamdownSettings.streamdownThinkingEnabled ? (
+                        <Streamdown
+                            className="prose max-w-none dark:prose-invert"
+                            shikiTheme={['github-light', 'github-dark']}
+                        >
+                            {item.text}
+                        </Streamdown>
+                    ) : (
+                        <div className="whitespace-pre-wrap text-sm">
+                            {item.text}
+                        </div>
+                    )}
                 </CollapsibleThinkingBlock>
             )
         }
