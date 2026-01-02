@@ -37,6 +37,14 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
     const isAtBottomRef = useRef(true)
     const wasManuallyDisabledRef = useRef(false)
     const isProgrammaticScrollRef = useRef(false)
+    const timeoutIdsRef = useRef<number[]>([])
+
+    useEffect(() => {
+        return () => {
+            timeoutIdsRef.current.forEach((id) => window.clearTimeout(id))
+            timeoutIdsRef.current = []
+        }
+    }, [])
 
     const checkIsAtBottom = useCallback(() => {
         const container = containerRef.current
@@ -48,6 +56,9 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
     }, [bottomThreshold])
 
     const scrollToBottom = useCallback(() => {
+        timeoutIdsRef.current.forEach((id) => window.clearTimeout(id))
+        timeoutIdsRef.current = []
+        
         isProgrammaticScrollRef.current = true
         
         const doScroll = () => {
@@ -72,13 +83,13 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
             }
         }
         
-        setTimeout(retryIfNeeded, 100)
-        setTimeout(retryIfNeeded, 250)
+        timeoutIdsRef.current.push(window.setTimeout(retryIfNeeded, 100))
+        timeoutIdsRef.current.push(window.setTimeout(retryIfNeeded, 250))
         
-        setTimeout(() => {
+        timeoutIdsRef.current.push(window.setTimeout(() => {
             isProgrammaticScrollRef.current = false
             isAtBottomRef.current = true
-        }, 300)
+        }, 300))
     }, [scrollBehavior, checkIsAtBottom])
 
     const handleScroll = useCallback(() => {
