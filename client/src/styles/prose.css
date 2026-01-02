@@ -1,0 +1,98 @@
+/* Message bubble and thinking block prose typography */
+
+@layer components {
+    .message-row-thinking {
+        transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .message-row-thinking:hover {
+        border-color: oklch(0.78 0.12 75 / 0.4);
+    }
+
+    .message-row-thinking [data-slot="thinking-summary"]:hover {
+        background: oklch(0.92 0.06 85 / 0.5);
+    }
+
+    .dark .message-row-thinking [data-slot="thinking-summary"]:hover {
+        background: oklch(0.30 0.05 75 / 0.4);
+    }
+
+    .message-row-thinking[open] {
+        border-color: oklch(0.78 0.12 75 / 0.35);
+    }
+
+    [data-slot="message-bubble"] .prose,
+    [data-slot="thinking-content"] .prose {
+        --tw-prose-body: var(--foreground);
+        --tw-prose-headings: var(--foreground);
+        --tw-prose-links: var(--primary);
+        --tw-prose-code: var(--foreground);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+    }
+
+    [data-slot="message-bubble"] .prose p,
+    [data-slot="thinking-content"] .prose p {
+        margin-block: 0.375em;
+    }
+
+    [data-slot="message-bubble"] .prose h1,
+    [data-slot="thinking-content"] .prose h1 {
+        font-size: 1.125rem;
+        margin-block: 0.5em;
+    }
+
+    [data-slot="message-bubble"] .prose h2,
+    [data-slot="thinking-content"] .prose h2 {
+        font-size: 1rem;
+        margin-block: 0.5em;
+    }
+
+    [data-slot="message-bubble"] .prose h3,
+    [data-slot="thinking-content"] .prose h3 {
+        font-size: 0.875rem;
+        margin-block: 0.5em;
+    }
+
+    [data-slot="message-bubble"] .prose ul,
+    [data-slot="message-bubble"] .prose ol,
+    [data-slot="thinking-content"] .prose ul,
+    [data-slot="thinking-content"] .prose ol {
+        margin-block: 0.375em;
+        padding-inline-start: 1.25em;
+    }
+
+    [data-slot="message-bubble"] .prose li,
+    [data-slot="thinking-content"] .prose li {
+        margin-block: 0.125em;
+    }
+
+    [data-slot="message-bubble"] .prose pre,
+    [data-slot="thinking-content"] .prose pre {
+        font-size: 0.75rem;
+        padding: 0.625rem 0.75rem;
+        margin-block: 0.5em;
+        border-radius: var(--radius-md);
+    }
+
+    [data-slot="message-bubble"] .prose code:not(pre code),
+    [data-slot="thinking-content"] .prose code:not(pre code) {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.3rem;
+        border-radius: var(--radius-sm);
+        background: var(--muted);
+    }
+
+    [data-slot="message-bubble"] .prose blockquote,
+    [data-slot="thinking-content"] .prose blockquote {
+        margin-block: 0.5em;
+        padding-inline-start: 0.75em;
+        border-left-width: 2px;
+        font-style: normal;
+    }
+
+    [data-slot="thinking-content"] .prose {
+        font-size: 0.75rem;
+        color: var(--muted-foreground);
+    }
+}

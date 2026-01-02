@@ -1,0 +1,230 @@
+/* Kanban card components: states, badges, indicators, animations */
+
+@layer components {
+    .kanban-card {
+        @apply relative rounded-lg overflow-visible border border-border;
+        background: var(--card);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .kanban-card::before {
+        @apply absolute left-0 top-0 bottom-0;
+        content: '';
+        width: 3px;
+        background: var(--ticket-type-color, transparent);
+        transition: width 0.2s ease;
+    }
+
+    .kanban-card:hover::before {
+        width: 4px;
+    }
+
+    .kanban-card--enhanced {
+        background: linear-gradient(135deg, var(--card) 0%, var(--card-enhanced-glow) 50%, var(--card) 100%);
+        background-size: 200% 100%;
+        animation: kanban-shimmer 6s ease-in-out infinite;
+    }
+
+    .kanban-card--selected {
+        transform: translateX(2px);
+        box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);
+    }
+
+    .dark .kanban-card--selected {
+        box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.3), 0 2px 6px -1px rgb(0 0 0 / 0.2);
+    }
+
+    .kanban-card--selected::before {
+        width: 6px !important;
+        box-shadow: 4px 0 12px -2px var(--ticket-type-color, var(--primary)), 2px 0 4px -1px var(--ticket-type-color, var(--primary));
+    }
+
+    .dark .kanban-card--selected::before {
+        box-shadow: 6px 0 16px -2px var(--ticket-type-color, var(--primary)), 3px 0 6px -1px var(--ticket-type-color, var(--primary));
+    }
+
+    .kanban-card--selected.kanban-card--done {
+        transform: translateX(1px);
+        opacity: 0.7;
+    }
+
+    .kanban-card--selected.kanban-card--done::before {
+        width: 5px !important;
+        opacity: 0.5;
+    }
+
+    .kanban-bookmark {
+        @apply absolute z-1;
+        top: -1px;
+        right: 8px;
+        color: var(--ticket-feat);
+        filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.1));
+    }
+
+    .kanban-bookmark svg {
+        fill: var(--ticket-feat);
+        stroke: var(--card);
+        stroke-width: 1.5;
+    }
+
+    .kanban-card--failed {
+        background: var(--card);
+        animation: kanban-attention-pulse 2s ease-in-out infinite;
+    }
+
+    .kanban-card--failed::before {
+        background: var(--ticket-fix) !important;
+        width: 4px;
+    }
+
+    .kanban-card--blocked {
+        opacity: 0.85;
+    }
+
+    .kanban-card--blocked::before {
+        background: repeating-linear-gradient(45deg, var(--ticket-fix), var(--ticket-fix) 2px, transparent 2px, transparent 6px);
+        width: 4px;
+    }
+
+    .kanban-card--done {
+        opacity: 0.6;
+        filter: grayscale(0.3);
+    }
+
+    .kanban-card--done::before {
+        opacity: 0.4;
+    }
+
+    .kanban-card[data-ticket-type="feat"]::before { background: var(--ticket-feat); }
+    .kanban-card[data-ticket-type="fix"]::before { background: var(--ticket-fix); }
+    .kanban-card[data-ticket-type="chore"]::before { background: var(--ticket-chore); }
+    .kanban-card[data-ticket-type="docs"]::before { background: var(--ticket-docs); }
+    .kanban-card[data-ticket-type="style"]::before { background: var(--ticket-style); }
+    .kanban-card[data-ticket-type="refactor"]::before { background: var(--ticket-refactor); }
+    .kanban-card[data-ticket-type="perf"]::before { background: var(--ticket-perf); }
+    .kanban-card[data-ticket-type="test"]::before { background: var(--ticket-test); }
+    .kanban-card[data-ticket-type="build"]::before { background: var(--ticket-build); }
+    .kanban-card[data-ticket-type="ci"]::before { background: var(--ticket-ci); }
+    .kanban-card[data-ticket-type="revert"]::before { background: var(--ticket-revert); }
+
+    .kanban-card-action {
+        @apply inline-flex items-center justify-center rounded-md;
+        width: 26px;
+        height: 26px;
+        color: var(--muted-foreground);
+        transition: all 0.15s ease;
+    }
+
+    .kanban-card-action:hover {
+        background: var(--accent);
+        color: var(--foreground);
+        transform: translateY(-1px);
+    }
+
+    .kanban-card-action--pr:hover { color: var(--ticket-feat); }
+    .kanban-card-action--sparkle:hover { color: var(--ticket-docs); }
+
+    .kanban-badge {
+        @apply text-[10px] font-semibold uppercase rounded;
+        letter-spacing: 0.02em;
+        padding: 2px 8px;
+    }
+
+    .kanban-badge--type {
+        @apply border-0 border-l-2 border-solid;
+    }
+
+    .kanban-badge--key {
+        @apply font-mono font-medium normal-case border-none;
+        letter-spacing: 0.01em;
+        background: var(--muted);
+        color: var(--muted-foreground);
+    }
+
+    .kanban-badge--status {
+        @apply text-[9px];
+        padding: 2px 6px;
+    }
+
+    .kanban-indicator--blocked {
+        @apply inline-flex items-center gap-1 text-[10px] font-semibold rounded;
+        color: var(--ticket-fix);
+        padding: 2px 6px;
+        background: oklch(0.95 0.04 25);
+    }
+
+    .dark .kanban-indicator--blocked {
+        background: oklch(0.25 0.06 25);
+    }
+
+    .kanban-spinner {
+        @apply inline-flex items-center gap-1 text-[10px] font-medium rounded;
+        color: var(--muted-foreground);
+        padding: 2px 6px;
+        background: var(--muted);
+    }
+
+    .kanban-indicator--failed {
+        @apply inline-flex items-center gap-1 text-[10px] font-semibold rounded;
+        color: var(--ticket-fix);
+        padding: 2px 6px;
+        background: oklch(0.95 0.05 25);
+    }
+
+    .dark .kanban-indicator--failed {
+        background: oklch(0.25 0.07 25);
+    }
+
+    .kanban-card--in-progress {
+        --border-color: var(--ticket-type-color, #a3a3a3);
+        --border-width: 2px;
+        overflow: visible;
+    }
+
+    .kanban-card--in-progress::after {
+        content: "";
+        position: absolute;
+        inset: calc(var(--border-width) * -1);
+        border-radius: calc(var(--radius-lg) + var(--border-width));
+        padding: var(--border-width);
+        background: conic-gradient(
+            from var(--border-angle),
+            transparent 0%,
+            transparent 25%,
+            var(--border-color) 30%,
+            color-mix(in oklch, var(--border-color) 80%, white) 35%,
+            var(--border-color) 40%,
+            transparent 45%,
+            transparent 100%
+        );
+        -webkit-mask: 
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask: 
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        z-index: 1;
+        animation: 
+            border-rotate 2.5s linear infinite,
+            pulse-glow 2s ease-in-out infinite;
+        will-change: --border-angle;
+        pointer-events: none;
+    }
+
+    .dark .kanban-card--in-progress::after {
+        background: conic-gradient(
+            from var(--border-angle),
+            transparent 0%,
+            transparent 20%,
+            color-mix(in oklch, var(--border-color) 60%, transparent) 25%,
+            var(--border-color) 30%,
+            color-mix(in oklch, var(--border-color) 90%, white) 35%,
+            var(--border-color) 40%,
+            color-mix(in oklch, var(--border-color) 60%, transparent) 45%,
+            transparent 50%,
+            transparent 100%
+        );
+    }
+}
