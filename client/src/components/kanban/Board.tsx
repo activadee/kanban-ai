@@ -1,12 +1,20 @@
 import {useEffect, useLayoutEffect, useMemo, useState, useImperativeHandle, forwardRef, useRef} from "react";
 import {Column} from "./Column";
+import {Separator} from "@/components/ui/separator";
 import type {BoardState, Column as ColumnType} from "shared";
 import type {AttemptStatus} from "shared";
 import {Button} from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {DndContext, DragOverlay} from "@dnd-kit/core";
 import {KanbanCard} from "./Card";
 import {CreateCardDialog, EditCardDialog, type CardFormValues} from "./CardDialogs";
-import {ClipboardList} from "lucide-react";
+import {ClipboardList, ArrowDownNarrowWide, ArrowUpNarrowWide, List} from "lucide-react";
 import {CardInspector} from "./CardInspector";
 import {Sheet, SheetContent} from "@/components/ui/sheet";
 import {ResizableHandle, ResizablePanel, ResizablePanelGroup} from "@/components/ui/resizable";
@@ -14,7 +22,8 @@ import {useMediaQuery} from "@/lib/useMediaQuery";
 import {useBoardDnd} from "./board/useBoardDnd";
 import {makeIsCardBlocked} from "./board/isCardBlocked";
 import type {CardEnhancementStatus} from "@/hooks/tickets";
-import type {CardSortOrder} from "@/lib/sortOrder";
+import {getSortOrder, setSortOrder, type CardSortOrder} from "@/lib/sortOrder";
+import {getTicketTypeColor} from "@/lib/ticketTypes";
 
 export type BoardHandlers = {
     onCreateCard: (
@@ -72,7 +81,6 @@ type Props = {
     projectId: string;
     state: BoardState;
     handlers: BoardHandlers;
-    sortOrder?: CardSortOrder;
     enhancementStatusByCardId?: Record<string, CardEnhancementStatus>;
     attemptStatusByCardId?: Record<string, AttemptStatus>;
     onCardEnhancementClick?: (cardId: string) => void;
@@ -87,12 +95,12 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
     projectId,
     state,
     handlers,
-    sortOrder = 'custom',
     enhancementStatusByCardId,
     attemptStatusByCardId,
     onCardEnhancementClick,
     initialSelectedCardId,
 }, ref) {
+    const [sortOrder, setSortOrderState] = useState<CardSortOrder>(getSortOrder);
     const columns = useMemo<ColumnType[]>(
         () => state.columnOrder.map((id) => state.columns[id]).filter(Boolean),
         [state],
@@ -118,6 +126,11 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
     const [selectedId, setSelectedId] = useState<string | null>(
         initialSelectedCardId ?? null,
     );
+
+    const handleSortOrderChange = (order: CardSortOrder) => {
+        setSortOrderState(order);
+        setSortOrder(order);
+    };
     const resolvedSelectedId = useMemo(
         () => (selectedId && state.cards[selectedId] ? selectedId : null),
         [selectedId, state.cards],
@@ -289,6 +302,38 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
 
     return (
         <div className="flex h-full min-h-0 flex-col">
+            <div className="mb-3 flex items-center justify-between">
+                <h1 className="text-2xl font-bold">Kanban Board</h1>
+                <div className="flex items-center gap-2">
+                    <Select value={sortOrder} onValueChange={handleSortOrderChange}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="newest-first">
+                                <div className="flex items-center gap-2">
+                                    <ArrowDownNarrowWide className="h-4 w-4" />
+                                    Newest first
+                                </div>
+                            </SelectItem>
+                            <SelectItem value="oldest-first">
+                                <div className="flex items-center gap-2">
+                                    <ArrowUpNarrowWide className="h-4 w-4" />
+                                    Oldest first
+                                </div>
+                            </SelectItem>
+                            <SelectItem value="custom">
+                                <div className="flex items-center gap-2">
+                                    <List className="h-4 w-4" />
+                                    Custom order
+                                </div>
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <Separator className="mb-4 h-px w-full" />
+
             {totalCards === 0 && (
                 <div className="mb-6 flex items-center justify-center">
                     <div className="flex w-full max-w-xl flex-col items-center gap-4 rounded-2xl border border-border/60 bg-muted/10 p-8 text-center">
@@ -389,7 +434,10 @@ export const Board = forwardRef<BoardHandle, Props>(function Board({
                                     </ResizablePanel>
                                     <ResizableHandle
                                         withHandle
-                                        className="bg-border/70 w-1"
+                                        className="w-1.5 transition-colors duration-200"
+                                        style={{
+                                            backgroundColor: getTicketTypeColor(inspectorData.card.ticketType) || 'var(--border)',
+                                        }}
                                     />
                                     <ResizablePanel
                                         id="kanban-inspector"

@@ -89,12 +89,7 @@ export function CardInspector({
             )}
             style={{'--inspector-accent': accentColor} as React.CSSProperties}
         >
-            <div 
-                className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg opacity-80 transition-opacity group-hover/inspector:opacity-100"
-                style={{backgroundColor: accentColor || 'var(--border)'}}
-            />
-            
-            <div className="flex h-full flex-col gap-0 pl-3">
+            <div className="flex h-full flex-col gap-0">
                 <div className="shrink-0 border-b border-border/40 pb-3 pt-1">
                     <InspectorHeader
                         card={card}
