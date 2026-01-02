@@ -1,0 +1,51 @@
+/* Agent typing indicator with pulsing orb animation */
+
+@layer components {
+    .agent-typing-indicator {
+        animation: typing-fade-in 0.3s ease-out;
+    }
+
+    .agent-typing-core {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.2));
+        animation: core-pulse 1.5s ease-in-out infinite;
+    }
+
+    .agent-typing-orbs {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .agent-typing-orb {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, oklch(0.78 0.16 75) 0%, oklch(0.68 0.18 55) 100%);
+        animation: orb-wave 1.4s ease-in-out infinite;
+        box-shadow: 0 0 8px oklch(0.78 0.16 75 / 0.5);
+    }
+
+    .agent-typing-orb:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .agent-typing-orb:nth-child(2) {
+        animation-delay: 0.15s;
+    }
+
+    .agent-typing-orb:nth-child(3) {
+        animation-delay: 0.3s;
+    }
+
+    .dark .agent-typing-orb {
+        background: linear-gradient(135deg, oklch(0.80 0.14 80) 0%, oklch(0.72 0.16 60) 100%);
+        box-shadow: 0 0 10px oklch(0.80 0.14 80 / 0.4);
+    }
+
+    .dark .agent-typing-orb:nth-child(2) {
+        box-shadow: 0 0 10px oklch(0.80 0.14 80 / 0.4);
+    }
+}
