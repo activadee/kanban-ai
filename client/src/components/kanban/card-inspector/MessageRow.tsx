@@ -272,6 +272,7 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
                     data-role={role}
                     className={cn(
                         'mb-3 flex gap-2.5',
+                        'animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out fill-mode-both',
                         isUser && 'flex-row-reverse',
                     )}
                 >
@@ -366,7 +367,7 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
                             <span className="text-[10px] text-muted-foreground">{time}</span>
                         </>
                     )}
-                    className="message-row-thinking mb-3 border-amber-500/20 bg-gradient-to-r from-amber-50/40 to-transparent dark:from-amber-950/20"
+                    className="message-row-thinking mb-3 border-amber-500/20 bg-gradient-to-r from-amber-50/40 to-transparent dark:from-amber-950/20 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out fill-mode-both"
                     contentClassName="leading-relaxed"
                 >
                     <Streamdown
@@ -384,6 +385,7 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
             return (
                 <CollapsibleSection
                     variant="tool"
+                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out fill-mode-both"
                     header={(
                         <>
                             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-slate-500/15 text-slate-600 dark:text-slate-400">
@@ -458,6 +460,7 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
                 <CollapsibleSection
                     variant="automation"
                     defaultOpen
+                    className="animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out fill-mode-both"
                     header={(
                         <>
                             <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
@@ -517,7 +520,7 @@ export function MessageRow({item, agentKey, profiles}: MessageRowProps) {
             return (
                 <div
                     data-slot="error-row"
-                    className="mb-3 flex gap-2.5"
+                    className="mb-3 flex gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out fill-mode-both"
                 >
                     <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
                         <AlertCircle className="h-4 w-4"/>
