@@ -2,51 +2,58 @@
 
 exports[`PageHeader > matches the snapshot (visual regression) 1`] = `
 <header
-  class="border-b border-border/60 bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50"
+  class="relative border-b border-border/50 bg-gradient-to-b from-background to-muted/20"
   data-component="PageHeader"
   data-testid="page-header"
 >
   <div
-    class="mx-auto flex w-full flex-col gap-3 px-4 py-4 sm:px-6 lg:px-8 max-w-5xl"
+    class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-border/60 to-transparent"
+  />
+  <div
+    class="mx-auto flex w-full flex-col gap-2 px-4 sm:px-6 lg:px-8 py-4 max-w-5xl"
   >
     <div
-      class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
+      class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
     >
       <div
-        class="min-w-0 space-y-1"
+        class="min-w-0 flex-1"
       >
         <p
-          class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+          class="mb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70"
         >
           Kicker
         </p>
         <div
-          class="flex flex-wrap items-center gap-3"
+          class="flex flex-wrap items-center gap-2.5"
         >
           <h1
-            class="text-2xl font-semibold leading-tight text-foreground"
+            class="font-semibold tracking-tight text-foreground text-xl"
           >
             Snapshot Title
           </h1>
         </div>
-        <div
-          class="text-sm text-muted-foreground"
+        <p
+          class="mt-1 text-sm text-muted-foreground/80"
         >
           Snapshot description
-        </div>
+        </p>
       </div>
       <div
-        class="flex flex-wrap items-center gap-2"
+        class="flex flex-wrap items-center gap-3"
       >
-        <button
-          type="button"
+        <div
+          class="flex flex-wrap items-center gap-2"
         >
-          Action
-        </button>
+          <button
+            type="button"
+          >
+            Action
+          </button>
+        </div>
       </div>
     </div>
     <div
-      class="flex flex-wrap items-center gap-2"
+      class="flex flex-wrap items-center gap-2 pt-1"
     >
       <span>
         Footer
