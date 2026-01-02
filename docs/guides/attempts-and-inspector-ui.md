@@ -76,6 +76,12 @@ Inside the **Conversation** view, the **Messages** section shows the live **conv
 - Message rendering – messages can display with rich formatting (Streamdown) including syntax highlighting, markdown, and code blocks, or as plain text. You can configure these preferences per message type (Assistant, User, System, Thinking) in **Settings → Rendering**.
 - Images sent by you or the agent appear as compact badges in the conversation stream; click a badge to preview the image in a lightbox.
 - Controls:
+   - **Auto-scroll toggle**:
+     - Appears in the attempt header next to the attempt ID.
+     - When enabled (default), the messages panel automatically scrolls to show new messages as they arrive.
+     - If you scroll up manually, auto-scroll disables automatically so you can read without interruption.
+     - Scroll back to the bottom to re-enable auto-scroll.
+     - The preference is persisted in localStorage and remembered across sessions.
    - **Stop Attempt**:
      - Sends a stop request to the server.
      - The Attempt transitions to `stopping` / `stopped`.
