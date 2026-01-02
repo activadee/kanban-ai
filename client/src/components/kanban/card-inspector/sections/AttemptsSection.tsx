@@ -119,7 +119,7 @@ export function AttemptsSection({
     useAutoScrollEffect(
         autoScroll.isEnabled,
         autoScroll.scrollToBottom,
-        [conversation.length],
+        conversation.length,
     )
 
     const handlePaste = (e: React.ClipboardEvent) => {

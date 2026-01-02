@@ -106,21 +106,25 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
 export function useAutoScrollEffect(
     isEnabled: boolean,
     scrollToBottom: () => void,
-    deps: React.DependencyList,
+    trigger: unknown,
 ) {
     const isInitialMount = useRef(true)
+    const prevTriggerRef = useRef(trigger)
 
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false
+            prevTriggerRef.current = trigger
             return
         }
 
-        if (isEnabled) {
+        const triggerChanged = prevTriggerRef.current !== trigger
+        prevTriggerRef.current = trigger
+
+        if (isEnabled && triggerChanged) {
             requestAnimationFrame(() => {
                 scrollToBottom()
             })
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isEnabled, scrollToBottom, ...deps])
+    }, [isEnabled, scrollToBottom, trigger])
 }

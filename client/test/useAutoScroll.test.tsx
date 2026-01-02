@@ -273,16 +273,16 @@ describe('useAutoScrollEffect', () => {
     it('does not scroll on initial mount', () => {
         const scrollToBottom = vi.fn()
         
-        renderHook(() => useAutoScrollEffect(true, scrollToBottom, [1]))
+        renderHook(() => useAutoScrollEffect(true, scrollToBottom, 1))
         
         expect(scrollToBottom).not.toHaveBeenCalled()
     })
 
-    it('scrolls when dependencies change and autoscroll is enabled', () => {
+    it('scrolls when trigger changes and autoscroll is enabled', () => {
         const scrollToBottom = vi.fn()
         let count = 1
         
-        const {rerender} = renderHook(() => useAutoScrollEffect(true, scrollToBottom, [count]))
+        const {rerender} = renderHook(() => useAutoScrollEffect(true, scrollToBottom, count))
         
         expect(scrollToBottom).not.toHaveBeenCalled()
         
@@ -294,11 +294,11 @@ describe('useAutoScrollEffect', () => {
         expect(scrollToBottom).toHaveBeenCalledTimes(1)
     })
 
-    it('does not scroll when dependencies change but autoscroll is disabled', () => {
+    it('does not scroll when trigger changes but autoscroll is disabled', () => {
         const scrollToBottom = vi.fn()
         let count = 1
         
-        const {rerender} = renderHook(() => useAutoScrollEffect(false, scrollToBottom, [count]))
+        const {rerender} = renderHook(() => useAutoScrollEffect(false, scrollToBottom, count))
         
         count = 2
         rerender()
@@ -308,13 +308,29 @@ describe('useAutoScrollEffect', () => {
         expect(scrollToBottom).not.toHaveBeenCalled()
     })
 
-    it('scrolls when autoscroll is re-enabled', () => {
+    it('does not scroll when autoscroll is re-enabled but trigger unchanged', () => {
         const scrollToBottom = vi.fn()
         let isEnabled = false
         
-        const {rerender} = renderHook(() => useAutoScrollEffect(isEnabled, scrollToBottom, [1]))
+        const {rerender} = renderHook(() => useAutoScrollEffect(isEnabled, scrollToBottom, 1))
         
         isEnabled = true
+        rerender()
+        
+        vi.runAllTimers()
+        
+        expect(scrollToBottom).not.toHaveBeenCalled()
+    })
+
+    it('scrolls when both autoscroll is enabled and trigger changes', () => {
+        const scrollToBottom = vi.fn()
+        let isEnabled = false
+        let count = 1
+        
+        const {rerender} = renderHook(() => useAutoScrollEffect(isEnabled, scrollToBottom, count))
+        
+        isEnabled = true
+        count = 2
         rerender()
         
         vi.runAllTimers()
