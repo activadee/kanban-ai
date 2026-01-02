@@ -103,7 +103,7 @@ interface MyItem extends MasterDetailItem {
 | `items` | `T[]` | Array of items to display in sidebar |
 | `activeId` | `string \| null` | ID of currently active/selected item |
 | `onSelect` | `(id: string) => void` | Callback when item is selected |
-| `renderItem` | `(item: T, isActive: boolean) => ReactNode` | Custom renderer for sidebar items |
+| `renderItem` | `(item: T, isActive: boolean, defaultRender: () => ReactNode) => ReactNode` | Custom renderer for sidebar items (receives defaultRender callback for fallback) |
 | `sidebarFooter` | `ReactNode \| null` | Content to render at bottom of sidebar (e.g., Quick Launch) |
 | `sidebarClassName` | `string` | Additional CSS classes for sidebar |
 | `loading` | `boolean` | Show loading state in sidebar |
