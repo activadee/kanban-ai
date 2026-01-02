@@ -1,3 +1,24 @@
+## [0.24.2](https://github.com/activadee/kanban-ai/compare/v0.24.1...v0.24.2) (2026-01-02)
+
+### Bug Fixes
+
+* **server:** remove obsolete websocket tests after SSE refactor ([#362](https://github.com/activadee/kanban-ai/issues/362)) ([7d94386](https://github.com/activadee/kanban-ai/commit/7d94386657b45d1f0e533fce2cc75da063d3d9b8))
+
+### Chores
+
+* add colored top borders to kanban lane columns ([#363](https://github.com/activadee/kanban-ai/issues/363)) ([9618049](https://github.com/activadee/kanban-ai/commit/96180495be4d423d2b673751048dc7d1e07b8d9b))
+
+### Refactors
+
+* **landing-page:** implement Command Center Terminal design and standardize header ([#366](https://github.com/activadee/kanban-ai/issues/366)) ([7b78f06](https://github.com/activadee/kanban-ai/commit/7b78f069d27cb0b20a12e1edb96744e45f0434c9))
+* optimize agents interfaces ([#365](https://github.com/activadee/kanban-ai/issues/365)) ([afaf602](https://github.com/activadee/kanban-ai/commit/afaf60271776f896d1336aedf8ce506022bdb340))
+* redesign MessageRow component with enhanced styling and comprehensive test coverage ([#367](https://github.com/activadee/kanban-ai/issues/367)) ([52a30c9](https://github.com/activadee/kanban-ai/commit/52a30c912fca9a0dc7d4e8248fd6169983c52dc5))
+* use sse isntead websockets  ([#356](https://github.com/activadee/kanban-ai/issues/356)) ([ef3f8d8](https://github.com/activadee/kanban-ai/commit/ef3f8d8c8f5dc34737c9cf43cd9fdb0dead2d6c7)), closes [/#diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327R128-R144](https://github.com/activadee///issues/diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327R128-R144) [/#diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L152](https://github.com/activadee///issues/diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L152) [/#diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L166-R166](https://github.com/activadee///issues/diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L166-R166) [/#diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L178-R209](https://github.com/activadee///issues/diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L178-R209) [/#diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L233-R229](https://github.com/activadee///issues/diff-dd3be75975d75db0eab790550f77c45e65a701dcb115963f03500639c7820327L233-R229)
+
+### Style
+
+* add animated loading border for in-progress cards ([#364](https://github.com/activadee/kanban-ai/issues/364)) ([2e55704](https://github.com/activadee/kanban-ai/commit/2e55704ee775c59072242d163362a7b16f0ec8ff))
+
 ## [0.24.1](https://github.com/activadee/kanban-ai/compare/v0.24.0...v0.24.1) (2026-01-01)
 
 ### Bug Fixes
