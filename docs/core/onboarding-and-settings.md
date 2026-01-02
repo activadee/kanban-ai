@@ -1,6 +1,10 @@
+---
+title: Onboarding & settings
+---
+
 # Onboarding & settings
 
-Last updated: 2025-11-28
+Last updated: 2025-12-02
 
 ## First-run onboarding
 
@@ -37,6 +41,12 @@ For more detail on individual steps and backend schema, see `onboarding.md`.
   - OpenCode agent default port (used when no port is specified in profiles).
   - Editor defaults – path to editor executable (used by the Editor module when opening worktrees).
   - Git defaults – preferred author configuration and auto-start behavior.
+  - **Message rendering settings** – control rich text rendering (Streamdown) per message type:
+    - Assistant Messages – enable/disable rich formatting for AI responses with code and syntax highlighting.
+    - User Messages – enable/disable rich formatting for your prompts.
+    - System Messages – enable/disable rich formatting for system instructions and context.
+    - Thinking Blocks – enable/disable rich formatting for AI reasoning and thought process.
+    - When disabled, messages display as plain text instead of rendered markdown with code blocks.
 
 ## Editor configuration
 

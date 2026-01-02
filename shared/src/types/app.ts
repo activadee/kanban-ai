@@ -25,6 +25,11 @@ export interface AppSettings {
     ghAutolinkTickets: boolean
     // OpenCode Agent
     opencodePort: number
+    // Streamdown rendering (per message type)
+    streamdownAssistantEnabled: boolean
+    streamdownUserEnabled: boolean
+    streamdownSystemEnabled: boolean
+    streamdownThinkingEnabled: boolean
     createdAt: string
     updatedAt: string
 }
@@ -47,6 +52,10 @@ export type UpdateAppSettingsRequest = Partial<
         | 'ghPrBodyTemplate'
         | 'ghAutolinkTickets'
         | 'opencodePort'
+        | 'streamdownAssistantEnabled'
+        | 'streamdownUserEnabled'
+        | 'streamdownSystemEnabled'
+        | 'streamdownThinkingEnabled'
     >
 >
 

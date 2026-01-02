@@ -71,6 +71,7 @@ Inside the **Attempts** tab, the **Messages** sub-tab shows the live **conversat
 - You can send follow-up prompts by typing into the input and pressing send.
 - **Images**: You can attach images to follow-up prompts by pasting from clipboard (Ctrl/Cmd+V) or dragging image files onto the input area. Attached images appear as thumbnails below the input and are sent along with your prompt. Supported formats: PNG, JPEG, WebP (max 10MB each, up to 5 images per message).
 - "Thinking" entries (the agent's planning/analysis steps) now surface as collapsible blocks that default to their header summary (using the provided title or the first line of text alongside the timestamp); click the header to expand and read the full reasoning text.
+- Message rendering – messages can display with rich formatting (Streamdown) including syntax highlighting, markdown, and code blocks, or as plain text. You can configure these preferences per message type (Assistant, User, System, Thinking) in **Settings → Rendering**.
 - Images sent by you or the agent appear as compact badges in the conversation stream; click a badge to preview the image in a lightbox.
 - Controls:
    - **Stop Attempt**:

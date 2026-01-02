@@ -51,6 +51,10 @@ function defaults(): SharedAppSettings {
         ghPrBodyTemplate: null,
         ghAutolinkTickets: true,
         opencodePort: 4097,
+        streamdownAssistantEnabled: true,
+        streamdownUserEnabled: true,
+        streamdownSystemEnabled: true,
+        streamdownThinkingEnabled: true,
         createdAt: now,
         updatedAt: now,
     };
@@ -137,6 +141,18 @@ function mapRow(row: any): SharedAppSettings {
             row.ghAutolinkTickets ?? row.gh_autolink_tickets ?? true,
         ),
         opencodePort: Number(row.opencodePort ?? row.opencode_port ?? 4097),
+        streamdownAssistantEnabled: Boolean(
+            row.streamdownAssistantEnabled ?? row.streamdown_assistant_enabled ?? true,
+        ),
+        streamdownUserEnabled: Boolean(
+            row.streamdownUserEnabled ?? row.streamdown_user_enabled ?? true,
+        ),
+        streamdownSystemEnabled: Boolean(
+            row.streamdownSystemEnabled ?? row.streamdown_system_enabled ?? true,
+        ),
+        streamdownThinkingEnabled: Boolean(
+            row.streamdownThinkingEnabled ?? row.streamdown_thinking_enabled ?? true,
+        ),
         createdAt: toIso(row.createdAt ?? row.created_at),
         updatedAt: toIso(row.updatedAt ?? row.updated_at),
     };
@@ -188,6 +204,10 @@ export async function updateAppSettings(
         ghPrBodyTemplate: nn(payload.ghPrBodyTemplate),
         ghAutolinkTickets: payload.ghAutolinkTickets,
         opencodePort: payload.opencodePort,
+        streamdownAssistantEnabled: payload.streamdownAssistantEnabled,
+        streamdownUserEnabled: payload.streamdownUserEnabled,
+        streamdownSystemEnabled: payload.streamdownSystemEnabled,
+        streamdownThinkingEnabled: payload.streamdownThinkingEnabled,
     };
     await updateAppSettingsRow(updates as any);
     cache = await ensureAppSettings();

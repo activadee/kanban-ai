@@ -18,6 +18,10 @@ export const appSettings = sqliteTable('app_settings', {
     ghPrBodyTemplate: text('gh_pr_body_template'),
     ghAutolinkTickets: integer('gh_autolink_tickets', {mode: 'boolean'}).notNull().default(true),
     opencodePort: integer('opencode_port').notNull().default(4097),
+    streamdownAssistantEnabled: integer('streamdown_assistant_enabled', {mode: 'boolean'}).notNull().default(true),
+    streamdownUserEnabled: integer('streamdown_user_enabled', {mode: 'boolean'}).notNull().default(true),
+    streamdownSystemEnabled: integer('streamdown_system_enabled', {mode: 'boolean'}).notNull().default(true),
+    streamdownThinkingEnabled: integer('streamdown_thinking_enabled', {mode: 'boolean'}).notNull().default(true),
     createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
 })

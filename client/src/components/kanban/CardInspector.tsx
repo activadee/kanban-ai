@@ -52,7 +52,7 @@ export function CardInspector({
         onDelete,
     })
 
-    const {details, header, attempt, git, activity} = inspectorState
+    const {details, header, attempt, git, activity, streamdownSettings} = inspectorState
 
     const [activeTopLevelTab, setActiveTopLevelTab] = useState<TopLevelTab>('ticket')
     const [activeAttemptTab, setActiveAttemptTab] = useState<InspectorTab>('messages')
@@ -206,6 +206,7 @@ export function CardInspector({
                                             addImages={attempt.addImages}
                                             removeImage={attempt.removeImage}
                                             canAddMoreImages={attempt.canAddMoreImages}
+                                            streamdownSettings={streamdownSettings}
                                         />
                                     </TabsContent>
                                     <TabsContent value="processes" className="flex min-h-0 flex-1 flex-col">

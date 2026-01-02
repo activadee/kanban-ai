@@ -122,6 +122,12 @@ export type UseCardInspectorStateResult = {
     attempt: CardInspectorAttemptState
     git: CardInspectorGitState
     activity: CardInspectorActivityState
+    streamdownSettings?: {
+        streamdownAssistantEnabled: boolean
+        streamdownUserEnabled: boolean
+        streamdownSystemEnabled: boolean
+        streamdownThinkingEnabled: boolean
+    }
 }
 
 export function useCardInspectorState({
@@ -726,5 +732,11 @@ export function useCardInspectorState({
             devAutomationPending: devAutomationMutation.isPending,
             runDevScript: handleRunDevScript,
         },
+        streamdownSettings: appSettingsQuery.data ? {
+            streamdownAssistantEnabled: appSettingsQuery.data.streamdownAssistantEnabled,
+            streamdownUserEnabled: appSettingsQuery.data.streamdownUserEnabled,
+            streamdownSystemEnabled: appSettingsQuery.data.streamdownSystemEnabled,
+            streamdownThinkingEnabled: appSettingsQuery.data.streamdownThinkingEnabled,
+        } : undefined,
     }
 }
