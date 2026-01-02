@@ -244,6 +244,36 @@ describe('useAutoScroll', () => {
             })
             expect(result.current.isEnabled).toBe(false)
         })
+
+        it('does not disable autoscroll during programmatic scroll', () => {
+            vi.useFakeTimers()
+            const {result} = renderHook(() => useAutoScroll({bottomThreshold: 50}))
+            
+            const container = createMockContainer({
+                scrollTop: 0,
+                scrollHeight: 1000,
+                clientHeight: 500,
+            })
+            Object.defineProperty(result.current.containerRef, 'current', {
+                value: container,
+                writable: true,
+            })
+            
+            expect(result.current.isEnabled).toBe(true)
+            
+            act(() => {
+                result.current.scrollToBottom()
+            })
+            
+            act(() => {
+                result.current.handleScroll()
+            })
+            
+            expect(result.current.isEnabled).toBe(true)
+            
+            vi.advanceTimersByTime(150)
+            vi.useRealTimers()
+        })
     })
 
     describe('refs', () => {

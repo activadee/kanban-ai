@@ -36,6 +36,7 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
     const targetRef = useRef<HTMLDivElement | null>(null)
     const isAtBottomRef = useRef(true)
     const wasManuallyDisabledRef = useRef(false)
+    const isProgrammaticScrollRef = useRef(false)
 
     const checkIsAtBottom = useCallback(() => {
         const container = containerRef.current
@@ -47,6 +48,8 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
     }, [bottomThreshold])
 
     const scrollToBottom = useCallback(() => {
+        isProgrammaticScrollRef.current = true
+        
         if (targetRef.current) {
             targetRef.current.scrollIntoView({behavior: scrollBehavior, block: 'end'})
         } else if (containerRef.current) {
@@ -55,9 +58,18 @@ export function useAutoScroll(options: UseAutoScrollOptions = {}): UseAutoScroll
                 behavior: scrollBehavior,
             })
         }
+        
+        setTimeout(() => {
+            isProgrammaticScrollRef.current = false
+            isAtBottomRef.current = true
+        }, 100)
     }, [scrollBehavior])
 
     const handleScroll = useCallback(() => {
+        if (isProgrammaticScrollRef.current) {
+            return
+        }
+        
         const atBottom = checkIsAtBottom()
         const wasAtBottom = isAtBottomRef.current
         isAtBottomRef.current = atBottom
