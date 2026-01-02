@@ -1,3 +1,16 @@
+## [0.25.0](https://github.com/activadee/kanban-ai/compare/v0.24.2...v0.25.0) (2026-01-02)
+
+### Features
+
+* add global streamdown settings to control per-message-type behavior ([#373](https://github.com/activadee/kanban-ai/issues/373)) ([a6074c4](https://github.com/activadee/kanban-ai/commit/a6074c495048f6f47a2add584cd8522fcc33d81f)), closes [#370](https://github.com/activadee/kanban-ai/issues/370)
+* add smooth animations for message appearance ([#372](https://github.com/activadee/kanban-ai/issues/372)) ([7e04bab](https://github.com/activadee/kanban-ai/commit/7e04bab62e2c3bda55befd30b54cf30a4e34f0fa))
+
+### Refactors
+
+* redesign kanban header layout and move header logic to PageHeader component ([#371](https://github.com/activadee/kanban-ai/issues/371)) ([6a59e1c](https://github.com/activadee/kanban-ai/commit/6a59e1c0caa14c7b29a1f9c67e55887a6914511a))
+* **styles:** split index.css into modular stylesheets ([#369](https://github.com/activadee/kanban-ai/issues/369)) ([e55b773](https://github.com/activadee/kanban-ai/commit/e55b773ce53d6a7bd414cb153c9bf08099dcdabb)), closes [#368](https://github.com/activadee/kanban-ai/issues/368)
+* **ticket-panel:** redesign card inspector panel UI and styling ([#374](https://github.com/activadee/kanban-ai/issues/374)) ([9f74818](https://github.com/activadee/kanban-ai/commit/9f74818f6d7ba62bc65ca762b384d237cf0754bb))
+
 ## [0.24.2](https://github.com/activadee/kanban-ai/compare/v0.24.1...v0.24.2) (2026-01-02)
 
 ### Bug Fixes
