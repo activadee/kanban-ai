@@ -89,6 +89,11 @@
     --ticket-revert: oklch(0.62 0.22 15);
     --card-enhanced-glow: oklch(0.72 0.19 142 / 0.15);
     --card-failed-glow: oklch(0.65 0.24 25 / 0.12);
+    
+    --inspector-user-gradient-start: oklch(0.60 0.16 175);
+    --inspector-user-gradient-end: oklch(0.55 0.14 195);
+    --inspector-assistant-gradient-start: oklch(0.58 0.20 280);
+    --inspector-assistant-gradient-end: oklch(0.50 0.22 265);
 }
 
 .dark {
@@ -105,4 +110,9 @@
     --ticket-revert: oklch(0.70 0.18 15);
     --card-enhanced-glow: oklch(0.72 0.17 145 / 0.12);
     --card-failed-glow: oklch(0.72 0.20 20 / 0.08);
+    
+    --inspector-user-gradient-start: oklch(0.55 0.14 175);
+    --inspector-user-gradient-end: oklch(0.50 0.12 190);
+    --inspector-assistant-gradient-start: oklch(0.65 0.18 280);
+    --inspector-assistant-gradient-end: oklch(0.58 0.20 265);
 }

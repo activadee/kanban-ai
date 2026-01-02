@@ -34,7 +34,7 @@ describe("MessageRow", () => {
 
             const bubble = container.querySelector('[data-slot="message-bubble"]')
             expect(bubble).not.toBeNull()
-            expect(bubble?.className).toContain("bg-teal")
+            expect(bubble?.className).toContain("from-teal")
             expect(bubble?.textContent).toContain("Hello, world!")
         })
 
@@ -280,7 +280,7 @@ describe("MessageRow", () => {
 
             const {container: container1} = render(<MessageRow item={succeededItem}/>)
             const successIndicator = container1.querySelector('[data-slot="status-indicator"]')
-            expect(successIndicator?.textContent).toContain("success")
+            expect(successIndicator?.textContent).toContain("done")
             expect(successIndicator?.className).toContain("text-emerald")
 
             cleanup()
@@ -336,7 +336,7 @@ describe("MessageRow", () => {
 
             const toggle = container.querySelector('[data-slot="output-toggle"]')
             expect(toggle).not.toBeNull()
-            expect(toggle?.textContent).toBe("Reveal")
+            expect(toggle?.textContent).toBe("Show")
 
             fireEvent.click(toggle!)
 

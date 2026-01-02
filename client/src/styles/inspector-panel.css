@@ -1,0 +1,105 @@
+@layer components {
+    .inspector-panel {
+        --inspector-accent: transparent;
+    }
+
+    .inspector-panel::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            180deg,
+            transparent 0%,
+            color-mix(in oklch, var(--inspector-accent) 3%, transparent) 100%
+        );
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    @keyframes inspector-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes inspector-slide-up {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .inspector-panel [data-slot="message-row"] {
+        animation: inspector-fade-in 0.2s ease-out;
+    }
+
+    .inspector-panel [data-slot="collapsible-section"] {
+        animation: inspector-fade-in 0.15s ease-out;
+    }
+
+    .inspector-panel [data-slot="thinking-block"] {
+        animation: inspector-fade-in 0.15s ease-out;
+    }
+
+    .inspector-panel [data-slot="message-bubble"] {
+        transition: transform 0.1s ease-out, box-shadow 0.15s ease-out;
+    }
+
+    .inspector-panel [data-slot="message-bubble"]:hover {
+        transform: translateY(-1px);
+    }
+
+    .inspector-panel [data-role="user"] [data-slot="message-bubble"]:hover {
+        box-shadow: 0 4px 12px -2px rgb(20 184 166 / 0.15);
+    }
+
+    .inspector-panel [data-role="assistant"] [data-slot="message-bubble"]:hover {
+        box-shadow: 0 4px 12px -2px rgb(139 92 246 / 0.1);
+    }
+
+    .dark .inspector-panel [data-role="user"] [data-slot="message-bubble"]:hover {
+        box-shadow: 0 4px 12px -2px rgb(20 184 166 / 0.2);
+    }
+
+    .dark .inspector-panel [data-role="assistant"] [data-slot="message-bubble"]:hover {
+        box-shadow: 0 4px 12px -2px rgb(139 92 246 / 0.15);
+    }
+
+    .inspector-panel [data-slot="collapsible-header"]:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: -2px;
+        border-radius: 0.375rem;
+    }
+
+    .inspector-panel [data-slot="output-content"] pre {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .inspector-panel [data-slot="output-content"] pre::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .inspector-panel [data-slot="output-content"] pre::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .inspector-panel [data-slot="output-content"] pre::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+    }
+
+    .inspector-panel [data-slot="output-content"] pre::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+}

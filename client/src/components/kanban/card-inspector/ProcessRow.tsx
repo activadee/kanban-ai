@@ -3,29 +3,77 @@ import {Badge} from '@/components/ui/badge'
 import {cn} from '@/lib/utils'
 import {PROCESS_STATUS_LABELS, PROCESS_STATUS_STYLES} from './constants'
 import type {ProcessEntry} from './types'
+import {CheckCircle2, XCircle, Loader2, Clock, AlertTriangle, StopCircle, PauseCircle} from 'lucide-react'
+import type {ProcessStatus} from './types'
 
-export function ProcessRow({entry}: { entry: ProcessEntry }) {
+const statusIcons: Record<ProcessStatus, typeof CheckCircle2> = {
+    queued: Clock,
+    running: Loader2,
+    stopping: PauseCircle,
+    succeeded: CheckCircle2,
+    failed: XCircle,
+    stopped: StopCircle,
+    warning: AlertTriangle,
+    idle: Clock,
+}
+
+export function ProcessRow({entry}: {entry: ProcessEntry}) {
+    const StatusIcon = statusIcons[entry.status]
+    const isActive = entry.status === 'running' || entry.status === 'stopping'
+
     return (
         <div
-            className="flex flex-col gap-3 rounded border border-border/60 bg-background/80 p-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex flex-1 items-start gap-3">
-                <div className="mt-0.5 rounded border border-border/50 bg-muted/20 p-1 text-muted-foreground">
+            className={cn(
+                "flex flex-col gap-3 rounded-xl border p-3.5 transition-all duration-200",
+                "bg-gradient-to-br from-background to-muted/20",
+                isActive 
+                    ? "border-primary/30 shadow-sm" 
+                    : "border-border/50 hover:border-border/80"
+            )}
+        >
+            <div className="flex items-start gap-3">
+                <div className={cn(
+                    "mt-0.5 rounded-lg p-2 transition-colors",
+                    isActive 
+                        ? "bg-primary/10 text-primary" 
+                        : "bg-muted/50 text-muted-foreground"
+                )}>
                     {entry.icon}
                 </div>
-                <div className="space-y-1">
+                <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">{entry.name}</span>
-                        <Badge className={cn('px-2 py-0.5 text-xs font-medium', PROCESS_STATUS_STYLES[entry.status])}>
+                        <span className="text-sm font-semibold tracking-tight text-foreground">
+                            {entry.name}
+                        </span>
+                        <Badge 
+                            variant="outline"
+                            className={cn(
+                                'h-5 gap-1 px-1.5 text-[10px] font-medium transition-colors',
+                                PROCESS_STATUS_STYLES[entry.status]
+                            )}
+                        >
+                            <StatusIcon className={cn(
+                                "h-2.5 w-2.5",
+                                entry.status === 'running' && "animate-spin"
+                            )} />
                             {PROCESS_STATUS_LABELS[entry.status]}
                         </Badge>
                     </div>
-                    {entry.description ?
-                        <div className="text-xs text-muted-foreground">{entry.description}</div> : null}
-                    {entry.meta ? <div className="text-[11px] text-muted-foreground/80">{entry.meta}</div> : null}
+                    {entry.description && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            {entry.description}
+                        </p>
+                    )}
+                    {entry.meta && (
+                        <p className="text-[10px] text-muted-foreground/70 font-mono">
+                            {entry.meta}
+                        </p>
+                    )}
                 </div>
             </div>
-            {entry.actions && entry.actions.length ? (
-                <div className="flex items-center gap-2">
+            
+            {entry.actions && entry.actions.length > 0 && (
+                <div className="flex items-center gap-2 pt-1 border-t border-border/30">
                     {entry.actions.map((action) => (
                         <Button
                             key={action.id}
@@ -36,13 +84,13 @@ export function ProcessRow({entry}: { entry: ProcessEntry }) {
                             onClick={() => {
                                 void action.onClick()
                             }}
+                            className="h-7 text-xs"
                         >
                             {action.label}
                         </Button>
                     ))}
                 </div>
-            ) : null}
+            )}
         </div>
     )
 }
-
