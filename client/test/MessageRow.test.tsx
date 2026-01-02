@@ -472,6 +472,95 @@ describe("MessageRow", () => {
         })
     })
 
+    describe("appearance animation", () => {
+        it("applies animation classes to message row", () => {
+            const item: ConversationMessageItem = {
+                type: "message",
+                role: "user",
+                text: "Hello",
+                timestamp: new Date().toISOString(),
+            }
+
+            const {container} = render(<MessageRow item={item}/>)
+
+            const row = container.querySelector('[data-slot="message-row"]')
+            expect(row?.className).toContain("animate-in")
+            expect(row?.className).toContain("fade-in-0")
+            expect(row?.className).toContain("slide-in-from-bottom-2")
+        })
+
+        it("applies animation classes to thinking block", () => {
+            const item: ConversationThinkingItem = {
+                type: "thinking",
+                text: "Analyzing...",
+                timestamp: new Date().toISOString(),
+            }
+
+            const {container} = render(<MessageRow item={item}/>)
+
+            const block = container.querySelector('[data-slot="thinking-block"]')
+            expect(block?.className).toContain("animate-in")
+            expect(block?.className).toContain("fade-in-0")
+            expect(block?.className).toContain("slide-in-from-bottom-2")
+        })
+
+        it("applies animation classes to tool section", () => {
+            const item: ConversationToolItem = {
+                type: "tool",
+                timestamp: new Date().toISOString(),
+                tool: {
+                    name: "bash",
+                    status: "succeeded",
+                    command: "ls",
+                },
+            }
+
+            const {container} = render(<MessageRow item={item}/>)
+
+            const section = container.querySelector('[data-slot="collapsible-section"]')
+            expect(section?.className).toContain("animate-in")
+            expect(section?.className).toContain("fade-in-0")
+            expect(section?.className).toContain("slide-in-from-bottom-2")
+        })
+
+        it("applies animation classes to automation section", () => {
+            const item: ConversationAutomationItem = {
+                type: "automation",
+                stage: "setup",
+                command: "bun install",
+                cwd: "/project",
+                status: "succeeded",
+                startedAt: new Date().toISOString(),
+                completedAt: new Date().toISOString(),
+                timestamp: new Date().toISOString(),
+                durationMs: 1000,
+                exitCode: 0,
+            }
+
+            const {container} = render(<MessageRow item={item}/>)
+
+            const section = container.querySelector('[data-slot="collapsible-section"]')
+            expect(section?.className).toContain("animate-in")
+            expect(section?.className).toContain("fade-in-0")
+            expect(section?.className).toContain("slide-in-from-bottom-2")
+        })
+
+        it("applies animation classes to error row", () => {
+            const item: ConversationErrorItem = {
+                type: "error",
+                text: "Error occurred",
+                timestamp: new Date().toISOString(),
+            }
+
+            const {container} = render(<MessageRow item={item}/>)
+
+            const row = container.querySelector('[data-slot="error-row"]')
+            expect(row?.className).toContain("animate-in")
+            expect(row?.className).toContain("fade-in-0")
+            expect(row?.className).toContain("slide-in-from-bottom-2")
+        })
+    })
+
     describe("edge cases", () => {
         it("handles invalid timestamp gracefully", () => {
             const item: ConversationMessageItem = {

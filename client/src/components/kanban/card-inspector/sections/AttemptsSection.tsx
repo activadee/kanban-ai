@@ -10,7 +10,7 @@ import {MessageRow} from '../MessageRow'
 
 function AgentTypingIndicator() {
     return (
-        <div className="agent-typing-indicator mb-3 flex items-center gap-2.5">
+        <div className="agent-typing-indicator mb-3 flex items-center gap-2.5 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out fill-mode-both">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-600">
                 <div className="agent-typing-core" />
             </div>
