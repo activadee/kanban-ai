@@ -205,7 +205,6 @@ export function CardInspector({
                                             pendingImages={attempt.pendingImages}
                                             addImages={attempt.addImages}
                                             removeImage={attempt.removeImage}
-                                            clearImages={attempt.clearImages}
                                             canAddMoreImages={attempt.canAddMoreImages}
                                         />
                                     </TabsContent>

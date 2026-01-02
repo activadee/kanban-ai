@@ -1,5 +1,5 @@
 import {describe, it, expect, afterEach} from "vitest";
-import {render, screen, fireEvent, cleanup, waitFor} from "@testing-library/react";
+import {render, fireEvent, cleanup} from "@testing-library/react";
 
 import {CollapsibleThinkingBlock} from "@/components/kanban/conversation/CollapsibleThinkingBlock";
 
@@ -10,82 +10,89 @@ describe("CollapsibleThinkingBlock", () => {
         const {container} = render(
             <CollapsibleThinkingBlock
                 headerLeft={<span>thinking</span>}
-                text={"first line\nsecond line"}
-            />,
+            >
+                {"first line\nsecond line"}
+            </CollapsibleThinkingBlock>,
         );
 
-        const details = container.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
-        expect(details).not.toBeNull();
-        expect(details?.open).toBe(false);
-        expect(details?.hasAttribute("open")).toBe(false);
+        const block = container.querySelector('[data-slot="thinking-block"]') as HTMLDivElement | null;
+        expect(block).not.toBeNull();
 
-        expect(screen.getByText("Toggle")).not.toBeNull();
+        const toggleContainer = container.querySelector('[data-slot="thinking-toggle"]') as HTMLSpanElement | null;
+        expect(toggleContainer).not.toBeNull();
+        expect(toggleContainer?.querySelector('svg')).not.toBeNull();
 
         const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
         expect(content).not.toBeNull();
+        // Content is always mounted, just hidden with grid-rows-[0fr] and opacity-0
         expect(content?.textContent).toContain("first line");
+        // When collapsed, should have opacity-0 class
+        expect(content?.className).toContain("opacity-0");
 
-        const summary = container.querySelector('summary[data-slot="thinking-summary"]') as HTMLElement | null;
+        const summary = container.querySelector('[data-slot="thinking-summary"]') as HTMLElement | null;
         expect(summary).not.toBeNull();
-        expect(summary?.getAttribute("aria-expanded")).toBe(null);
     });
 
-    it("lets the <details> element control open state", () => {
+    it("toggles open state when clicked", () => {
         const {container} = render(
             <CollapsibleThinkingBlock
                 headerLeft={<span>thinking</span>}
-                text={"first line\nsecond line"}
-            />,
+            >
+                {"first line\nsecond line"}
+            </CollapsibleThinkingBlock>,
         );
 
-        const details = container.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
+        const block = container.querySelector('[data-slot="thinking-block"]') as HTMLDivElement | null;
+        const summary = container.querySelector('[data-slot="thinking-summary"]') as HTMLButtonElement | null;
         const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
-        expect(details).not.toBeNull();
+        
+        expect(block).not.toBeNull();
+        expect(summary).not.toBeNull();
         expect(content).not.toBeNull();
 
-        const contentNode = content;
+        // Initially collapsed
+        expect(content?.className).toContain("opacity-0");
+        expect(content?.className).toContain("grid-rows-[0fr]");
 
-        details!.open = true;
-        fireEvent(details!, new Event("toggle"));
-        expect(details!.open).toBe(true);
-        expect(container.querySelector('[data-slot="thinking-content"]')).toBe(contentNode);
+        // Click to open
+        fireEvent.click(summary!);
+        expect(content?.className).toContain("opacity-100");
+        expect(content?.className).toContain("grid-rows-[1fr]");
 
-        details!.open = false;
-        fireEvent(details!, new Event("toggle"));
-        expect(details!.open).toBe(false);
-        expect(container.querySelector('[data-slot="thinking-content"]')).toBe(contentNode);
+        // Click to close
+        fireEvent.click(summary!);
+        expect(content?.className).toContain("opacity-0");
+        expect(content?.className).toContain("grid-rows-[0fr]");
     });
 
-    it("supports defaultOpen without controlling future toggles", async () => {
+    it("supports defaultOpen prop", () => {
         const {container} = render(
             <CollapsibleThinkingBlock
                 headerLeft={<span>thinking</span>}
-                text={"first line\nsecond line"}
                 defaultOpen={true}
-            />,
+            >
+                {"first line\nsecond line"}
+            </CollapsibleThinkingBlock>,
         );
 
-        const details = container.querySelector('details[data-slot="thinking-block"]') as HTMLDetailsElement | null;
-        expect(details).not.toBeNull();
-
-        await waitFor(() => {
-            expect(details?.open).toBe(true);
-        });
-
-        details!.open = false;
-        fireEvent(details!, new Event("toggle"));
-        expect(details!.open).toBe(false);
+        const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
+        expect(content).not.toBeNull();
+        
+        // Should be open by default
+        expect(content?.className).toContain("opacity-100");
+        expect(content?.className).toContain("grid-rows-[1fr]");
     });
 
     it("keeps key styling hooks stable", () => {
         const {container} = render(
             <CollapsibleThinkingBlock
                 headerLeft={<span>thinking</span>}
-                text={"first line\nsecond line"}
-            />,
+            >
+                {"first line\nsecond line"}
+            </CollapsibleThinkingBlock>,
         );
 
-        const block = container.querySelector('[data-slot="thinking-block"]') as HTMLDetailsElement | null;
+        const block = container.querySelector('[data-slot="thinking-block"]') as HTMLDivElement | null;
         const summary = container.querySelector('[data-slot="thinking-summary"]') as HTMLElement | null;
         const toggleText = container.querySelector('[data-slot="thinking-toggle"]') as HTMLSpanElement | null;
         const content = container.querySelector('[data-slot="thinking-content"]') as HTMLDivElement | null;
@@ -94,7 +101,20 @@ describe("CollapsibleThinkingBlock", () => {
         expect(block?.className).toContain("border");
         expect(summary?.className).toContain("justify-between");
         expect(toggleText?.className).toContain("text-muted-foreground");
-        expect(content?.className).toContain("mt-2");
-        expect(content?.className).toContain("whitespace-pre-wrap");
+        expect(content?.className).toContain("transition-all");
+    });
+
+    it("adds shadow when open", () => {
+        const {container} = render(
+            <CollapsibleThinkingBlock
+                headerLeft={<span>thinking</span>}
+                defaultOpen={true}
+            >
+                {"content"}
+            </CollapsibleThinkingBlock>,
+        );
+
+        const block = container.querySelector('[data-slot="thinking-block"]') as HTMLDivElement | null;
+        expect(block?.className).toContain("shadow-sm");
     });
 });
