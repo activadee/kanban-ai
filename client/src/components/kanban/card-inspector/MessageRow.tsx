@@ -280,9 +280,10 @@ export function MessageRow({item, agentKey, profiles, streamdownSettings = defau
             const {role, text, images} = item
             const isUser = role === 'user'
             const isSystem = role === 'system'
-            const useStreamdown = role === 'assistant' 
+            const isAssistant = role === 'assistant'
+            const useStreamdown = isAssistant
                 ? streamdownSettings.streamdownAssistantEnabled
-                : role === 'user'
+                : isUser
                     ? streamdownSettings.streamdownUserEnabled
                     : streamdownSettings.streamdownSystemEnabled
 
@@ -301,7 +302,7 @@ export function MessageRow({item, agentKey, profiles, streamdownSettings = defau
                         className={cn(
                             'group relative max-w-[85%] rounded-2xl px-3.5 py-2.5',
                             isUser && 'rounded-tr-sm bg-teal-600/90 text-white',
-                            role === 'assistant' && 'rounded-tl-sm bg-muted/80 text-foreground',
+                            isAssistant && 'rounded-tl-sm bg-muted/80 text-foreground',
                             isSystem && 'rounded-tl-sm border border-dashed border-border bg-transparent text-muted-foreground',
                         )}
                     >
@@ -311,7 +312,7 @@ export function MessageRow({item, agentKey, profiles, streamdownSettings = defau
                                 className={cn(
                                     'text-[10px] font-semibold uppercase tracking-wide',
                                     isUser && 'text-white/70',
-                                    role === 'assistant' && 'text-violet-600 dark:text-violet-400',
+                                    isAssistant && 'text-violet-600 dark:text-violet-400',
                                     isSystem && 'text-muted-foreground',
                                 )}
                             >
