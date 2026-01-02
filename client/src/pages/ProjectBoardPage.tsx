@@ -317,6 +317,7 @@ export function ProjectBoardPage() {
                         projectId={project.id}
                         state={boardState}
                         initialSelectedCardId={initialSelectedCardId}
+                        sortOrder={sortOrder}
                         enhancementStatusByCardId={
                             enhancementStatusByCardId
                         }
