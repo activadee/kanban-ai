@@ -81,6 +81,8 @@
                     "dev/server-agents",
                     "dev/server-settings",
                     "dev/server-github",
+                    "dev/terminals-feature",
+                    "dev/terminals-implementation-plan",
                     "logger"
                 ]
             }
