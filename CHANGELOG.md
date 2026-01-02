@@ -1,3 +1,20 @@
+## [0.26.0](https://github.com/activadee/kanban-ai/compare/v0.25.0...v0.26.0) (2026-01-02)
+
+### Features
+
+* **client:** Add Terminals page with MasterDetailLayout integration ([#377](https://github.com/activadee/kanban-ai/issues/377)) ([3f2073c](https://github.com/activadee/kanban-ai/commit/3f2073cebc8a0e09dac998b1e094a2cc1537bfd0))
+
+### Bug Fixes
+
+* **agents:** enforce 5-bullet-point summary limit in PR creation prompt ([#378](https://github.com/activadee/kanban-ai/issues/378)) ([ebf5215](https://github.com/activadee/kanban-ai/commit/ebf521502c107d2c771f0d8e88f6fea5b77da13e))
+* **agents:** improve enhance prompt with repository context analysis ([#379](https://github.com/activadee/kanban-ai/issues/379)) ([21f7bc9](https://github.com/activadee/kanban-ai/commit/21f7bc9e0ad810a43d847089c396709f14c3617e))
+* auto-scroll messages in ticket panel ([#380](https://github.com/activadee/kanban-ai/issues/380)) ([458ed1c](https://github.com/activadee/kanban-ai/commit/458ed1c1f50429136e69341f53a4961b6e2e63a6))
+
+### Build
+
+* **deps-dev:** bump globals from 16.5.0 to 17.0.0 ([#375](https://github.com/activadee/kanban-ai/issues/375)) ([1fcb6bf](https://github.com/activadee/kanban-ai/commit/1fcb6bf8a547a2ad30527ca935305f68f1b12fa5))
+* **deps-dev:** bump globals from 16.5.0 to 17.0.0 in /client ([#376](https://github.com/activadee/kanban-ai/issues/376)) ([8aff29b](https://github.com/activadee/kanban-ai/commit/8aff29b60a027084b93a03207669a4c638008889))
+
 ## [0.25.0](https://github.com/activadee/kanban-ai/compare/v0.24.2...v0.25.0) (2026-01-02)
 
 ### Features
