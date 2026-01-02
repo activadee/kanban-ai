@@ -300,10 +300,23 @@ describe('useAutoScrollEffect', () => {
         vi.useRealTimers()
     })
 
-    it('does not scroll on initial mount', () => {
+    it('scrolls on initial load when autoscroll is enabled', () => {
         const scrollToBottom = vi.fn()
         
         renderHook(() => useAutoScrollEffect(true, scrollToBottom, 1))
+        
+        vi.runAllTimers()
+        
+        expect(scrollToBottom).toHaveBeenCalledTimes(1)
+        expect(scrollToBottom).toHaveBeenCalledWith(true)
+    })
+
+    it('does not scroll on initial load when autoscroll is disabled', () => {
+        const scrollToBottom = vi.fn()
+        
+        renderHook(() => useAutoScrollEffect(false, scrollToBottom, 1))
+        
+        vi.runAllTimers()
         
         expect(scrollToBottom).not.toHaveBeenCalled()
     })
@@ -314,7 +327,8 @@ describe('useAutoScrollEffect', () => {
         
         const {rerender} = renderHook(() => useAutoScrollEffect(true, scrollToBottom, count))
         
-        expect(scrollToBottom).not.toHaveBeenCalled()
+        vi.runAllTimers()
+        scrollToBottom.mockClear()
         
         count = 2
         rerender()
@@ -322,6 +336,7 @@ describe('useAutoScrollEffect', () => {
         vi.runAllTimers()
         
         expect(scrollToBottom).toHaveBeenCalledTimes(1)
+        expect(scrollToBottom).toHaveBeenCalledWith(false)
     })
 
     it('does not scroll when trigger changes but autoscroll is disabled', () => {
@@ -344,6 +359,9 @@ describe('useAutoScrollEffect', () => {
         
         const {rerender} = renderHook(() => useAutoScrollEffect(isEnabled, scrollToBottom, 1))
         
+        vi.runAllTimers()
+        expect(scrollToBottom).not.toHaveBeenCalled()
+        
         isEnabled = true
         rerender()
         
@@ -358,6 +376,9 @@ describe('useAutoScrollEffect', () => {
         let count = 1
         
         const {rerender} = renderHook(() => useAutoScrollEffect(isEnabled, scrollToBottom, count))
+        
+        vi.runAllTimers()
+        expect(scrollToBottom).not.toHaveBeenCalled()
         
         isEnabled = true
         count = 2

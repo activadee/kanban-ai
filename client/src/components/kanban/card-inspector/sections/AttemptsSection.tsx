@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react'
+import {useState} from 'react'
 import type {AgentKey, Attempt, ConversationItem, MessageImage} from 'shared'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
@@ -98,7 +98,6 @@ export function AttemptsSection({
     canAddMoreImages,
     streamdownSettings,
 }: AttemptsSectionProps) {
-    const initialScrolledForCardRef = useRef<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
 
     const autoScroll = useAutoScroll({
@@ -107,19 +106,10 @@ export function AttemptsSection({
         bottomThreshold: 80,
     })
 
-    useEffect(() => {
-        if (!conversation.length) return
-        if (initialScrolledForCardRef.current === cardId) return
-        initialScrolledForCardRef.current = cardId
-        requestAnimationFrame(() => {
-            autoScroll.scrollToBottom()
-        })
-    }, [conversation.length, cardId, autoScroll])
-
     useAutoScrollEffect(
         autoScroll.isEnabled,
         autoScroll.scrollToBottom,
-        conversation.length,
+        `${cardId}:${conversation.length}`,
     )
 
     const handlePaste = (e: React.ClipboardEvent) => {
