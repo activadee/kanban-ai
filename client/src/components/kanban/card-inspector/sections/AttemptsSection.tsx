@@ -175,25 +175,27 @@ export function AttemptsSection({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
+                                <button
+                                    type="button"
                                     onClick={autoScroll.toggle}
                                     className={cn(
-                                        "h-6 w-6 p-0 transition-colors",
+                                        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-colors",
                                         autoScroll.isEnabled
-                                            ? "text-primary hover:text-primary/80"
-                                            : "text-muted-foreground hover:text-foreground"
+                                            ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                            : "bg-muted text-muted-foreground hover:bg-muted/80"
                                     )}
                                     aria-label={autoScroll.isEnabled ? "Disable auto-scroll" : "Enable auto-scroll"}
                                     aria-pressed={autoScroll.isEnabled}
                                     data-testid="autoscroll-toggle"
                                 >
-                                    <ArrowDownToLine className="h-3.5 w-3.5" />
-                                </Button>
+                                    <ArrowDownToLine className="h-3 w-3" />
+                                    <span data-testid="autoscroll-status">
+                                        {autoScroll.isEnabled ? "AUTO" : "OFF"}
+                                    </span>
+                                </button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="text-xs">
-                                {autoScroll.isEnabled ? "Auto-scroll enabled" : "Auto-scroll disabled"}
+                                {autoScroll.isEnabled ? "Auto-scroll enabled (click to disable)" : "Auto-scroll disabled (click to enable)"}
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>

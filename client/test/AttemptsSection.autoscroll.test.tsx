@@ -120,6 +120,7 @@ describe('AttemptsSection – autoscroll feature', () => {
             
             const toggleButton = screen.getByTestId('autoscroll-toggle')
             expect(toggleButton.className).toContain('text-primary')
+            expect(toggleButton.className).toContain('bg-primary/10')
         })
 
         it('has visual indicator for disabled state', () => {
@@ -128,6 +129,38 @@ describe('AttemptsSection – autoscroll feature', () => {
             
             const toggleButton = screen.getByTestId('autoscroll-toggle')
             expect(toggleButton.className).toContain('text-muted-foreground')
+            expect(toggleButton.className).toContain('bg-muted')
+        })
+
+        it('shows AUTO badge text when enabled', () => {
+            renderAttemptsSection()
+            
+            const statusBadge = screen.getByTestId('autoscroll-status')
+            expect(statusBadge.textContent).toBe('AUTO')
+        })
+
+        it('shows OFF badge text when disabled', () => {
+            localStorage.setItem(AUTOSCROLL_STORAGE_KEY, 'false')
+            renderAttemptsSection()
+            
+            const statusBadge = screen.getByTestId('autoscroll-status')
+            expect(statusBadge.textContent).toBe('OFF')
+        })
+
+        it('updates badge text when toggled', () => {
+            renderAttemptsSection()
+            
+            const statusBadge = screen.getByTestId('autoscroll-status')
+            expect(statusBadge.textContent).toBe('AUTO')
+            
+            const toggleButton = screen.getByTestId('autoscroll-toggle')
+            fireEvent.click(toggleButton)
+            
+            expect(statusBadge.textContent).toBe('OFF')
+            
+            fireEvent.click(toggleButton)
+            
+            expect(statusBadge.textContent).toBe('AUTO')
         })
     })
 
