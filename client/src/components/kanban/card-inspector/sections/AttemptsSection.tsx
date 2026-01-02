@@ -4,10 +4,12 @@ import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
 import {Badge} from '@/components/ui/badge'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select'
+import {Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from '@/components/ui/tooltip'
 import {ImageAttachment} from '@/components/ui/image-attachment'
 import {cn} from '@/lib/utils'
 import {MessageRow, type StreamdownSettings} from '../MessageRow'
-import {Send, Square, RotateCcw, Bot, Sparkles} from 'lucide-react'
+import {useAutoScroll, useAutoScrollEffect} from '@/hooks/useAutoScroll'
+import {Send, Square, RotateCcw, Bot, Sparkles, ArrowDownToLine} from 'lucide-react'
 
 function AgentTypingIndicator() {
     return (
@@ -96,19 +98,29 @@ export function AttemptsSection({
     canAddMoreImages,
     streamdownSettings,
 }: AttemptsSectionProps) {
-    const messagesContainerRef = useRef<HTMLDivElement | null>(null)
-    const messagesEndRef = useRef<HTMLDivElement | null>(null)
     const initialScrolledForCardRef = useRef<string | null>(null)
     const [isDragging, setIsDragging] = useState(false)
+
+    const autoScroll = useAutoScroll({
+        storageKey: 'kanbanai:attempts-autoscroll-enabled',
+        defaultEnabled: true,
+        bottomThreshold: 80,
+    })
 
     useEffect(() => {
         if (!conversation.length) return
         if (initialScrolledForCardRef.current === cardId) return
         initialScrolledForCardRef.current = cardId
         requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({behavior: 'auto', block: 'end'})
+            autoScroll.scrollToBottom()
         })
-    }, [conversation.length, cardId])
+    }, [conversation.length, cardId, autoScroll])
+
+    useAutoScrollEffect(
+        autoScroll.isEnabled,
+        autoScroll.scrollToBottom,
+        [conversation.length],
+    )
 
     const handlePaste = (e: React.ClipboardEvent) => {
         if (e.clipboardData.files.length > 0) {
@@ -159,13 +171,41 @@ export function AttemptsSection({
                     <span className="font-medium">{attempt.agent || 'Agent'}</span>
                 </div>
                 <AttemptStatusBadge status={attempt.status} />
-                <span className="text-[10px] text-muted-foreground font-mono ml-auto">
-                    {attempt.id.slice(0, 8)}
-                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={autoScroll.toggle}
+                                    className={cn(
+                                        "h-6 w-6 p-0 transition-colors",
+                                        autoScroll.isEnabled
+                                            ? "text-primary hover:text-primary/80"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    )}
+                                    aria-label={autoScroll.isEnabled ? "Disable auto-scroll" : "Enable auto-scroll"}
+                                    aria-pressed={autoScroll.isEnabled}
+                                    data-testid="autoscroll-toggle"
+                                >
+                                    <ArrowDownToLine className="h-3.5 w-3.5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-xs">
+                                {autoScroll.isEnabled ? "Auto-scroll enabled" : "Auto-scroll disabled"}
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                        {attempt.id.slice(0, 8)}
+                    </span>
+                </div>
             </div>
 
             <div
-                ref={messagesContainerRef}
+                ref={autoScroll.containerRef}
+                onScroll={autoScroll.handleScroll}
                 className="flex-1 min-h-0 overflow-auto p-3 scroll-smooth"
             >
                 {conversation.length === 0 ? (
@@ -193,7 +233,7 @@ export function AttemptsSection({
                     </div>
                 )}
                 {attempt.status === 'running' && <AgentTypingIndicator />}
-                <div ref={messagesEndRef} />
+                <div ref={autoScroll.targetRef} />
             </div>
 
             {showFollowupInput && (
