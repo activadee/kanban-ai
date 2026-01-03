@@ -31,20 +31,21 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
 }
 
 async function getDirectorySize(dirPath: string): Promise<number> {
-    let totalSize = 0
-    try {
-        const entries = await readdir(dirPath, {withFileTypes: true})
-        for (const entry of entries) {
-            const fullPath = join(dirPath, entry.name)
-            if (entry.isDirectory()) {
-                totalSize += await getDirectorySize(fullPath)
-            } else if (entry.isFile()) {
-                const fileStat = await stat(fullPath)
-                totalSize += fileStat.size
+    return new Promise((resolve) => {
+        const child = spawn('du', ['-sb', dirPath])
+        let stdout = ''
+        child.stdout?.on('data', (d) => (stdout += d))
+        child.on('error', () => resolve(0))
+        child.on('exit', (code) => {
+            if (code === 0) {
+                const parts = stdout.split('\t')
+                const size = parseInt(parts[0] ?? '0', 10)
+                resolve(isNaN(size) ? 0 : size)
+            } else {
+                resolve(0)
             }
-        }
-    } catch {}
-    return totalSize
+        })
+    })
 }
 
 async function getWorktreeBranch(worktreePath: string): Promise<string | null> {

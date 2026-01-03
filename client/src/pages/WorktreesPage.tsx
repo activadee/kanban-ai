@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useState, useMemo} from 'react'
 import {useParams} from 'react-router-dom'
 import {
     GitBranch,
@@ -11,11 +11,12 @@ import {
     XCircle,
     Clock,
     Bot,
+    Calendar,
+    Folder,
 } from 'lucide-react'
 import {PageHeader} from '@/components/layout/PageHeader'
-import {Tabs, TabsList, TabsTrigger, TabsContent} from '@/components/ui/tabs'
+import {MasterDetailLayout, type MasterDetailItem} from '@/components/layout/MasterDetailLayout'
 import {Button} from '@/components/ui/button'
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Badge} from '@/components/ui/badge'
 import {
     Dialog,
@@ -33,7 +34,15 @@ import {
     useDeleteStaleWorktree,
 } from '@/hooks/worktrees'
 import {useRelativeTimeFormatter} from '@/hooks'
+import {cn} from '@/lib/utils'
 import type {TrackedWorktree, OrphanedWorktree, StaleWorktree} from 'shared'
+
+type WorktreeType = 'tracked' | 'orphaned' | 'stale'
+
+interface WorktreeItem extends MasterDetailItem {
+    type: WorktreeType
+    data: TrackedWorktree | OrphanedWorktree | StaleWorktree
+}
 
 type DeleteTarget =
     | {type: 'tracked'; item: TrackedWorktree}
@@ -53,43 +62,27 @@ function isActiveAttempt(status: string): boolean {
     return status === 'running' || status === 'pending' || status === 'queued'
 }
 
-function StatusBadge({status}: {status: string}) {
+function getStatusIcon(status: string) {
     const variants: Record<string, {className: string; icon: React.ReactNode}> = {
         running: {
-            className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-            icon: <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />,
+            className: 'text-blue-500',
+            icon: <div className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />,
         },
-        pending: {
-            className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-            icon: <Clock className="h-3 w-3" />,
-        },
-        queued: {
-            className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
-            icon: <Clock className="h-3 w-3" />,
-        },
-        success: {
-            className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-            icon: <CheckCircle2 className="h-3 w-3" />,
-        },
-        failed: {
-            className: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20',
-            icon: <XCircle className="h-3 w-3" />,
-        },
-        cancelled: {
-            className: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
-            icon: <XCircle className="h-3 w-3" />,
-        },
+        pending: {className: 'text-amber-500', icon: <Clock className="h-3.5 w-3.5" />},
+        queued: {className: 'text-violet-500', icon: <Clock className="h-3.5 w-3.5" />},
+        success: {className: 'text-emerald-500', icon: <CheckCircle2 className="h-3.5 w-3.5" />},
+        failed: {className: 'text-red-500', icon: <XCircle className="h-3.5 w-3.5" />},
+        cancelled: {className: 'text-slate-400', icon: <XCircle className="h-3.5 w-3.5" />},
     }
+    return variants[status] ?? {className: 'text-muted-foreground', icon: null}
+}
 
-    const variant = variants[status] ?? {
-        className: 'bg-muted text-muted-foreground',
-        icon: null,
-    }
-
+function StatusBadge({status}: {status: string}) {
+    const variant = getStatusIcon(status)
     return (
-        <Badge variant="outline" className={`gap-1.5 ${variant.className}`}>
+        <Badge variant="outline" className={cn('gap-1.5 border-current/20 bg-current/5', variant.className)}>
             {variant.icon}
-            {status}
+            <span className="capitalize">{status}</span>
         </Badge>
     )
 }
@@ -126,58 +119,7 @@ function NoProjectState() {
     )
 }
 
-function LoadingState() {
-    return (
-        <div className="flex h-64 items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-                <p className="text-sm text-muted-foreground">Loading worktrees...</p>
-            </div>
-        </div>
-    )
-}
-
-function ErrorState({onRetry}: {onRetry: () => void}) {
-    return (
-        <div className="flex h-64 flex-col items-center justify-center gap-4">
-            <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10">
-                <AlertTriangle className="size-8 text-destructive" />
-            </div>
-            <div className="text-center">
-                <p className="text-sm font-medium text-foreground">Failed to load worktrees</p>
-                <p className="mt-1 text-xs text-muted-foreground">There was an error fetching worktree data.</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={onRetry}>
-                <RefreshCw className="mr-2 size-4" />
-                Try again
-            </Button>
-        </div>
-    )
-}
-
-function EmptyTabState({
-    icon: Icon,
-    title,
-    description,
-}: {
-    icon: React.ComponentType<{className?: string}>
-    title: string
-    description: string
-}) {
-    return (
-        <div className="flex h-48 flex-col items-center justify-center gap-3 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted/50">
-                <Icon className="size-6 text-muted-foreground" />
-            </div>
-            <div>
-                <p className="text-sm font-medium text-foreground">{title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-            </div>
-        </div>
-    )
-}
-
-function SummaryCards({
+function SummaryFooter({
     tracked,
     active,
     orphaned,
@@ -190,40 +132,43 @@ function SummaryCards({
     stale: number
     totalDiskUsage: number
 }) {
-    const stats = [
-        {label: 'Total Tracked', value: tracked, color: 'text-foreground'},
-        {label: 'Active', value: active, color: 'text-blue-600 dark:text-blue-400'},
-        {label: 'Orphaned', value: orphaned, color: orphaned > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'},
-        {label: 'Stale', value: stale, color: stale > 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'},
-    ]
-
     return (
-        <Card className="border-border/50 bg-gradient-to-br from-card to-muted/10">
-            <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <HardDrive className="size-4 text-muted-foreground" />
-                    Worktree Summary
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                    {stats.map((stat) => (
-                        <div key={stat.label} className="space-y-1">
-                            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{stat.label}</p>
-                            <p className={`text-2xl font-semibold tabular-nums ${stat.color}`}>{stat.value}</p>
-                        </div>
-                    ))}
-                    <div className="space-y-1">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Disk Usage</p>
-                        <p className="text-2xl font-semibold tabular-nums text-foreground">{formatBytes(totalDiskUsage)}</p>
-                    </div>
+        <div className="space-y-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                <HardDrive className="size-3.5" />
+                Summary
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-md bg-muted/30 px-2.5 py-2">
+                    <div className="font-medium tabular-nums">{tracked}</div>
+                    <div className="text-muted-foreground/70">Tracked</div>
                 </div>
-            </CardContent>
-        </Card>
+                <div className="rounded-md bg-blue-500/10 px-2.5 py-2 text-blue-600 dark:text-blue-400">
+                    <div className="font-medium tabular-nums">{active}</div>
+                    <div className="opacity-70">Active</div>
+                </div>
+                {orphaned > 0 && (
+                    <div className="rounded-md bg-amber-500/10 px-2.5 py-2 text-amber-600 dark:text-amber-400">
+                        <div className="font-medium tabular-nums">{orphaned}</div>
+                        <div className="opacity-70">Orphaned</div>
+                    </div>
+                )}
+                {stale > 0 && (
+                    <div className="rounded-md bg-red-500/10 px-2.5 py-2 text-red-600 dark:text-red-400">
+                        <div className="font-medium tabular-nums">{stale}</div>
+                        <div className="opacity-70">Stale</div>
+                    </div>
+                )}
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-muted/30 px-2.5 py-2 text-xs">
+                <span className="text-muted-foreground/70">Disk Usage</span>
+                <span className="font-medium tabular-nums">{formatBytes(totalDiskUsage)}</span>
+            </div>
+        </div>
     )
 }
 
-function TrackedWorktreeRow({
+function TrackedWorktreeDetail({
     item,
     formatTime,
     onDelete,
@@ -233,59 +178,70 @@ function TrackedWorktreeRow({
     onDelete: () => void
 }) {
     return (
-        <div className="group flex items-center gap-4 rounded-lg border border-border/40 bg-card/50 p-4 transition-colors hover:bg-muted/30">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-muted/50 to-muted/20">
-                <GitBranch className="size-5 text-muted-foreground" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-medium text-foreground">{item.cardTitle || item.ticketKey || 'Untitled'}</p>
-                    {item.ticketKey && item.cardTitle && (
-                        <Badge variant="secondary" className="shrink-0 text-[10px]">
-                            {item.ticketKey}
-                        </Badge>
-                    )}
+        <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+            <div className="mb-8 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/10">
+                        <GitBranch className="size-7 text-primary" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-semibold">{item.cardTitle || item.ticketKey || 'Untitled'}</h1>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                            {item.ticketKey && item.cardTitle && (
+                                <Badge variant="secondary" className="text-xs">{item.ticketKey}</Badge>
+                            )}
+                            <StatusBadge status={item.attemptStatus} />
+                            {!item.existsOnDisk && (
+                                <Badge variant="outline" className="gap-1 border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                    <AlertTriangle className="size-3" />
+                                    Missing
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-mono">{item.branchName}</span>
-                    <span className="text-border">•</span>
-                    <span>{formatTime(item.createdAt)}</span>
-                    {item.diskSizeBytes != null && (
-                        <>
-                            <span className="text-border">•</span>
-                            <span>{formatBytes(item.diskSizeBytes)}</span>
-                        </>
-                    )}
-                </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-3">
-                {item.agent && (
-                    <Badge variant="outline" className="gap-1.5 border-border/50 text-muted-foreground">
-                        <Bot className="size-3" />
-                        {item.agent}
-                    </Badge>
-                )}
-                <StatusBadge status={item.attemptStatus} />
-                {!item.existsOnDisk && (
-                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="mr-1 size-3" />
-                        Missing
-                    </Badge>
-                )}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={onDelete}
-                >
-                    <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+                <Button variant="destructive" size="sm" onClick={onDelete}>
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
                 </Button>
+            </div>
+
+            <div className="space-y-6">
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Git Info</h2>
+                    <div className="rounded-lg border border-border/50 bg-card/50">
+                        <div className="grid gap-px bg-border/30 sm:grid-cols-2">
+                            <InfoRow icon={GitBranch} label="Branch" value={item.branchName} mono />
+                            <InfoRow icon={GitBranch} label="Base Branch" value={item.baseBranch} mono />
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Details</h2>
+                    <div className="rounded-lg border border-border/50 bg-card/50">
+                        <div className="grid gap-px bg-border/30 sm:grid-cols-2">
+                            <InfoRow icon={Bot} label="Agent" value={item.agent || 'Unknown'} />
+                            <InfoRow icon={HardDrive} label="Disk Size" value={formatBytes(item.diskSizeBytes)} />
+                            <InfoRow icon={Calendar} label="Created" value={formatTime(item.createdAt)} />
+                            <InfoRow icon={Clock} label="Updated" value={formatTime(item.updatedAt)} />
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Path</h2>
+                    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 p-3">
+                        <Folder className="size-4 shrink-0 text-muted-foreground" />
+                        <code className="flex-1 truncate text-xs text-muted-foreground">{item.path}</code>
+                    </div>
+                </section>
             </div>
         </div>
     )
 }
 
-function OrphanedWorktreeRow({
+function OrphanedWorktreeDetail({
     item,
     formatTime,
     onDelete,
@@ -295,40 +251,59 @@ function OrphanedWorktreeRow({
     onDelete: () => void
 }) {
     return (
-        <div className="group flex items-center gap-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 transition-colors hover:bg-amber-500/10">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-                <FolderOpen className="size-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
-                <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    {item.branchName && <span className="font-mono">{item.branchName}</span>}
-                    {item.branchName && <span className="text-border">•</span>}
-                    <span>{formatTime(item.lastModified)}</span>
-                    <span className="text-border">•</span>
-                    <span>{formatBytes(item.diskSizeBytes)}</span>
+        <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+            <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div className="text-sm text-amber-700 dark:text-amber-300">
+                        This directory exists on disk but is not tracked in the database. It may be leftover from an interrupted operation.
+                    </div>
                 </div>
-                <p className="truncate text-[11px] font-mono text-muted-foreground/70">{item.path}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <AlertTriangle className="mr-1 size-3" />
-                    Orphaned
-                </Badge>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={onDelete}
-                >
-                    <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+
+            <div className="mb-8 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 ring-1 ring-amber-500/20">
+                        <FolderOpen className="size-7 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-semibold">{item.name}</h1>
+                        <Badge variant="outline" className="mt-1.5 border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                            Orphaned
+                        </Badge>
+                    </div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={onDelete}>
+                    <Trash2 className="mr-2 size-4" />
+                    Delete
                 </Button>
+            </div>
+
+            <div className="space-y-6">
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Details</h2>
+                    <div className="rounded-lg border border-border/50 bg-card/50">
+                        <div className="grid gap-px bg-border/30 sm:grid-cols-2">
+                            {item.branchName && <InfoRow icon={GitBranch} label="Branch" value={item.branchName} mono />}
+                            <InfoRow icon={HardDrive} label="Disk Size" value={formatBytes(item.diskSizeBytes)} />
+                            <InfoRow icon={Clock} label="Last Modified" value={formatTime(item.lastModified)} />
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Path</h2>
+                    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 p-3">
+                        <Folder className="size-4 shrink-0 text-muted-foreground" />
+                        <code className="flex-1 truncate text-xs text-muted-foreground">{item.path}</code>
+                    </div>
+                </section>
             </div>
         </div>
     )
 }
 
-function StaleWorktreeRow({
+function StaleWorktreeDetail({
     item,
     formatTime,
     onDelete,
@@ -338,32 +313,92 @@ function StaleWorktreeRow({
     onDelete: () => void
 }) {
     return (
-        <div className="group flex items-center gap-4 rounded-lg border border-red-500/30 bg-red-500/5 p-4 transition-colors hover:bg-red-500/10">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="size-5 text-red-600 dark:text-red-400" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
-                <p className="truncate text-sm font-medium text-foreground">{item.cardTitle || 'Untitled'}</p>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-mono">{item.branchName}</span>
-                    <span className="text-border">•</span>
-                    <span>{formatTime(item.createdAt)}</span>
+        <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+            <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/5 p-4">
+                <div className="flex items-start gap-3">
+                    <XCircle className="mt-0.5 size-5 shrink-0 text-red-600 dark:text-red-400" />
+                    <div className="text-sm text-red-700 dark:text-red-300">
+                        This database record references a worktree that no longer exists on disk. Clean it up to remove the stale entry.
+                    </div>
                 </div>
-                <p className="truncate text-[11px] font-mono text-muted-foreground/70">{item.path}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-                <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400">
-                    <XCircle className="mr-1 size-3" />
-                    Stale
-                </Badge>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={onDelete}
-                >
-                    <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+
+            <div className="mb-8 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/5 ring-1 ring-red-500/20">
+                        <XCircle className="size-7 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-semibold">{item.cardTitle || 'Untitled'}</h1>
+                        <Badge variant="outline" className="mt-1.5 border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400">
+                            Stale Record
+                        </Badge>
+                    </div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={onDelete}>
+                    <Trash2 className="mr-2 size-4" />
+                    Remove
                 </Button>
+            </div>
+
+            <div className="space-y-6">
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Details</h2>
+                    <div className="rounded-lg border border-border/50 bg-card/50">
+                        <div className="grid gap-px bg-border/30 sm:grid-cols-2">
+                            <InfoRow icon={GitBranch} label="Branch" value={item.branchName} mono />
+                            <InfoRow icon={Calendar} label="Created" value={formatTime(item.createdAt)} />
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Missing Path</h2>
+                    <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                        <Folder className="size-4 shrink-0 text-red-500/70" />
+                        <code className="flex-1 truncate text-xs text-red-600/80 dark:text-red-400/80">{item.path}</code>
+                    </div>
+                </section>
+            </div>
+        </div>
+    )
+}
+
+function InfoRow({
+    icon: Icon,
+    label,
+    value,
+    mono,
+}: {
+    icon: React.ComponentType<{className?: string}>
+    label: string
+    value: string
+    mono?: boolean
+}) {
+    return (
+        <div className="flex items-center gap-3 bg-card/50 px-4 py-3">
+            <Icon className="size-4 shrink-0 text-muted-foreground/60" />
+            <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">{label}</div>
+                <div className={cn('mt-0.5 truncate text-sm', mono && 'font-mono text-xs')}>{value}</div>
+            </div>
+        </div>
+    )
+}
+
+function EmptySelection() {
+    return (
+        <div className="flex h-full items-center justify-center p-8">
+            <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-muted/30">
+                    <GitBranch className="size-8 text-muted-foreground/40" />
+                </div>
+                <div>
+                    <h3 className="font-medium text-foreground">Select a Worktree</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Choose a worktree from the sidebar to view details and manage it.
+                    </p>
+                </div>
             </div>
         </div>
     )
@@ -392,7 +427,7 @@ function DeleteConfirmDialog({
           ? target.item.name
           : target.item.cardTitle || 'this record'
 
-    const getDescription = () => {
+    const description = (() => {
         if (target.type === 'tracked') {
             if (isActive) {
                 return 'This worktree has an active attempt. Deleting it will terminate the running agent and remove all unsaved work.'
@@ -403,7 +438,7 @@ function DeleteConfirmDialog({
             return 'This worktree exists on disk but is not tracked in the database. Deleting it will permanently remove the directory.'
         }
         return 'This database record points to a worktree that no longer exists on disk. Deleting it will clean up the stale entry.'
-    }
+    })()
 
     return (
         <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
@@ -413,15 +448,13 @@ function DeleteConfirmDialog({
                         <AlertTriangle className="size-5 text-destructive" />
                         Delete {target.type === 'stale' ? 'Record' : 'Worktree'}
                     </DialogTitle>
-                    <DialogDescription className="text-left">{getDescription()}</DialogDescription>
+                    <DialogDescription className="text-left">{description}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
                         <p className="text-sm font-medium text-foreground">{title}</p>
                         {target.type !== 'stale' && (
-                            <p className="mt-1 truncate text-xs font-mono text-muted-foreground">
-                                {target.type === 'tracked' ? target.item.path : target.item.path}
-                            </p>
+                            <p className="mt-1 truncate text-xs font-mono text-muted-foreground">{target.item.path}</p>
                         )}
                     </div>
                     {isActive && (
@@ -470,6 +503,7 @@ function DeleteConfirmDialog({
 
 export function WorktreesPage() {
     const {projectId} = useParams<{projectId: string}>()
+    const [selectedId, setSelectedId] = useState<string | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null)
     const formatTime = useRelativeTimeFormatter(30_000)
 
@@ -478,6 +512,52 @@ export function WorktreesPage() {
     const deleteTrackedMutation = useDeleteWorktree()
     const deleteOrphanedMutation = useDeleteOrphanedWorktree()
     const deleteStaleMutation = useDeleteStaleWorktree()
+
+    const tracked = data?.tracked ?? []
+    const orphaned = data?.orphaned ?? []
+    const stale = data?.stale ?? []
+    const summary = data?.summary ?? {tracked: 0, active: 0, orphaned: 0, stale: 0, totalDiskUsage: 0}
+
+    const allItems: WorktreeItem[] = useMemo(() => {
+        const items: WorktreeItem[] = []
+
+        for (const t of tracked) {
+            items.push({
+                id: `tracked-${t.id}`,
+                type: 'tracked',
+                label: t.cardTitle || t.ticketKey || 'Untitled',
+                subtitle: t.branchName,
+                icon: GitBranch,
+                data: t,
+            })
+        }
+
+        for (const o of orphaned) {
+            items.push({
+                id: `orphaned-${o.path}`,
+                type: 'orphaned',
+                label: o.name,
+                subtitle: o.branchName || 'Unknown branch',
+                icon: FolderOpen,
+                data: o,
+            })
+        }
+
+        for (const s of stale) {
+            items.push({
+                id: `stale-${s.id}`,
+                type: 'stale',
+                label: s.cardTitle || 'Untitled',
+                subtitle: s.branchName,
+                icon: AlertTriangle,
+                data: s,
+            })
+        }
+
+        return items
+    }, [tracked, orphaned, stale])
+
+    const selectedItem = allItems.find((item) => item.id === selectedId)
 
     if (!projectId) {
         return <NoProjectState />
@@ -490,7 +570,16 @@ export function WorktreesPage() {
     const handleDelete = (force: boolean) => {
         if (!deleteTarget || !projectId) return
 
-        const onSuccess = () => setDeleteTarget(null)
+        const onSuccess = () => {
+            setDeleteTarget(null)
+            if (selectedItem && (
+                (deleteTarget.type === 'tracked' && selectedItem.id === `tracked-${deleteTarget.item.id}`) ||
+                (deleteTarget.type === 'orphaned' && selectedItem.id === `orphaned-${deleteTarget.item.path}`) ||
+                (deleteTarget.type === 'stale' && selectedItem.id === `stale-${deleteTarget.item.id}`)
+            )) {
+                setSelectedId(null)
+            }
+        }
 
         if (deleteTarget.type === 'tracked') {
             deleteTrackedMutation.mutate(
@@ -508,10 +597,128 @@ export function WorktreesPage() {
     const isPending =
         deleteTrackedMutation.isPending || deleteOrphanedMutation.isPending || deleteStaleMutation.isPending
 
-    const tracked = data?.tracked ?? []
-    const orphaned = data?.orphaned ?? []
-    const stale = data?.stale ?? []
-    const summary = data?.summary ?? {tracked: 0, active: 0, orphaned: 0, stale: 0, totalDiskUsage: 0}
+    const renderItem = (item: WorktreeItem, isActive: boolean, _defaultRender: () => React.ReactNode) => {
+        const typeStyles = {
+            tracked: '',
+            orphaned: 'text-amber-600 dark:text-amber-400',
+            stale: 'text-red-600 dark:text-red-400',
+        }
+
+        const typeBadges = {
+            tracked: null,
+            orphaned: (
+                <span className="flex size-1.5 rounded-full bg-amber-500" />
+            ),
+            stale: (
+                <span className="flex size-1.5 rounded-full bg-red-500" />
+            ),
+        }
+
+        const Icon = item.icon
+
+        return (
+            <button
+                onClick={() => setSelectedId(item.id)}
+                className={cn(
+                    'group relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left',
+                    'transition-all duration-150 ease-out',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+                    isActive
+                        ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                        : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                )}
+            >
+                <span
+                    className={cn(
+                        'absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full',
+                        'transition-all duration-200 ease-out',
+                        isActive
+                            ? 'bg-sidebar-primary opacity-100'
+                            : 'bg-transparent opacity-0 group-hover:bg-muted-foreground/30 group-hover:opacity-100'
+                    )}
+                />
+                <span
+                    className={cn(
+                        'flex size-8 shrink-0 items-center justify-center rounded-md',
+                        'transition-all duration-150 ease-out',
+                        isActive
+                            ? cn('bg-sidebar-primary/10', typeStyles[item.type] || 'text-sidebar-primary')
+                            : cn('bg-transparent group-hover:bg-sidebar-accent', typeStyles[item.type] || 'text-muted-foreground group-hover:text-sidebar-foreground')
+                    )}
+                >
+                    <Icon
+                        className={cn(
+                            'size-[18px] transition-transform duration-150',
+                            'group-hover:scale-105',
+                            isActive && 'scale-105'
+                        )}
+                        strokeWidth={isActive ? 2 : 1.75}
+                    />
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                        <span
+                            className={cn(
+                                'block truncate text-[13px] leading-tight',
+                                'transition-colors duration-150',
+                                isActive ? 'font-medium' : 'font-normal'
+                            )}
+                        >
+                            {item.label}
+                        </span>
+                        {typeBadges[item.type]}
+                    </span>
+                    {item.subtitle && (
+                        <span
+                            className={cn(
+                                'mt-0.5 block truncate font-mono text-[11px] leading-tight',
+                                'transition-colors duration-150',
+                                isActive ? 'text-sidebar-foreground/60' : 'text-muted-foreground/60'
+                            )}
+                        >
+                            {item.subtitle}
+                        </span>
+                    )}
+                </span>
+            </button>
+        )
+    }
+
+    const renderDetail = () => {
+        if (!selectedItem) return <EmptySelection />
+
+        if (selectedItem.type === 'tracked') {
+            return (
+                <TrackedWorktreeDetail
+                    item={selectedItem.data as TrackedWorktree}
+                    formatTime={formatTime}
+                    onDelete={() => setDeleteTarget({type: 'tracked', item: selectedItem.data as TrackedWorktree})}
+                />
+            )
+        }
+
+        if (selectedItem.type === 'orphaned') {
+            return (
+                <OrphanedWorktreeDetail
+                    item={selectedItem.data as OrphanedWorktree}
+                    formatTime={formatTime}
+                    onDelete={() => setDeleteTarget({type: 'orphaned', item: selectedItem.data as OrphanedWorktree})}
+                />
+            )
+        }
+
+        if (selectedItem.type === 'stale') {
+            return (
+                <StaleWorktreeDetail
+                    item={selectedItem.data as StaleWorktree}
+                    formatTime={formatTime}
+                    onDelete={() => setDeleteTarget({type: 'stale', item: selectedItem.data as StaleWorktree})}
+                />
+            )
+        }
+
+        return <EmptySelection />
+    }
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-background">
@@ -525,137 +732,51 @@ export function WorktreesPage() {
                         onClick={handleSync}
                         disabled={syncMutation.isPending || isLoading}
                     >
-                        <RefreshCw className={`mr-2 size-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={cn('mr-2 size-4', syncMutation.isPending && 'animate-spin')} />
                         {syncMutation.isPending ? 'Syncing...' : 'Sync'}
                     </Button>
                 }
             />
-            <div className="flex-1 overflow-auto">
-                <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-                    {isLoading ? (
-                        <LoadingState />
-                    ) : isError ? (
-                        <ErrorState onRetry={() => refetch()} />
+
+            <MasterDetailLayout<WorktreeItem>
+                title="Worktrees"
+                items={allItems}
+                activeId={selectedId}
+                onSelect={setSelectedId}
+                loading={isLoading}
+                renderItem={renderItem}
+                sidebarFooter={
+                    !isLoading && !isError && (
+                        <SummaryFooter
+                            tracked={summary.tracked}
+                            active={summary.active}
+                            orphaned={summary.orphaned}
+                            stale={summary.stale}
+                            totalDiskUsage={summary.totalDiskUsage}
+                        />
+                    )
+                }
+                emptyState={
+                    isError ? (
+                        <div className="flex h-32 flex-col items-center justify-center gap-3 text-center">
+                            <AlertTriangle className="size-6 text-destructive" />
+                            <div>
+                                <p className="text-sm font-medium">Failed to load</p>
+                                <Button variant="link" size="sm" onClick={() => refetch()} className="mt-1 h-auto p-0 text-xs">
+                                    Try again
+                                </Button>
+                            </div>
+                        </div>
                     ) : (
-                        <>
-                            <SummaryCards
-                                tracked={summary.tracked}
-                                active={summary.active}
-                                orphaned={summary.orphaned}
-                                stale={summary.stale}
-                                totalDiskUsage={summary.totalDiskUsage}
-                            />
-
-                            <Tabs defaultValue="active" className="space-y-4">
-                                <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:grid-cols-none">
-                                    <TabsTrigger value="active" className="gap-2">
-                                        <GitBranch className="size-4" />
-                                        <span className="hidden sm:inline">Active</span>
-                                        <Badge variant="secondary" className="ml-1 h-5 min-w-[1.25rem] px-1.5 text-[10px]">
-                                            {tracked.length}
-                                        </Badge>
-                                    </TabsTrigger>
-                                    <TabsTrigger value="orphaned" className="gap-2">
-                                        <FolderOpen className="size-4" />
-                                        <span className="hidden sm:inline">Orphaned</span>
-                                        <Badge
-                                            variant="secondary"
-                                            className={`ml-1 h-5 min-w-[1.25rem] px-1.5 text-[10px] ${orphaned.length > 0 ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' : ''}`}
-                                        >
-                                            {orphaned.length}
-                                        </Badge>
-                                    </TabsTrigger>
-                                    <TabsTrigger value="stale" className="gap-2">
-                                        <AlertTriangle className="size-4" />
-                                        <span className="hidden sm:inline">Stale</span>
-                                        <Badge
-                                            variant="secondary"
-                                            className={`ml-1 h-5 min-w-[1.25rem] px-1.5 text-[10px] ${stale.length > 0 ? 'bg-red-500/20 text-red-600 dark:text-red-400' : ''}`}
-                                        >
-                                            {stale.length}
-                                        </Badge>
-                                    </TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="active" className="space-y-3">
-                                    {tracked.length === 0 ? (
-                                        <EmptyTabState
-                                            icon={GitBranch}
-                                            title="No tracked worktrees"
-                                            description="Worktrees are created when you start an Attempt on a card."
-                                        />
-                                    ) : (
-                                        tracked.map((item) => (
-                                            <TrackedWorktreeRow
-                                                key={item.id}
-                                                item={item}
-                                                formatTime={formatTime}
-                                                onDelete={() => setDeleteTarget({type: 'tracked', item})}
-                                            />
-                                        ))
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="orphaned" className="space-y-3">
-                                    {orphaned.length === 0 ? (
-                                        <EmptyTabState
-                                            icon={FolderOpen}
-                                            title="No orphaned worktrees"
-                                            description="All worktree directories on disk are properly tracked."
-                                        />
-                                    ) : (
-                                        <>
-                                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-                                                <p className="text-sm text-amber-700 dark:text-amber-300">
-                                                    <AlertTriangle className="mr-2 inline size-4" />
-                                                    These directories exist on disk but are not tracked in the database. They may be leftover from
-                                                    interrupted operations or manual worktree creation.
-                                                </p>
-                                            </div>
-                                            {orphaned.map((item) => (
-                                                <OrphanedWorktreeRow
-                                                    key={item.path}
-                                                    item={item}
-                                                    formatTime={formatTime}
-                                                    onDelete={() => setDeleteTarget({type: 'orphaned', item})}
-                                                />
-                                            ))}
-                                        </>
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="stale" className="space-y-3">
-                                    {stale.length === 0 ? (
-                                        <EmptyTabState
-                                            icon={AlertTriangle}
-                                            title="No stale records"
-                                            description="All database records have corresponding worktree directories."
-                                        />
-                                    ) : (
-                                        <>
-                                            <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
-                                                <p className="text-sm text-red-700 dark:text-red-300">
-                                                    <AlertTriangle className="mr-2 inline size-4" />
-                                                    These database records reference worktree directories that no longer exist on disk. Clean them up
-                                                    to remove stale entries.
-                                                </p>
-                                            </div>
-                                            {stale.map((item) => (
-                                                <StaleWorktreeRow
-                                                    key={item.id}
-                                                    item={item}
-                                                    formatTime={formatTime}
-                                                    onDelete={() => setDeleteTarget({type: 'stale', item})}
-                                                />
-                                            ))}
-                                        </>
-                                    )}
-                                </TabsContent>
-                            </Tabs>
-                        </>
-                    )}
-                </div>
-            </div>
+                        <div className="flex h-32 flex-col items-center justify-center gap-2 text-center">
+                            <GitBranch className="size-8 text-muted-foreground/50" />
+                            <p className="text-sm text-muted-foreground">No worktrees yet</p>
+                        </div>
+                    )
+                }
+            >
+                {renderDetail()}
+            </MasterDetailLayout>
 
             <DeleteConfirmDialog
                 target={deleteTarget}
