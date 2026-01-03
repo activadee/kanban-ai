@@ -57,6 +57,11 @@ vi.mock('core', () => {
             }),
             updateAttempt: vi.fn(async () => {}),
         },
+        git: {
+            removeWorktreeAtPath: vi.fn(async () => {}),
+            deleteBranch: vi.fn(async () => {}),
+            deleteRemoteBranch: vi.fn(async () => {}),
+        },
     }
 })
 

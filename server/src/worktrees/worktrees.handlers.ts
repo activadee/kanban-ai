@@ -1,5 +1,5 @@
 import {zValidator} from '@hono/zod-validator'
-import {attemptsRepo, projectsRepo, removeWorktreeAtPath} from 'core'
+import {attemptsRepo, projectsRepo, git} from 'core'
 import {problemJson} from '../http/problem'
 import {createHandlers} from '../lib/factory'
 import {log} from '../log'
@@ -63,7 +63,7 @@ async function createServiceDeps(projectId: string): Promise<WorktreeServiceDeps
             return column?.title ?? null
         },
         async removeWorktreeFromRepo(repoPath: string, worktreePath: string) {
-            await removeWorktreeAtPath(repoPath, worktreePath)
+            await git.removeWorktreeAtPath(repoPath, worktreePath)
         },
     }
 }

@@ -14,7 +14,7 @@ import type {
 } from 'shared'
 import {getProjectWorktreeFolder} from '../fs/paths'
 import {log} from '../log'
-import {git, removeWorktreeAtPath} from 'core'
+import {git} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -354,7 +354,7 @@ export async function deleteOrphanedWorktree(
     try {
         if (repoPath) {
             try {
-                await removeWorktreeAtPath(repoPath, worktreePath)
+                await git.removeWorktreeAtPath(repoPath, worktreePath)
                 return {success: true, message: 'Orphaned worktree removed via git'}
             } catch (gitErr) {
                 log.warn('worktrees:delete-orphaned', 'Git worktree remove failed, falling back to rm', {
