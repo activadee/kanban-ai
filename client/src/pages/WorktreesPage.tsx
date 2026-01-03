@@ -442,19 +442,21 @@ function DeleteConfirmDialog({
 
     return (
         <Dialog open={!!target} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="size-5 text-destructive" />
-                        Delete {target.type === 'stale' ? 'Record' : 'Worktree'}
+                        <AlertTriangle className="size-5 shrink-0 text-destructive" />
+                        <span>Delete {target.type === 'stale' ? 'Record' : 'Worktree'}</span>
                     </DialogTitle>
                     <DialogDescription className="text-left">{description}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                        <p className="text-sm font-medium text-foreground">{title}</p>
+                <div className="space-y-4">
+                    <div className="overflow-hidden rounded-lg border border-border/50 bg-muted/30 p-3">
+                        <p className="truncate text-sm font-medium text-foreground">{title}</p>
                         {target.type !== 'stale' && (
-                            <p className="mt-1 truncate text-xs font-mono text-muted-foreground">{target.item.path}</p>
+                            <p className="mt-1 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-mono text-muted-foreground" title={target.item.path}>
+                                {target.item.path}
+                            </p>
                         )}
                     </div>
                     {isActive && (
@@ -463,9 +465,9 @@ function DeleteConfirmDialog({
                                 type="checkbox"
                                 checked={forceDelete}
                                 onChange={(e) => setForceDelete(e.target.checked)}
-                                className="mt-0.5 size-4 rounded border-amber-500/50 text-amber-600 focus:ring-amber-500"
+                                className="mt-0.5 size-4 shrink-0 rounded border-amber-500/50 text-amber-600 focus:ring-amber-500"
                             />
-                            <div className="space-y-1">
+                            <div className="min-w-0 space-y-1">
                                 <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Force delete active worktree</p>
                                 <p className="text-xs text-amber-600 dark:text-amber-400">
                                     I understand this will terminate the running agent and may cause data loss.
@@ -474,7 +476,7 @@ function DeleteConfirmDialog({
                         </label>
                     )}
                 </div>
-                <DialogFooter>
+                <DialogFooter className="gap-2 sm:gap-0">
                     <Button variant="outline" onClick={onClose} disabled={isPending}>
                         Cancel
                     </Button>
