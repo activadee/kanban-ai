@@ -147,7 +147,7 @@ export function CardEnhancementDialog({
                         onClick={handleAccept}
                         disabled={pending}
                     >
-                        {pending && createGithubIssue && canCreateGithubIssue ? 'Creating GitHub issue…' : 'Accept'}
+                        {pending && createGithubIssue ? 'Creating GitHub issue…' : 'Accept'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
