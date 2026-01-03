@@ -1,11 +1,11 @@
 import {z} from 'zod'
 import {zValidator} from '@hono/zod-validator'
 import {attempts, projectDeps, projectsRepo} from 'core'
-import type {MessageImage} from 'shared'
+import type {MessageImage, ConversationItem} from 'shared'
 import {problemJson} from '../http/problem'
 import {log} from '../log'
 import {createHandlers} from '../lib/factory'
-import {stopAttemptSchema, attemptMessageSchema} from './attempts.schemas'
+import {stopAttemptSchema, attemptMessageSchema, getMessagesQuerySchema} from './attempts.schemas'
 
 const attemptIdParam = z.object({id: z.string()})
 
@@ -16,6 +16,28 @@ export const getAttemptHandlers = createHandlers(
         const attempt = await attempts.getAttempt(id)
         if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
         return c.json(attempt)
+    },
+)
+
+export const getAttemptMessagesHandlers = createHandlers(
+    zValidator('param', attemptIdParam),
+    zValidator('query', getMessagesQuerySchema),
+    async (c) => {
+        const {id} = c.req.valid('param')
+        const {limit, offset} = c.req.valid('query')
+
+        const attempt = await attempts.getAttempt(id)
+        if (!attempt) return problemJson(c, {status: 404, detail: 'Attempt not found'})
+
+        const {items, total, hasMore} = await attempts.listConversationItemsPaginated(id, limit, offset)
+
+        return c.json({
+            items,
+            total,
+            hasMore,
+            limit,
+            offset,
+        })
     },
 )
 

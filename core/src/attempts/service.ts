@@ -1,4 +1,4 @@
-import type {AutomationStage, ConversationAutomationItem, MessageImage} from 'shared'
+import type {AutomationStage, ConversationAutomationItem, MessageImage, ConversationItem} from 'shared'
 import type {AppEventBus} from '../events/bus'
 import {
     getAttempt as lifecycleGetAttempt,
@@ -10,6 +10,7 @@ import {
     type StartAttemptInput,
 } from './lifecycle'
 import {runAttemptAutomation as automationRunAttemptAutomation} from './automation'
+import {listConversationItemsPaginated as repoListConversationItemsPaginated} from './repo'
 
 type AttemptServiceDeps = {events: AppEventBus; images?: MessageImage[]}
 
@@ -61,4 +62,35 @@ export async function followupAttempt(
 ) {
     const events = requireEvents(deps)
     return lifecycleFollowupAttempt(attemptId, prompt, profileId, events, deps?.images)
+}
+
+function deserializeConversationItem(row: {
+    id: string
+    ts: Date | number
+    itemJson: string
+}): ConversationItem {
+    try {
+        const parsed = JSON.parse(row.itemJson) as ConversationItem
+        const timestamp = parsed.timestamp ?? new Date(row.ts).toISOString()
+        return {...parsed, id: parsed.id ?? row.id, timestamp}
+    } catch {
+        return {
+            type: 'error',
+            timestamp: new Date().toISOString(),
+            text: 'Failed to load conversation entry',
+        }
+    }
+}
+
+export async function listConversationItemsPaginated(
+    attemptId: string,
+    limit: number,
+    offset: number,
+): Promise<{items: ConversationItem[]; total: number; hasMore: boolean}> {
+    const {items, total, hasMore} = await repoListConversationItemsPaginated(attemptId, limit, offset)
+    return {
+        items: items.map(deserializeConversationItem),
+        total,
+        hasMore,
+    }
 }

@@ -27,6 +27,7 @@ import {
     useCardImages,
 } from '@/hooks'
 import {useAttemptEventStream} from '@/hooks/useAttemptEventStream'
+import {useAttemptConversationPagination} from '@/hooks/useAttemptConversationPagination'
 import {toast} from '@/components/ui/toast'
 import {describeApiError} from '@/api/http'
 import {eventBus} from '@/lib/events'
@@ -58,6 +59,9 @@ export type CardInspectorAttemptState = {
     attempt: Attempt | null
     logs: AttemptLog[]
     conversation: ConversationItem[]
+    hasMore: boolean
+    isFetchingMore: boolean
+    loadMore: () => Promise<void>
     agent: AgentKey
     agents: Array<{ key: AgentKey; label: string }>
     availableProfiles: Array<{ id: string; name: string }>
@@ -150,9 +154,13 @@ export function useCardInspectorState({
     const [starting, setStarting] = useState(false)
     const [attempt, setAttempt] = useState<Attempt | null>(null)
     const [logs, setLogs] = useState<AttemptLog[]>([])
-    const [conversation, setConversation] = useState<ConversationItem[]>([])
     const [followup, setFollowup] = useState('')
     const [todoSummary, setTodoSummary] = useState<AttemptTodoSummary | null>(null)
+
+    const conversationPagination = useAttemptConversationPagination({
+        attemptId: attempt?.id,
+        enabled: !!attempt?.id,
+    })
 
     const attemptAgent = attempt?.agent ? (attempt.agent as AgentKey) : undefined
     const manualAgentRef = useRef(false)
@@ -331,15 +339,18 @@ export function useCardInspectorState({
         if (attemptDetailQuery.data) {
             setAttempt(attemptDetailQuery.data.attempt)
             setLogs(attemptDetailQuery.data.logs ?? [])
-            setConversation(attemptDetailQuery.data.conversation ?? [])
+            const messages = attemptDetailQuery.data.conversation ?? []
+            if (messages.length > 0 && conversationPagination.messages.length === 0) {
+                messages.forEach(msg => conversationPagination.appendNewMessage(msg))
+            }
             setTodoSummary(attemptDetailQuery.data.todos ?? null)
         } else {
             setAttempt(null)
             setLogs([])
-            setConversation([])
+            conversationPagination.reset()
             setTodoSummary(null)
         }
-    }, [card.id, card.title, card.description, card.dependsOn, card.ticketType, attemptDetailQuery.data])
+    }, [card.id, card.title, card.description, card.dependsOn, card.ticketType, attemptDetailQuery.data, conversationPagination])
 
     useEffect(() => {
         manualAgentRef.current = false
@@ -456,10 +467,7 @@ export function useCardInspectorState({
             )
         },
         onMessage: (item) => {
-            setConversation((prev) => {
-                if (item.id && prev.some((m) => m.id === item.id)) return prev
-                return [...prev, item]
-            })
+            conversationPagination.appendNewMessage(item)
             queryClient.setQueryData(
                 cardAttemptKeys.detail(projectId, card.id),
                 (prev:
@@ -543,7 +551,7 @@ export function useCardInspectorState({
     const startMutation = useStartAttempt({
         onSuccess: async (att) => {
             setAttempt(att)
-            setConversation([])
+            conversationPagination.reset()
             await queryClient.invalidateQueries({queryKey: attemptKeys.detail(att.id)})
             await queryClient.invalidateQueries({queryKey: attemptKeys.logs(att.id)})
             await queryClient.invalidateQueries({queryKey: cardAttemptKeys.detail(projectId, card.id)})
@@ -555,6 +563,7 @@ export function useCardInspectorState({
         setStarting(true)
         try {
             await startMutation.mutateAsync({projectId, cardId: card.id, agent, profileId})
+            conversationPagination.reset()
         } catch (err) {
             console.error('Start attempt failed', err)
         } finally {
@@ -648,12 +657,13 @@ export function useCardInspectorState({
     }
 
     const latestDevAutomation = useMemo<ConversationAutomationItem | null>(() => {
-        for (let i = conversation.length - 1; i >= 0; i--) {
-            const item = conversation[i]
+        const messages = conversationPagination.messages
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const item = messages[i]
             if (item.type === 'automation' && item.stage === 'dev') return item
         }
         return null
-    }, [conversation])
+    }, [conversationPagination.messages])
 
     return {
         details: {
@@ -678,7 +688,10 @@ export function useCardInspectorState({
         attempt: {
             attempt,
             logs,
-            conversation,
+            conversation: conversationPagination.messages,
+            hasMore: conversationPagination.hasMore,
+            isFetchingMore: conversationPagination.isFetchingMore,
+            loadMore: conversationPagination.loadMore,
             agent,
             agents,
             availableProfiles,

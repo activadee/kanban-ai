@@ -75,6 +75,31 @@ export function createAttemptsRepo(db: DbExecutor): AttemptsRepo {
                 .limit(limit)
         },
 
+        async listConversationItemsPaginated(
+            attemptId: string,
+            limit: number,
+            offset: number
+        ): Promise<{items: ConversationItemRow[]; total: number; hasMore: boolean}> {
+            const [items, countResult] = await Promise.all([
+                db
+                    .select()
+                    .from(conversationItems)
+                    .where(eq(conversationItems.attemptId, attemptId))
+                    .orderBy(asc(conversationItems.seq))
+                    .limit(limit)
+                    .offset(offset),
+                db
+                    .select({count: sql<number>`count(*)`})
+                    .from(conversationItems)
+                    .where(eq(conversationItems.attemptId, attemptId))
+            ])
+
+            const total = countResult[0]?.count ?? 0
+            const hasMore = offset + items.length < total
+
+            return {items, total, hasMore}
+        },
+
         async insertConversationItem(values: ConversationItemInsert): Promise<void> {
             await db.insert(conversationItems).values(values).run()
         },

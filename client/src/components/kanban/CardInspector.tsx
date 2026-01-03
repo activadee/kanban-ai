@@ -199,6 +199,9 @@ export function CardInspector({
                                     cardId={card.id}
                                     locked={locked}
                                     conversation={attempt.conversation}
+                                    hasMore={attempt.hasMore}
+                                    isFetchingMore={attempt.isFetchingMore}
+                                    loadMore={attempt.loadMore}
                                     followup={attempt.followup}
                                     onFollowupChange={attempt.setFollowup}
                                     onSendFollowup={attempt.sendFollowup}

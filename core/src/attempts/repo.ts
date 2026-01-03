@@ -48,6 +48,14 @@ export async function listConversationItemsDescending(
     return getAttemptsRepo().listConversationItemsDescending(attemptId, limit)
 }
 
+export async function listConversationItemsPaginated(
+    attemptId: string,
+    limit: number,
+    offset: number,
+): Promise<{items: ConversationItemRow[]; total: number; hasMore: boolean}> {
+    return getAttemptsRepo().listConversationItemsPaginated(attemptId, limit, offset)
+}
+
 export async function insertConversationItem(values: ConversationItemInsert): Promise<void> {
     return getAttemptsRepo().insertConversationItem(values)
 }

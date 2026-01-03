@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import {useState, useRef, useEffect} from 'react'
 import type {AgentKey, Attempt, ConversationItem, MessageImage} from 'shared'
 import {Textarea} from '@/components/ui/textarea'
 import {Button} from '@/components/ui/button'
@@ -9,7 +9,7 @@ import {ImageAttachment} from '@/components/ui/image-attachment'
 import {cn} from '@/lib/utils'
 import {MessageRow, type StreamdownSettings} from '../MessageRow'
 import {useAutoScroll, useAutoScrollEffect} from '@/hooks/useAutoScroll'
-import {Send, Square, RotateCcw, Bot, Sparkles, ArrowDownToLine} from 'lucide-react'
+import {Send, Square, RotateCcw, Bot, Sparkles, ArrowDownToLine, Loader2} from 'lucide-react'
 
 function AgentTypingIndicator() {
     return (
@@ -56,6 +56,9 @@ export type AttemptsSectionProps = {
     cardId: string
     locked?: boolean
     conversation: ConversationItem[]
+    hasMore: boolean
+    isFetchingMore: boolean
+    loadMore: () => Promise<void>
     followup: string
     onFollowupChange: (value: string) => void
     onSendFollowup: () => void
@@ -80,6 +83,9 @@ export function AttemptsSection({
     cardId,
     locked,
     conversation,
+    hasMore,
+    isFetchingMore,
+    loadMore,
     followup,
     onFollowupChange,
     onSendFollowup,
@@ -99,6 +105,8 @@ export function AttemptsSection({
     streamdownSettings,
 }: AttemptsSectionProps) {
     const [isDragging, setIsDragging] = useState(false)
+    const loadMoreTriggerRef = useRef<HTMLDivElement>(null)
+    const observerRef = useRef<IntersectionObserver | null>(null)
 
     const autoScroll = useAutoScroll({
         storageKey: 'kanbanai:attempts-autoscroll-enabled',
@@ -111,6 +119,26 @@ export function AttemptsSection({
         autoScroll.scrollToBottom,
         `${cardId}:${conversation.length}`,
     )
+
+    useEffect(() => {
+        if (!loadMoreTriggerRef.current || !hasMore) return
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0]?.isIntersecting && !isFetchingMore) {
+                    loadMore()
+                }
+            },
+            {threshold: 0.1}
+        )
+
+        observer.observe(loadMoreTriggerRef.current)
+        observerRef.current = observer
+
+        return () => {
+            observer.disconnect()
+        }
+    }, [hasMore, isFetchingMore, loadMore])
 
     const handlePaste = (e: React.ClipboardEvent) => {
         if (e.clipboardData.files.length > 0) {
@@ -213,6 +241,20 @@ export function AttemptsSection({
                     </div>
                 ) : (
                     <div className="space-y-1">
+                        {hasMore && (
+                            <div ref={loadMoreTriggerRef} className="flex items-center justify-center py-2">
+                                {isFetchingMore ? (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        <span>Loading older messages...</span>
+                                    </div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground">
+                                        Scroll up to load more
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {conversation.map((item, index) => (
                             <MessageRow
                                 key={item.id ?? `${item.timestamp}-${index}`}

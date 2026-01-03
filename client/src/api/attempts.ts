@@ -91,3 +91,24 @@ export async function runDevAutomationRequest(attemptId: string): Promise<Conver
     const data = await parseApiResponse<{ item: ConversationAutomationItem }>(res)
     return data.item
 }
+
+export async function getAttemptMessages(
+    attemptId: string,
+    limit: number = 25,
+    offset: number = 0
+): Promise<{
+    items: ConversationItem[]
+    total: number
+    hasMore: boolean
+}> {
+    const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+    })
+    const res = await fetch(`${SERVER_URL}/attempts/${attemptId}/messages?${params}`)
+    return parseApiResponse<{
+        items: ConversationItem[]
+        total: number
+        hasMore: boolean
+    }>(res)
+}

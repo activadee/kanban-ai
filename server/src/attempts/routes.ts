@@ -2,6 +2,7 @@ import {Hono} from 'hono'
 import type {AppEnv} from '../env'
 import {
     getAttemptHandlers,
+    getAttemptMessagesHandlers,
     listAttemptLogsHandlers,
     postAttemptMessageHandlers,
     runDevAutomationHandlers,
@@ -26,6 +27,7 @@ export const createAttemptsRouter = () =>
             return problemJson(c, {status: 410, detail: 'Moved to /projects/:projectId/cards/:cardId/attempts'})
         })
         .get('/:id', ...getAttemptHandlers)
+        .get('/:id/messages', ...getAttemptMessagesHandlers)
         .patch('/:id', ...stopAttemptHandlers)
         .post('/:id/stop', async (c) => {
             c.header('Deprecation', 'true')

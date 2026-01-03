@@ -126,6 +126,11 @@ export interface AttemptsRepo {
 
     listConversationItems(attemptId: string): Promise<ConversationItemRow[]>
     listConversationItemsDescending(attemptId: string, limit: number): Promise<Array<{itemJson: string}>>
+    listConversationItemsPaginated(
+        attemptId: string,
+        limit: number,
+        offset: number
+    ): Promise<{items: ConversationItemRow[]; total: number; hasMore: boolean}>
     insertConversationItem(values: ConversationItemInsert): Promise<void>
     getNextConversationSeq(attemptId: string): Promise<number>
 
