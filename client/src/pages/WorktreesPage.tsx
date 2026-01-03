@@ -566,7 +566,7 @@ export function WorktreesPage() {
     const tracked = data?.tracked ?? []
     const orphaned = data?.orphaned ?? []
     const stale = data?.stale ?? []
-    const summary = data?.summary ?? {tracked: 0, active: 0, orphaned: 0, stale: 0, totalDiskUsage: 0}
+    const summary = data?.summary ?? {tracked: 0, locked: 0, orphaned: 0, stale: 0, totalDiskUsage: 0}
 
     const allItems: WorktreeItem[] = useMemo(() => {
         const items: WorktreeItem[] = []
@@ -675,7 +675,6 @@ export function WorktreesPage() {
             if (error instanceof ApiError && error.status === 409) {
                 if (deleteTarget.type === 'tracked') {
                     setDeleteTarget({...deleteTarget, constraintError: error})
-                    setForceDelete(false)
                 }
                 toast({
                     title: 'Cannot delete worktree',
@@ -871,7 +870,7 @@ export function WorktreesPage() {
                     !isLoading && !isError && (
                         <SummaryFooter
                             tracked={summary.tracked}
-                            active={summary.active}
+                            active={summary.locked}
                             orphaned={summary.orphaned}
                             stale={summary.stale}
                             totalDiskUsage={summary.totalDiskUsage}
