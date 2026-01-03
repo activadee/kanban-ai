@@ -249,6 +249,22 @@ export async function pullRebaseAtPath(
                 try {
                     await g.raw(['reset', '--hard', 'HEAD'])
                     await g.raw(['clean', '-fd'])
+                    
+                    const status = await g.status()
+                    const isClean = !status.conflicted.length && 
+                                   !status.modified.length && 
+                                   !status.created.length && 
+                                   !status.deleted.length &&
+                                   !status.renamed.length
+                    
+                    if (!isClean) {
+                        return {
+                            success: false,
+                            hasConflicts: true,
+                            message: `Reset completed but repository still has uncommitted changes. Manual intervention required. Original error: ${(abortError as Error).message}`,
+                        }
+                    }
+                    
                     return {
                         success: false,
                         hasConflicts: true,

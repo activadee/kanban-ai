@@ -218,6 +218,33 @@ export async function performAutoCommit(params: AutoCommitParams) {
                         error: (rebaseError as Error).message,
                         ts: new Date().toISOString(),
                     })
+                    
+                    try {
+                        const git = simpleGit({baseDir: worktreePath})
+                        try {
+                            await git.raw(['rebase', '--abort'])
+                            const abortTs = new Date()
+                            await insertAttemptLog({
+                                id: `log-${crypto.randomUUID()}`,
+                                attemptId,
+                                ts: abortTs,
+                                level: 'warn',
+                                message: '[autopush] aborted in-progress rebase after unexpected error',
+                            })
+                        } catch {
+                            // Rebase abort failed, ignore - repo might not be in rebase state
+                        }
+                    } catch (cleanupError) {
+                        const cleanupTs = new Date()
+                        await insertAttemptLog({
+                            id: `log-${crypto.randomUUID()}`,
+                            attemptId,
+                            ts: cleanupTs,
+                            level: 'error',
+                            message: `[autopush] failed to clean up after unexpected error: ${(cleanupError as Error).message}`,
+                        })
+                    }
+                    
                     return
                 }
                 
@@ -244,8 +271,12 @@ export async function performAutoCommit(params: AutoCommitParams) {
                         ts: new Date().toISOString(),
                     })
                     
+                    const postRebaseStatus = await git.status()
+                    const retryBranch = postRebaseStatus.current || targetBranch
+                    const retryRemote = preferredRemote?.trim() || (postRebaseStatus.tracking?.split('/')?.[0] ?? targetRemote)
+                    
                     try {
-                        await pushAtPath(worktreePath, {remote: targetRemote, branch: targetBranch}, {projectId: boardId, attemptId})
+                        await pushAtPath(worktreePath, {remote: retryRemote, branch: retryBranch}, {projectId: boardId, attemptId})
                         const retryPushTs = new Date()
                         const retryPushMsg = '[autopush] push succeeded after rebase'
                         await insertAttemptLog({
@@ -265,8 +296,8 @@ export async function performAutoCommit(params: AutoCommitParams) {
                         events.publish('git.push.retried', {
                             projectId: boardId,
                             attemptId,
-                            remote: targetRemote,
-                            branch: targetBranch,
+                            remote: retryRemote,
+                            branch: retryBranch,
                             ts: new Date().toISOString(),
                         })
                     } catch (retryError) {
