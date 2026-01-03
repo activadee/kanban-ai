@@ -142,20 +142,29 @@ Editor commands emit `editor.open.requested/succeeded/failed` events that surfac
   - `latestVersion` is fetched from GitHub Releases (`KANBANAI_UPDATE_REPO`, `KANBANAI_UPDATE_TOKEN`), cached for ~15 minutes, and falls back to `currentVersion` when the lookup fails.
   - `updateAvailable` lets clients know when a newer release exists so UI can prompt for restart.
 
+## Worktrees management
+
+- Worktrees:
+   - `GET /api/v1/projects/:projectId/worktrees` – list all tracked, orphaned, and stale worktrees with summary statistics.
+   - `POST /api/v1/projects/:projectId/worktrees/sync` – scan the filesystem and database to discover new orphaned and stale worktrees.
+   - `DELETE /api/v1/projects/:projectId/worktrees/:id` – delete a tracked worktree with options (`force`, `diskOnly`, `deleteBranch`, `deleteRemoteBranch`).
+   - `DELETE /api/v1/projects/:projectId/worktrees/orphaned/:encodedPath` – delete an orphaned worktree found on disk.
+   - `DELETE /api/v1/projects/:projectId/worktrees/stale/:id` – remove a stale database entry for a worktree that no longer exists on disk.
+
 ## Terminals
 
 > Terminals are available for cards in "In Progress" or "Review" columns with active worktrees.
 
 - Project terminals:
-  - `GET /api/v1/projects/:projectId/terminals` – list active terminals for a project.
-  - `GET /api/v1/projects/:projectId/terminals/eligible` – list cards eligible for terminal access.
+   - `GET /api/v1/projects/:projectId/terminals` – list active terminals for a project.
+   - `GET /api/v1/projects/:projectId/terminals/eligible` – list cards eligible for terminal access.
 - Card terminals:
-  - `GET /api/v1/terminals/:cardId` – get terminal session info.
-  - `POST /api/v1/terminals/:cardId/resize` – resize terminal (cols, rows).
-  - `DELETE /api/v1/terminals/:cardId` – force close a terminal.
+   - `GET /api/v1/terminals/:cardId` – get terminal session info.
+   - `POST /api/v1/terminals/:cardId/resize` – resize terminal (cols, rows).
+   - `DELETE /api/v1/terminals/:cardId` – force close a terminal.
 - WebSocket:
-  - `ws://host/terminals/:cardId/ws?projectId=:projectId` – bidirectional terminal I/O.
-  - Client → Server: `{type: 'data', data: string}` or `{type: 'resize', cols, rows}`.
-  - Server → Client: `{type: 'data', data: string}`, `{type: 'exit', code}`, or `{type: 'error', message}`.
+   - `ws://host/terminals/:cardId/ws?projectId=:projectId` – bidirectional terminal I/O.
+   - Client → Server: `{type: 'data', data: string}` or `{type: 'resize', cols, rows}`.
+   - Server → Client: `{type: 'data', data: string}`, `{type: 'exit', code}`, or `{type: 'error', message}`.
 
 For realtime message shapes and WebSocket usage, see `core/realtime-and-websockets.md`.
