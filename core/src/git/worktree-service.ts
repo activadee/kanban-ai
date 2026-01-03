@@ -211,8 +211,7 @@ export function isPushConflictError(error: Error): boolean {
 }
 
 export async function pullRebaseAtPath(
-    worktreePath: string,
-    options?: { projectId?: string; attemptId?: string }
+    worktreePath: string
 ): Promise<{
     success: boolean
     hasConflicts: boolean
@@ -239,16 +238,17 @@ export async function pullRebaseAtPath(
         if (hasConflicts) {
             try {
                 await g.raw(['rebase', '--abort'])
+                return {
+                    success: false,
+                    hasConflicts: true,
+                    message: 'Rebase has conflicts and was aborted',
+                }
             } catch (abortError) {
-                throw new Error(
-                    `Failed to abort rebase after conflicts detected. Repository may be in an inconsistent state. ` +
-                    `Manual intervention required: ${(abortError as Error).message}`
-                )
-            }
-            return {
-                success: false,
-                hasConflicts: true,
-                message: 'Rebase has conflicts and was aborted',
+                return {
+                    success: false,
+                    hasConflicts: true,
+                    message: `Failed to abort rebase after conflicts detected. Repository may be in an inconsistent state. Manual intervention required: ${(abortError as Error).message}`,
+                }
             }
         }
         

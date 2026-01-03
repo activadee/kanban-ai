@@ -191,7 +191,7 @@ export async function performAutoCommit(params: AutoCommitParams) {
                     ts: new Date().toISOString(),
                 })
                 
-                const rebaseResult = await pullRebaseAtPath(worktreePath, {projectId: boardId, attemptId})
+                const rebaseResult = await pullRebaseAtPath(worktreePath)
                 
                 if (rebaseResult.success) {
                     const rebaseSuccessTs = new Date()
@@ -268,18 +268,18 @@ export async function performAutoCommit(params: AutoCommitParams) {
                     }
                 } else if (rebaseResult.hasConflicts) {
                     const conflictAbortTs = new Date()
-                    const conflictAbortMsg = '[autopush] rebase conflicts detected, aborting rebase'
+                    const conflictAbortMsg = `[autopush] rebase conflicts detected: ${rebaseResult.message}`
                     await insertAttemptLog({
                         id: `log-${crypto.randomUUID()}`,
                         attemptId,
                         ts: conflictAbortTs,
-                        level: 'info',
+                        level: 'warn',
                         message: conflictAbortMsg,
                     })
                     events.publish('attempt.log.appended', {
                         attemptId,
                         boardId,
-                        level: 'info',
+                        level: 'warn',
                         message: conflictAbortMsg,
                         ts: conflictAbortTs.toISOString(),
                     })

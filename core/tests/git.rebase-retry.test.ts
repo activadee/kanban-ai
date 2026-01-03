@@ -86,10 +86,7 @@ describe('git/worktree-service rebase operations', () => {
         git.raw.mockResolvedValue('')
         gitInstances.set('/tmp/work', git)
 
-        const result = await pullRebaseAtPath('/tmp/work', {
-            projectId: 'proj-1',
-            attemptId: 'att-1',
-        })
+        const result = await pullRebaseAtPath('/tmp/work')
 
         expect(result).toEqual({
             success: true,
@@ -117,10 +114,7 @@ describe('git/worktree-service rebase operations', () => {
         })
         gitInstances.set('/tmp/work', git)
 
-        const result = await pullRebaseAtPath('/tmp/work', {
-            projectId: 'proj-1',
-            attemptId: 'att-1',
-        })
+        const result = await pullRebaseAtPath('/tmp/work')
 
         expect(result).toEqual({
             success: false,
@@ -131,7 +125,7 @@ describe('git/worktree-service rebase operations', () => {
         expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
     })
 
-    it('pullRebaseAtPath throws when rebase abort fails', async () => {
+    it('pullRebaseAtPath returns error result when rebase abort fails', async () => {
         const {pullRebaseAtPath} = await import('../src/git/worktree-service')
 
         const git = createGitMock('/tmp/work')
@@ -149,9 +143,12 @@ describe('git/worktree-service rebase operations', () => {
         })
         gitInstances.set('/tmp/work', git)
 
-        await expect(pullRebaseAtPath('/tmp/work')).rejects.toThrow(
-            /Failed to abort rebase after conflicts detected.*Manual intervention required/
-        )
+        const result = await pullRebaseAtPath('/tmp/work')
+
+        expect(result.success).toBe(false)
+        expect(result.hasConflicts).toBe(true)
+        expect(result.message).toContain('Failed to abort rebase after conflicts detected')
+        expect(result.message).toContain('Manual intervention required')
         expect(git.raw).toHaveBeenCalledWith(['pull', '--rebase'])
         expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
     })
