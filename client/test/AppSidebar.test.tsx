@@ -402,5 +402,3 @@ describe('useLocalStorage Hook', () => {
         localStorage.clear()
     })
 })
-
-

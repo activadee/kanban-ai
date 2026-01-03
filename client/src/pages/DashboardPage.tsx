@@ -10,7 +10,6 @@ import {
     useDashboardStream,
 } from '@/hooks'
 import {deriveDashboardKpiMetrics} from '@/hooks'
-
 import {LiveAgentActivityPanel} from '@/pages/dashboard/LiveAgentActivityPanel'
 import {InboxPanel} from '@/pages/dashboard/InboxPanel'
 import {useRelativeTimeFormatter} from '@/hooks'
