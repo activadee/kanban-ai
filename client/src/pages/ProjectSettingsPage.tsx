@@ -26,6 +26,7 @@ import {BranchSettingsSection} from '@/components/projects/ProjectSettingsPanel/
 import {ScriptsSection} from '@/components/projects/ProjectSettingsPanel/sections/ScriptsSection'
 import {AgentDefaultsSection} from '@/components/projects/ProjectSettingsPanel/sections/AgentDefaultsSection'
 import {InlineAgentSection} from '@/components/projects/ProjectSettingsPanel/sections/InlineAgentSection'
+import {PromptsSection} from '@/components/projects/ProjectSettingsPanel/sections/PromptsSection'
 import {GithubIssueSyncSection} from '@/components/projects/ProjectSettingsPanel/sections/GithubIssueSyncSection'
 import {TicketSettingsSection} from '@/components/projects/ProjectSettingsPanel/sections/TicketSettingsSection'
 
@@ -303,6 +304,14 @@ export function ProjectSettingsPage() {
                                 inlineAgentProfileMapping={form.inlineAgentProfileMapping}
                                 agents={agents}
                                 profiles={profiles}
+                                onChange={(patch) => updateForm(patch)}
+                            />
+                        </SettingsCard>
+
+                        <SettingsCard>
+                            <PromptsSection
+                                enhancePrompt={form.enhancePrompt}
+                                prSummaryPrompt={form.prSummaryPrompt}
                                 onChange={(patch) => updateForm(patch)}
                             />
                         </SettingsCard>
