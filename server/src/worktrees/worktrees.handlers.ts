@@ -197,15 +197,21 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
         }
 
         const worktreePath = decodeURIComponent(encodedPath)
+        
+        const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
+        const preliminaryPath = resolve(worktreePath)
+        if (preliminaryPath === expectedRoot) {
+            return problemJson(c, {status: 400, detail: 'Cannot delete root directory'})
+        }
+        
         const validatedPath = await validateWorktreePath(worktreePath)
         
         if (!validatedPath) {
             return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
         }
         
-        const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
-        if (!isContainedWithin(validatedPath, expectedRoot) || validatedPath === expectedRoot) {
-            return problemJson(c, {status: 400, detail: 'Cannot delete root directory'})
+        if (!isContainedWithin(validatedPath, expectedRoot)) {
+            return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
         }
 
         const result = await deleteOrphanedWorktree(worktreePath, project.repositoryPath, project.name)

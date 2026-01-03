@@ -453,8 +453,16 @@ export async function deleteOrphanedWorktree(
             return {success: false, message: 'Not a valid git worktree'}
         }
 
-        await rm(validatedPath, {recursive: true, force: false})
-        return {success: true, message: 'Orphaned directory removed'}
+        try {
+            await rm(validatedPath, {recursive: true, force: false})
+            return {success: true, message: 'Orphaned directory removed'}
+        } catch (rmErr) {
+            const code = (rmErr as any)?.code
+            if (code === 'ENOENT') {
+                return {success: true, message: 'Directory already removed'}
+            }
+            throw rmErr
+        }
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove orphaned worktree'
         const errorDetails = err instanceof Error 

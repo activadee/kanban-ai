@@ -75,6 +75,10 @@ export function validateGitArgs(args: string[]): void {
                     throw new Error(`Dangerous pattern in flag value: ${value}`)
                 }
             }
+        } else {
+            if (!config.allowedFlags.includes(arg)) {
+                throw new Error(`Git argument '${arg}' is not allowed for command '${command}'`)
+            }
         }
     }
 }

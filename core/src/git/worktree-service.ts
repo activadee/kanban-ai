@@ -242,10 +242,11 @@ export async function removeWorktreeAtPath(repoPath: string, worktreePath: strin
     if (!isAbsolute(worktreePath)) {
         throw new Error('Invalid worktree path: must be absolute')
     }
-    const normalized = resolve(worktreePath)
-    if (normalized.includes('..')) {
+    // Check for path traversal BEFORE normalizing with resolve()
+    if (worktreePath.includes('..')) {
         throw new Error('Invalid worktree path: path traversal detected')
     }
+    const normalized = resolve(worktreePath)
     
     const g = simpleGit({baseDir: repoPath})
     await g.raw(['worktree', 'remove', '--force', normalized])
