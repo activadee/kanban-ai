@@ -93,3 +93,14 @@ export async function fetchCardImages(boardId: string, cardId: string): Promise<
     const data = await parseApiResponse<{ images: MessageImage[] }>(res)
     return data.images
 }
+
+export async function createCardGithubIssue(
+    boardId: string,
+    cardId: string,
+): Promise<{ issueNumber: number; url: string }> {
+    const res = await fetch(`${SERVER_URL}/boards/${boardId}/cards/${cardId}/github/issue`, {
+        method: 'POST',
+        headers: jsonHeaders,
+    })
+    return parseApiResponse<{ issueNumber: number; url: string }>(res)
+}

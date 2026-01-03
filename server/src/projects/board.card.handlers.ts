@@ -336,3 +336,73 @@ export const getCardImagesHandlers = createHandlers(
         }
     },
 )
+
+export const createCardGithubIssueHandlers = createHandlers(
+    zValidator('param', cardIdParam),
+    async (c) => {
+        const {boardId, project} = c.get('boardContext')!
+        const {cardId} = c.req.valid('param')
+
+        const card = await getCardById(cardId)
+        if (!card) return problemJson(c, {status: 404, detail: 'Card not found'})
+        let cardBoardId = card.boardId ?? null
+        if (!cardBoardId) {
+            const column = await getColumnById(card.columnId)
+            cardBoardId = column?.boardId ?? null
+        }
+        if (cardBoardId !== boardId) {
+            return problemJson(c, {
+                status: 400,
+                detail: 'Card does not belong to this board',
+            })
+        }
+
+        const toUserGithubError = (error: unknown): string => {
+            const message = error instanceof Error ? error.message : String(error ?? '')
+            const lower = message.toLowerCase()
+            if (lower.includes('not connected') || lower.includes('token')) {
+                return 'GitHub is not connected. Connect GitHub and try again.'
+            }
+            if (lower.includes('origin') || lower.includes('github repo') || lower.includes('unsupported remote')) {
+                return 'Project repository is not a GitHub repo or has no origin remote.'
+            }
+            if (lower.includes('persist') || lower.includes('mapping')) {
+                return 'GitHub issue was created, but KanbanAI couldn\'t link it. Please re‑sync later.'
+            }
+            return 'Failed to create GitHub issue. Check connection and permissions.'
+        }
+
+        try {
+            const settings = await projectsService.getSettings(project.id)
+            if (!settings.githubIssueAutoCreateEnabled) {
+                return problemJson(c, {
+                    status: 400,
+                    detail: 'GitHub issue creation is disabled for this project.',
+                })
+            }
+
+            const result = await createGithubIssueForCard({
+                boardId,
+                cardId,
+                repositoryPath: project.repositoryPath,
+                title: card.title,
+                description: card.description ?? null,
+                ticketKey: card.ticketKey ?? null,
+            })
+
+            return c.json({issueNumber: result.issueNumber, url: result.url}, 201)
+        } catch (error) {
+            const errorMessage = toUserGithubError(error)
+            log.warn('board:cards', 'GitHub issue create failed', {
+                err: error,
+                boardId,
+                projectId: project.id,
+                cardId,
+            })
+            return problemJson(c, {
+                status: 502,
+                detail: errorMessage,
+            })
+        }
+    },
+)

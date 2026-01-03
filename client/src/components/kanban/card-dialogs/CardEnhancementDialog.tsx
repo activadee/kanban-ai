@@ -8,7 +8,11 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import {Button} from '@/components/ui/button'
+import {Checkbox} from '@/components/ui/checkbox'
+import {Label} from '@/components/ui/label'
 import {Sparkles} from 'lucide-react'
+import {useGithubAuthStatus} from '@/hooks/github'
+import {useProjectGithubOrigin, useProjectSettings} from '@/hooks/projects'
 
 type TicketSnapshot = {
     title: string
@@ -20,7 +24,9 @@ type CardEnhancementDialogProps = {
     onOpenChange: (open: boolean) => void
     current: TicketSnapshot
     enhanced: TicketSnapshot
-    onAccept: () => Promise<void> | void
+    projectId: string
+    boardId: string
+    onAccept: (createGithubIssue?: boolean) => Promise<void> | void
     onReject: () => Promise<void> | void
 }
 
@@ -29,16 +35,29 @@ export function CardEnhancementDialog({
                                           onOpenChange,
                                           current,
                                           enhanced,
+                                          projectId,
+                                          boardId: _boardId,
                                           onAccept,
                                           onReject,
                                       }: CardEnhancementDialogProps) {
     const [pending, setPending] = useState(false)
+    const [createGithubIssue, setCreateGithubIssue] = useState(false)
+
+    const githubCheckQuery = useGithubAuthStatus({enabled: open})
+    const originQuery = useProjectGithubOrigin(projectId, {enabled: open && Boolean(projectId)})
+    const settingsQuery = useProjectSettings(projectId, {enabled: open && Boolean(projectId)})
+
+    const hasGithubConnection = githubCheckQuery.data?.status === 'valid'
+    const origin = originQuery.data
+    const hasOrigin = Boolean(origin?.owner && origin?.repo)
+    const autoCreateEnabled = Boolean(settingsQuery.data?.githubIssueAutoCreateEnabled)
+    const canCreateGithubIssue = autoCreateEnabled && hasGithubConnection && hasOrigin
 
     const handleAccept = async () => {
         if (pending) return
         setPending(true)
         try {
-            await onAccept()
+            await onAccept(createGithubIssue && canCreateGithubIssue ? true : undefined)
         } finally {
             setPending(false)
         }
@@ -85,6 +104,29 @@ export function CardEnhancementDialog({
                         </div>
                     </div>
                 </div>
+                <div className="mt-4 space-y-2">
+                    <div className="flex items-start gap-3">
+                        <Checkbox
+                            id="create-github-issue-enhancement"
+                            checked={createGithubIssue}
+                            disabled={!canCreateGithubIssue || pending}
+                            onCheckedChange={(checked) => setCreateGithubIssue(checked === true)}
+                        />
+                        <div className="space-y-1">
+                            <Label htmlFor="create-github-issue-enhancement">Create GitHub Issue</Label>
+                            <p className="text-xs text-muted-foreground">
+                                {origin?.owner && origin?.repo
+                                    ? `Creates an issue in ${origin.owner}/${origin.repo} when accepting this enhancement.`
+                                    : 'Creates an issue in the project\'s GitHub repository when accepting this enhancement.'}
+                            </p>
+                            {!canCreateGithubIssue ? (
+                                <p className="text-xs text-muted-foreground">
+                                    Enable GitHub Issue Creation in project settings and ensure GitHub is connected.
+                                </p>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
                 <DialogFooter className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
                     <Button
                         type="button"
@@ -107,7 +149,7 @@ export function CardEnhancementDialog({
                         onClick={handleAccept}
                         disabled={pending}
                     >
-                        Accept
+                        {pending && createGithubIssue && canCreateGithubIssue ? 'Creating GitHub issue…' : 'Accept'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

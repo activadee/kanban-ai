@@ -28,6 +28,7 @@ import {
 } from "@/hooks";
 import type { CardEnhancementStatus } from "@/hooks/tickets";
 import type { MoveCardResponse } from "@/api/board";
+import { createCardGithubIssue } from "@/api/board";
 import type { BoardState } from "shared";
 import type { AttemptStatus } from "shared";
 import { boardKeys } from "@/hooks/board";
@@ -543,6 +544,8 @@ export function ProjectBoardPage() {
                 onOpenChange={(open) => {
                     if (!open) setEnhancementDialogCardId(null);
                 }}
+                projectId={projectId}
+                boardId={boardId}
                 current={{
                     title:
                         (enhancementDialogCardId &&
@@ -566,7 +569,7 @@ export function ProjectBoardPage() {
                                 ?.description) ||
                         "",
                 }}
-                onAccept={async () => {
+                onAccept={async (createGithubIssue) => {
                     if (!enhancementDialogCardId) return;
                     const suggestion =
                         enhancements[enhancementDialogCardId]?.suggestion;
@@ -581,6 +584,24 @@ export function ProjectBoardPage() {
                                 isEnhanced: true,
                             },
                         });
+
+                        if (createGithubIssue === true) {
+                            try {
+                                await createCardGithubIssue(boardId, enhancementDialogCardId);
+                            } catch (githubErr) {
+                                console.error("GitHub issue creation failed", githubErr);
+                                const problem = describeApiError(
+                                    githubErr,
+                                    "Enhancement applied, but GitHub issue creation failed",
+                                );
+                                toast({
+                                    title: problem.title,
+                                    description: problem.description,
+                                    variant: "destructive",
+                                });
+                            }
+                        }
+
                         clearEnhancement(enhancementDialogCardId);
                         setEnhancementDialogCardId(null);
                     } catch (err) {
