@@ -661,7 +661,7 @@ export function WorktreesPage() {
             }
 
             if (wasForced) {
-                description = '⚠️ WARNING: All uncommitted and unpushed changes are permanently lost. The ticket progress has been destroyed. ' + description
+                description = '⚠️ Worktree force deleted. Any uncommitted changes and unpushed commits are permanently lost. ' + description
             }
 
             toast({

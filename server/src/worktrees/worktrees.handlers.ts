@@ -1,8 +1,8 @@
 import {zValidator} from '@hono/zod-validator'
-import {attemptsRepo, projectsRepo} from 'core'
+import {attemptsRepo, projectsRepo, removeWorktreeAtPath} from 'core'
 import {problemJson} from '../http/problem'
 import {createHandlers} from '../lib/factory'
-import {removeWorktree} from '../fs/worktree-runner'
+import {log} from '../log'
 import {
     projectIdParam,
     worktreeIdParam,
@@ -63,7 +63,7 @@ async function createServiceDeps(projectId: string): Promise<WorktreeServiceDeps
             return column?.title ?? null
         },
         async removeWorktreeFromRepo(repoPath: string, worktreePath: string) {
-            await removeWorktree(repoPath, worktreePath)
+            await removeWorktreeAtPath(repoPath, worktreePath)
         },
     }
 }
@@ -154,7 +154,14 @@ export const deleteWorktreeHandlers = createHandlers(
         }
 
         if (!diskOnly) {
-            await attemptsRepo.updateAttempt(id, {worktreePath: null})
+            try {
+                await attemptsRepo.updateAttempt(id, {worktreePath: null})
+            } catch (err) {
+                log.warn('worktrees:delete', 'Failed to update database after disk deletion', {
+                    attemptId: id,
+                    err,
+                })
+            }
         }
 
         return c.json({

@@ -14,11 +14,11 @@ import type {
 } from 'shared'
 import {getProjectWorktreeFolder} from '../fs/paths'
 import {log} from '../log'
-import {git} from 'core'
+import {git, removeWorktreeAtPath} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
     return new Promise((resolve, reject) => {
-        const child = spawn('git', args, {cwd})
+        const child = spawn('git', args, {cwd, shell: false})
         let stdout = ''
         let stderr = ''
         child.stdout?.on('data', (d) => (stdout += d))
@@ -26,18 +26,30 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
         child.on('error', reject)
         child.on('exit', (code) => {
             if (code === 0) resolve(stdout.trim())
-            else reject(new Error(stderr || `git ${args.join(' ')} exited ${code}`))
+            else {
+                const errorMsg = stderr.trim() || `git ${args.join(' ')} exited with code ${code}`
+                const fullMsg = stdout.trim() ? `${errorMsg}. stdout: ${stdout.trim()}` : errorMsg
+                reject(new Error(fullMsg))
+            }
         })
     })
 }
 
 async function getDirectorySize(dirPath: string): Promise<number> {
     return new Promise((resolve) => {
-        const child = spawn('du', ['-sb', dirPath])
+        const child = spawn('du', ['-sb', dirPath], {shell: false})
         let stdout = ''
+        const timeout = setTimeout(() => {
+            child.kill()
+            resolve(0)
+        }, 30000)
         child.stdout?.on('data', (d) => (stdout += d))
-        child.on('error', () => resolve(0))
+        child.on('error', () => {
+            clearTimeout(timeout)
+            resolve(0)
+        })
         child.on('exit', (code) => {
+            clearTimeout(timeout)
             if (code === 0) {
                 const parts = stdout.split('\t')
                 const size = parseInt(parts[0] ?? '0', 10)
@@ -92,9 +104,9 @@ function determineWorktreeStatus(
     existsOnDisk: boolean,
 ): WorktreeStatus {
     if (!existsOnDisk) return 'stale'
-    const col = (columnTitle || '').trim().toLowerCase()
-    if (col === 'done') return 'active'
     if (attemptStatus === 'running') return 'locked'
+    // All worktrees that exist on disk and aren't running are 'active'
+    // (regardless of column - they're available for use/cleanup)
     return 'active'
 }
 
@@ -198,6 +210,8 @@ async function findOrphanedWorktrees(
 
             if (trackedPaths.has(fullPath)) continue
 
+            // Git worktrees have a .git file (not directory) pointing to the main repo
+            // existsSync() works for both files and directories, so this correctly detects worktrees
             const isGitWorktree = existsSync(join(fullPath, '.git'))
             if (!isGitWorktree) continue
 
@@ -229,14 +243,14 @@ function computeSummary(
     orphaned: OrphanedWorktree[],
     stale: StaleWorktree[],
 ): WorktreesSummary {
-    const activeCount = tracked.filter((w) => w.status === 'active' || w.status === 'locked').length
+    const runningWorktreesCount = tracked.filter((w) => w.status === 'locked').length
     const totalDiskUsage =
         tracked.reduce((sum, w) => sum + (w.diskSizeBytes ?? 0), 0) +
         orphaned.reduce((sum, w) => sum + w.diskSizeBytes, 0)
 
     return {
         tracked: tracked.length,
-        active: activeCount,
+        active: runningWorktreesCount,
         orphaned: orphaned.length,
         stale: stale.length,
         totalDiskUsage,
@@ -340,9 +354,14 @@ export async function deleteOrphanedWorktree(
     try {
         if (repoPath) {
             try {
-                await runGitCommand(['worktree', 'remove', '--force', worktreePath], repoPath)
+                await removeWorktreeAtPath(repoPath, worktreePath)
                 return {success: true, message: 'Orphaned worktree removed via git'}
-            } catch {}
+            } catch (gitErr) {
+                log.warn('worktrees:delete-orphaned', 'Git worktree remove failed, falling back to rm', {
+                    path: worktreePath,
+                    err: gitErr,
+                })
+            }
         }
 
         await rm(worktreePath, {recursive: true, force: true})

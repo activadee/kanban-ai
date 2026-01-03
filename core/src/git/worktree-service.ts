@@ -236,3 +236,8 @@ export async function mergeBranchIntoBaseForProject(
     return true
 }
 
+export async function removeWorktreeAtPath(repoPath: string, worktreePath: string): Promise<void> {
+    const g = simpleGit({baseDir: repoPath})
+    await g.raw(['worktree', 'remove', '--force', worktreePath])
+}
+
