@@ -231,8 +231,15 @@ export async function performAutoCommit(params: AutoCommitParams) {
                                 level: 'warn',
                                 message: '[autopush] aborted in-progress rebase after unexpected error',
                             })
-                        } catch {
-                            // Rebase abort failed, ignore - repo might not be in rebase state
+                        } catch (abortCleanupError) {
+                            const abortFailTs = new Date()
+                            await insertAttemptLog({
+                                id: `log-${crypto.randomUUID()}`,
+                                attemptId,
+                                ts: abortFailTs,
+                                level: 'warn',
+                                message: `[autopush] cleanup: rebase abort failed (repo might not be in rebase state): ${(abortCleanupError as Error).message}`,
+                            })
                         }
                     } catch (cleanupError) {
                         const cleanupTs = new Date()

@@ -147,6 +147,7 @@ describe('git/worktree-service rebase operations', () => {
             created: [],
             deleted: [],
             renamed: [],
+            not_added: [],
         })
         gitInstances.set('/tmp/work', git)
 
@@ -184,6 +185,7 @@ describe('git/worktree-service rebase operations', () => {
             created: [],
             deleted: [],
             renamed: [],
+            not_added: [],
         })
         gitInstances.set('/tmp/work', git)
 

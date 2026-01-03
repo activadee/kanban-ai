@@ -210,6 +210,24 @@ export function isPushConflictError(error: Error): boolean {
     return conflictPatterns.some(pattern => pattern.test(errorMessage))
 }
 
+/**
+ * Attempts to pull with rebase in the specified worktree.
+ * 
+ * ERROR HANDLING CONTRACT:
+ * - This function NEVER throws - all errors are returned as result objects
+ * - Returns {success: true} when rebase completes successfully
+ * - Returns {success: false, hasConflicts: true} when conflicts are detected
+ * - Returns {success: false, hasConflicts: false} for other failures (network, etc.)
+ * - Automatically attempts to abort rebase on conflicts
+ * - If abort fails, attempts reset --hard + clean -fd recovery
+ * 
+ * Callers should:
+ * - Check result.success to determine if rebase succeeded
+ * - Check result.hasConflicts to distinguish conflict errors from other errors
+ * - Read result.message for detailed error information
+ * - NOT wrap this function in try-catch for expected git errors
+ * - Only wrap in try-catch to handle truly unexpected system failures
+ */
 export async function pullRebaseAtPath(
     worktreePath: string
 ): Promise<{
@@ -255,13 +273,23 @@ export async function pullRebaseAtPath(
                                    !status.modified.length && 
                                    !status.created.length && 
                                    !status.deleted.length &&
-                                   !status.renamed.length
+                                   !status.renamed.length &&
+                                   !status.not_added.length
                     
                     if (!isClean) {
+                        const details = [
+                            status.modified.length && `${status.modified.length} modified`,
+                            status.created.length && `${status.created.length} created`,
+                            status.deleted.length && `${status.deleted.length} deleted`,
+                            status.renamed.length && `${status.renamed.length} renamed`,
+                            status.not_added.length && `${status.not_added.length} untracked`,
+                            status.conflicted.length && `${status.conflicted.length} conflicted`,
+                        ].filter(Boolean).join(', ')
+                        
                         return {
                             success: false,
                             hasConflicts: true,
-                            message: `Reset completed but repository still has uncommitted changes. Manual intervention required. Original error: ${(abortError as Error).message}`,
+                            message: `Reset completed but repository still has uncommitted changes: ${details}. Manual intervention required. Original error: ${(abortError as Error).message}`,
                         }
                     }
                     
