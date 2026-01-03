@@ -241,6 +241,13 @@ export async function performAutoCommit(params: AutoCommitParams) {
                             message: retryErrorMsg,
                             ts: retryErrorTs.toISOString(),
                         })
+                        events.publish('git.push.failed', {
+                            projectId: boardId,
+                            attemptId,
+                            reason: 'retry_failed_after_rebase',
+                            error: (retryError as Error).message,
+                            ts: new Date().toISOString(),
+                        })
                     }
                 } else if (rebaseResult.hasConflicts) {
                     const conflictAbortTs = new Date()

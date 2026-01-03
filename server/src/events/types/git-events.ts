@@ -109,6 +109,14 @@ export interface GitPushRetriedEvent {
     ts: string
 }
 
+export interface GitPushFailedEvent {
+    projectId: string
+    attemptId?: string
+    reason: string
+    error: string
+    ts: string
+}
+
 export type GitEventMap = {
     'worktree.created': WorktreeCreatedEvent
     'worktree.removed': WorktreeRemovedEvent
@@ -120,6 +128,7 @@ export type GitEventMap = {
     'git.rebase.completed': GitRebaseCompletedEvent
     'git.rebase.aborted': GitRebaseAbortedEvent
     'git.push.retried': GitPushRetriedEvent
+    'git.push.failed': GitPushFailedEvent
     'github.connected': GithubConnectedEvent
     'github.disconnected': GithubDisconnectedEvent
     'github.pr.created': GithubPrCreatedEvent

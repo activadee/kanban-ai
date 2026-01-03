@@ -206,7 +206,7 @@ export function isPushConflictError(error: Error): boolean {
         /fetch first/i,
         /\[rejected\]/i,
     ]
-    const errorMessage = error.message + ((error as any).stderr || '')
+    const errorMessage = error.message + ((error as any).stderr ?? '')
     return conflictPatterns.some(pattern => pattern.test(errorMessage))
 }
 
@@ -227,7 +227,7 @@ export async function pullRebaseAtPath(
             message: 'Rebase completed successfully',
         }
     } catch (error) {
-        const errorMessage = (error as Error).message + ((error as any).stderr || '')
+        const errorMessage = (error as Error).message + ((error as any).stderr ?? '')
         
         const conflictPatterns = [
             /conflict/i,
