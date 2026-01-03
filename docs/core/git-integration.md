@@ -58,11 +58,37 @@ emits `git.*` events so the UI and WebSocket layer can react to changes without 
 ## Auto-commit and automation
 
 - Auto-commit is driven by Git listeners reacting to Attempts:
-  - On `attempt.completed` with status `succeeded`, the listener checks project settings:
-    - If `autoCommitOnFinish` is enabled, it publishes `attempt.autocommit.requested` with worktree metadata.
-  - A second listener handles `attempt.autocommit.requested` by calling `performAutoCommit`, which:
-    - Builds a commit from the latest Attempt output.
-    - Optionally pushes the branch when `autoPushOnAutocommit` is enabled.
+   - On `attempt.completed` with status `succeeded`, the listener checks project settings:
+     - If `autoCommitOnFinish` is enabled, it publishes `attempt.autocommit.requested` with worktree metadata.
+   - A second listener handles `attempt.autocommit.requested` by calling `performAutoCommit`, which:
+     - Builds a commit from the latest Attempt output.
+     - Optionally pushes the branch when `autoPushOnAutocommit` is enabled.
 - This behavior is controlled per project via the Repository defaults settings panel and the underlying
   `core/projects/settings` service.
+
+## Worktrees management
+
+KanbanAI provides a dedicated Worktrees management interface to view, sync, and clean up Git worktrees:
+
+- **Worktrees page** (`/projects/:projectId/worktrees`):
+  - Lists all tracked worktrees (created by Attempts) with their status, branch, and disk usage.
+  - Shows orphaned worktrees (found on disk but not tracked in the database).
+  - Shows stale entries (tracked in the database but missing on disk).
+  - Provides a summary of total worktrees, active attempts, and disk usage.
+
+- **Worktree operations**:
+  - **Sync** – Discovers new orphaned and stale worktrees by scanning the filesystem and database.
+  - **Delete tracked worktree** – Remove a worktree from disk and/or database, with options to:
+    - Force delete even if the associated Attempt is still active.
+    - Delete only from disk while keeping the database record.
+    - Delete the local and/or remote Git branch.
+  - **Delete orphaned worktree** – Clean up worktrees found on disk but not tracked in the database.
+  - **Delete stale entry** – Remove database records for worktrees that no longer exist on disk.
+
+- **Worktree status**:
+  - `active` – Attempt is in progress or completed but not yet cleaned up.
+  - `orphaned` – Worktree exists on disk but is not tracked in the database.
+  - `stale` – Database entry exists but the worktree directory is missing from disk.
+  - `locked` – Worktree is locked by another Git operation.
+
 
