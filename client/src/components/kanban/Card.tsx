@@ -8,7 +8,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {Bot, Bookmark, EllipsisVertical, GitPullRequest, Sparkles, Loader2, AlertCircle, Lock} from 'lucide-react'
+import {Bot, Bookmark, EllipsisVertical, GitPullRequest, Sparkles, Loader2, AlertCircle, Lock, CheckCircle2} from 'lucide-react'
 import type {Card as TCard, AttemptStatus} from 'shared'
 import type {CardEnhancementStatus} from '@/hooks/tickets'
 import type {CardLane} from './cardLane'
@@ -67,6 +67,7 @@ export function KanbanCard({
     const isReady = enhancementStatus === 'ready'
     const isFailed = attemptStatus === 'failed'
     const isRunning = attemptStatus === 'running'
+    const isSucceeded = attemptStatus === 'succeeded' && !done
     const showAnimatedBorder = isInProgressLane && isRunning
     const isCardDisabled = disabled || isEnhancing || isFailed
     const showType = card.ticketType !== undefined && card.ticketType !== null
@@ -83,11 +84,12 @@ export function KanbanCard({
         if (selected) states.push('kanban-card--selected')
         if (isFailed) states.push('kanban-card--failed')
         else if (showAnimatedBorder) states.push('kanban-card--in-progress')
+        else if (isSucceeded) states.push('kanban-card--succeeded')
         else if (blocked && !done) states.push('kanban-card--blocked')
         else if (isEnhanced) states.push('kanban-card--enhanced')
         if (done) states.push('kanban-card--done')
         return states.join(' ')
-    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected, showAnimatedBorder])
+    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected, showAnimatedBorder, isSucceeded])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
@@ -98,6 +100,7 @@ export function KanbanCard({
         blocked ||
         isEnhancing ||
         isFailed ||
+        isSucceeded ||
         isReady ||
         Boolean(menuContext)
 
@@ -163,6 +166,12 @@ export function KanbanCard({
                                 <span className="kanban-indicator--failed">
                                     <AlertCircle className="size-2.5" />
                                     Failed
+                                </span>
+                            ) : null}
+                            {isSucceeded ? (
+                                <span className="kanban-indicator--succeeded" aria-label="Attempt succeeded">
+                                    <CheckCircle2 className="size-2.5" />
+                                    Succeeded
                                 </span>
                             ) : null}
                         </div>

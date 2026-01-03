@@ -1,6 +1,5 @@
 import type {AppEventBus} from '../events/bus'
 import {bindTaskEventBus, moveCardToColumnByTitle, createDefaultBoardStructure} from './service'
-import type {AttemptStatus} from 'shared'
 import {log} from '../log'
 
 export function registerTaskListeners(bus: AppEventBus) {
@@ -22,21 +21,6 @@ export function registerTaskListeners(bus: AppEventBus) {
                 err: error,
                 boardId: payload.boardId,
                 cardId: payload.cardId,
-            })
-        }
-    })
-
-    bus.subscribe('attempt.completed', async (payload) => {
-        try {
-            const status = payload.status as AttemptStatus
-            const targetColumn = status === 'succeeded' ? 'Review' : 'In Progress'
-            await moveCardToColumnByTitle(payload.boardId, payload.cardId, targetColumn)
-        } catch (error) {
-            log.error('tasks', 'failed to move card to Review on attempt completion', {
-                err: error,
-                boardId: payload.boardId,
-                cardId: payload.cardId,
-                status: payload.status,
             })
         }
     })
