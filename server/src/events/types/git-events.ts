@@ -111,7 +111,7 @@ export interface GitPushRetriedEvent {
 
 export interface GitPushFailedEvent {
     projectId: string
-    attemptId?: string
+    attemptId: string
     reason: string
     error: string
     ts: string

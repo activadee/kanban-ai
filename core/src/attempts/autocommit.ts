@@ -330,6 +330,13 @@ export async function performAutoCommit(params: AutoCommitParams) {
                     message: errMsg,
                     ts: errorTs.toISOString(),
                 })
+                events.publish('git.push.failed', {
+                    projectId: boardId,
+                    attemptId,
+                    reason: 'non_conflict_error',
+                    error: (pushError as Error).message,
+                    ts: new Date().toISOString(),
+                })
             }
         }
     }

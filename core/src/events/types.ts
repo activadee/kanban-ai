@@ -215,26 +215,26 @@ export interface GitMergeCompletedEvent {
 
 export interface GitRebaseStartedEvent {
     projectId: string
-    attemptId?: string
+    attemptId: string
     ts: string
 }
 
 export interface GitRebaseCompletedEvent {
     projectId: string
-    attemptId?: string
+    attemptId: string
     ts: string
 }
 
 export interface GitRebaseAbortedEvent {
     projectId: string
-    attemptId?: string
+    attemptId: string
     reason: string
     ts: string
 }
 
 export interface GitPushRetriedEvent {
     projectId: string
-    attemptId?: string
+    attemptId: string
     remote: string
     branch: string
     ts: string
@@ -242,7 +242,7 @@ export interface GitPushRetriedEvent {
 
 export interface GitPushFailedEvent {
     projectId: string
-    attemptId?: string
+    attemptId: string
     reason: string
     error: string
     ts: string
