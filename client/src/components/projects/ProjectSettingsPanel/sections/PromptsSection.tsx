@@ -11,6 +11,8 @@ type PromptsSectionProps = {
     }>) => void;
 }
 
+const MAX_PROMPT_LENGTH = 4000
+
 const ENHANCE_PLACEHOLDER = `You are a ticket generator for a software project.
 
 Analyze the repository to understand:
@@ -48,11 +50,16 @@ export function PromptsSection({
 
             <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-muted-foreground" />
-                        <Label htmlFor="enhance-prompt" className="text-sm font-medium">
-                            Ticket Enhancement Prompt
-                        </Label>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-muted-foreground" />
+                            <Label htmlFor="enhance-prompt" className="text-sm font-medium">
+                                Ticket Enhancement Prompt
+                            </Label>
+                        </div>
+                        <span className={`text-xs ${enhancePrompt.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                            {enhancePrompt.length}/{MAX_PROMPT_LENGTH}
+                        </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
                         Custom system prompt for enhancing tickets. Leave empty to use the default.
@@ -62,16 +69,22 @@ export function PromptsSection({
                         placeholder={ENHANCE_PLACEHOLDER}
                         className="min-h-[200px] resize-y font-mono text-xs leading-relaxed"
                         value={enhancePrompt}
+                        maxLength={MAX_PROMPT_LENGTH}
                         onChange={(e) => onChange({enhancePrompt: e.target.value})}
                     />
                 </div>
 
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <Label htmlFor="pr-summary-prompt" className="text-sm font-medium">
-                            PR Summary Prompt
-                        </Label>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <Label htmlFor="pr-summary-prompt" className="text-sm font-medium">
+                                PR Summary Prompt
+                            </Label>
+                        </div>
+                        <span className={`text-xs ${prSummaryPrompt.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                            {prSummaryPrompt.length}/{MAX_PROMPT_LENGTH}
+                        </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
                         Custom system prompt for generating PR summaries. Leave empty to use the default.
@@ -81,6 +94,7 @@ export function PromptsSection({
                         placeholder={PR_SUMMARY_PLACEHOLDER}
                         className="min-h-[200px] resize-y font-mono text-xs leading-relaxed"
                         value={prSummaryPrompt}
+                        maxLength={MAX_PROMPT_LENGTH}
                         onChange={(e) => onChange({prSummaryPrompt: e.target.value})}
                     />
                 </div>

@@ -107,7 +107,8 @@ export function buildTicketEnhancePrompt(
     // If a custom prompt is provided, use it as the base instead of the default
     if (input.customPrompt) {
         const customBase = input.customPrompt.trim()
-        const fullPrompt = customBase + inputContext + outputFormat
+        // Ensure proper separation between sections with double newlines
+        const fullPrompt = customBase + '\n' + inputContext + '\n' + outputFormat
         return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
     }
 
@@ -203,7 +204,8 @@ export function buildPrSummaryPrompt(
     // If a custom prompt is provided, use it as the base instead of the default
     if (input.customPrompt) {
         const customBase = input.customPrompt.trim()
-        const fullPrompt = customBase + contextBlock + outputFormat
+        // Ensure proper separation between sections with double newlines
+        const fullPrompt = customBase + '\n' + contextBlock + '\n' + outputFormat
         return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
     }
 
