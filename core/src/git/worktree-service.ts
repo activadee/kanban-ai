@@ -275,8 +275,11 @@ export async function pullRebaseAtPath(
                     await g.raw(['clean', '-fd'])
                     
                     const status = await g.status()
-                    const hasStagedChanges = status.staged?.length > 0 || 
-                                            status.files.some(f => f.index && f.index.trim() !== ' ' && f.index.trim() !== '?')
+                    const stagedCount = status.files.filter(f => {
+                        const indexFlag = f.index?.trim()
+                        return indexFlag && indexFlag !== ' ' && indexFlag !== '?'
+                    }).length
+                    const hasStagedChanges = stagedCount > 0
                     const isClean = !status.conflicted.length && 
                                    !status.modified.length && 
                                    !status.created.length && 
@@ -286,7 +289,6 @@ export async function pullRebaseAtPath(
                                    !hasStagedChanges
                     
                     if (!isClean) {
-                        const stagedCount = status.staged?.length || status.files.filter(f => f.index && f.index.trim() !== ' ' && f.index.trim() !== '?').length
                         const details = [
                             status.modified.length && `${status.modified.length} modified`,
                             status.created.length && `${status.created.length} created`,

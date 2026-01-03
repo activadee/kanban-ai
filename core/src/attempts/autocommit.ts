@@ -266,6 +266,7 @@ export async function performAutoCommit(params: AutoCommitParams) {
                         ts: new Date().toISOString(),
                     })
                     
+                    await new Promise(resolve => setTimeout(resolve, 100))
                     const postRebaseStatus = await git.status()
                     const retryBranch = postRebaseStatus.current || targetBranch
                     const retryRemote = preferredRemote?.trim() || (postRebaseStatus.tracking?.split('/')?.[0] ?? targetRemote)
