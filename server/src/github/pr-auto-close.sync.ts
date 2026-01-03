@@ -1,7 +1,7 @@
 import * as core from "core";
 import type {AppEventBus} from "../events/bus";
 import {getPullRequest as getPullRequestDefault} from "./pr";
-import {getIssue} from "./api";
+import {getIssue as getIssueDefault} from "./api";
 import {log} from "../log";
 
 const DEFAULT_TICK_INTERVAL_SECONDS = 60;
@@ -119,7 +119,7 @@ export async function runGithubPrAutoCloseTick(
     events: AppEventBus,
     deps?: Partial<{
         getPullRequest: typeof getPullRequestDefault;
-        getIssue: typeof getIssue;
+        getIssue: typeof getIssueDefault;
         projectsService: typeof core.projectsService;
         projectsRepo: typeof core.projectsRepo;
         githubRepo: typeof core.githubRepo;
@@ -132,6 +132,7 @@ export async function runGithubPrAutoCloseTick(
     if (tickInProgress) return;
     tickInProgress = true;
     const getPullRequest = deps?.getPullRequest ?? getPullRequestDefault;
+    const getIssue = deps?.getIssue ?? getIssueDefault;
     const services = deps?.projectsService ?? core.projectsService;
     const repo = deps?.projectsRepo ?? core.projectsRepo;
     const ghRepo = deps?.githubRepo ?? core.githubRepo;
@@ -158,12 +159,14 @@ export async function runGithubPrAutoCloseTick(
             const boardId = project.boardId;
             try {
                 const settings = await services.getSettings(projectId);
-                if (
-                    !settingsSync.isGithubPrAutoCloseEnabled(
-                        settings,
-                    )
-                )
+                
+                const prAutoCloseEnabled = settingsSync.isGithubPrAutoCloseEnabled(settings);
+                const issueAutoCloseEnabled = settingsSync.isGithubIssueAutoCloseEnabled?.(settings) ?? false;
+                
+                if (!prAutoCloseEnabled && !issueAutoCloseEnabled) {
                     continue;
+                }
+                
                 if (
                     !settingsSync.isGithubPrAutoCloseDue(
                         settings,
