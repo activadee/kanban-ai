@@ -82,7 +82,7 @@ export function KanbanCard({
             states.push('cursor-grab active:cursor-grabbing')
         }
         if (selected) states.push('kanban-card--selected')
-        // State precedence (highest to lowest): failed > in-progress > succeeded > blocked > enhanced
+        // State precedence (highest to lowest): failed > in-progress > succeeded > blocked
         if (isFailed) states.push('kanban-card--failed')
         else if (showAnimatedBorder) states.push('kanban-card--in-progress')
         else if (isSucceeded) states.push('kanban-card--succeeded')
