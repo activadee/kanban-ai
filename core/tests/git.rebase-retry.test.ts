@@ -148,6 +148,8 @@ describe('git/worktree-service rebase operations', () => {
             deleted: [],
             renamed: [],
             not_added: [],
+            staged: [],
+            files: [],
         })
         gitInstances.set('/tmp/work', git)
 
@@ -186,6 +188,8 @@ describe('git/worktree-service rebase operations', () => {
             deleted: [],
             renamed: [],
             not_added: [],
+            staged: [],
+            files: [],
         })
         gitInstances.set('/tmp/work', git)
 

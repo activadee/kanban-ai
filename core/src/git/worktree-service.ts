@@ -214,7 +214,8 @@ export function isPushConflictError(error: Error): boolean {
  * Attempts to pull with rebase in the specified worktree.
  * 
  * ERROR HANDLING CONTRACT:
- * - This function NEVER throws - all errors are returned as result objects
+ * - This function NEVER throws for expected git errors - all are returned as result objects
+ * - MAY throw for unexpected system failures (out of memory, filesystem errors, etc.)
  * - Returns {success: true} when rebase completes successfully
  * - Returns {success: false, hasConflicts: true} when conflicts are detected
  * - Returns {success: false, hasConflicts: false} for other failures (network, etc.)
@@ -225,8 +226,7 @@ export function isPushConflictError(error: Error): boolean {
  * - Check result.success to determine if rebase succeeded
  * - Check result.hasConflicts to distinguish conflict errors from other errors
  * - Read result.message for detailed error information
- * - NOT wrap this function in try-catch for expected git errors
- * - Only wrap in try-catch to handle truly unexpected system failures
+ * - Wrap in try-catch only to handle unexpected system failures (optional but recommended)
  */
 export async function pullRebaseAtPath(
     worktreePath: string
@@ -269,14 +269,18 @@ export async function pullRebaseAtPath(
                     await g.raw(['clean', '-fd'])
                     
                     const status = await g.status()
+                    const hasStagedChanges = status.staged?.length > 0 || 
+                                            status.files.some(f => f.index && f.index.trim() !== ' ' && f.index.trim() !== '?')
                     const isClean = !status.conflicted.length && 
                                    !status.modified.length && 
                                    !status.created.length && 
                                    !status.deleted.length &&
                                    !status.renamed.length &&
-                                   !status.not_added.length
+                                   !status.not_added.length &&
+                                   !hasStagedChanges
                     
                     if (!isClean) {
+                        const stagedCount = status.staged?.length || status.files.filter(f => f.index && f.index.trim() !== ' ' && f.index.trim() !== '?').length
                         const details = [
                             status.modified.length && `${status.modified.length} modified`,
                             status.created.length && `${status.created.length} created`,
@@ -284,6 +288,7 @@ export async function pullRebaseAtPath(
                             status.renamed.length && `${status.renamed.length} renamed`,
                             status.not_added.length && `${status.not_added.length} untracked`,
                             status.conflicted.length && `${status.conflicted.length} conflicted`,
+                            stagedCount && `${stagedCount} staged`,
                         ].filter(Boolean).join(', ')
                         
                         return {

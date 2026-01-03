@@ -220,35 +220,23 @@ export async function performAutoCommit(params: AutoCommitParams) {
                     })
                     
                     try {
-                        const git = simpleGit({baseDir: worktreePath})
-                        try {
-                            await git.raw(['rebase', '--abort'])
-                            const abortTs = new Date()
-                            await insertAttemptLog({
-                                id: `log-${crypto.randomUUID()}`,
-                                attemptId,
-                                ts: abortTs,
-                                level: 'warn',
-                                message: '[autopush] aborted in-progress rebase after unexpected error',
-                            })
-                        } catch (abortCleanupError) {
-                            const abortFailTs = new Date()
-                            await insertAttemptLog({
-                                id: `log-${crypto.randomUUID()}`,
-                                attemptId,
-                                ts: abortFailTs,
-                                level: 'warn',
-                                message: `[autopush] cleanup: rebase abort failed (repo might not be in rebase state): ${(abortCleanupError as Error).message}`,
-                            })
-                        }
-                    } catch (cleanupError) {
-                        const cleanupTs = new Date()
+                        await git.raw(['rebase', '--abort'])
+                        const abortTs = new Date()
                         await insertAttemptLog({
                             id: `log-${crypto.randomUUID()}`,
                             attemptId,
-                            ts: cleanupTs,
-                            level: 'error',
-                            message: `[autopush] failed to clean up after unexpected error: ${(cleanupError as Error).message}`,
+                            ts: abortTs,
+                            level: 'warn',
+                            message: '[autopush] aborted in-progress rebase after unexpected error',
+                        })
+                    } catch (abortCleanupError) {
+                        const abortFailTs = new Date()
+                        await insertAttemptLog({
+                            id: `log-${crypto.randomUUID()}`,
+                            attemptId,
+                            ts: abortFailTs,
+                            level: 'warn',
+                            message: `[autopush] cleanup: rebase abort failed (repo might not be in rebase state): ${(abortCleanupError as Error).message}`,
                         })
                     }
                     
