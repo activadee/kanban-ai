@@ -675,6 +675,7 @@ export function WorktreesPage() {
             if (error instanceof ApiError && error.status === 409) {
                 if (deleteTarget.type === 'tracked') {
                     setDeleteTarget({...deleteTarget, constraintError: error})
+                    setForceDelete(false)
                 }
                 toast({
                     title: 'Cannot delete worktree',

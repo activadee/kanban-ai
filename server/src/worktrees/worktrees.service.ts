@@ -122,6 +122,13 @@ export async function listWorktreesForProject(
     const worktreesRoot = getProjectWorktreeFolder(project.name)
     const attempts = await deps.listAttemptsWithCards(projectId)
 
+    const uniqueCardIds = [...new Set(attempts.map((a) => a.cardId))]
+    const columnTitlesMap = new Map<string, string | null>()
+    for (const cardId of uniqueCardIds) {
+        const title = await deps.getColumnTitle(cardId)
+        columnTitlesMap.set(cardId, title)
+    }
+
     const trackedPaths = new Set<string>()
     const tracked: TrackedWorktree[] = []
     const stale: StaleWorktree[] = []
@@ -131,7 +138,7 @@ export async function listWorktreesForProject(
 
         trackedPaths.add(attempt.worktreePath)
         const existsOnDisk = existsSync(attempt.worktreePath)
-        const columnTitle = await deps.getColumnTitle(attempt.cardId)
+        const columnTitle = columnTitlesMap.get(attempt.cardId) ?? null
 
         if (!existsOnDisk) {
             stale.push({

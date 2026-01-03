@@ -157,10 +157,16 @@ export const deleteWorktreeHandlers = createHandlers(
             try {
                 await attemptsRepo.updateAttempt(id, {worktreePath: null})
             } catch (err) {
-                log.warn('worktrees:delete', 'Failed to update database after disk deletion', {
+                log.error('worktrees:delete', 'Database update failed after disk deletion', {
                     attemptId: id,
                     err,
                 })
+                return c.json({
+                    success: true,
+                    message: 'Worktree deleted from disk, but database update failed. Run sync to fix.',
+                    deletedPath: attempt.worktreePath,
+                    warning: 'Database may still reference this worktree',
+                }, 200)
             }
         }
 
