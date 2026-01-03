@@ -88,6 +88,10 @@ async function getDirectorySize(dirPath: string): Promise<number> {
                 } else if (entry.isFile()) {
                     const fileStat = await stat(fullPath)
                     totalSize += Number(fileStat.size)
+                    if (totalSize > Number.MAX_SAFE_INTEGER) {
+                        log.warn('worktrees:size', 'Size calculation exceeded safe integer limit', {path: currentPath})
+                        return
+                    }
                 }
             }
         } catch {
@@ -201,7 +205,12 @@ export async function listWorktreesForProject(
                 lastModified = statInfo.mtime.toISOString()
                 diskSizeBytes = await getDirectorySize(attempt.worktreePath)
             } catch (err) {
-                log.debug('worktrees:list', 'Failed to get disk stats', {path: attempt.worktreePath, err})
+                log.debug('worktrees:list', 'Failed to get disk stats', {
+                    path: attempt.worktreePath,
+                    error: err instanceof Error ? err.message : String(err),
+                    code: (err as any)?.code,
+                    err,
+                })
             }
 
             const status = determineWorktreeStatus(attempt.status, columnTitle, existsOnDisk)
@@ -263,10 +272,15 @@ async function findOrphanedWorktrees(
             if (trackedPaths.has(fullPath)) continue
 
             // Git worktrees have a .git file (not a directory) that points to the main repo's worktree metadata
-            // Regular repos have a .git directory, worktrees have a .git file - existsSync returns true for both
+            // Regular repos have a .git directory, worktrees have a .git file
             const gitFilePath = join(fullPath, '.git')
-            const isGitWorktree = existsSync(gitFilePath)
-            if (!isGitWorktree) continue
+            try {
+                await access(gitFilePath)
+                const gitStat = await stat(gitFilePath)
+                if (gitStat.isSymbolicLink()) continue
+            } catch {
+                continue
+            }
 
             try {
                 const statInfo = await stat(fullPath)

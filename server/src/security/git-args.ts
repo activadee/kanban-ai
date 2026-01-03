@@ -17,7 +17,7 @@ const ALLOWED_GIT_COMMANDS: Record<string, GitCommandConfig> = {
         requiresValue: ['--depth'],
     },
     push: {
-        allowedFlags: ['-u', '--force-with-lease', '--set-upstream'],
+        allowedFlags: ['-u', '--force-with-lease', '--set-upstream', '--delete'],
         requiresValue: [],
     },
     status: {

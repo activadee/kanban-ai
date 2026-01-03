@@ -22,7 +22,7 @@ import {
     type WorktreeServiceDeps,
 } from './worktrees.service'
 import {getProjectWorktreeFolder} from '../fs/paths'
-import {isContainedWithin} from '../security/worktree-paths'
+import {isContainedWithin, validateWorktreePath} from '../security/worktree-paths'
 
 async function createServiceDeps(projectId: string): Promise<WorktreeServiceDeps> {
     return {
@@ -197,21 +197,14 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
         }
 
         const worktreePath = decodeURIComponent(encodedPath)
+        const validatedPath = await validateWorktreePath(worktreePath)
         
-        if (encodedPath.includes('..') || worktreePath.includes('..')) {
-            return problemJson(c, {status: 400, detail: 'Invalid path encoding'})
-        }
-        if (!/^[a-zA-Z0-9._/-]+$/.test(worktreePath)) {
-            return problemJson(c, {status: 400, detail: 'Invalid path characters'})
-        }
-
-        const normalized = resolve(worktreePath)
-        const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
-        
-        const relativePath = relative(expectedRoot, normalized)
-        if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
+        if (!validatedPath) {
             return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
         }
+        
+        const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
+        const relativePath = relative(expectedRoot, validatedPath)
         if (relativePath === '' || relativePath === '.') {
             return problemJson(c, {status: 400, detail: 'Cannot delete root directory'})
         }

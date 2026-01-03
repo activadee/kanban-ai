@@ -237,13 +237,18 @@ export async function mergeBranchIntoBaseForProject(
 }
 
 export async function removeWorktreeAtPath(repoPath: string, worktreePath: string): Promise<void> {
-    const {resolve, isAbsolute} = await import('path')
+    const {resolve, isAbsolute, relative, sep} = await import('path')
     
     if (!isAbsolute(worktreePath)) {
         throw new Error('Invalid worktree path: must be absolute')
     }
     const normalized = resolve(worktreePath)
-    if (normalized !== worktreePath || normalized.includes('..')) {
+    if (normalized !== worktreePath) {
+        throw new Error('Invalid worktree path: path traversal detected')
+    }
+    
+    const pathComponents = normalized.split(sep)
+    if (pathComponents.some((c) => c === '..' || c === '.')) {
         throw new Error('Invalid worktree path: path traversal detected')
     }
     
