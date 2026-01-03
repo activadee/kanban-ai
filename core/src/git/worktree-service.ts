@@ -241,7 +241,10 @@ export async function pullRebaseAtPath(
             try {
                 await g.raw(['rebase', '--abort'])
             } catch (abortError) {
-                console.error('Failed to abort rebase:', abortError)
+                throw new Error(
+                    `Failed to abort rebase after conflicts detected. Repository may be in an inconsistent state. ` +
+                    `Manual intervention required: ${(abortError as Error).message}`
+                )
             }
             return {
                 success: false,

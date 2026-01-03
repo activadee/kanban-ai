@@ -131,6 +131,31 @@ describe('git/worktree-service rebase operations', () => {
         expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
     })
 
+    it('pullRebaseAtPath throws when rebase abort fails', async () => {
+        const {pullRebaseAtPath} = await import('../src/git/worktree-service')
+
+        const git = createGitMock('/tmp/work')
+        git.raw.mockImplementation(async (args: string[]) => {
+            if (args[0] === 'pull' && args[1] === '--rebase') {
+                const error = Object.assign(new Error('CONFLICT: content conflict in file.txt'), {
+                    stderr: 'CONFLICT (content): Merge conflict in file.txt',
+                })
+                throw error
+            }
+            if (args[0] === 'rebase' && args[1] === '--abort') {
+                throw new Error('fatal: could not abort rebase')
+            }
+            return ''
+        })
+        gitInstances.set('/tmp/work', git)
+
+        await expect(pullRebaseAtPath('/tmp/work')).rejects.toThrow(
+            /Failed to abort rebase after conflicts detected.*Manual intervention required/
+        )
+        expect(git.raw).toHaveBeenCalledWith(['pull', '--rebase'])
+        expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
+    })
+
     it('pullRebaseAtPath handles non-conflict rebase errors', async () => {
         const {pullRebaseAtPath} = await import('../src/git/worktree-service')
 
