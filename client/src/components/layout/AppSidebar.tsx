@@ -24,6 +24,8 @@ import {NavButton} from './sidebar/NavButton'
 import {GitHubAccountBox} from './sidebar/GitHubAccountBox'
 import {ProjectSelector} from './sidebar/ProjectSelector'
 import {SectionLabel} from './sidebar/SectionLabel'
+import {VersionIndicator} from '@/components/system/VersionIndicator'
+import {useAppVersion} from '@/hooks'
 import {describeApiError} from '@/api/http'
 import {useLocalStorage} from '@/hooks/useLocalStorage'
 import {useKeyboardShortcuts} from '@/hooks/useKeyboardShortcuts'
@@ -49,6 +51,7 @@ export function AppSidebar({
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const isMobile = useIsMobile()
+    const version = useAppVersion()
 
     const [isCollapsed, setIsCollapsed] = useLocalStorage('app-sidebar-collapsed', false)
     const [lastProjectId, setLastProjectId] = useLocalStorage<string | null>('app-last-project-id', null)
@@ -218,6 +221,19 @@ export function AppSidebar({
                             <HelpCircle className="size-5" />
                         </Button>
                     </div>
+
+                    {version.data?.updateAvailable && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="mt-2 size-8"
+                            onClick={toggleSidebar}
+                            title={`v${version.data.currentVersion} - Update available. Click to expand.`}
+                            aria-label={`Version ${version.data.currentVersion}. Update available - click to expand sidebar`}
+                        >
+                            <span className="size-1 animate-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgba(251,191,36,0.5)]" />
+                        </Button>
+                    )}
                 </div>
             ) : (
                 <>
@@ -320,6 +336,10 @@ export function AppSidebar({
                             >
                                 <HelpCircle className="size-4" />
                             </Button>
+                        </div>
+
+                        <div className="flex justify-center pb-2 pt-3">
+                            <VersionIndicator className="text-[11px] tabular-nums text-muted-foreground/60" />
                         </div>
                     </div>
                 </>
