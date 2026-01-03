@@ -191,7 +191,35 @@ export async function performAutoCommit(params: AutoCommitParams) {
                     ts: new Date().toISOString(),
                 })
                 
-                const rebaseResult = await pullRebaseAtPath(worktreePath)
+                let rebaseResult
+                try {
+                    rebaseResult = await pullRebaseAtPath(worktreePath)
+                } catch (rebaseError) {
+                    const rebaseErrorTs = new Date()
+                    const rebaseErrorMsg = `[autopush] unexpected rebase error: ${(rebaseError as Error).message}`
+                    await insertAttemptLog({
+                        id: `log-${crypto.randomUUID()}`,
+                        attemptId,
+                        ts: rebaseErrorTs,
+                        level: 'error',
+                        message: rebaseErrorMsg,
+                    })
+                    events.publish('attempt.log.appended', {
+                        attemptId,
+                        boardId,
+                        level: 'error',
+                        message: rebaseErrorMsg,
+                        ts: rebaseErrorTs.toISOString(),
+                    })
+                    events.publish('git.push.failed', {
+                        projectId: boardId,
+                        attemptId,
+                        reason: 'rebase_exception',
+                        error: (rebaseError as Error).message,
+                        ts: new Date().toISOString(),
+                    })
+                    return
+                }
                 
                 if (rebaseResult.success) {
                     const rebaseSuccessTs = new Date()

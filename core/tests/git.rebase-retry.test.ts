@@ -125,7 +125,7 @@ describe('git/worktree-service rebase operations', () => {
         expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
     })
 
-    it('pullRebaseAtPath returns error result when rebase abort fails', async () => {
+    it('pullRebaseAtPath recovers with reset when abort fails', async () => {
         const {pullRebaseAtPath} = await import('../src/git/worktree-service')
 
         const git = createGitMock('/tmp/work')
@@ -147,10 +147,43 @@ describe('git/worktree-service rebase operations', () => {
 
         expect(result.success).toBe(false)
         expect(result.hasConflicts).toBe(true)
+        expect(result.message).toContain('Rebase abort failed but repository was reset to clean state')
+        expect(git.raw).toHaveBeenCalledWith(['pull', '--rebase'])
+        expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
+        expect(git.raw).toHaveBeenCalledWith(['reset', '--hard', 'HEAD'])
+        expect(git.raw).toHaveBeenCalledWith(['clean', '-fd'])
+    })
+
+    it('pullRebaseAtPath returns error when both abort and reset fail', async () => {
+        const {pullRebaseAtPath} = await import('../src/git/worktree-service')
+
+        const git = createGitMock('/tmp/work')
+        git.raw.mockImplementation(async (args: string[]) => {
+            if (args[0] === 'pull' && args[1] === '--rebase') {
+                const error = Object.assign(new Error('CONFLICT: content conflict in file.txt'), {
+                    stderr: 'CONFLICT (content): Merge conflict in file.txt',
+                })
+                throw error
+            }
+            if (args[0] === 'rebase' && args[1] === '--abort') {
+                throw new Error('fatal: could not abort rebase')
+            }
+            if (args[0] === 'reset') {
+                throw new Error('fatal: could not reset')
+            }
+            return ''
+        })
+        gitInstances.set('/tmp/work', git)
+
+        const result = await pullRebaseAtPath('/tmp/work')
+
+        expect(result.success).toBe(false)
+        expect(result.hasConflicts).toBe(true)
         expect(result.message).toContain('Failed to abort rebase after conflicts detected')
         expect(result.message).toContain('Manual intervention required')
         expect(git.raw).toHaveBeenCalledWith(['pull', '--rebase'])
         expect(git.raw).toHaveBeenCalledWith(['rebase', '--abort'])
+        expect(git.raw).toHaveBeenCalledWith(['reset', '--hard', 'HEAD'])
     })
 
     it('pullRebaseAtPath handles non-conflict rebase errors', async () => {

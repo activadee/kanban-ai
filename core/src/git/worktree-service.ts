@@ -232,6 +232,8 @@ export async function pullRebaseAtPath(
             /conflict/i,
             /could not apply/i,
             /Resolve all conflicts/i,
+            /needs merge/i,
+            /cannot rebase/i,
         ]
         const hasConflicts = conflictPatterns.some(pattern => pattern.test(errorMessage))
         
@@ -244,10 +246,20 @@ export async function pullRebaseAtPath(
                     message: 'Rebase has conflicts and was aborted',
                 }
             } catch (abortError) {
-                return {
-                    success: false,
-                    hasConflicts: true,
-                    message: `Failed to abort rebase after conflicts detected. Repository may be in an inconsistent state. Manual intervention required: ${(abortError as Error).message}`,
+                try {
+                    await g.raw(['reset', '--hard', 'HEAD'])
+                    await g.raw(['clean', '-fd'])
+                    return {
+                        success: false,
+                        hasConflicts: true,
+                        message: `Rebase abort failed but repository was reset to clean state. Original error: ${(abortError as Error).message}`,
+                    }
+                } catch (resetError) {
+                    return {
+                        success: false,
+                        hasConflicts: true,
+                        message: `Failed to abort rebase after conflicts detected. Repository may be in an inconsistent state. Manual intervention required: ${(abortError as Error).message}`,
+                    }
                 }
             }
         }
