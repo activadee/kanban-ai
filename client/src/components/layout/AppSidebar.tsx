@@ -228,10 +228,9 @@ export function AppSidebar({
                             size="icon"
                             className="mt-2 size-8"
                             onClick={toggleSidebar}
-                            title="Update available"
-                            aria-label="Update available - click to expand sidebar"
+                            title={`v${version.data.currentVersion} - Update available. Click to expand.`}
+                            aria-label={`Version ${version.data.currentVersion}. Update available - click to expand sidebar`}
                         >
-                            <span className="sr-only">Update available - click to expand sidebar</span>
                             <span className="size-1 animate-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgba(251,191,36,0.5)]" />
                         </Button>
                     )}
