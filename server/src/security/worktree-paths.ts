@@ -4,7 +4,16 @@ import {resolve, relative, isAbsolute, sep} from 'path'
 let worktreesRootReal: string | null = null
 
 export async function initializeSecurityContext(worktreesRoot: string): Promise<void> {
-    worktreesRootReal = await realpath(worktreesRoot)
+    try {
+        worktreesRootReal = await realpath(worktreesRoot)
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+            const {resolve} = await import('path')
+            worktreesRootReal = resolve(worktreesRoot)
+        } else {
+            throw err
+        }
+    }
 }
 
 export function getWorktreesRootSecure(): string {
@@ -33,7 +42,7 @@ export function isContainedWithin(targetPath: string, rootPath: string): boolean
     }
 
     const components = relativePath.split(sep)
-    return !components.some((c) => c === '..' || c === '.')
+    return !components.some((c) => c === '..')
 }
 
 export async function isContainedWithinReal(

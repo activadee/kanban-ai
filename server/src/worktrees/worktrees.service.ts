@@ -30,7 +30,7 @@ async function runGitCommand(args: string[], cwd: string): Promise<string> {
         const child = spawn('git', args, {
             cwd: validatedPath,
             shell: false,
-            windowsHide: true,
+            ...(process.platform === 'win32' && {windowsHide: true}),
         })
         let stdout = ''
         let stderr = ''
@@ -90,6 +90,7 @@ async function getDirectorySize(dirPath: string): Promise<number> {
                     totalSize += Number(fileStat.size)
                     if (totalSize > Number.MAX_SAFE_INTEGER) {
                         log.warn('worktrees:size', 'Size calculation exceeded safe integer limit', {path: currentPath})
+                        totalSize = Number.MAX_SAFE_INTEGER
                         return
                     }
                 }

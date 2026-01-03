@@ -204,8 +204,7 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
         }
         
         const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
-        const relativePath = relative(expectedRoot, validatedPath)
-        if (relativePath === '' || relativePath === '.') {
+        if (!isContainedWithin(validatedPath, expectedRoot) || validatedPath === expectedRoot) {
             return problemJson(c, {status: 400, detail: 'Cannot delete root directory'})
         }
 

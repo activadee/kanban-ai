@@ -9,7 +9,7 @@ const ALLOWED_GIT_COMMANDS: Record<string, GitCommandConfig> = {
         requiresValue: [],
     },
     worktree: {
-        allowedFlags: ['add', 'remove', 'list', 'prune', '-B', '-f', '--force'],
+        allowedFlags: ['add', 'remove', 'list', 'prune', '-B'],
         requiresValue: ['-B'],
     },
     fetch: {
@@ -62,10 +62,18 @@ export function validateGitArgs(args: string[]): void {
         }
 
         if (arg.startsWith('-')) {
-            const flagBase = arg.split('=')[0]
-            if (!flagBase) continue
+            const [flagBase, ...valueParts] = arg.split('=')
+            if (!flagBase) {
+                throw new Error(`Invalid git flag: ${arg}`)
+            }
             if (!config.allowedFlags.includes(flagBase) && !config.allowedFlags.includes(arg)) {
                 throw new Error(`Git flag '${arg}' is not allowed for command '${command}'`)
+            }
+            if (valueParts.length > 0 && config.requiresValue.includes(flagBase)) {
+                const value = valueParts.join('=')
+                if (value.includes('$(') || value.includes('`') || value.includes(';')) {
+                    throw new Error(`Dangerous pattern in flag value: ${value}`)
+                }
             }
         }
     }
