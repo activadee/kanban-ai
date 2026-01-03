@@ -77,6 +77,7 @@ vi.mock('fs/promises', () => ({
     readdir: vi.fn(async () => []),
     stat: vi.fn(async () => ({mtime: new Date(), size: 1024})),
     rm: vi.fn(async () => {}),
+    realpath: vi.fn(async (path: string) => path),
 }))
 
 vi.mock('fs', () => ({

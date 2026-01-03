@@ -163,12 +163,6 @@ export const deleteWorktreeHandlers = createHandlers(
                     attemptId: id,
                     err,
                 })
-                return problemJson(c, {
-                    status: 500,
-                    detail: 'Worktree deleted from disk but database update failed',
-                    deletedPath: attempt.worktreePath,
-                    recovery: 'Run sync to clean up stale entries',
-                })
             }
         }
 
@@ -197,16 +191,22 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
             return problemJson(c, {status: 404, detail: 'Project not found'})
         }
 
+        // Validate encodedPath BEFORE decoding to prevent encoding tricks
+        if (!/^[a-zA-Z0-9%._~/-]+$/.test(encodedPath)) {
+            return problemJson(c, {status: 400, detail: 'Invalid path encoding'})
+        }
+
         // Decode and validate path to prevent path traversal attacks
         const worktreePath = decodeURIComponent(encodedPath)
         const normalized = resolve(worktreePath)
         const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
         
-        if (!normalized.startsWith(expectedRoot)) {
+        // Stricter check: must be inside expectedRoot, not equal to it
+        if (!normalized.startsWith(expectedRoot + '/') && normalized !== expectedRoot) {
             return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
         }
 
-        const result = await deleteOrphanedWorktree(worktreePath, project.repositoryPath)
+        const result = await deleteOrphanedWorktree(worktreePath, project.repositoryPath, project.name)
 
         if (!result.success) {
             return problemJson(c, {status: 500, detail: result.message})

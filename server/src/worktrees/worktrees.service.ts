@@ -1,4 +1,4 @@
-import {readdir, stat, rm} from 'fs/promises'
+import {readdir, stat, rm, realpath} from 'fs/promises'
 import {join, basename, resolve} from 'path'
 import {existsSync} from 'fs'
 import {spawn} from 'child_process'
@@ -18,8 +18,12 @@ import {git} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
     return new Promise((resolvePromise, reject) => {
-        // Normalize cwd path for safety
         const normalizedCwd = resolve(cwd)
+        
+        if (normalizedCwd.includes('..') || !normalizedCwd.startsWith('/')) {
+            reject(new Error('Invalid worktree path'))
+            return
+        }
         
         const child = spawn('git', args, {
             cwd: normalizedCwd,
@@ -44,36 +48,44 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
 
 async function getDirectorySize(dirPath: string): Promise<number> {
     return new Promise((resolvePromise) => {
-        // Normalize and validate path to prevent command injection
         const normalized = resolve(dirPath)
         
+        if (normalized.includes('..') || !normalized.startsWith('/')) {
+            resolvePromise(0)
+            return
+        }
+        
+        let resolved = false
         const child = spawn('du', ['-sb', normalized], {shell: false, windowsHide: true})
         let stdout = ''
-        let timeoutId: NodeJS.Timeout | null = setTimeout(() => {
-            timeoutId = null
-            child.kill('SIGKILL')
-            resolvePromise(0)
+        
+        const timeoutId = setTimeout(() => {
+            if (!resolved) {
+                resolved = true
+                child.kill('SIGKILL')
+                resolvePromise(0)
+            }
         }, 30000)
         
         child.stdout?.on('data', (d) => (stdout += d))
         child.on('error', () => {
-            if (timeoutId) { 
+            if (!resolved) {
+                resolved = true
                 clearTimeout(timeoutId)
-                timeoutId = null 
+                resolvePromise(0)
             }
-            resolvePromise(0)
         })
         child.on('exit', (code) => {
-            if (timeoutId) { 
+            if (!resolved) {
+                resolved = true
                 clearTimeout(timeoutId)
-                timeoutId = null 
-            }
-            if (code === 0) {
-                const parts = stdout.split('\t')
-                const size = parseInt(parts[0] ?? '0', 10)
-                resolvePromise(isNaN(size) ? 0 : size)
-            } else {
-                resolvePromise(0)
+                if (code === 0) {
+                    const parts = stdout.split('\t')
+                    const size = parseInt(parts[0] ?? '0', 10)
+                    resolvePromise(isNaN(size) ? 0 : size)
+                } else {
+                    resolvePromise(0)
+                }
             }
         })
     })
@@ -237,9 +249,10 @@ async function findOrphanedWorktrees(
 
             if (trackedPaths.has(fullPath)) continue
 
-            // Git worktrees have a .git file (not directory) pointing to the main repo
-            // existsSync() works for both files and directories, so this correctly detects worktrees
-            const isGitWorktree = existsSync(join(fullPath, '.git'))
+            // Git worktrees have a .git file (not a directory) that points to the main repo's worktree metadata
+            // Regular repos have a .git directory, worktrees have a .git file - existsSync returns true for both
+            const gitFilePath = join(fullPath, '.git')
+            const isGitWorktree = existsSync(gitFilePath)
             if (!isGitWorktree) continue
 
             try {
@@ -277,7 +290,7 @@ function computeSummary(
 
     return {
         tracked: tracked.length,
-        active: lockedWorktreesCount,
+        locked: lockedWorktreesCount,
         orphaned: orphaned.length,
         stale: stale.length,
         totalDiskUsage,
@@ -345,13 +358,10 @@ export async function deleteTrackedWorktree(
         await deps.removeWorktreeFromRepo(project.repositoryPath, worktreePath)
 
         const branchResults: string[] = []
-        let localBranchDeleted = false
-        let remoteBranchDeleted = false
 
         if (options?.deleteBranch) {
             try {
                 await git.deleteBranch(projectId, branchName)
-                localBranchDeleted = true
                 log.info('worktrees:delete', 'Local branch deleted', {branch: branchName})
             } catch (err) {
                 branchResults.push('Failed to delete local branch')
@@ -362,7 +372,6 @@ export async function deleteTrackedWorktree(
         if (options?.deleteRemoteBranch) {
             try {
                 await git.deleteRemoteBranch(projectId, branchName)
-                remoteBranchDeleted = true
                 log.info('worktrees:delete', 'Remote branch deleted', {branch: branchName})
             } catch (err) {
                 branchResults.push('Failed to delete remote branch')
@@ -386,31 +395,41 @@ export async function deleteTrackedWorktree(
 export async function deleteOrphanedWorktree(
     worktreePath: string,
     repoPath: string | null,
+    projectName: string,
 ): Promise<{success: boolean; message: string}> {
     if (!existsSync(worktreePath)) {
         return {success: true, message: 'Directory already removed'}
     }
 
     try {
+        // Resolve symlinks to prevent TOCTOU attacks
+        const realPath = await realpath(worktreePath).catch(() => worktreePath)
+        const expectedRoot = getProjectWorktreeFolder(projectName)
+        const realRoot = await realpath(expectedRoot).catch(() => expectedRoot)
+
+        if (!realPath.startsWith(realRoot)) {
+            return {success: false, message: 'Invalid worktree path'}
+        }
+
         if (repoPath) {
             try {
-                await git.removeWorktreeAtPath(repoPath, worktreePath)
+                await git.removeWorktreeAtPath(repoPath, realPath)
                 return {success: true, message: 'Orphaned worktree removed via git'}
             } catch (gitErr) {
                 log.warn('worktrees:delete-orphaned', 'Git worktree remove failed, falling back to rm', {
-                    path: worktreePath,
+                    path: realPath,
                     err: gitErr,
                 })
             }
         }
 
         // Verify it's a worktree directory before deletion
-        const gitFile = join(worktreePath, '.git')
+        const gitFile = join(realPath, '.git')
         if (!existsSync(gitFile)) {
             return {success: false, message: 'Not a valid worktree directory'}
         }
 
-        await rm(worktreePath, {recursive: true, force: false})
+        await rm(realPath, {recursive: true, force: false})
         return {success: true, message: 'Orphaned directory removed'}
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove orphaned worktree'

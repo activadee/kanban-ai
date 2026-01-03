@@ -83,8 +83,8 @@ export interface StaleWorktree {
 export interface WorktreesSummary {
     /** Total count of tracked worktrees */
     tracked: number
-    /** Count of worktrees with running attempts */
-    active: number
+    /** Count of worktrees with locked attempts */
+    locked: number
     /** Count of orphaned worktrees (disk only) */
     orphaned: number
     /** Count of stale entries (DB only, missing on disk) */
