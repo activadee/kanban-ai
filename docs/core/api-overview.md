@@ -39,13 +39,14 @@ All endpoints below are rooted at `/api/v1`; paths are shown with the full prefi
   - `PUT  /api/v1/projects/:projectId/cards/:cardId/enhancement` – record a card's enhancement status (`"enhancing"` while the job runs, `"ready"` when the agent response is available) and an optional suggestion payload.
   - `DELETE /api/v1/projects/:projectId/cards/:cardId/enhancement` – clear the persisted enhancement state after acceptance, rejection, or abandonment.
 - Boards:
-  - `GET    /api/v1/boards/:boardId` – board state (columns + cards).
-  - `POST   /api/v1/boards/:boardId/cards` – create a card. Accepts optional `createGithubIssue: boolean` (only effective when `githubIssueAutoCreateEnabled` is on) and `images: MessageImage[]` (array of base64-encoded images; supports PNG, JPEG, WebP up to 10MB each, max 5 images per card). Responds with `{ state, cardId, githubIssueError? }`.
-  - `GET    /api/v1/boards/:boardId/cards/:cardId/images` – fetch images attached to a card. Returns `{ images: MessageImage[] }` where each image contains `data` (base64), `mime` (image type), and optional `name`.
-  - `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index); the payload also accepts `isEnhanced` so clients can set/clear the enhancement badge without changing the card text, plus `disableAutoCloseOnPRMerge` so tickets can opt out of the auto-close-on-PR-merge workflow even when the project has it enabled.
-  - `DELETE /api/v1/boards/:boardId/cards/:cardId` – delete a card.
-  - `POST   /api/v1/boards/:boardId/import/github/issues` – import GitHub issues as cards.
-  - `GET    /api/v1/boards/:boardId/github/issues/stats` – counts linked issues by direction (`imported`, `exported`, `total`).
+   - `GET    /api/v1/boards/:boardId` – board state (columns + cards).
+   - `POST   /api/v1/boards/:boardId/cards` – create a card. Accepts optional `createGithubIssue: boolean` (only effective when `githubIssueAutoCreateEnabled` is on) and `images: MessageImage[]` (array of base64-encoded images; supports PNG, JPEG, WebP up to 10MB each, max 5 images per card). Responds with `{ state, cardId, githubIssueError? }`.
+   - `GET    /api/v1/boards/:boardId/cards/:cardId/images` – fetch images attached to a card. Returns `{ images: MessageImage[] }` where each image contains `data` (base64), `mime` (image type), and optional `name`.
+   - `PATCH  /api/v1/boards/:boardId/cards/:cardId` – update card content or move cards (column + index); the payload also accepts `isEnhanced` so clients can set/clear the enhancement badge without changing the card text, plus `disableAutoCloseOnPRMerge` so tickets can opt out of the auto-close-on-PR-merge workflow even when the project has it enabled.
+   - `DELETE /api/v1/boards/:boardId/cards/:cardId` – delete a card.
+   - `POST   /api/v1/boards/:boardId/cards/:cardId/github/issue` – create a GitHub issue for an existing card (only effective when `githubIssueAutoCreateEnabled` is on). Responds with `{ issueNumber: number; url: string }`.
+   - `POST   /api/v1/boards/:boardId/import/github/issues` – import GitHub issues as cards.
+   - `GET    /api/v1/boards/:boardId/github/issues/stats` – counts linked issues by direction (`imported`, `exported`, `total`).
 
 For a project-specific view, you can also access board routes under `/api/v1/projects/:projectId/board/*`.
 
