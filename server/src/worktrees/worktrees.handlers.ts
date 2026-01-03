@@ -192,7 +192,7 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
         }
 
         // Validate encodedPath BEFORE decoding to prevent encoding tricks
-        if (!/^[a-zA-Z0-9%._~/-]+$/.test(encodedPath)) {
+        if (!/^[a-zA-Z0-9%._/-]+$/.test(encodedPath) || encodedPath.includes('..')) {
             return problemJson(c, {status: 400, detail: 'Invalid path encoding'})
         }
 
@@ -201,8 +201,8 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
         const normalized = resolve(worktreePath)
         const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
         
-        // Stricter check: must be inside expectedRoot, not equal to it
-        if (!normalized.startsWith(expectedRoot + '/') && normalized !== expectedRoot) {
+        // Only allow deletion of children of expectedRoot, not the root itself
+        if (!normalized.startsWith(expectedRoot + '/')) {
             return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
         }
 

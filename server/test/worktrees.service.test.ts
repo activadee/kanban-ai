@@ -112,14 +112,17 @@ describe('deleteTrackedWorktree', () => {
         expect(result.message).toBe('Worktree removed successfully. Note: Failed to delete remote branch')
     })
 
-    it('returns success if worktree does not exist on disk', async () => {
+    it('attempts removal even if worktree does not exist on disk (no TOCTOU check)', async () => {
+        // After security hardening, we don't check existsSync to avoid TOCTOU vulnerabilities
+        // Instead, we attempt the removal and handle any errors from git
         ;(existsSync as any).mockReturnValue(false)
 
         const result = await deleteTrackedWorktree(projectId, worktreePath, branchName, mockDeps)
 
-        expect(mockDeps.removeWorktreeFromRepo).not.toHaveBeenCalled()
+        // We should still attempt the git operation even if disk check says it doesn't exist
+        expect(mockDeps.removeWorktreeFromRepo).toHaveBeenCalledWith('/path/to/repo', worktreePath)
         expect(result.success).toBe(true)
-        expect(result.message).toBe('Worktree already removed from disk')
+        expect(result.message).toBe('Worktree removed successfully')
     })
 
     it('returns failure if worktree removal fails', async () => {

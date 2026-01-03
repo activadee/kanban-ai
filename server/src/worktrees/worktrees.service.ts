@@ -17,10 +17,10 @@ import {log} from '../log'
 import {git} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
-    return new Promise((resolvePromise, reject) => {
-        const normalizedCwd = resolve(cwd)
+    return new Promise(async (resolvePromise, reject) => {
+        const normalizedCwd = await realpath(cwd).catch(() => null)
         
-        if (normalizedCwd.includes('..') || !normalizedCwd.startsWith('/')) {
+        if (!normalizedCwd || normalizedCwd.includes('..') || !normalizedCwd.startsWith('/')) {
             reject(new Error('Invalid worktree path'))
             return
         }
@@ -47,10 +47,10 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
 }
 
 async function getDirectorySize(dirPath: string): Promise<number> {
-    return new Promise((resolvePromise) => {
-        const normalized = resolve(dirPath)
+    return new Promise(async (resolvePromise) => {
+        const normalized = await realpath(dirPath).catch(() => null)
         
-        if (normalized.includes('..') || !normalized.startsWith('/')) {
+        if (!normalized || normalized.includes('..') || !normalized.startsWith('/')) {
             resolvePromise(0)
             return
         }
@@ -345,10 +345,6 @@ export async function deleteTrackedWorktree(
     deps: Pick<WorktreeServiceDeps, 'removeWorktreeFromRepo' | 'getProject'>,
     options?: {deleteBranch?: boolean; deleteRemoteBranch?: boolean},
 ): Promise<{success: boolean; message: string}> {
-    if (!existsSync(worktreePath)) {
-        return {success: true, message: 'Worktree already removed from disk'}
-    }
-
     try {
         const project = await deps.getProject(projectId)
         if (!project) {
@@ -433,7 +429,16 @@ export async function deleteOrphanedWorktree(
         return {success: true, message: 'Orphaned directory removed'}
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove orphaned worktree'
-        log.error('worktrees:delete-orphaned', 'Failed to delete orphaned worktree', {path: worktreePath, err})
+        const errorDetails = err instanceof Error 
+            ? {message: err.message, code: (err as any).code, errno: (err as any).errno}
+            : {error: String(err)}
+        log.error('worktrees:delete-orphaned', 'Failed to delete orphaned worktree', {
+            path: worktreePath,
+            projectName,
+            repoPath,
+            ...errorDetails,
+            err
+        })
         return {success: false, message}
     }
 }
