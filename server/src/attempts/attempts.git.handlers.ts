@@ -153,11 +153,6 @@ export const gitMergeHandlers = createHandlers(
                 result: {merged: true, message},
             })
             events.publish('git.status.changed', {projectId: attempt.boardId})
-            try {
-                const {moveCardToColumnByTitle} = await import('../tasks/service')
-                await moveCardToColumnByTitle(attempt.boardId, attempt.cardId, 'Done')
-            } catch {
-            }
             return c.json({ok: true, base: baseBranch}, 200)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Merge failed'
