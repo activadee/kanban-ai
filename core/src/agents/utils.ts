@@ -78,8 +78,24 @@ export function buildTicketEnhancePrompt(
     appendPrompt?: string | null,
 ): string {
     const description = input.description?.trim() || "(keine Beschreibung)";
-
     const typeLine = input.ticketType ? `Type: ${input.ticketType}` : null;
+
+    // If a custom prompt is provided, use it as the base instead of the default
+    if (input.customPrompt) {
+        const customBase = input.customPrompt.trim()
+        // Inject the input context into the custom prompt
+        const inputContext = [
+            '',
+            'Input:',
+            `Title: ${input.title}`,
+            ...(typeLine ? [typeLine] : []),
+            'Description:',
+            description,
+        ].join('\n')
+        const extra = (appendPrompt ?? '').trim()
+        const fullPrompt = customBase + inputContext
+        return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
+    }
 
     const base = [
         'You are a ticket generator for a software project.',
@@ -132,33 +148,45 @@ export function buildPrSummaryPrompt(
     input: PrSummaryInlineInput,
     appendPrompt?: string | null,
 ): string {
-    const parts: string[] = []
-
-    parts.push('You are a pull request generator for a software project.')
-    parts.push('')
-    parts.push('Repository context:')
-    parts.push(`- Repository path: ${input.repositoryPath}`)
-    parts.push(`- Base branch: ${input.baseBranch}`)
-    parts.push(`- Head branch: ${input.headBranch}`)
-
     const commitSummary = (input.commitSummary ?? '').trim()
     const diffSummary = (input.diffSummary ?? '').trim()
 
+    // Build the context part that will be appended to any prompt
+    const contextParts: string[] = []
+    contextParts.push('')
+    contextParts.push('Repository context:')
+    contextParts.push(`- Repository path: ${input.repositoryPath}`)
+    contextParts.push(`- Base branch: ${input.baseBranch}`)
+    contextParts.push(`- Head branch: ${input.headBranch}`)
+
     if (commitSummary || diffSummary) {
-        parts.push('')
-        parts.push('Summary of changes between base and head:')
+        contextParts.push('')
+        contextParts.push('Summary of changes between base and head:')
         if (commitSummary) {
-            parts.push('')
-            parts.push('Commits (base..head):')
-            parts.push(commitSummary)
+            contextParts.push('')
+            contextParts.push('Commits (base..head):')
+            contextParts.push(commitSummary)
         }
         if (diffSummary) {
-            parts.push('')
-            parts.push('Diff summary (files and stats):')
-            parts.push(diffSummary)
+            contextParts.push('')
+            contextParts.push('Diff summary (files and stats):')
+            contextParts.push(diffSummary)
         }
     }
+    const contextBlock = contextParts.join('\n')
 
+    // If a custom prompt is provided, use it as the base instead of the default
+    if (input.customPrompt) {
+        const customBase = input.customPrompt.trim()
+        const extra = (appendPrompt ?? '').trim()
+        const fullPrompt = customBase + contextBlock
+        return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
+    }
+
+    const parts: string[] = []
+
+    parts.push('You are a pull request generator for a software project.')
+    parts.push(contextBlock)
     parts.push('')
     parts.push('Task:')
     parts.push('Write a pull request title and body that meet the following requirements:')

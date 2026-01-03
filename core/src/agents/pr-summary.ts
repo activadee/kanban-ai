@@ -256,6 +256,7 @@ export async function agentSummarizePullRequest(
         headBranch,
         commitSummary,
         diffSummary,
+        customPrompt: settings.prSummaryPrompt ?? null,
     }
 
     const profile = await resolveProfileForAgent(agent, opts.projectId, profileId)

@@ -140,6 +140,8 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         lastGithubIssueSyncStatus: normalizeStatus(
             row.lastGithubIssueSyncStatus,
         ),
+        enhancePrompt: row.enhancePrompt ?? null,
+        prSummaryPrompt: row.prSummaryPrompt ?? null,
         createdAt: toIso(row.createdAt),
         updatedAt: toIso(row.updatedAt),
     };
@@ -186,6 +188,8 @@ export async function ensureProjectSettings(
         lastGithubPrAutoCloseStatus: "idle",
         lastGithubIssueSyncAt: null,
         lastGithubIssueSyncStatus: "idle",
+        enhancePrompt: null,
+        prSummaryPrompt: null,
         createdAt: now,
         updatedAt: now,
     });
@@ -269,6 +273,12 @@ export async function updateProjectSettings(
     }
     if (updates.autoCloseTicketOnPRMerge !== undefined) {
         patch.autoCloseTicketOnPRMerge = Boolean(updates.autoCloseTicketOnPRMerge);
+    }
+    if (updates.enhancePrompt !== undefined) {
+        patch.enhancePrompt = nn(updates.enhancePrompt) as string | null;
+    }
+    if (updates.prSummaryPrompt !== undefined) {
+        patch.prSummaryPrompt = nn(updates.prSummaryPrompt) as string | null;
     }
     patch.updatedAt = new Date();
     await updateProjectSettingsRow(projectId, patch);

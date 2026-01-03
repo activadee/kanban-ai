@@ -144,6 +144,7 @@ export async function agentEnhanceTicket(opts: AgentEnhanceTicketOptions): Promi
         profileId,
         images: opts.images,
         signal,
+        customPrompt: settings.enhancePrompt ?? null,
     }
 
     const profile = await resolveProfileForAgent(agent, opts.projectId, profileId)
