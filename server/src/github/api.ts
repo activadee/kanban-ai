@@ -100,6 +100,26 @@ export async function createRepoIssue(params: {
     }
 }
 
+export async function getIssue(params: {
+    owner: string
+    repo: string
+    issueNumber: number
+    token: string
+}): Promise<GithubIssue> {
+    try {
+        const payload = await githubApiJson<GithubIssue>({
+            path: `/repos/${params.owner}/${params.repo}/issues/${params.issueNumber}`,
+            token: params.token,
+        })
+        return payload
+    } catch (error) {
+        if (error instanceof Error) {
+            throw new Error(error.message.replace('GitHub API request failed', 'GitHub issue fetch failed'))
+        }
+        throw error
+    }
+}
+
 export async function updateRepoIssue(params: {
     owner: string
     repo: string

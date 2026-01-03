@@ -251,9 +251,9 @@ export function GithubIssueSyncSection({
                             </Badge>
                         </div>
                         <div className="mt-3">
-                            <div className="font-medium">Auto-close on Merge</div>
+                            <div className="font-medium">Auto-close on PR/Issue Close</div>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                Move to Done on PR merge
+                                Move to Done when PR merges or issue closes
                             </p>
                         </div>
                     </button>
@@ -385,11 +385,11 @@ export function GithubIssueSyncSection({
                     />
                     <div className="space-y-1">
                         <Label htmlFor="auto-close-detail" className="text-sm font-medium leading-none">
-                            Auto-close tickets on PR merge
+                            Auto-close tickets on PR/Issue close
                         </Label>
                         <p className="text-xs leading-relaxed text-muted-foreground">
-                            Moves cards from Review to Done when their linked PRs are merged.
-                            Requires columns titled &quot;Review&quot; and &quot;Done&quot;.
+                            Automatically moves cards to Done when their linked PRs are merged or GitHub issues are closed.
+                            Requires a &quot;Done&quot; column. Cards can opt out individually.
                         </p>
                     </div>
                 </div>

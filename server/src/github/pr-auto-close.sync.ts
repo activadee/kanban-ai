@@ -1,6 +1,7 @@
 import * as core from "core";
 import type {AppEventBus} from "../events/bus";
 import {getPullRequest as getPullRequestDefault} from "./pr";
+import {getIssue} from "./api";
 import {log} from "../log";
 
 const DEFAULT_TICK_INTERVAL_SECONDS = 60;
@@ -118,6 +119,7 @@ export async function runGithubPrAutoCloseTick(
     events: AppEventBus,
     deps?: Partial<{
         getPullRequest: typeof getPullRequestDefault;
+        getIssue: typeof getIssue;
         projectsService: typeof core.projectsService;
         projectsRepo: typeof core.projectsRepo;
         githubRepo: typeof core.githubRepo;
@@ -465,6 +467,182 @@ export async function runGithubPrAutoCloseTick(
                             }
                         }),
                     );
+
+                    const cardsWithIssues = await ghRepo.listCardsWithGithubIssuesNotInDone(
+                        boardId,
+                        [doneColumnId],
+                    );
+
+                    if (cardsWithIssues.length > 0) {
+                        const byIssueNumber = new Map<
+                            string,
+                            typeof cardsWithIssues
+                        >();
+
+                        for (const cardWithIssue of cardsWithIssues) {
+                            if (
+                                cardWithIssue.owner.toLowerCase() !==
+                                    origin.owner.toLowerCase() ||
+                                cardWithIssue.repo.toLowerCase() !==
+                                    origin.repo.toLowerCase()
+                            ) {
+                                log.warn(
+                                    "github:pr-auto-close",
+                                    "GitHub issue does not match project origin; skipping card",
+                                    {
+                                        projectId,
+                                        cardId: cardWithIssue.id,
+                                        issueNumber: cardWithIssue.issueNumber,
+                                        issueOwner: cardWithIssue.owner,
+                                        issueRepo: cardWithIssue.repo,
+                                        originOwner: origin.owner,
+                                        originRepo: origin.repo,
+                                    },
+                                );
+                                continue;
+                            }
+
+                            const key = `${cardWithIssue.owner}/${cardWithIssue.repo}#${cardWithIssue.issueNumber}`;
+                            const list = byIssueNumber.get(key) ?? [];
+                            list.push(cardWithIssue);
+                            byIssueNumber.set(key, list);
+                        }
+
+                        const issueEntries = Array.from(byIssueNumber.entries());
+                        if (issueEntries.length > MAX_UNIQUE_PRS_PER_PROJECT) {
+                            hadErrors = true;
+                            log.warn(
+                                "github:pr-auto-close",
+                                "Too many GitHub issue-linked cards; capping issue lookups for this tick",
+                                {
+                                    projectId,
+                                    boardId,
+                                    totalUniqueIssues: issueEntries.length,
+                                    cappedAt: MAX_UNIQUE_PRS_PER_PROJECT,
+                                },
+                            );
+                            issueEntries.length = MAX_UNIQUE_PRS_PER_PROJECT;
+                        }
+
+                        const runOneIssue = async (
+                            cardsForIssue: typeof cardsWithIssues,
+                        ) => {
+                            const firstCard = cardsForIssue[0];
+                            if (!firstCard) return;
+
+                            const issue = await getIssue({
+                                owner: firstCard.owner,
+                                repo: firstCard.repo,
+                                issueNumber: firstCard.issueNumber,
+                                token: accessToken,
+                            });
+
+                            if (issue.state !== "closed") return;
+
+                            if (!taskSvc.moveBoardCard) {
+                                throw new Error(
+                                    "tasks.moveBoardCard is not available",
+                                );
+                            }
+                            if (!repo.getCardById) {
+                                throw new Error(
+                                    "projectsRepo.getCardById is not available",
+                                );
+                            }
+
+                            for (const card of cardsForIssue) {
+                                const latest = await repo.getCardById(card.id);
+                                if (!latest) continue;
+                                if (latest.boardId !== boardId) continue;
+                                if (latest.columnId === doneColumnId) continue;
+                                if (latest.disableAutoCloseOnPRMerge) continue;
+
+                                await taskSvc.moveBoardCard(
+                                    latest.id,
+                                    doneColumnId,
+                                    Number.MAX_SAFE_INTEGER,
+                                    {suppressBroadcast: true},
+                                );
+                                movedAny = true;
+                                events.publish(
+                                    "github.issue.closed.autoClosed",
+                                    {
+                                        projectId,
+                                        boardId,
+                                        cardId: latest.id,
+                                        issueNumber: firstCard.issueNumber,
+                                        issueUrl: `https://github.com/${firstCard.owner}/${firstCard.repo}/issues/${firstCard.issueNumber}`,
+                                        ts: new Date().toISOString(),
+                                    },
+                                );
+                                log.info(
+                                    "github:pr-auto-close",
+                                    "card moved to Done on GitHub issue close",
+                                    {
+                                        projectId,
+                                        boardId,
+                                        cardId: latest.id,
+                                        ticketKey: latest.ticketKey ?? null,
+                                        issueNumber: firstCard.issueNumber,
+                                        owner: firstCard.owner,
+                                        repo: firstCard.repo,
+                                    },
+                                );
+                            }
+                        };
+
+                        let issueCursor = 0;
+                        const issueWorkerCount = Math.min(
+                            PR_LOOKUP_CONCURRENCY,
+                            issueEntries.length,
+                        );
+
+                        await Promise.all(
+                            Array.from({length: issueWorkerCount}, async () => {
+                                while (!stop) {
+                                    const index = issueCursor++;
+                                    const entry = issueEntries[index];
+                                    if (!entry) return;
+
+                                    const cardsForIssue = entry[1];
+
+                                    try {
+                                        await runOneIssue(cardsForIssue);
+                                    } catch (error) {
+                                        hadErrors = true;
+                                        const firstCard = cardsForIssue[0];
+                                        log.warn(
+                                            "github:pr-auto-close",
+                                            "GitHub issue auto-close failed",
+                                            {
+                                                err: error,
+                                                projectId,
+                                                boardId,
+                                                issueNumber: firstCard?.issueNumber,
+                                            },
+                                        );
+                                        if (shouldStopOnError(error)) {
+                                            stop = true;
+                                            globalStop = true;
+                                            log.warn(
+                                                "github:pr-auto-close",
+                                                "Stopping auto-close early due to GitHub API error",
+                                                {
+                                                    projectId,
+                                                    boardId,
+                                                    issueNumber: firstCard?.issueNumber,
+                                                    statusCode:
+                                                        parseGithubStatus(
+                                                            error,
+                                                        ),
+                                                },
+                                            );
+                                        }
+                                    }
+                                }
+                            }),
+                        );
+                    }
 
                     if (movedAny) {
                         try {
