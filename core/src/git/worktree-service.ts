@@ -231,7 +231,6 @@ export async function pullRebaseAtPath(
         
         const conflictPatterns = [
             /conflict/i,
-            /CONFLICT/,
             /could not apply/i,
             /Resolve all conflicts/i,
         ]
