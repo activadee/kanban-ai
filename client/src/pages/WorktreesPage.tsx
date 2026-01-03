@@ -14,6 +14,8 @@ import {
     Calendar,
     Folder,
 } from 'lucide-react'
+import {toast} from '@/components/ui/toast'
+import {ApiError} from '@/api/http'
 import {PageHeader} from '@/components/layout/PageHeader'
 import {MasterDetailLayout, type MasterDetailItem} from '@/components/layout/MasterDetailLayout'
 import {Button} from '@/components/ui/button'
@@ -45,7 +47,7 @@ interface WorktreeItem extends MasterDetailItem {
 }
 
 type DeleteTarget =
-    | {type: 'tracked'; item: TrackedWorktree}
+    | {type: 'tracked'; item: TrackedWorktree; constraintError?: ApiError}
     | {type: 'orphaned'; item: OrphanedWorktree}
     | {type: 'stale'; item: StaleWorktree}
     | null
@@ -421,6 +423,9 @@ function DeleteConfirmDialog({
 
     const isTracked = target.type === 'tracked'
     const isActive = isTracked && isActiveAttempt(target.item.attemptStatus)
+    const hasConstraint = isTracked && target.constraintError !== undefined
+    const cardNotInDone = hasConstraint && target.constraintError?.problem?.cardActive === true
+    const showForceCheckbox = isActive || cardNotInDone
     const title = isTracked
         ? target.item.cardTitle || target.item.ticketKey || 'this worktree'
         : target.type === 'orphaned'
@@ -459,7 +464,7 @@ function DeleteConfirmDialog({
                             </p>
                         )}
                     </div>
-                    {isActive && (
+                    {showForceCheckbox && (
                         <label className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
                             <input
                                 type="checkbox"
@@ -468,9 +473,15 @@ function DeleteConfirmDialog({
                                 className="mt-0.5 size-4 shrink-0 rounded border-amber-500/50 text-amber-600 focus:ring-amber-500"
                             />
                             <div className="space-y-1">
-                                <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Force delete active worktree</p>
+                                <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                                    {isActive ? 'Force delete active worktree' : 'Force delete'}
+                                </p>
                                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                                    I understand this will terminate the running agent and may cause data loss.
+                                    {isActive
+                                        ? 'I understand this will terminate the running agent and may cause data loss.'
+                                        : cardNotInDone
+                                          ? 'The card is not in Done column. Force deletion may affect ongoing work.'
+                                          : 'I understand the risks of force deleting this worktree.'}
                                 </p>
                             </div>
                         </label>
@@ -483,7 +494,7 @@ function DeleteConfirmDialog({
                     <Button
                         variant="destructive"
                         onClick={() => onConfirm(forceDelete)}
-                        disabled={isPending || (isActive && !forceDelete)}
+                        disabled={isPending || (showForceCheckbox && !forceDelete)}
                     >
                         {isPending ? (
                             <>
@@ -566,7 +577,25 @@ export function WorktreesPage() {
     }
 
     const handleSync = () => {
-        syncMutation.mutate({projectId})
+        syncMutation.mutate(
+            {projectId},
+            {
+                onSuccess: () => {
+                    toast({
+                        title: 'Synced',
+                        description: 'Worktrees have been synchronized.',
+                        variant: 'success',
+                    })
+                },
+                onError: (error) => {
+                    toast({
+                        title: 'Sync failed',
+                        description: error instanceof Error ? error.message : 'An unknown error occurred',
+                        variant: 'destructive',
+                    })
+                },
+            }
+        )
     }
 
     const handleDelete = (force: boolean) => {
@@ -581,18 +610,43 @@ export function WorktreesPage() {
             )) {
                 setSelectedId(null)
             }
+            toast({
+                title: 'Deleted',
+                description: 'Worktree has been deleted successfully.',
+                variant: 'success',
+            })
+        }
+
+        const onError = (error: unknown) => {
+            if (error instanceof ApiError && error.status === 409) {
+                // Constraint error - reopen dialog with error info
+                if (deleteTarget.type === 'tracked') {
+                    setDeleteTarget({...deleteTarget, constraintError: error})
+                }
+                toast({
+                    title: 'Cannot delete',
+                    description: error.problem?.detail || error.message,
+                    variant: 'destructive',
+                })
+            } else {
+                toast({
+                    title: 'Delete failed',
+                    description: error instanceof Error ? error.message : 'An unknown error occurred',
+                    variant: 'destructive',
+                })
+            }
         }
 
         if (deleteTarget.type === 'tracked') {
             deleteTrackedMutation.mutate(
                 {projectId, worktreeId: deleteTarget.item.id, options: force ? {force: true} : undefined},
-                {onSuccess}
+                {onSuccess, onError}
             )
         } else if (deleteTarget.type === 'orphaned') {
             const encodedPath = encodeURIComponent(deleteTarget.item.path)
-            deleteOrphanedMutation.mutate({projectId, encodedPath, options: {confirm: true}}, {onSuccess})
+            deleteOrphanedMutation.mutate({projectId, encodedPath, options: {confirm: true}}, {onSuccess, onError})
         } else if (deleteTarget.type === 'stale') {
-            deleteStaleMutation.mutate({projectId, worktreeId: deleteTarget.item.id, options: {confirm: true}}, {onSuccess})
+            deleteStaleMutation.mutate({projectId, worktreeId: deleteTarget.item.id, options: {confirm: true}}, {onSuccess, onError})
         }
     }
 
