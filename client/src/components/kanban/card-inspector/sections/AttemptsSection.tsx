@@ -275,7 +275,7 @@ export function AttemptsSection({
                                         value={profileId ?? '__default__'}
                                         onValueChange={onProfileSelect}
                                     >
-                                        <SelectTrigger className="h-7 w-32 text-xs border-0 bg-muted/50">
+                                        <SelectTrigger className="h-7 text-xs">
                                             <SelectValue placeholder="Profile" />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-60 overflow-y-auto text-xs">
