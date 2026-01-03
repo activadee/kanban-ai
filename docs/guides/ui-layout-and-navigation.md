@@ -71,6 +71,7 @@ In the expanded state (width: 256px), the sidebar displays:
 - Create Ticket button at the bottom
 - GitHub account box with username and avatar
 - Settings button
+- Version indicator showing the current application version
 
 #### Collapsed sidebar
 
@@ -79,6 +80,7 @@ In the collapsed state (width: 64px), the sidebar displays:
 - Icon-only navigation buttons with tooltips showing labels and shortcuts
 - Simplified GitHub connection button
 - All navigation remains accessible via tooltips on hover
+- Version indicator at the bottom (visible when expanded, hidden when collapsed)
 
 The collapse toggle button is always visible in the header, changing icon to indicate current state (panel-left-close when expanded, panel-right when collapsed).
 
