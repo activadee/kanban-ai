@@ -74,11 +74,24 @@ vi.mock('../src/fs/paths', () => ({
     getWorktreesRoot: vi.fn(() => '/home/user/.cache/kanban-ai/worktrees'),
 }))
 
+vi.mock('../src/security/worktree-paths', () => ({
+    initializeSecurityContext: vi.fn(async () => {}),
+    getWorktreesRootSecure: vi.fn(() => '/home/user/.cache/kanban-ai/worktrees'),
+    validateWorktreePath: vi.fn(async (path: string) => path),
+    isContainedWithin: vi.fn(() => true),
+    isContainedWithinReal: vi.fn(async () => true),
+}))
+
+vi.mock('../src/security/git-args', () => ({
+    validateGitArgs: vi.fn(() => {}),
+}))
+
 vi.mock('fs/promises', () => ({
     readdir: vi.fn(async () => []),
     stat: vi.fn(async () => ({mtime: new Date(), size: 1024})),
     rm: vi.fn(async () => {}),
     realpath: vi.fn(async (path: string) => path),
+    access: vi.fn(async () => {}),
 }))
 
 vi.mock('fs', () => ({

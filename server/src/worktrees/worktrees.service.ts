@@ -1,4 +1,4 @@
-import {readdir, stat, rm, realpath} from 'fs/promises'
+import {readdir, stat, rm, realpath, access} from 'fs/promises'
 import {join, basename, resolve} from 'path'
 import {existsSync} from 'fs'
 import {spawn} from 'child_process'
@@ -15,19 +15,20 @@ import type {
 import {getProjectWorktreeFolder, getWorktreesRoot} from '../fs/paths'
 import {log} from '../log'
 import {git} from 'core'
+import {validateWorktreePath, getWorktreesRootSecure, isContainedWithin} from '../security/worktree-paths'
+import {validateGitArgs} from '../security/git-args'
 
-function runGitCommand(args: string[], cwd: string): Promise<string> {
-    return new Promise(async (resolvePromise, reject) => {
-        const normalizedCwd = await realpath(cwd).catch(() => null)
-        const worktreesRoot = await realpath(getWorktreesRoot()).catch(() => getWorktreesRoot())
-        
-        if (!normalizedCwd || normalizedCwd.includes('..') || !normalizedCwd.startsWith(worktreesRoot + '/')) {
-            reject(new Error('Invalid worktree path'))
-            return
-        }
-        
+async function runGitCommand(args: string[], cwd: string): Promise<string> {
+    validateGitArgs(args)
+    
+    const validatedPath = await validateWorktreePath(cwd)
+    if (!validatedPath) {
+        throw new Error('Invalid worktree path')
+    }
+    
+    return new Promise((resolvePromise, reject) => {
         const child = spawn('git', args, {
-            cwd: normalizedCwd,
+            cwd: validatedPath,
             shell: false,
             windowsHide: true,
         })
@@ -48,49 +49,54 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
 }
 
 async function getDirectorySize(dirPath: string): Promise<number> {
-    return new Promise(async (resolvePromise) => {
-        const normalized = await realpath(dirPath).catch(() => null)
-        const worktreesRoot = await realpath(getWorktreesRoot()).catch(() => getWorktreesRoot())
+    const maxDepth = 100
+    const maxFiles = 100000
+    const timeout = 30000
+    
+    const validatedPath = await validateWorktreePath(dirPath)
+    if (!validatedPath) {
+        return 0
+    }
+    
+    const rootPath = getWorktreesRootSecure()
+    const startTime = Date.now()
+    let totalSize = 0
+    let fileCount = 0
+    
+    async function walk(currentPath: string, depth: number): Promise<void> {
+        if (depth > maxDepth) return
+        if (fileCount > maxFiles) return
+        if (Date.now() - startTime > timeout) return
         
-        if (!normalized || normalized.includes('..') || !normalized.startsWith(worktreesRoot + '/')) {
-            resolvePromise(0)
+        if (!isContainedWithin(currentPath, rootPath)) {
             return
         }
         
-        let resolved = false
-        const child = spawn('du', ['-sb', normalized], {shell: false, windowsHide: true})
-        let stdout = ''
-        
-        const timeoutId = setTimeout(() => {
-            if (!resolved) {
-                resolved = true
-                child.kill('SIGKILL')
-                resolvePromise(0)
-            }
-        }, 30000)
-        
-        child.stdout?.on('data', (d) => (stdout += d))
-        child.on('error', () => {
-            if (!resolved) {
-                resolved = true
-                clearTimeout(timeoutId)
-                resolvePromise(0)
-            }
-        })
-        child.on('exit', (code) => {
-            if (!resolved) {
-                resolved = true
-                clearTimeout(timeoutId)
-                if (code === 0) {
-                    const parts = stdout.split('\t')
-                    const size = parseInt(parts[0] ?? '0', 10)
-                    resolvePromise(isNaN(size) ? 0 : size)
-                } else {
-                    resolvePromise(0)
+        try {
+            const entries = await readdir(currentPath, {withFileTypes: true})
+            
+            for (const entry of entries) {
+                fileCount++
+                const fullPath = join(currentPath, entry.name)
+                
+                if (entry.isSymbolicLink()) {
+                    continue
+                }
+                
+                if (entry.isDirectory()) {
+                    await walk(fullPath, depth + 1)
+                } else if (entry.isFile()) {
+                    const fileStat = await stat(fullPath)
+                    totalSize += Number(fileStat.size)
                 }
             }
-        })
-    })
+        } catch {
+            return
+        }
+    }
+    
+    await walk(validatedPath, 0)
+    return totalSize
 }
 
 async function getWorktreeBranch(worktreePath: string): Promise<string | null> {
@@ -401,33 +407,38 @@ export async function deleteOrphanedWorktree(
     projectName: string,
 ): Promise<{success: boolean; message: string}> {
     try {
-        // Resolve symlinks to prevent TOCTOU attacks
-        const realPath = await realpath(worktreePath).catch(() => null)
+        const validatedPath = await validateWorktreePath(worktreePath)
         
-        if (!realPath) {
+        if (!validatedPath) {
             return {success: true, message: 'Directory already removed'}
         }
+
         const expectedRoot = getProjectWorktreeFolder(projectName)
         const realRoot = await realpath(expectedRoot).catch(() => expectedRoot)
 
-        if (!realPath.startsWith(realRoot)) {
+        if (!isContainedWithin(validatedPath, realRoot)) {
             return {success: false, message: 'Invalid worktree path'}
         }
 
         if (repoPath) {
             try {
-                await git.removeWorktreeAtPath(repoPath, realPath)
+                await git.removeWorktreeAtPath(repoPath, validatedPath)
                 return {success: true, message: 'Orphaned worktree removed via git'}
             } catch (gitErr) {
                 log.warn('worktrees:delete-orphaned', 'Git worktree remove failed, falling back to rm', {
-                    path: realPath,
+                    path: validatedPath,
                     err: gitErr,
                 })
             }
         }
 
-        // Attempt deletion - rm will fail naturally if path is invalid or lacks permissions
-        await rm(realPath, {recursive: true, force: false})
+        const gitFilePath = join(validatedPath, '.git')
+        const gitFileExists = await access(gitFilePath).then(() => true).catch(() => false)
+        if (!gitFileExists) {
+            return {success: false, message: 'Not a valid git worktree'}
+        }
+
+        await rm(validatedPath, {recursive: true, force: false})
         return {success: true, message: 'Orphaned directory removed'}
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove orphaned worktree'

@@ -1,5 +1,5 @@
 import {zValidator} from '@hono/zod-validator'
-import {resolve} from 'path'
+import {resolve, relative, isAbsolute} from 'path'
 import {attemptsRepo, projectsRepo, git} from 'core'
 import {problemJson} from '../http/problem'
 import {createHandlers} from '../lib/factory'
@@ -22,6 +22,7 @@ import {
     type WorktreeServiceDeps,
 } from './worktrees.service'
 import {getProjectWorktreeFolder} from '../fs/paths'
+import {isContainedWithin} from '../security/worktree-paths'
 
 async function createServiceDeps(projectId: string): Promise<WorktreeServiceDeps> {
     return {
@@ -155,7 +156,6 @@ export const deleteWorktreeHandlers = createHandlers(
             return problemJson(c, {status: 500, detail: result.message})
         }
 
-        let finalMessage = result.message
         if (!diskOnly) {
             try {
                 await attemptsRepo.updateAttempt(id, {worktreePath: null})
@@ -164,13 +164,16 @@ export const deleteWorktreeHandlers = createHandlers(
                     attemptId: id,
                     err,
                 })
-                finalMessage += '. Warning: Database update failed - worktree may still be tracked'
+                return problemJson(c, {
+                    status: 500,
+                    detail: 'Worktree deleted from disk but database update failed. Manual cleanup may be required.',
+                })
             }
         }
 
         return c.json({
             success: true,
-            message: finalMessage,
+            message: result.message,
             deletedPath: attempt.worktreePath,
         }, 200)
     },
@@ -193,19 +196,24 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
             return problemJson(c, {status: 404, detail: 'Project not found'})
         }
 
-        // Validate encodedPath BEFORE decoding to prevent encoding tricks
-        if (!/^[a-zA-Z0-9%._/-]+$/.test(encodedPath) || encodedPath.includes('..')) {
+        const worktreePath = decodeURIComponent(encodedPath)
+        
+        if (encodedPath.includes('..') || worktreePath.includes('..')) {
             return problemJson(c, {status: 400, detail: 'Invalid path encoding'})
         }
+        if (!/^[a-zA-Z0-9._/-]+$/.test(worktreePath)) {
+            return problemJson(c, {status: 400, detail: 'Invalid path characters'})
+        }
 
-        // Decode and validate path to prevent path traversal attacks
-        const worktreePath = decodeURIComponent(encodedPath)
         const normalized = resolve(worktreePath)
         const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
         
-        // Only allow deletion of children of expectedRoot, not the root itself
-        if (!normalized.startsWith(expectedRoot + '/')) {
+        const relativePath = relative(expectedRoot, normalized)
+        if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
             return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
+        }
+        if (relativePath === '' || relativePath === '.') {
+            return problemJson(c, {status: 400, detail: 'Cannot delete root directory'})
         }
 
         const result = await deleteOrphanedWorktree(worktreePath, project.repositoryPath, project.name)
