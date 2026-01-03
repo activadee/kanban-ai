@@ -435,12 +435,15 @@ function DeleteConfirmDialog({
     const description = (() => {
         if (target.type === 'tracked') {
             if (isActive) {
-                return 'This worktree has an active attempt. Deleting it will terminate the running agent and remove all unsaved work.'
+                return '⚠️ This worktree has an active attempt. Deleting it will terminate the running agent and permanently destroy all uncommitted and unpushed changes. The ticket progress will be lost.'
             }
-            return 'This will remove the worktree from disk and clean up the database record.'
+            if (cardNotInDone) {
+                return '⚠️ This card is not in Done column. Deleting the worktree will permanently destroy all uncommitted and unpushed changes. The ticket progress will be lost.'
+            }
+            return '⚠️ This will permanently remove the worktree directory from disk. Any uncommitted or unpushed changes will be lost forever. The Git branch will remain in the repository.'
         }
         if (target.type === 'orphaned') {
-            return 'This worktree exists on disk but is not tracked in the database. Deleting it will permanently remove the directory.'
+            return '⚠️ This worktree exists on disk but is not tracked in the database. Deleting it will permanently remove the directory and all uncommitted changes.'
         }
         return 'This database record points to a worktree that no longer exists on disk. Deleting it will clean up the stale entry.'
     })()
@@ -478,10 +481,10 @@ function DeleteConfirmDialog({
                                 </p>
                                 <p className="text-xs text-amber-600 dark:text-amber-400">
                                     {isActive
-                                        ? 'I understand this will terminate the running agent and may cause data loss.'
+                                        ? '⚠️ I understand this will terminate the running agent and permanently destroy all uncommitted/unpushed changes.'
                                         : cardNotInDone
-                                          ? 'The card is not in Done column. Force deletion may affect ongoing work.'
-                                          : 'I understand the risks of force deleting this worktree.'}
+                                          ? '⚠️ I understand this will permanently destroy all uncommitted/unpushed changes and the ticket progress will be lost.'
+                                          : '⚠️ I understand all uncommitted and unpushed changes will be permanently lost.'}
                                 </p>
                             </div>
                         </label>
@@ -602,6 +605,7 @@ export function WorktreesPage() {
         if (!deleteTarget || !projectId) return
 
         const onSuccess = () => {
+            const wasForced = force && deleteTarget.type === 'tracked'
             setDeleteTarget(null)
             if (selectedItem && (
                 (deleteTarget.type === 'tracked' && selectedItem.id === `tracked-${deleteTarget.item.id}`) ||
@@ -611,21 +615,25 @@ export function WorktreesPage() {
                 setSelectedId(null)
             }
             toast({
-                title: 'Deleted',
-                description: 'Worktree has been deleted successfully.',
-                variant: 'success',
+                title: wasForced ? '⚠️ Worktree force deleted' : 'Worktree deleted',
+                description: wasForced
+                    ? '⚠️ WARNING: All uncommitted and unpushed changes are permanently lost. The ticket progress has been destroyed.'
+                    : 'Worktree has been removed from disk. The Git branch still exists in the repository.',
+                variant: wasForced ? 'destructive' : 'success',
             })
         }
 
         const onError = (error: unknown) => {
             if (error instanceof ApiError && error.status === 409) {
-                // Constraint error - reopen dialog with error info
                 if (deleteTarget.type === 'tracked') {
                     setDeleteTarget({...deleteTarget, constraintError: error})
                 }
                 toast({
-                    title: 'Cannot delete',
-                    description: error.problem?.detail || error.message,
+                    title: 'Cannot delete worktree',
+                    description:
+                        error.problem?.detail ||
+                        error.message ||
+                        'This worktree cannot be deleted because it has an active attempt or the card is not in Done column.',
                     variant: 'destructive',
                 })
             } else {
