@@ -8,6 +8,8 @@ import { startGithubIssueSyncScheduler } from '../github/sync'
 import { startGithubPrAutoCloseScheduler } from '../github/pr-auto-close.sync'
 import { projectsService, settingsService } from 'core'
 import { registerShutdownHandlers } from '../lifecycle'
+import { initializeSecurityContext } from '../security/worktree-paths'
+import { getWorktreesRoot } from '../fs/paths'
 
 if (import.meta.main) {
   const run = async () => {
@@ -38,6 +40,8 @@ if (import.meta.main) {
 
     setRuntimeConfig(config)
     applyLogConfig(config)
+
+    await initializeSecurityContext(getWorktreesRoot())
 
     const services: AppServices = { projects: projectsService, settings: settingsService }
     const events = createEventBus()

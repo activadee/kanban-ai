@@ -9,6 +9,8 @@ import { startGithubPrAutoCloseScheduler } from '../github/pr-auto-close.sync'
 import { projectsService, settingsService } from 'core'
 import { openBrowser } from '../browser/open'
 import { registerShutdownHandlers } from '../lifecycle'
+import { initializeSecurityContext } from '../security/worktree-paths'
+import { getWorktreesRoot } from '../fs/paths'
 
 type ProdFetch = StartOptions['fetch']
 
@@ -77,6 +79,8 @@ const run = async () => {
 
   setRuntimeConfig(config)
   applyLogConfig(config)
+
+  await initializeSecurityContext(getWorktreesRoot())
 
   const services: AppServices = { projects: projectsService, settings: settingsService }
   const events = createEventBus()

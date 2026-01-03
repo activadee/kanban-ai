@@ -366,3 +366,19 @@ export async function mergeBranchIntoBaseForProject(
     return true
 }
 
+export async function removeWorktreeAtPath(repoPath: string, worktreePath: string): Promise<void> {
+    const {resolve, isAbsolute} = await import('path')
+    
+    if (!isAbsolute(worktreePath)) {
+        throw new Error('Invalid worktree path: must be absolute')
+    }
+    // Check for path traversal BEFORE normalizing with resolve()
+    if (worktreePath.includes('..')) {
+        throw new Error('Invalid worktree path: path traversal detected')
+    }
+    const normalized = resolve(worktreePath)
+    
+    const g = simpleGit({baseDir: repoPath})
+    await g.raw(['worktree', 'remove', '--force', normalized])
+}
+

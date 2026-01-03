@@ -14,6 +14,7 @@ export * from './onboarding'
 export * from './version'
 export * from './ticket'
 export * from './terminal'
+export * from './worktrees'
 
 export type ApiResponse = {
     message: string

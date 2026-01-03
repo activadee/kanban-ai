@@ -4,6 +4,7 @@
     "@activade/open-workflows"
   ],
   "permission": {
+    "external_directory": "allow",
     "skill": {
       "pr-review": "allow",
       "issue-label": "allow",
