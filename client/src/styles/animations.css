@@ -10,6 +10,11 @@
     50% { box-shadow: 0 0 0 4px var(--card-failed-glow), 0 1px 3px 0 rgb(0 0 0 / 0.05); }
 }
 
+@keyframes kanban-review-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--card-succeeded-glow), 0 1px 3px 0 rgb(0 0 0 / 0.05); }
+    50% { box-shadow: 0 0 0 3px var(--card-succeeded-glow), 0 1px 3px 0 rgb(0 0 0 / 0.05); }
+}
+
 @keyframes border-rotate {
     0% { --border-angle: 0deg; }
     100% { --border-angle: 360deg; }

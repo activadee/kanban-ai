@@ -86,6 +86,10 @@
         width: 4px;
     }
 
+    .kanban-card--succeeded {
+        animation: kanban-review-pulse 3s ease-in-out infinite;
+    }
+
     .kanban-card--succeeded::before {
         background: oklch(0.55 0.2 145) !important;
         width: 4px;
