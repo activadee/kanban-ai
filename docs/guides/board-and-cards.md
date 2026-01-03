@@ -144,8 +144,9 @@ See the "Attempts & inspector (UI)" guide for detailed information about managin
 - Accepting an enhancement opens the **Enhancement Acceptance** dialog, which includes:
     - A summary of the accepted changes.
     - A **Create GitHub Issue** checkbox (when GitHub Issue Creation is enabled in project settings).
-    - Checking the box creates a GitHub issue in the project's origin repository using the card's title and description, then links it back to the card.
-    - The card is still updated with the enhancement if issue creation fails, but the UI surfaces a toast with the error.
+    - Checking the box creates a GitHub issue in the project's origin repository using the card's enhanced title and description, then links it back to the card.
+    - If issue creation fails, the card update is skipped and an error toast is displayed, allowing you to fix the GitHub connection and try again.
+    - If the checkbox is not checked, only the card is updated with the enhancement.
 - Alternatively, you can create a GitHub issue for an existing card using the **Create GitHub Issue** option in the card's action menu (when GitHub Issue Creation is enabled).
     - This opens a confirmation dialog and creates the issue without modifying the card's content.
 

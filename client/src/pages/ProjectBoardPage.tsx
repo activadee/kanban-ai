@@ -574,19 +574,18 @@ export function ProjectBoardPage() {
                         enhancements[enhancementDialogCardId]?.suggestion;
                     if (!suggestion) return;
                     try {
-                        await updateCardMutation.mutateAsync({
-                            boardId,
-                            cardId: enhancementDialogCardId,
-                            values: {
-                                title: suggestion.title,
-                                description: suggestion.description,
-                                isEnhanced: true,
-                            },
-                        });
-
                         if (createGithubIssue === true) {
                             try {
                                 const result = await createCardGithubIssue(boardId, enhancementDialogCardId);
+                                await updateCardMutation.mutateAsync({
+                                    boardId,
+                                    cardId: enhancementDialogCardId,
+                                    values: {
+                                        title: suggestion.title,
+                                        description: suggestion.description,
+                                        isEnhanced: true,
+                                    },
+                                });
                                 toast({
                                     title: "GitHub issue created",
                                     description: `Issue #${result.issueNumber} created successfully`,
@@ -595,14 +594,25 @@ export function ProjectBoardPage() {
                                 console.error("GitHub issue creation failed", githubErr);
                                 const problem = describeApiError(
                                     githubErr,
-                                    "Enhancement applied, but GitHub issue creation failed",
+                                    "Failed to create GitHub issue",
                                 );
                                 toast({
                                     title: problem.title,
                                     description: problem.description,
                                     variant: "destructive",
                                 });
+                                return;
                             }
+                        } else {
+                            await updateCardMutation.mutateAsync({
+                                boardId,
+                                cardId: enhancementDialogCardId,
+                                values: {
+                                    title: suggestion.title,
+                                    description: suggestion.description,
+                                    isEnhanced: true,
+                                },
+                            });
                         }
 
                         clearEnhancement(enhancementDialogCardId);
