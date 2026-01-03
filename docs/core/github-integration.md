@@ -62,13 +62,14 @@ Additional configuration endpoints:
 ### Background Issue Sync
 
 - Each project has optional GitHub Issue Sync settings, exposed via:
-  - `GET /projects/:projectId/settings`
-  - `PATCH /projects/:projectId/settings`
+   - `GET /projects/:projectId/settings`
+   - `PATCH /projects/:projectId/settings`
 - Settings live alongside other project settings:
-  - `githubIssueSyncEnabled: boolean` – opt in/out of automatic sync (default `false`).
-  - `githubIssueSyncState: 'open' | 'all' | 'closed'` – which issue states to sync (default `open`).
-  - `githubIssueSyncIntervalMinutes: number` – how often to sync (default `15`, min `5`, max `1440`).
-  - `githubIssueAutoCreateEnabled: boolean` – enables per‑ticket GitHub issue creation (default `false`).
+   - `githubIssueSyncEnabled: boolean` – opt in/out of automatic sync (default `false`).
+   - `githubIssueSyncState: 'open' | 'all' | 'closed'` – which issue states to sync (default `open`).
+   - `githubIssueSyncIntervalMinutes: number` – how often to sync (default `15`, min `5`, max `1440`).
+   - `githubIssueAutoCreateEnabled: boolean` – enables per‑ticket GitHub issue creation (default `false`).
+   - `autoCloseTicketOnIssueClose: boolean` – automatically move cards to Done when their linked GitHub issue is closed (default `false`).
 - When enabled and a valid GitHub connection + origin (`owner/repo`) exist:
   - A lightweight scheduler in the server periodically selects eligible projects.
   - For each project, it checks the last sync metadata stored in `project_settings`:
@@ -101,9 +102,22 @@ Additional configuration endpoints:
 ### Auto‑close tickets on PR merge
 
 - Projects can opt into automatic ticket closure when PRs are merged:
-  - `autoCloseTicketOnPRMerge: boolean` (default `false`).
+   - `autoCloseTicketOnPRMerge: boolean` (default `false`).
 - When enabled, a lightweight background scheduler periodically scans cards in the **Review** column that have a linked `prUrl`.
 - If a linked PR is **closed and merged**, the card is automatically moved to the **Done** column.
 - The scheduler currently identifies these columns by title, so your board must contain columns titled **Review** and **Done**.
 - You can disable this on a per‑ticket basis by setting:
-  - `disableAutoCloseOnPRMerge: boolean` on the card (default `false`).
+   - `disableAutoCloseOnPRMerge: boolean` on the card (default `false`).
+
+### Auto‑close tickets on GitHub issue close
+
+- Projects can opt into automatic ticket closure when linked GitHub issues are closed:
+   - `autoCloseTicketOnIssueClose: boolean` (default `false`).
+- When enabled, a lightweight background scheduler periodically scans cards that have a linked GitHub issue.
+- If a linked issue is **closed**, the card is automatically moved to the **Done** column.
+- The scheduler currently identifies the **Done** column by title, so your board must contain a column titled **Done**.
+- This feature works for both:
+   - Cards imported from GitHub issues (via background sync or manual import).
+   - Cards exported to GitHub issues (created via the Create Ticket dialog with the GitHub issue creation option enabled).
+- You can disable this on a per‑ticket basis by setting:
+   - `disableAutoCloseOnIssueClosed: boolean` on the card (default `false`).
