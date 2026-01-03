@@ -3,7 +3,7 @@ import type {AppEnv, AppContext, BoardContext} from '../env'
 import {problemJson} from '../http/problem'
 import {createMiddleware} from '../lib/factory'
 import {getBoardStateHandlers} from './board.state.handlers'
-import {createCardHandlers, updateCardHandlers, deleteCardHandlers, getCardImagesHandlers} from './board.card.handlers'
+import {createCardHandlers, updateCardHandlers, deleteCardHandlers, getCardImagesHandlers, createCardGithubIssueHandlers} from './board.card.handlers'
 import {getCardAttemptForBoardHandlers, startCardAttemptForBoardHandlers} from './board.attempt.handlers'
 import {importGithubIssuesHandlers} from './board.import.handlers'
 import {getGithubIssueStatsHandlers} from './board.github.handlers'
@@ -45,6 +45,7 @@ export function createBoardRouter(
         .patch('/cards/:cardId', ...updateCardHandlers)
         .delete('/cards/:cardId', ...deleteCardHandlers)
         .get('/cards/:cardId/images', ...getCardImagesHandlers)
+        .post('/cards/:cardId/github/issue', ...createCardGithubIssueHandlers)
         .get('/cards/:cardId/attempt', ...getCardAttemptForBoardHandlers)
         .post('/cards/:cardId/attempts', ...startCardAttemptForBoardHandlers)
         .post('/import/github/issues', ...importGithubIssuesHandlers)

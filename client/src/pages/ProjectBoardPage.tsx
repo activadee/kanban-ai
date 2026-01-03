@@ -27,6 +27,7 @@ import {
 } from "@/hooks";
 import type { CardEnhancementStatus } from "@/hooks/tickets";
 import type { MoveCardResponse } from "@/api/board";
+import { createCardGithubIssue } from "@/api/board";
 import type { BoardState } from "shared";
 import type { AttemptStatus } from "shared";
 import { boardKeys } from "@/hooks/board";
@@ -541,6 +542,7 @@ export function ProjectBoardPage() {
                 onOpenChange={(open) => {
                     if (!open) setEnhancementDialogCardId(null);
                 }}
+                projectId={projectId}
                 current={{
                     title:
                         (enhancementDialogCardId &&
@@ -564,21 +566,53 @@ export function ProjectBoardPage() {
                                 ?.description) ||
                         "",
                 }}
-                onAccept={async () => {
+                onAccept={async (createGithubIssue) => {
                     if (!enhancementDialogCardId) return;
                     const suggestion =
                         enhancements[enhancementDialogCardId]?.suggestion;
                     if (!suggestion) return;
                     try {
-                        await updateCardMutation.mutateAsync({
-                            boardId,
-                            cardId: enhancementDialogCardId,
-                            values: {
-                                title: suggestion.title,
-                                description: suggestion.description,
-                                isEnhanced: true,
-                            },
-                        });
+                        if (createGithubIssue === true) {
+                            try {
+                                const result = await createCardGithubIssue(boardId, enhancementDialogCardId);
+                                await updateCardMutation.mutateAsync({
+                                    boardId,
+                                    cardId: enhancementDialogCardId,
+                                    values: {
+                                        title: suggestion.title,
+                                        description: suggestion.description,
+                                        isEnhanced: true,
+                                    },
+                                });
+                                toast({
+                                    title: "GitHub issue created",
+                                    description: `Issue #${result.issueNumber} created successfully`,
+                                });
+                            } catch (githubErr) {
+                                console.error("GitHub issue creation failed", githubErr);
+                                const problem = describeApiError(
+                                    githubErr,
+                                    "Failed to create GitHub issue",
+                                );
+                                toast({
+                                    title: problem.title,
+                                    description: problem.description,
+                                    variant: "destructive",
+                                });
+                                return;
+                            }
+                        } else {
+                            await updateCardMutation.mutateAsync({
+                                boardId,
+                                cardId: enhancementDialogCardId,
+                                values: {
+                                    title: suggestion.title,
+                                    description: suggestion.description,
+                                    isEnhanced: true,
+                                },
+                            });
+                        }
+
                         clearEnhancement(enhancementDialogCardId);
                         setEnhancementDialogCardId(null);
                     } catch (err) {

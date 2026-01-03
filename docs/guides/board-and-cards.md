@@ -125,18 +125,30 @@ See the "Attempts & inspector (UI)" guide for detailed information about managin
 ## Card action menu
 
 - Every card displays an ellipsis menu in its header with quick actions. **Open details** and **Edit…** are always available.
-   - **Edit…** opens the Edit Ticket dialog where you can modify the title, description, and images. Existing images are shown as thumbnails, and you can paste or drag new images to add more (up to 5 total). New images sent with "Enhance in background" are marked separately from saved images.
-   - When the card is running a background enhancement job, the ellipsis menu is temporarily disabled and any open menu closes so the card keeps its focus on the pending enhancement.
+    - **Edit…** opens the Edit Ticket dialog where you can modify the title, description, and images. Existing images are shown as thumbnails, and you can paste or drag new images to add more (up to 5 total). New images sent with "Enhance in background" are marked separately from saved images.
+    - When the card is running a background enhancement job, the ellipsis menu is temporarily disabled and any open menu closes so the card keeps its focus on the pending enhancement.
 - Backlog columns:
-   - **Enhance ticket…** opens the Edit Ticket dialog for that card and immediately queues the background enhancement job using the current title/description.
-   - **Start work** kicks off an Attempt using the project's default agent and profile. The board shows a toast if the card is blocked or if no default agent/profile is configured.
+    - **Enhance ticket…** opens the Edit Ticket dialog for that card and immediately queues the background enhancement job using the current title/description.
+    - **Start work** kicks off an Attempt using the project's default agent and profile. The board shows a toast if the card is blocked or if no default agent/profile is configured.
 - In Progress columns:
-   - **Stop Attempt** becomes enabled while the latest Attempt is running (and shows a disabled state when nothing is active).
+    - **Stop Attempt** becomes enabled while the latest Attempt is running (and shows a disabled state when nothing is active).
 - Review columns:
-   - **Create PR…** opens the same pull request dialog as the inspector, with identical defaults.
-   - **Open in editor** reuses the Attempt editor integration and respects the same enablement rules as the inspector (default editor configured, attempt worktree available).
+    - **Create PR…** opens the same pull request dialog as the inspector, with identical defaults.
+    - **Open in editor** reuses the Attempt editor integration and respects the same enablement rules as the inspector (default editor configured, attempt worktree available).
 - Done and non-standard columns:
-   - Only **Open details** and **Edit…** are shown so completed work stays read-only for Git/Attempt operations.
+    - Only **Open details** and **Edit…** are shown so completed work stays read-only for Git/Attempt operations.
+
+## Creating GitHub issues from cards
+
+- When a card is enhanced (via the enhancement dialog), an **Accept** button appears alongside the enhancement suggestion.
+- Accepting an enhancement opens the **Enhancement Acceptance** dialog, which includes:
+    - A summary of the accepted changes.
+    - A **Create GitHub Issue** checkbox (when GitHub Issue Creation is enabled in project settings).
+    - Checking the box creates a GitHub issue in the project's origin repository using the card's enhanced title and description, then links it back to the card.
+    - If issue creation fails, the card update is skipped and an error toast is displayed, allowing you to fix the GitHub connection and try again.
+    - If the checkbox is not checked, only the card is updated with the enhancement.
+- Alternatively, you can create a GitHub issue for an existing card using the **Create GitHub Issue** option in the card's action menu (when GitHub Issue Creation is enabled).
+    - This opens a confirmation dialog and creates the issue without modifying the card's content.
 
 ## Drag & drop
 
