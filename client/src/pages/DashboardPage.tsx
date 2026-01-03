@@ -10,7 +10,7 @@ import {
     useDashboardStream,
 } from '@/hooks'
 import {deriveDashboardKpiMetrics} from '@/hooks'
-import {VersionIndicator} from '@/components/system/VersionIndicator'
+
 import {LiveAgentActivityPanel} from '@/pages/dashboard/LiveAgentActivityPanel'
 import {InboxPanel} from '@/pages/dashboard/InboxPanel'
 import {useRelativeTimeFormatter} from '@/hooks'
@@ -179,7 +179,6 @@ export function DashboardPage() {
         <div className="flex h-full flex-col overflow-auto bg-background">
             <PageHeader
                 title="Mission Control"
-                titleAccessory={<VersionIndicator/>}
                 description="Centralize agent activity, project health, and system status in one dashboard."
             >
                 <Button asChild size="sm">

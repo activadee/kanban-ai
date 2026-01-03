@@ -16,7 +16,6 @@ import { CardEnhancementDialog } from "@/components/kanban/card-dialogs/CardEnha
 import type { CardFormValues } from "@/components/kanban/CardDialogs";
 import { ImportIssuesDialog } from "@/components/github/ImportIssuesDialog";
 import { ConnectionLostDialog } from "@/components/system/ConnectionLostDialog";
-import { VersionIndicator } from "@/components/system/VersionIndicator";
 import {
     useBoardState,
     useCreateCard,
@@ -255,7 +254,6 @@ export function ProjectBoardPage() {
                 variant="compact"
                 kicker="Kanban Board"
                 title={project.name}
-                titleAccessory={<VersionIndicator />}
                 controls={
                     <Select value={sortOrder} onValueChange={handleSortOrderChange}>
                         <SelectTrigger className="h-8 w-[150px] text-xs">
