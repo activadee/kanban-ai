@@ -286,7 +286,9 @@ export async function checkDeleteConstraints(
 export async function deleteTrackedWorktree(
     worktreePath: string,
     repoPath: string,
+    branchName: string,
     deps: Pick<WorktreeServiceDeps, 'removeWorktreeFromRepo'>,
+    options?: {deleteBranch?: boolean; deleteRemoteBranch?: boolean},
 ): Promise<{success: boolean; message: string}> {
     if (!existsSync(worktreePath)) {
         return {success: true, message: 'Worktree already removed from disk'}
@@ -294,6 +296,25 @@ export async function deleteTrackedWorktree(
 
     try {
         await deps.removeWorktreeFromRepo(repoPath, worktreePath)
+
+        if (options?.deleteBranch) {
+            try {
+                await runGitCommand(['branch', '-D', branchName], repoPath)
+                log.info('worktrees:delete', 'Local branch deleted', {branch: branchName})
+            } catch (err) {
+                log.warn('worktrees:delete', 'Failed to delete local branch', {branch: branchName, err})
+            }
+        }
+
+        if (options?.deleteRemoteBranch) {
+            try {
+                await runGitCommand(['push', 'origin', '--delete', branchName], repoPath)
+                log.info('worktrees:delete', 'Remote branch deleted', {branch: branchName})
+            } catch (err) {
+                log.warn('worktrees:delete', 'Failed to delete remote branch', {branch: branchName, err})
+            }
+        }
+
         return {success: true, message: 'Worktree removed successfully'}
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove worktree'

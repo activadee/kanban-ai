@@ -109,7 +109,7 @@ export const deleteWorktreeHandlers = createHandlers(
     zValidator('json', deleteWorktreeBody),
     async (c) => {
         const {projectId, id} = c.req.valid('param')
-        const {force, diskOnly} = c.req.valid('json')
+        const {force, diskOnly, deleteBranch, deleteRemoteBranch} = c.req.valid('json')
 
         const attempt = await attemptsRepo.getAttemptById(id)
         if (!attempt) {
@@ -143,7 +143,16 @@ export const deleteWorktreeHandlers = createHandlers(
             return problemJson(c, {status: 404, detail: 'Project not found'})
         }
 
-        const result = await deleteTrackedWorktree(attempt.worktreePath, project.repositoryPath, deps)
+        const result = await deleteTrackedWorktree(
+            attempt.worktreePath,
+            project.repositoryPath,
+            attempt.branchName,
+            deps,
+            {
+                deleteBranch,
+                deleteRemoteBranch,
+            },
+        )
 
         if (!result.success) {
             return problemJson(c, {status: 500, detail: result.message})

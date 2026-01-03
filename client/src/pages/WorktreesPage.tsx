@@ -414,10 +414,12 @@ function DeleteConfirmDialog({
 }: {
     target: DeleteTarget
     onClose: () => void
-    onConfirm: (force: boolean) => void
+    onConfirm: (force: boolean, deleteBranch: boolean, deleteRemoteBranch: boolean) => void
     isPending: boolean
 }) {
     const [forceDelete, setForceDelete] = useState(false)
+    const [deleteBranch, setDeleteBranch] = useState(true)
+    const [deleteRemoteBranch, setDeleteRemoteBranch] = useState(true)
 
     if (!target) return null
 
@@ -467,6 +469,38 @@ function DeleteConfirmDialog({
                             </p>
                         )}
                     </div>
+                    {target.type === 'tracked' && (
+                        <>
+                            <label className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/50 p-3">
+                                <input
+                                    type="checkbox"
+                                    checked={deleteBranch}
+                                    onChange={(e) => setDeleteBranch(e.target.checked)}
+                                    className="mt-0.5 size-4 shrink-0 rounded"
+                                />
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium">Also delete local branch</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Remove the Git branch from your local repository
+                                    </p>
+                                </div>
+                            </label>
+                            <label className="flex items-start gap-3 rounded-lg border border-border/50 bg-card/50 p-3">
+                                <input
+                                    type="checkbox"
+                                    checked={deleteRemoteBranch}
+                                    onChange={(e) => setDeleteRemoteBranch(e.target.checked)}
+                                    className="mt-0.5 size-4 shrink-0 rounded"
+                                />
+                                <div className="space-y-1">
+                                    <p className="text-sm font-medium">Also delete remote branch</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Remove the Git branch from the remote repository (e.g., GitHub)
+                                    </p>
+                                </div>
+                            </label>
+                        </>
+                    )}
                     {showForceCheckbox && (
                         <label className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
                             <input
@@ -496,7 +530,7 @@ function DeleteConfirmDialog({
                     </Button>
                     <Button
                         variant="destructive"
-                        onClick={() => onConfirm(forceDelete)}
+                        onClick={() => onConfirm(forceDelete, deleteBranch, deleteRemoteBranch)}
                         disabled={isPending || (showForceCheckbox && !forceDelete)}
                     >
                         {isPending ? (
@@ -601,7 +635,7 @@ export function WorktreesPage() {
         )
     }
 
-    const handleDelete = (force: boolean) => {
+    const handleDelete = (force: boolean, deleteBranch: boolean, deleteRemoteBranch: boolean) => {
         if (!deleteTarget || !projectId) return
 
         const onSuccess = () => {
@@ -614,11 +648,25 @@ export function WorktreesPage() {
             )) {
                 setSelectedId(null)
             }
+
+            let description = 'Worktree has been removed from disk.'
+            if (deleteBranch && deleteRemoteBranch) {
+                description += ' Both local and remote branches have been deleted.'
+            } else if (deleteBranch) {
+                description += ' The local branch has been deleted. Remote branch still exists.'
+            } else if (deleteRemoteBranch) {
+                description += ' The remote branch has been deleted. Local branch still exists.'
+            } else {
+                description += ' The Git branches still exist in the repository.'
+            }
+
+            if (wasForced) {
+                description = '⚠️ WARNING: All uncommitted and unpushed changes are permanently lost. The ticket progress has been destroyed. ' + description
+            }
+
             toast({
                 title: wasForced ? '⚠️ Worktree force deleted' : 'Worktree deleted',
-                description: wasForced
-                    ? '⚠️ WARNING: All uncommitted and unpushed changes are permanently lost. The ticket progress has been destroyed.'
-                    : 'Worktree has been removed from disk. The Git branch still exists in the repository.',
+                description,
                 variant: wasForced ? 'destructive' : 'success',
             })
         }
@@ -647,7 +695,15 @@ export function WorktreesPage() {
 
         if (deleteTarget.type === 'tracked') {
             deleteTrackedMutation.mutate(
-                {projectId, worktreeId: deleteTarget.item.id, options: force ? {force: true} : undefined},
+                {
+                    projectId,
+                    worktreeId: deleteTarget.item.id,
+                    options: {
+                        force,
+                        deleteBranch,
+                        deleteRemoteBranch,
+                    },
+                },
                 {onSuccess, onError}
             )
         } else if (deleteTarget.type === 'orphaned') {

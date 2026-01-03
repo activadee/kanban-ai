@@ -12,6 +12,8 @@ export const worktreeIdParam = z.object({
 export const deleteWorktreeBody = z.object({
     force: z.boolean().optional().default(false),
     diskOnly: z.boolean().optional().default(false),
+    deleteBranch: z.boolean().optional().default(false),
+    deleteRemoteBranch: z.boolean().optional().default(false),
 })
 
 export const deleteOrphanedParams = z.object({

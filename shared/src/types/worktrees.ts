@@ -135,6 +135,10 @@ export interface WorktreeDeleteRequest {
     force?: boolean
     /** Only delete from disk, keep database record */
     diskOnly?: boolean
+    /** Also delete the local Git branch */
+    deleteBranch?: boolean
+    /** Also delete the remote Git branch */
+    deleteRemoteBranch?: boolean
 }
 
 /**
