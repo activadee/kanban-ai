@@ -227,8 +227,9 @@ export function AppSidebar({
                             className="mt-2 flex h-8 w-full items-center justify-center"
                             onClick={toggleSidebar}
                             title="Update available"
-                            aria-label="Update available"
+                            aria-label="Update available - click to expand sidebar"
                         >
+                            <span className="sr-only">Update available - click to expand sidebar</span>
                             <span className="size-1 animate-pulse rounded-full bg-amber-500 shadow-[0_0_4px_rgba(251,191,36,0.5)]" />
                         </button>
                     )}

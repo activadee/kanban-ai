@@ -80,7 +80,7 @@ In the collapsed state (width: 64px), the sidebar displays:
 - Icon-only navigation buttons with tooltips showing labels and shortcuts
 - Simplified GitHub connection button
 - All navigation remains accessible via tooltips on hover
-- Version indicator at the bottom (visible when expanded, hidden when collapsed)
+- Version indicator at the bottom (full version shown when expanded; shows amber pulsing dot when update available in collapsed mode)
 
 The collapse toggle button is always visible in the header, changing icon to indicate current state (panel-left-close when expanded, panel-right when collapsed).
 
