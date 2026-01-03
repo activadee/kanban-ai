@@ -33,7 +33,7 @@ This guide explains how to use the Kanban board UI: lanes, cards, dependencies, 
    - **In Progress** cards with a running Attempt display an animated loading border around the card that rotates continuously, providing visual feedback that work is actively being processed.
    - **Blocked** cards show a lock icon with "Blocked" label and a diagonal stripe pattern on the left border.
    - **Failed** cards display an alert icon with "Failed" label and a pulsing glow animation when their latest Attempt has failed. Failed cards can be clicked to open the Card Inspector for review and retry.
-   - **Enhanced** cards feature a green bookmark icon in the top-right corner with a subtle shimmer animation across the card.
+    - **Enhanced** cards feature a green bookmark icon in the top-right corner.
    - **Enhancing** cards show a spinner icon while background enhancement is running.
    - **Done** cards appear with reduced opacity and a grayscale filter.
    - **Selected** cards display a ring outline around them.
@@ -70,7 +70,7 @@ card surfaces an **Enhancing** badge and cannot be dragged. When the suggestion 
 card; clicking it opens the enhancement diff dialog to compare the persisted title/description with the AI suggestion.
 Accepting the suggestion updates the card, while rejecting it just clears the pending enhancement so you can try again
 later. Accepted enhancements also flip the card's `isEnhanced` flag, which renders a green bookmark icon at the top-right
-corner with a shimmer animation so polished tickets remain visible even after you reload the board.
+corner so polished tickets remain visible even after you reload the board.
 
 You can also create cards directly in a column using column-specific controls (e.g. "Add card") where present.
 
