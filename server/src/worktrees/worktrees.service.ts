@@ -14,6 +14,7 @@ import type {
 } from 'shared'
 import {getProjectWorktreeFolder} from '../fs/paths'
 import {log} from '../log'
+import {git} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -284,10 +285,10 @@ export async function checkDeleteConstraints(
 }
 
 export async function deleteTrackedWorktree(
+    projectId: string,
     worktreePath: string,
-    repoPath: string,
     branchName: string,
-    deps: Pick<WorktreeServiceDeps, 'removeWorktreeFromRepo'>,
+    deps: Pick<WorktreeServiceDeps, 'removeWorktreeFromRepo' | 'getProject'>,
     options?: {deleteBranch?: boolean; deleteRemoteBranch?: boolean},
 ): Promise<{success: boolean; message: string}> {
     if (!existsSync(worktreePath)) {
@@ -295,11 +296,16 @@ export async function deleteTrackedWorktree(
     }
 
     try {
-        await deps.removeWorktreeFromRepo(repoPath, worktreePath)
+        const project = await deps.getProject(projectId)
+        if (!project) {
+            return {success: false, message: 'Project not found'}
+        }
+
+        await deps.removeWorktreeFromRepo(project.repositoryPath, worktreePath)
 
         if (options?.deleteBranch) {
             try {
-                await runGitCommand(['branch', '-D', branchName], repoPath)
+                await git.deleteBranch(projectId, branchName)
                 log.info('worktrees:delete', 'Local branch deleted', {branch: branchName})
             } catch (err) {
                 log.warn('worktrees:delete', 'Failed to delete local branch', {branch: branchName, err})
@@ -308,7 +314,7 @@ export async function deleteTrackedWorktree(
 
         if (options?.deleteRemoteBranch) {
             try {
-                await runGitCommand(['push', 'origin', '--delete', branchName], repoPath)
+                await git.deleteRemoteBranch(projectId, branchName)
                 log.info('worktrees:delete', 'Remote branch deleted', {branch: branchName})
             } catch (err) {
                 log.warn('worktrees:delete', 'Failed to delete remote branch', {branch: branchName, err})

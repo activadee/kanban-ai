@@ -138,14 +138,9 @@ export const deleteWorktreeHandlers = createHandlers(
             }
         }
 
-        const project = await deps.getProject(projectId)
-        if (!project) {
-            return problemJson(c, {status: 404, detail: 'Project not found'})
-        }
-
         const result = await deleteTrackedWorktree(
+            projectId,
             attempt.worktreePath,
-            project.repositoryPath,
             attempt.branchName,
             deps,
             {

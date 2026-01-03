@@ -267,3 +267,19 @@ export async function getFileContent(
         return null
     }
 }
+
+export async function deleteBranch(projectId: string, branchName: string): Promise<void> {
+    const repoPath = await getRepoPath(projectId)
+    const g = git(repoPath)
+    await g.deleteLocalBranch(branchName, true)
+}
+
+export async function deleteRemoteBranch(
+    projectId: string,
+    branchName: string,
+    remote: string = 'origin',
+): Promise<void> {
+    const repoPath = await getRepoPath(projectId)
+    const g = git(repoPath)
+    await g.push([remote, '--delete', branchName])
+}
