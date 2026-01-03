@@ -87,10 +87,9 @@ export function KanbanCard({
         else if (showAnimatedBorder) states.push('kanban-card--in-progress')
         else if (isSucceeded) states.push('kanban-card--succeeded')
         else if (blocked && !done) states.push('kanban-card--blocked')
-        else if (isEnhanced) states.push('kanban-card--enhanced')
         if (done) states.push('kanban-card--done')
         return states.join(' ')
-    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected, showAnimatedBorder, isSucceeded])
+    }, [isCardDisabled, isFailed, blocked, done, selected, showAnimatedBorder, isSucceeded])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
