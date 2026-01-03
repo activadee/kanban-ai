@@ -236,7 +236,7 @@ export async function performAutoCommit(params: AutoCommitParams) {
                             attemptId,
                             ts: abortFailTs,
                             level: 'warn',
-                            message: `[autopush] cleanup: rebase abort failed (repo might not be in rebase state): ${(abortCleanupError as Error).message}`,
+                            message: `[autopush] cleanup: rebase abort failed (repo might not be in rebase state). Original error: ${(rebaseError as Error).message}. Abort error: ${(abortCleanupError as Error).message}`,
                         })
                     }
                     
@@ -266,7 +266,7 @@ export async function performAutoCommit(params: AutoCommitParams) {
                         ts: new Date().toISOString(),
                     })
                     
-                    await new Promise(resolve => setTimeout(resolve, 100))
+                    await new Promise(resolve => setTimeout(resolve, 250))
                     const postRebaseStatus = await git.status()
                     const retryBranch = postRebaseStatus.current || targetBranch
                     const retryRemote = preferredRemote?.trim() || (postRebaseStatus.tracking?.split('/')?.[0] ?? targetRemote)
