@@ -71,6 +71,7 @@ vi.mock('../src/fs/worktree-runner', () => ({
 
 vi.mock('../src/fs/paths', () => ({
     getProjectWorktreeFolder: vi.fn(() => '/home/user/.cache/kanban-ai/worktrees/test-project'),
+    getWorktreesRoot: vi.fn(() => '/home/user/.cache/kanban-ai/worktrees'),
 }))
 
 vi.mock('fs/promises', () => ({

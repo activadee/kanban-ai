@@ -237,6 +237,10 @@ export async function mergeBranchIntoBaseForProject(
 }
 
 export async function removeWorktreeAtPath(repoPath: string, worktreePath: string): Promise<void> {
+    if (worktreePath.includes('..') || !worktreePath.startsWith('/')) {
+        throw new Error('Invalid worktree path: must be absolute and not contain ..')
+    }
+    
     const g = simpleGit({baseDir: repoPath})
     await g.raw(['worktree', 'remove', '--force', worktreePath])
 }

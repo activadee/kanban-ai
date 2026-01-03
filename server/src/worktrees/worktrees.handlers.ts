@@ -155,6 +155,7 @@ export const deleteWorktreeHandlers = createHandlers(
             return problemJson(c, {status: 500, detail: result.message})
         }
 
+        let finalMessage = result.message
         if (!diskOnly) {
             try {
                 await attemptsRepo.updateAttempt(id, {worktreePath: null})
@@ -163,12 +164,13 @@ export const deleteWorktreeHandlers = createHandlers(
                     attemptId: id,
                     err,
                 })
+                finalMessage += '. Warning: Database update failed - worktree may still be tracked'
             }
         }
 
         return c.json({
             success: true,
-            message: result.message,
+            message: finalMessage,
             deletedPath: attempt.worktreePath,
         }, 200)
     },

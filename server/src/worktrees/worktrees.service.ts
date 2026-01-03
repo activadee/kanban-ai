@@ -12,15 +12,16 @@ import type {
     WorktreeDeleteConstraint,
     WorktreeStatus,
 } from 'shared'
-import {getProjectWorktreeFolder} from '../fs/paths'
+import {getProjectWorktreeFolder, getWorktreesRoot} from '../fs/paths'
 import {log} from '../log'
 import {git} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
     return new Promise(async (resolvePromise, reject) => {
         const normalizedCwd = await realpath(cwd).catch(() => null)
+        const worktreesRoot = await realpath(getWorktreesRoot()).catch(() => getWorktreesRoot())
         
-        if (!normalizedCwd || normalizedCwd.includes('..') || !normalizedCwd.startsWith('/')) {
+        if (!normalizedCwd || normalizedCwd.includes('..') || !normalizedCwd.startsWith(worktreesRoot + '/')) {
             reject(new Error('Invalid worktree path'))
             return
         }
@@ -49,8 +50,9 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
 async function getDirectorySize(dirPath: string): Promise<number> {
     return new Promise(async (resolvePromise) => {
         const normalized = await realpath(dirPath).catch(() => null)
+        const worktreesRoot = await realpath(getWorktreesRoot()).catch(() => getWorktreesRoot())
         
-        if (!normalized || normalized.includes('..') || !normalized.startsWith('/')) {
+        if (!normalized || normalized.includes('..') || !normalized.startsWith(worktreesRoot + '/')) {
             resolvePromise(0)
             return
         }
@@ -154,8 +156,13 @@ export async function listWorktreesForProject(
 
     const uniqueCardIds = [...new Set(attempts.map((a) => a.cardId))]
     const columnTitlesMap = new Map<string, string | null>()
-    for (const cardId of uniqueCardIds) {
+    
+    const columnTitlePromises = uniqueCardIds.map(async (cardId) => {
         const title = await deps.getColumnTitle(cardId)
+        return {cardId, title}
+    })
+    const columnTitles = await Promise.all(columnTitlePromises)
+    for (const {cardId, title} of columnTitles) {
         columnTitlesMap.set(cardId, title)
     }
 
@@ -393,13 +400,13 @@ export async function deleteOrphanedWorktree(
     repoPath: string | null,
     projectName: string,
 ): Promise<{success: boolean; message: string}> {
-    if (!existsSync(worktreePath)) {
-        return {success: true, message: 'Directory already removed'}
-    }
-
     try {
         // Resolve symlinks to prevent TOCTOU attacks
-        const realPath = await realpath(worktreePath).catch(() => worktreePath)
+        const realPath = await realpath(worktreePath).catch(() => null)
+        
+        if (!realPath) {
+            return {success: true, message: 'Directory already removed'}
+        }
         const expectedRoot = getProjectWorktreeFolder(projectName)
         const realRoot = await realpath(expectedRoot).catch(() => expectedRoot)
 
@@ -419,12 +426,7 @@ export async function deleteOrphanedWorktree(
             }
         }
 
-        // Verify it's a worktree directory before deletion
-        const gitFile = join(realPath, '.git')
-        if (!existsSync(gitFile)) {
-            return {success: false, message: 'Not a valid worktree directory'}
-        }
-
+        // Attempt deletion - rm will fail naturally if path is invalid or lacks permissions
         await rm(realPath, {recursive: true, force: false})
         return {success: true, message: 'Orphaned directory removed'}
     } catch (err) {
