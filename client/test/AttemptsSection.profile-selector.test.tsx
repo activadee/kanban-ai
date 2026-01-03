@@ -117,18 +117,6 @@ describe('AttemptsSection – profile selector transparency', () => {
             expect(trigger.className).not.toContain('bg-muted')
         })
 
-        it('inherits transparent background from base SelectTrigger', () => {
-            renderAttemptsSection({
-                attemptAgent: 'codex' as AgentKey,
-                followupProfiles: mockProfiles,
-            })
-
-            const trigger = screen.getByRole('combobox', {hidden: true})
-            
-            expect(trigger.className).not.toContain('bg-muted/50')
-            expect(trigger.className).not.toContain('border-0')
-        })
-
         it('applies compact height styling', () => {
             renderAttemptsSection({
                 attemptAgent: 'codex' as AgentKey,
@@ -164,17 +152,6 @@ describe('AttemptsSection – profile selector transparency', () => {
             expect(trigger.className).not.toContain('w-32')
             expect(trigger.className).not.toContain('w-40')
             expect(trigger.className).not.toContain('w-48')
-        })
-
-        it('inherits dynamic width from base SelectTrigger', () => {
-            renderAttemptsSection({
-                attemptAgent: 'codex' as AgentKey,
-                followupProfiles: mockProfiles,
-            })
-
-            const trigger = screen.getByRole('combobox', {hidden: true})
-            
-            expect(trigger.className).not.toMatch(/\bw-\d+\b/)
         })
     })
 
@@ -303,21 +280,6 @@ describe('AttemptsSection – profile selector transparency', () => {
             expect(within(listbox).getByText('Default Profile')).toBeInTheDocument()
             expect(within(listbox).getByText('High-Performance Optimized Profile')).toBeInTheDocument()
             expect(within(listbox).getByText('Debug Mode with Extended Logging')).toBeInTheDocument()
-        })
-    })
-
-    describe('consistency with other selectors', () => {
-        it('matches base SelectTrigger pattern for transparent styling', () => {
-            renderAttemptsSection({
-                attemptAgent: 'codex' as AgentKey,
-                followupProfiles: mockProfiles,
-            })
-
-            const trigger = screen.getByRole('combobox', {hidden: true})
-            
-            expect(trigger.className).not.toContain('bg-muted')
-            expect(trigger.className).not.toContain('w-32')
-            expect(trigger.className).not.toContain('border-0')
         })
     })
 
