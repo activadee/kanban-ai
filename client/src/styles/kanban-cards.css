@@ -19,12 +19,6 @@
         width: 4px;
     }
 
-    .kanban-card--enhanced {
-        background: linear-gradient(135deg, var(--card) 0%, var(--card-enhanced-glow) 50%, var(--card) 100%);
-        background-size: 200% 100%;
-        animation: kanban-shimmer 6s ease-in-out infinite;
-    }
-
     .kanban-card--selected {
         transform: translateX(2px);
         box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04);

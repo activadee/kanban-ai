@@ -82,15 +82,14 @@ export function KanbanCard({
             states.push('cursor-grab active:cursor-grabbing')
         }
         if (selected) states.push('kanban-card--selected')
-        // State precedence (highest to lowest): failed > in-progress > succeeded > blocked > enhanced
+        // State precedence (highest to lowest): failed > in-progress > succeeded > blocked
         if (isFailed) states.push('kanban-card--failed')
         else if (showAnimatedBorder) states.push('kanban-card--in-progress')
         else if (isSucceeded) states.push('kanban-card--succeeded')
         else if (blocked && !done) states.push('kanban-card--blocked')
-        else if (isEnhanced) states.push('kanban-card--enhanced')
         if (done) states.push('kanban-card--done')
         return states.join(' ')
-    }, [isCardDisabled, isFailed, blocked, done, isEnhanced, selected, showAnimatedBorder, isSucceeded])
+    }, [isCardDisabled, isFailed, blocked, done, selected, showAnimatedBorder, isSucceeded])
 
     const showHeaderRow =
         Boolean(card.ticketKey) ||
