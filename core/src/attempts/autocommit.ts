@@ -131,6 +131,23 @@ export async function performAutoCommit(params: AutoCommitParams) {
     if (autoPushOnAutocommit) {
         const targetBranch = status.current || 'HEAD'
         const targetRemote = preferredRemote?.trim() || (status.tracking?.split('/')?.[0] ?? 'origin')
+        
+        /*
+         * DESIGN: Auto-push is a best-effort operation. Push failures do NOT fail auto-commit.
+         * 
+         * RATIONALE:
+         * - The commit succeeded (changes are saved locally) - this is the PRIMARY goal
+         * - Push failures can be transient (network issues, race conditions, etc.)
+         * - Users can manually push later if needed
+         * 
+         * ERROR VISIBILITY:
+         * - All push failures are logged at ERROR level (highly visible in logs)
+         * - git.push.failed event is emitted (event listeners are notified)
+         * - UI can display error state based on events/logs
+         * 
+         * This behavior is INTENTIONAL and aligns with the requirement:
+         * "Preserve auto-commit success regardless of push outcome"
+         */
         try {
             await pushAtPath(worktreePath, {remote: targetRemote, branch: targetBranch}, {projectId: boardId, attemptId})
             const pushTs = new Date()
