@@ -199,6 +199,65 @@ export async function commitAtPath(
     return sha
 }
 
+export function isPushConflictError(error: Error): boolean {
+    const conflictPatterns = [
+        /rejected.*non-fast-forward/i,
+        /failed to push.*updates were rejected/i,
+        /fetch first/i,
+        /\[rejected\]/i,
+    ]
+    const errorMessage = error.message + ((error as any).stderr || '')
+    return conflictPatterns.some(pattern => pattern.test(errorMessage))
+}
+
+export async function pullRebaseAtPath(
+    worktreePath: string,
+    options?: { projectId?: string; attemptId?: string }
+): Promise<{
+    success: boolean
+    hasConflicts: boolean
+    message: string
+}> {
+    const g = gitAtPath(worktreePath)
+    try {
+        await g.raw(['pull', '--rebase'])
+        return {
+            success: true,
+            hasConflicts: false,
+            message: 'Rebase completed successfully',
+        }
+    } catch (error) {
+        const errorMessage = (error as Error).message + ((error as any).stderr || '')
+        
+        const conflictPatterns = [
+            /conflict/i,
+            /CONFLICT/,
+            /could not apply/i,
+            /Resolve all conflicts/i,
+        ]
+        const hasConflicts = conflictPatterns.some(pattern => pattern.test(errorMessage))
+        
+        if (hasConflicts) {
+            try {
+                await g.raw(['rebase', '--abort'])
+            } catch (abortError) {
+                console.error('Failed to abort rebase:', abortError)
+            }
+            return {
+                success: false,
+                hasConflicts: true,
+                message: 'Rebase has conflicts and was aborted',
+            }
+        }
+        
+        return {
+            success: false,
+            hasConflicts: false,
+            message: `Rebase failed: ${(error as Error).message}`,
+        }
+    }
+}
+
 export async function pushAtPath(
     worktreePath: string,
     {remote, branch, token, setUpstream}: { remote?: string; branch?: string; token?: string; setUpstream?: boolean },

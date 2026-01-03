@@ -2,7 +2,7 @@ import simpleGit, {type SimpleGit} from 'simple-git'
 import type {AppEventBus} from '../events/bus'
 import {insertAttemptLog, listConversationItemsDescending} from './repo'
 import {getCardById} from '../projects/repo'
-import {ensureGitAuthorIdentity, pushAtPath} from '../git/service'
+import {ensureGitAuthorIdentity, pushAtPath, pullRebaseAtPath, isPushConflictError} from '../git/service'
 
 type SimpleGitCommitResult = Awaited<ReturnType<SimpleGit['commit']>>
 
@@ -149,24 +149,164 @@ export async function performAutoCommit(params: AutoCommitParams) {
                 message: pushMessage,
                 ts: pushTs.toISOString(),
             })
-        } catch (error) {
-            const errorTs = new Date()
-            const errMsg = `[autopush] failed: ${(error as Error).message || error}`
-            await insertAttemptLog({
-                id: `log-${crypto.randomUUID()}`,
-                attemptId,
-                ts: errorTs,
-                level: 'error',
-                message: errMsg,
-            })
-            events.publish('attempt.log.appended', {
-                attemptId,
-                boardId,
-                level: 'error',
-                message: errMsg,
-                ts: errorTs.toISOString(),
-            })
-            throw error
+        } catch (pushError) {
+            if (isPushConflictError(pushError as Error)) {
+                const conflictTs = new Date()
+                const conflictMsg = '[autopush] push conflict detected, attempting pull-rebase...'
+                await insertAttemptLog({
+                    id: `log-${crypto.randomUUID()}`,
+                    attemptId,
+                    ts: conflictTs,
+                    level: 'info',
+                    message: conflictMsg,
+                })
+                events.publish('attempt.log.appended', {
+                    attemptId,
+                    boardId,
+                    level: 'info',
+                    message: conflictMsg,
+                    ts: conflictTs.toISOString(),
+                })
+                
+                events.publish('git.rebase.started', {
+                    projectId: boardId,
+                    attemptId,
+                    ts: new Date().toISOString(),
+                })
+                
+                const rebaseResult = await pullRebaseAtPath(worktreePath, {projectId: boardId, attemptId})
+                
+                if (rebaseResult.success) {
+                    const rebaseSuccessTs = new Date()
+                    const rebaseSuccessMsg = '[autopush] rebase successful, retrying push...'
+                    await insertAttemptLog({
+                        id: `log-${crypto.randomUUID()}`,
+                        attemptId,
+                        ts: rebaseSuccessTs,
+                        level: 'info',
+                        message: rebaseSuccessMsg,
+                    })
+                    events.publish('attempt.log.appended', {
+                        attemptId,
+                        boardId,
+                        level: 'info',
+                        message: rebaseSuccessMsg,
+                        ts: rebaseSuccessTs.toISOString(),
+                    })
+                    events.publish('git.rebase.completed', {
+                        projectId: boardId,
+                        attemptId,
+                        ts: new Date().toISOString(),
+                    })
+                    
+                    try {
+                        await pushAtPath(worktreePath, {remote: targetRemote, branch: targetBranch}, {projectId: boardId, attemptId})
+                        const retryPushTs = new Date()
+                        const retryPushMsg = '[autopush] push succeeded after rebase'
+                        await insertAttemptLog({
+                            id: `log-${crypto.randomUUID()}`,
+                            attemptId,
+                            ts: retryPushTs,
+                            level: 'info',
+                            message: retryPushMsg,
+                        })
+                        events.publish('attempt.log.appended', {
+                            attemptId,
+                            boardId,
+                            level: 'info',
+                            message: retryPushMsg,
+                            ts: retryPushTs.toISOString(),
+                        })
+                        events.publish('git.push.retried', {
+                            projectId: boardId,
+                            attemptId,
+                            remote: targetRemote,
+                            branch: targetBranch,
+                            ts: new Date().toISOString(),
+                        })
+                    } catch (retryError) {
+                        const retryErrorTs = new Date()
+                        const retryErrorMsg = `[autopush] push retry failed: ${(retryError as Error).message || retryError}`
+                        await insertAttemptLog({
+                            id: `log-${crypto.randomUUID()}`,
+                            attemptId,
+                            ts: retryErrorTs,
+                            level: 'error',
+                            message: retryErrorMsg,
+                        })
+                        events.publish('attempt.log.appended', {
+                            attemptId,
+                            boardId,
+                            level: 'error',
+                            message: retryErrorMsg,
+                            ts: retryErrorTs.toISOString(),
+                        })
+                    }
+                } else if (rebaseResult.hasConflicts) {
+                    const conflictAbortTs = new Date()
+                    const conflictAbortMsg = '[autopush] rebase conflicts detected, aborting rebase'
+                    await insertAttemptLog({
+                        id: `log-${crypto.randomUUID()}`,
+                        attemptId,
+                        ts: conflictAbortTs,
+                        level: 'info',
+                        message: conflictAbortMsg,
+                    })
+                    events.publish('attempt.log.appended', {
+                        attemptId,
+                        boardId,
+                        level: 'info',
+                        message: conflictAbortMsg,
+                        ts: conflictAbortTs.toISOString(),
+                    })
+                    events.publish('git.rebase.aborted', {
+                        projectId: boardId,
+                        attemptId,
+                        reason: 'conflicts',
+                        ts: new Date().toISOString(),
+                    })
+                } else {
+                    const rebaseFailTs = new Date()
+                    const rebaseFailMsg = `[autopush] rebase failed: ${rebaseResult.message}`
+                    await insertAttemptLog({
+                        id: `log-${crypto.randomUUID()}`,
+                        attemptId,
+                        ts: rebaseFailTs,
+                        level: 'warn',
+                        message: rebaseFailMsg,
+                    })
+                    events.publish('attempt.log.appended', {
+                        attemptId,
+                        boardId,
+                        level: 'warn',
+                        message: rebaseFailMsg,
+                        ts: rebaseFailTs.toISOString(),
+                    })
+                    events.publish('git.rebase.aborted', {
+                        projectId: boardId,
+                        attemptId,
+                        reason: 'error',
+                        ts: new Date().toISOString(),
+                    })
+                }
+            } else {
+                const errorTs = new Date()
+                const errMsg = `[autopush] failed: ${(pushError as Error).message || pushError}`
+                await insertAttemptLog({
+                    id: `log-${crypto.randomUUID()}`,
+                    attemptId,
+                    ts: errorTs,
+                    level: 'error',
+                    message: errMsg,
+                })
+                events.publish('attempt.log.appended', {
+                    attemptId,
+                    boardId,
+                    level: 'error',
+                    message: errMsg,
+                    ts: errorTs.toISOString(),
+                })
+            }
         }
     }
 }

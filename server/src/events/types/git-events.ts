@@ -82,6 +82,33 @@ export interface GithubIssueClosedAutoClosedEvent {
     ts: string
 }
 
+export interface GitRebaseStartedEvent {
+    projectId: string
+    attemptId: string
+    ts: string
+}
+
+export interface GitRebaseCompletedEvent {
+    projectId: string
+    attemptId: string
+    ts: string
+}
+
+export interface GitRebaseAbortedEvent {
+    projectId: string
+    attemptId: string
+    reason: string
+    ts: string
+}
+
+export interface GitPushRetriedEvent {
+    projectId: string
+    attemptId: string
+    remote: string
+    branch: string
+    ts: string
+}
+
 export type GitEventMap = {
     'worktree.created': WorktreeCreatedEvent
     'worktree.removed': WorktreeRemovedEvent
@@ -89,6 +116,10 @@ export type GitEventMap = {
     'git.commit.created': GitCommitCreatedEvent
     'git.push.completed': GitPushCompletedEvent
     'git.merge.completed': GitMergeCompletedEvent
+    'git.rebase.started': GitRebaseStartedEvent
+    'git.rebase.completed': GitRebaseCompletedEvent
+    'git.rebase.aborted': GitRebaseAbortedEvent
+    'git.push.retried': GitPushRetriedEvent
     'github.connected': GithubConnectedEvent
     'github.disconnected': GithubDisconnectedEvent
     'github.pr.created': GithubPrCreatedEvent
