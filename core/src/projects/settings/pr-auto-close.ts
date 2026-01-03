@@ -20,6 +20,16 @@ export function isGithubPrAutoCloseEnabled(
     return interval >= MIN_GITHUB_SYNC_INTERVAL_MINUTES
 }
 
+export function isGithubIssueAutoCloseEnabled(
+    settings: ProjectSettings,
+): boolean {
+    if (!settings.autoCloseTicketOnIssueClose) return false
+    const interval = normalizeGithubIssueSyncInterval(
+        settings.githubIssueSyncIntervalMinutes,
+    )
+    return interval >= MIN_GITHUB_SYNC_INTERVAL_MINUTES
+}
+
 export function isGithubPrAutoCloseDue(
     settings: ProjectSettings,
     now: Date = new Date(),
@@ -29,6 +39,22 @@ export function isGithubPrAutoCloseDue(
         settings.githubIssueSyncIntervalMinutes,
     )
     const lastAtStr = settings.lastGithubPrAutoCloseAt
+    if (!lastAtStr) return true
+    const lastAt = new Date(lastAtStr)
+    if (Number.isNaN(lastAt.getTime())) return true
+    const elapsedMs = now.getTime() - lastAt.getTime()
+    return elapsedMs >= intervalMinutes * 60 * 1000
+}
+
+export function isGithubIssueAutoCloseDue(
+    settings: ProjectSettings,
+    now: Date = new Date(),
+): boolean {
+    if (!isGithubIssueAutoCloseEnabled(settings)) return false
+    const intervalMinutes = normalizeGithubIssueSyncInterval(
+        settings.githubIssueSyncIntervalMinutes,
+    )
+    const lastAtStr = settings.lastGithubIssueAutoCloseAt
     if (!lastAtStr) return true
     const lastAt = new Date(lastAtStr)
     if (Number.isNaN(lastAt.getTime())) return true

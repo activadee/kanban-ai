@@ -53,8 +53,11 @@ export interface ProjectSettingsRow {
     githubIssueSyncIntervalMinutes: number
     githubIssueAutoCreateEnabled: boolean
     autoCloseTicketOnPRMerge: boolean
+    autoCloseTicketOnIssueClose: boolean
     lastGithubPrAutoCloseAt: Date | null
     lastGithubPrAutoCloseStatus: string
+    lastGithubIssueAutoCloseAt: Date | null
+    lastGithubIssueAutoCloseStatus: string
     lastGithubIssueSyncAt: Date | null
     lastGithubIssueSyncStatus: string
     enhancePrompt: string | null
@@ -90,8 +93,11 @@ export interface ProjectSettingsInsert {
     githubIssueSyncIntervalMinutes?: number
     githubIssueAutoCreateEnabled?: boolean
     autoCloseTicketOnPRMerge?: boolean
+    autoCloseTicketOnIssueClose?: boolean
     lastGithubPrAutoCloseAt?: Date | null
     lastGithubPrAutoCloseStatus?: string
+    lastGithubIssueAutoCloseAt?: Date | null
+    lastGithubIssueAutoCloseStatus?: string
     lastGithubIssueSyncAt?: Date | null
     lastGithubIssueSyncStatus?: string
     enhancePrompt?: string | null
@@ -130,6 +136,7 @@ export interface CardRow {
     isEnhanced: boolean
     prUrl: string | null
     disableAutoCloseOnPRMerge: boolean
+    disableAutoCloseOnIssueClose: boolean
     createdAt: Date
     updatedAt: Date
 }
@@ -146,6 +153,7 @@ export interface CardInsert {
     isEnhanced?: boolean
     prUrl?: string | null
     disableAutoCloseOnPRMerge?: boolean
+    disableAutoCloseOnIssueClose?: boolean
     createdAt?: Date
     updatedAt?: Date
 }

@@ -168,6 +168,10 @@ export interface GithubRepo {
     findGithubIssueMappingByCardId(cardId: string): Promise<GithubIssueRow | null>
     listGithubIssueMappingsByCardId(cardId: string): Promise<GithubIssueRow[]>
     getGithubIssueStats(boardId: string): Promise<GithubIssueStats>
+    listCardsWithGithubIssuesNotInDone(
+        boardId: string,
+        doneColumnIds: string[],
+    ): Promise<Array<CardRow & {issueNumber: number; owner: string; repo: string}>>
 }
 
 export interface AppSettingsRepo {

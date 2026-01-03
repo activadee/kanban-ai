@@ -1,5 +1,5 @@
 import {getGithubRepo} from '../repos/provider'
-import type {GithubConnectionRow, GithubIssueRow, GithubIssueInsert, GithubAppConfigRow} from '../db/types'
+import type {GithubConnectionRow, GithubIssueRow, GithubIssueInsert, GithubAppConfigRow, CardRow} from '../db/types'
 import type {GithubConnectionUpsert, GithubAppConfigUpsert, GithubIssueUpdate, GithubIssueStats} from '../repos/interfaces'
 
 export type {GithubConnectionUpsert, GithubAppConfigUpsert, GithubIssueStats}
@@ -52,4 +52,11 @@ export async function listGithubIssueMappingsByCardId(cardId: string): Promise<G
 
 export async function getGithubIssueStats(boardId: string): Promise<GithubIssueStats> {
     return getGithubRepo().getGithubIssueStats(boardId)
+}
+
+export async function listCardsWithGithubIssuesNotInDone(
+    boardId: string,
+    doneColumnIds: string[],
+): Promise<Array<CardRow & {issueNumber: number; owner: string; repo: string}>> {
+    return getGithubRepo().listCardsWithGithubIssuesNotInDone(boardId, doneColumnIds)
 }

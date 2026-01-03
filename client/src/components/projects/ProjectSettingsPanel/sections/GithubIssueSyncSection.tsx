@@ -6,7 +6,7 @@ import {Badge} from '@/components/ui/badge'
 import {useGithubAuthStatus} from '@/hooks/github'
 import {useProjectGithubOrigin} from '@/hooks/projects'
 import {useGithubIssueStats} from '@/hooks/board'
-import {Github, Check, X, RefreshCw, ArrowDownToLine, ArrowUpFromLine, GitMerge, Clock, Link2} from 'lucide-react'
+import {Github, Check, X, RefreshCw, ArrowDownToLine, ArrowUpFromLine, GitMerge, Clock, Link2, CircleX} from 'lucide-react'
 
 type GithubIssueSyncSectionProps = {
     projectId: string;
@@ -16,12 +16,14 @@ type GithubIssueSyncSectionProps = {
     githubIssueSyncIntervalMinutes: number;
     githubIssueAutoCreateEnabled: boolean;
     autoCloseTicketOnPRMerge: boolean;
+    autoCloseTicketOnIssueClose: boolean;
     onChange: (patch: Partial<{
         githubIssueSyncEnabled: boolean;
         githubIssueSyncState: 'open' | 'all' | 'closed';
         githubIssueSyncIntervalMinutes: number;
         githubIssueAutoCreateEnabled: boolean;
         autoCloseTicketOnPRMerge: boolean;
+        autoCloseTicketOnIssueClose: boolean;
     }>) => void;
 }
 
@@ -33,6 +35,7 @@ export function GithubIssueSyncSection({
     githubIssueSyncIntervalMinutes,
     githubIssueAutoCreateEnabled,
     autoCloseTicketOnPRMerge,
+    autoCloseTicketOnIssueClose,
     onChange,
 }: GithubIssueSyncSectionProps) {
     const githubCheckQuery = useGithubAuthStatus()
@@ -140,7 +143,7 @@ export function GithubIssueSyncSection({
                     Sync Features
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                     <button
                         type="button"
                         disabled={disabled}
@@ -251,9 +254,48 @@ export function GithubIssueSyncSection({
                             </Badge>
                         </div>
                         <div className="mt-3">
-                            <div className="font-medium">Auto-close on Merge</div>
+                            <div className="font-medium">Auto-close on PR Merge</div>
                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                Move to Done on PR merge
+                                Move to Done when PR is merged
+                            </p>
+                        </div>
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => onChange({autoCloseTicketOnIssueClose: !autoCloseTicketOnIssueClose})}
+                        className={`group relative overflow-hidden rounded-lg border p-4 text-left transition-all ${
+                            disabled
+                                ? 'cursor-not-allowed opacity-50'
+                                : 'hover:border-border/60 hover:bg-card/50'
+                        } ${
+                            autoCloseTicketOnIssueClose && !disabled
+                                ? 'border-emerald-500/30 bg-emerald-500/5'
+                                : 'border-border/40 bg-card/30'
+                        }`}
+                    >
+                        <div className="flex items-start justify-between">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${
+                                autoCloseTicketOnIssueClose && !disabled
+                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+                                    : 'border-border/40 bg-muted/30 text-muted-foreground'
+                            }`}>
+                                <CircleX className="h-5 w-5" />
+                            </div>
+                            <Badge
+                                variant={autoCloseTicketOnIssueClose && !disabled ? 'default' : 'outline'}
+                                className={`h-5 text-[10px] ${
+                                    autoCloseTicketOnIssueClose && !disabled ? 'bg-emerald-500/90' : 'border-dashed'
+                                }`}
+                            >
+                                {autoCloseTicketOnIssueClose ? 'ON' : 'OFF'}
+                            </Badge>
+                        </div>
+                        <div className="mt-3">
+                            <div className="font-medium">Auto-close on Issue Close</div>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                Move to Done when GitHub issue is closed
                             </p>
                         </div>
                     </button>
@@ -320,11 +362,11 @@ export function GithubIssueSyncSection({
                                 min={5}
                                 max={1440}
                                 value={githubIssueSyncIntervalMinutes.toString()}
-                                disabled={disabled || (!githubIssueSyncEnabled && !autoCloseTicketOnPRMerge)}
-                                onChange={(e) => handleIntervalChange(e.target.value)}
-                                className={`h-10 pr-16 font-mono tabular-nums transition-all focus:ring-2 focus:ring-primary/20 ${
-                                    !githubIssueSyncEnabled && !autoCloseTicketOnPRMerge ? 'opacity-50' : ''
-                                }`}
+                            disabled={disabled || (!githubIssueSyncEnabled && !autoCloseTicketOnPRMerge && !autoCloseTicketOnIssueClose)}
+                            onChange={(e) => handleIntervalChange(e.target.value)}
+                            className={`h-10 pr-16 font-mono tabular-nums transition-all focus:ring-2 focus:ring-primary/20 ${
+                                !githubIssueSyncEnabled && !autoCloseTicketOnPRMerge && !autoCloseTicketOnIssueClose ? 'opacity-50' : ''
+                            }`}
                             />
                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-muted-foreground">
                                 minutes
@@ -377,19 +419,38 @@ export function GithubIssueSyncSection({
 
                 <div className="flex items-start gap-3">
                     <Checkbox
-                        id="auto-close-detail"
+                        id="auto-close-pr-detail"
                         checked={autoCloseTicketOnPRMerge}
                         disabled={disabled}
                         onCheckedChange={(checked) => onChange({autoCloseTicketOnPRMerge: checked === true})}
                         className="mt-0.5"
                     />
                     <div className="space-y-1">
-                        <Label htmlFor="auto-close-detail" className="text-sm font-medium leading-none">
-                            Auto-close tickets on PR merge
+                        <Label htmlFor="auto-close-pr-detail" className="text-sm font-medium leading-none">
+                            Auto-close on PR Merge
                         </Label>
                         <p className="text-xs leading-relaxed text-muted-foreground">
-                            Moves cards from Review to Done when their linked PRs are merged.
-                            Requires columns titled &quot;Review&quot; and &quot;Done&quot;.
+                            Automatically move cards to Done when their PR is merged.
+                            Requires Review and Done columns. Cards must have a PR URL.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                    <Checkbox
+                        id="auto-close-issue-detail"
+                        checked={autoCloseTicketOnIssueClose}
+                        disabled={disabled}
+                        onCheckedChange={(checked) => onChange({autoCloseTicketOnIssueClose: checked === true})}
+                        className="mt-0.5"
+                    />
+                    <div className="space-y-1">
+                        <Label htmlFor="auto-close-issue-detail" className="text-sm font-medium leading-none">
+                            Auto-close on Issue Close
+                        </Label>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                            Automatically move cards to Done when their linked GitHub issue is closed.
+                            Requires Done column. Works for cards imported from or exported to GitHub issues.
                         </p>
                     </div>
                 </div>

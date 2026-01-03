@@ -40,8 +40,11 @@ export const projectSettings = sqliteTable('project_settings', {
     githubIssueSyncIntervalMinutes: integer('github_issue_sync_interval_minutes').notNull().default(15),
     githubIssueAutoCreateEnabled: integer('github_issue_auto_create_enabled', {mode: 'boolean'}).notNull().default(false),
     autoCloseTicketOnPRMerge: integer('auto_close_ticket_on_pr_merge', {mode: 'boolean'}).notNull().default(false),
+    autoCloseTicketOnIssueClose: integer('auto_close_ticket_on_issue_close', {mode: 'boolean'}).notNull().default(false),
     lastGithubPrAutoCloseAt: integer('last_github_pr_auto_close_at', {mode: 'timestamp'}),
     lastGithubPrAutoCloseStatus: text('last_github_pr_auto_close_status').notNull().default('idle'),
+    lastGithubIssueAutoCloseAt: integer('last_github_issue_auto_close_at', {mode: 'timestamp'}),
+    lastGithubIssueAutoCloseStatus: text('last_github_issue_auto_close_status').notNull().default('idle'),
     lastGithubIssueSyncAt: integer('last_github_issue_sync_at', {mode: 'timestamp'}),
     lastGithubIssueSyncStatus: text('last_github_issue_sync_status').notNull().default('idle'),
     enhancePrompt: text('enhance_prompt'),
@@ -73,6 +76,9 @@ export const cards = sqliteTable(
         isEnhanced: integer('is_enhanced', {mode: 'boolean'}).notNull().default(false),
         prUrl: text('pr_url'),
         disableAutoCloseOnPRMerge: integer('disable_auto_close_on_pr_merge', {mode: 'boolean'})
+            .notNull()
+            .default(false),
+        disableAutoCloseOnIssueClose: integer('disable_auto_close_on_issue_close', {mode: 'boolean'})
             .notNull()
             .default(false),
         createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),

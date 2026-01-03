@@ -336,6 +336,7 @@ export function ProjectSettingsPage() {
                                 githubIssueSyncIntervalMinutes={form.githubIssueSyncIntervalMinutes}
                                 githubIssueAutoCreateEnabled={form.githubIssueAutoCreateEnabled}
                                 autoCloseTicketOnPRMerge={form.autoCloseTicketOnPRMerge}
+                                autoCloseTicketOnIssueClose={form.autoCloseTicketOnIssueClose}
                                 onChange={(patch) => updateForm(patch)}
                             />
                         </SettingsCard>

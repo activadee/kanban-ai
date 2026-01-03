@@ -26,6 +26,7 @@ export type ProjectSettingsFormState = {
     githubIssueSyncIntervalMinutes: number;
     githubIssueAutoCreateEnabled: boolean;
     autoCloseTicketOnPRMerge: boolean;
+    autoCloseTicketOnIssueClose: boolean;
     enhancePrompt: string;
     prSummaryPrompt: string;
 }
@@ -57,6 +58,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
             githubIssueSyncIntervalMinutes: 15,
             githubIssueAutoCreateEnabled: false,
             autoCloseTicketOnPRMerge: false,
+            autoCloseTicketOnIssueClose: false,
             enhancePrompt: '',
             prSummaryPrompt: '',
         }
@@ -87,6 +89,7 @@ export function mapSettingsToForm(settings: ProjectSettings | null | undefined):
         githubIssueSyncIntervalMinutes: settings.githubIssueSyncIntervalMinutes ?? 15,
         githubIssueAutoCreateEnabled: settings.githubIssueAutoCreateEnabled ?? false,
         autoCloseTicketOnPRMerge: settings.autoCloseTicketOnPRMerge ?? false,
+        autoCloseTicketOnIssueClose: settings.autoCloseTicketOnIssueClose ?? false,
         enhancePrompt: settings.enhancePrompt ?? '',
         prSummaryPrompt: settings.prSummaryPrompt ?? '',
     }
@@ -184,6 +187,9 @@ export function buildProjectSettingsUpdate(initial: ProjectSettings | null, form
     }
     if (form.autoCloseTicketOnPRMerge !== (initial.autoCloseTicketOnPRMerge ?? false)) {
         payload.autoCloseTicketOnPRMerge = form.autoCloseTicketOnPRMerge
+    }
+    if (form.autoCloseTicketOnIssueClose !== (initial.autoCloseTicketOnIssueClose ?? false)) {
+        payload.autoCloseTicketOnIssueClose = form.autoCloseTicketOnIssueClose
     }
     if ((form.enhancePrompt || '') !== (initial.enhancePrompt ?? '')) {
         payload.enhancePrompt = form.enhancePrompt || null

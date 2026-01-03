@@ -1,9 +1,10 @@
-import {and, eq, sql} from 'drizzle-orm'
+import {and, eq, inArray, not, sql} from 'drizzle-orm'
 import type {DbExecutor} from '../db/client'
 import {githubConnections, githubIssues} from '../db/schema/github'
+import {cards, columns} from '../db/schema'
 import {githubAppConfigs} from '../db/schema/onboarding'
 import type {GithubRepo, GithubConnectionUpsert, GithubAppConfigUpsert, GithubIssueStats, GithubIssueUpdate} from 'core/repos/interfaces'
-import type {GithubConnectionRow, GithubIssueRow, GithubIssueInsert, GithubAppConfigRow} from 'core/db/types'
+import type {GithubConnectionRow, GithubIssueRow, GithubIssueInsert, GithubAppConfigRow, CardRow} from 'core/db/types'
 
 const SINGLETON_ID = 'singleton'
 
@@ -121,6 +122,73 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                 exported: row?.exported ?? 0,
                 total: row?.total ?? 0,
             }
+        },
+
+        async listCardsWithGithubIssuesNotInDone(
+            boardId: string,
+            doneColumnIds: string[],
+        ): Promise<Array<CardRow & {issueNumber: number; owner: string; repo: string}>> {
+            if (doneColumnIds.length === 0) {
+                // No Done columns, so query all cards with GitHub issues
+                return db
+                    .select({
+                        id: cards.id,
+                        title: cards.title,
+                        description: cards.description,
+                        order: cards.order,
+                        columnId: cards.columnId,
+                        boardId: cards.boardId,
+                        ticketKey: cards.ticketKey,
+                        ticketType: cards.ticketType,
+                        isEnhanced: cards.isEnhanced,
+                        prUrl: cards.prUrl,
+                        disableAutoCloseOnPRMerge: cards.disableAutoCloseOnPRMerge,
+                        disableAutoCloseOnIssueClose: cards.disableAutoCloseOnIssueClose,
+                        createdAt: cards.createdAt,
+                        updatedAt: cards.updatedAt,
+                        issueNumber: githubIssues.issueNumber,
+                        owner: githubIssues.owner,
+                        repo: githubIssues.repo,
+                    })
+                    .from(cards)
+                    .innerJoin(githubIssues, eq(cards.id, githubIssues.cardId))
+                    .where(
+                        and(
+                            eq(cards.boardId, boardId),
+                            eq(cards.disableAutoCloseOnIssueClose, false),
+                        ),
+                    )
+            }
+
+            return db
+                .select({
+                    id: cards.id,
+                    title: cards.title,
+                    description: cards.description,
+                    order: cards.order,
+                    columnId: cards.columnId,
+                    boardId: cards.boardId,
+                    ticketKey: cards.ticketKey,
+                    ticketType: cards.ticketType,
+                    isEnhanced: cards.isEnhanced,
+                    prUrl: cards.prUrl,
+                    disableAutoCloseOnPRMerge: cards.disableAutoCloseOnPRMerge,
+                    disableAutoCloseOnIssueClose: cards.disableAutoCloseOnIssueClose,
+                    createdAt: cards.createdAt,
+                    updatedAt: cards.updatedAt,
+                    issueNumber: githubIssues.issueNumber,
+                    owner: githubIssues.owner,
+                    repo: githubIssues.repo,
+                })
+                .from(cards)
+                .innerJoin(githubIssues, eq(cards.id, githubIssues.cardId))
+                .where(
+                    and(
+                        eq(cards.boardId, boardId),
+                        not(inArray(cards.columnId, doneColumnIds)),
+                        eq(cards.disableAutoCloseOnIssueClose, false),
+                    ),
+                )
         },
     }
 }
