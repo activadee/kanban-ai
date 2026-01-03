@@ -97,7 +97,7 @@ describe('deleteTrackedWorktree', () => {
         })
 
         expect(result.success).toBe(true)
-        expect(result.message).toBe('Worktree removed successfully')
+        expect(result.message).toBe('Worktree removed successfully. Note: Failed to delete local branch')
     })
 
     it('succeeds even if remote branch deletion fails', async () => {
@@ -109,7 +109,7 @@ describe('deleteTrackedWorktree', () => {
         })
 
         expect(result.success).toBe(true)
-        expect(result.message).toBe('Worktree removed successfully')
+        expect(result.message).toBe('Worktree removed successfully. Note: Failed to delete remote branch')
     })
 
     it('returns success if worktree does not exist on disk', async () => {

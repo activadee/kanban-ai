@@ -305,7 +305,7 @@ describe('DELETE /projects/:projectId/worktrees/orphaned/:encodedPath', () => {
     })
 
     it('deletes orphaned worktree with confirmation', async () => {
-        const encodedPath = encodeURIComponent('/path/to/orphaned')
+        const encodedPath = encodeURIComponent('/home/user/.cache/kanban-ai/worktrees/test-project/orphaned-worktree')
         const app = createApp()
         const res = await app.request(`/projects/project-1/worktrees/orphaned/${encodedPath}`, {
             method: 'DELETE',
@@ -320,7 +320,7 @@ describe('DELETE /projects/:projectId/worktrees/orphaned/:encodedPath', () => {
     })
 
     it('returns 400 without confirmation', async () => {
-        const encodedPath = encodeURIComponent('/path/to/orphaned')
+        const encodedPath = encodeURIComponent('/home/user/.cache/kanban-ai/worktrees/test-project/orphaned-worktree')
         const app = createApp()
         const res = await app.request(`/projects/project-1/worktrees/orphaned/${encodedPath}`, {
             method: 'DELETE',

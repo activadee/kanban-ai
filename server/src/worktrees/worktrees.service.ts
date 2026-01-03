@@ -1,5 +1,5 @@
 import {readdir, stat, rm} from 'fs/promises'
-import {join, basename} from 'path'
+import {join, basename, resolve} from 'path'
 import {existsSync} from 'fs'
 import {spawn} from 'child_process'
 import type {
@@ -17,15 +17,22 @@ import {log} from '../log'
 import {git} from 'core'
 
 function runGitCommand(args: string[], cwd: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const child = spawn('git', args, {cwd, shell: false})
+    return new Promise((resolvePromise, reject) => {
+        // Normalize cwd path for safety
+        const normalizedCwd = resolve(cwd)
+        
+        const child = spawn('git', args, {
+            cwd: normalizedCwd,
+            shell: false,
+            windowsHide: true,
+        })
         let stdout = ''
         let stderr = ''
-        child.stdout?.on('data', (d) => (stdout += d))
-        child.stderr?.on('data', (d) => (stderr += d))
+        child.stdout?.on('data', (d: Buffer) => (stdout += d))
+        child.stderr?.on('data', (d: Buffer) => (stderr += d))
         child.on('error', reject)
-        child.on('exit', (code) => {
-            if (code === 0) resolve(stdout.trim())
+        child.on('exit', (code: number | null) => {
+            if (code === 0) resolvePromise(stdout.trim())
             else {
                 const errorMsg = stderr.trim() || `git ${args.join(' ')} exited with code ${code}`
                 const fullMsg = stdout.trim() ? `${errorMsg}. stdout: ${stdout.trim()}` : errorMsg
@@ -36,26 +43,37 @@ function runGitCommand(args: string[], cwd: string): Promise<string> {
 }
 
 async function getDirectorySize(dirPath: string): Promise<number> {
-    return new Promise((resolve) => {
-        const child = spawn('du', ['-sb', dirPath], {shell: false})
+    return new Promise((resolvePromise) => {
+        // Normalize and validate path to prevent command injection
+        const normalized = resolve(dirPath)
+        
+        const child = spawn('du', ['-sb', normalized], {shell: false, windowsHide: true})
         let stdout = ''
-        const timeout = setTimeout(() => {
-            child.kill()
-            resolve(0)
+        let timeoutId: NodeJS.Timeout | null = setTimeout(() => {
+            timeoutId = null
+            child.kill('SIGKILL')
+            resolvePromise(0)
         }, 30000)
+        
         child.stdout?.on('data', (d) => (stdout += d))
         child.on('error', () => {
-            clearTimeout(timeout)
-            resolve(0)
+            if (timeoutId) { 
+                clearTimeout(timeoutId)
+                timeoutId = null 
+            }
+            resolvePromise(0)
         })
         child.on('exit', (code) => {
-            clearTimeout(timeout)
+            if (timeoutId) { 
+                clearTimeout(timeoutId)
+                timeoutId = null 
+            }
             if (code === 0) {
                 const parts = stdout.split('\t')
                 const size = parseInt(parts[0] ?? '0', 10)
-                resolve(isNaN(size) ? 0 : size)
+                resolvePromise(isNaN(size) ? 0 : size)
             } else {
-                resolve(0)
+                resolvePromise(0)
             }
         })
     })
@@ -157,7 +175,9 @@ export async function listWorktreesForProject(
                 const statInfo = await stat(attempt.worktreePath)
                 lastModified = statInfo.mtime.toISOString()
                 diskSizeBytes = await getDirectorySize(attempt.worktreePath)
-            } catch {}
+            } catch (err) {
+                log.debug('worktrees:list', 'Failed to get disk stats', {path: attempt.worktreePath, err})
+            }
 
             const status = determineWorktreeStatus(attempt.status, columnTitle, existsOnDisk)
 
@@ -250,14 +270,14 @@ function computeSummary(
     orphaned: OrphanedWorktree[],
     stale: StaleWorktree[],
 ): WorktreesSummary {
-    const runningWorktreesCount = tracked.filter((w) => w.status === 'locked').length
+    const lockedWorktreesCount = tracked.filter((w) => w.status === 'locked').length
     const totalDiskUsage =
         tracked.reduce((sum, w) => sum + (w.diskSizeBytes ?? 0), 0) +
         orphaned.reduce((sum, w) => sum + w.diskSizeBytes, 0)
 
     return {
         tracked: tracked.length,
-        active: runningWorktreesCount,
+        active: lockedWorktreesCount,
         orphaned: orphaned.length,
         stale: stale.length,
         totalDiskUsage,
@@ -324,11 +344,17 @@ export async function deleteTrackedWorktree(
 
         await deps.removeWorktreeFromRepo(project.repositoryPath, worktreePath)
 
+        const branchResults: string[] = []
+        let localBranchDeleted = false
+        let remoteBranchDeleted = false
+
         if (options?.deleteBranch) {
             try {
                 await git.deleteBranch(projectId, branchName)
+                localBranchDeleted = true
                 log.info('worktrees:delete', 'Local branch deleted', {branch: branchName})
             } catch (err) {
+                branchResults.push('Failed to delete local branch')
                 log.warn('worktrees:delete', 'Failed to delete local branch', {branch: branchName, err})
             }
         }
@@ -336,13 +362,20 @@ export async function deleteTrackedWorktree(
         if (options?.deleteRemoteBranch) {
             try {
                 await git.deleteRemoteBranch(projectId, branchName)
+                remoteBranchDeleted = true
                 log.info('worktrees:delete', 'Remote branch deleted', {branch: branchName})
             } catch (err) {
+                branchResults.push('Failed to delete remote branch')
                 log.warn('worktrees:delete', 'Failed to delete remote branch', {branch: branchName, err})
             }
         }
 
-        return {success: true, message: 'Worktree removed successfully'}
+        let message = 'Worktree removed successfully'
+        if (branchResults.length > 0) {
+            message += `. Note: ${branchResults.join(', ')}`
+        }
+
+        return {success: true, message}
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove worktree'
         log.error('worktrees:delete', 'Failed to delete worktree', {path: worktreePath, err})
@@ -371,7 +404,13 @@ export async function deleteOrphanedWorktree(
             }
         }
 
-        await rm(worktreePath, {recursive: true, force: true})
+        // Verify it's a worktree directory before deletion
+        const gitFile = join(worktreePath, '.git')
+        if (!existsSync(gitFile)) {
+            return {success: false, message: 'Not a valid worktree directory'}
+        }
+
+        await rm(worktreePath, {recursive: true, force: false})
         return {success: true, message: 'Orphaned directory removed'}
     } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to remove orphaned worktree'

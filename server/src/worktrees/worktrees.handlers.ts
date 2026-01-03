@@ -1,4 +1,5 @@
 import {zValidator} from '@hono/zod-validator'
+import {resolve} from 'path'
 import {attemptsRepo, projectsRepo, git} from 'core'
 import {problemJson} from '../http/problem'
 import {createHandlers} from '../lib/factory'
@@ -20,6 +21,7 @@ import {
     deleteOrphanedWorktree,
     type WorktreeServiceDeps,
 } from './worktrees.service'
+import {getProjectWorktreeFolder} from '../fs/paths'
 
 async function createServiceDeps(projectId: string): Promise<WorktreeServiceDeps> {
     return {
@@ -161,12 +163,12 @@ export const deleteWorktreeHandlers = createHandlers(
                     attemptId: id,
                     err,
                 })
-                return c.json({
-                    success: true,
-                    message: 'Worktree deleted from disk, but database update failed. Run sync to fix.',
+                return problemJson(c, {
+                    status: 500,
+                    detail: 'Worktree deleted from disk but database update failed',
                     deletedPath: attempt.worktreePath,
-                    warning: 'Database may still reference this worktree',
-                }, 200)
+                    recovery: 'Run sync to clean up stale entries',
+                })
             }
         }
 
@@ -189,12 +191,19 @@ export const deleteOrphanedWorktreeHandlers = createHandlers(
             return problemJson(c, {status: 400, detail: 'Confirmation required'})
         }
 
-        const worktreePath = decodeURIComponent(encodedPath)
-
         const deps = await createServiceDeps(projectId)
         const project = await deps.getProject(projectId)
         if (!project) {
             return problemJson(c, {status: 404, detail: 'Project not found'})
+        }
+
+        // Decode and validate path to prevent path traversal attacks
+        const worktreePath = decodeURIComponent(encodedPath)
+        const normalized = resolve(worktreePath)
+        const expectedRoot = resolve(getProjectWorktreeFolder(project.name))
+        
+        if (!normalized.startsWith(expectedRoot)) {
+            return problemJson(c, {status: 400, detail: 'Invalid worktree path'})
         }
 
         const result = await deleteOrphanedWorktree(worktreePath, project.repositoryPath)

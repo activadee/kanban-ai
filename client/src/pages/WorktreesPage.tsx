@@ -708,6 +708,7 @@ export function WorktreesPage() {
                 {onSuccess, onError}
             )
         } else if (deleteTarget.type === 'orphaned') {
+            // item.path is a raw filesystem path from the API, encode it for URL parameter
             const encodedPath = encodeURIComponent(deleteTarget.item.path)
             deleteOrphanedMutation.mutate({projectId, encodedPath, options: {confirm: true}}, {onSuccess, onError})
         } else if (deleteTarget.type === 'stale') {
