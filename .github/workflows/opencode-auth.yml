@@ -1,0 +1,28 @@
+name: OpenCode Auth Refresh
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/opencode/auth.json
+          key: opencode-auth
+
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Restore auth from secret
+        run: |
+          mkdir -p ~/.local/share/opencode
+          echo '${{ secrets.OPENCODE_AUTH }}' > ~/.local/share/opencode/auth.json
+
+      - name: Install OpenCode
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Refresh OAuth token
+        run: opencode models
