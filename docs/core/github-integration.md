@@ -120,4 +120,4 @@ Additional configuration endpoints:
    - Cards imported from GitHub issues (via background sync or manual import).
    - Cards exported to GitHub issues (created via the Create Ticket dialog with the GitHub issue creation option enabled).
 - You can disable this on a per‑ticket basis by setting:
-   - `disableAutoCloseOnIssueClosed: boolean` on the card (default `false`).
+   - `disableAutoCloseOnIssueClose: boolean` on the card (default `false`).

@@ -384,7 +384,7 @@ export async function runGithubPrAutoCloseTick(
                                         if (latest.boardId !== boardId) continue;
                                         if (!reviewColumnIdSet.has(latest.columnId))
                                             continue;
-                            if (latest.disableAutoCloseOnIssueClose) continue;
+                            if (latest.disableAutoCloseOnPRMerge) continue;
                                         if (!latest.prUrl) continue;
                                         const parsedLatest = parsePrUrl(latest.prUrl);
                                         if (!parsedLatest) continue;
@@ -568,7 +568,7 @@ export async function runGithubPrAutoCloseTick(
                                 if (!latest) continue;
                                 if (latest.boardId !== boardId) continue;
                                 if (latest.columnId === doneColumnId) continue;
-                                if (latest.disableAutoCloseOnPRMerge) continue;
+                                if (latest.disableAutoCloseOnIssueClose) continue;
 
                                 await taskSvc.moveBoardCard(
                                     latest.id,
