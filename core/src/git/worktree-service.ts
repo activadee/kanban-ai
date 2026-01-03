@@ -214,19 +214,24 @@ export function isPushConflictError(error: Error): boolean {
  * Attempts to pull with rebase in the specified worktree.
  * 
  * ERROR HANDLING CONTRACT:
- * - This function NEVER throws for expected git errors - all are returned as result objects
- * - MAY throw for unexpected system failures (out of memory, filesystem errors, etc.)
- * - Returns {success: true} when rebase completes successfully
- * - Returns {success: false, hasConflicts: true} when conflicts are detected
- * - Returns {success: false, hasConflicts: false} for other failures (network, etc.)
- * - Automatically attempts to abort rebase on conflicts
- * - If abort fails, attempts reset --hard + clean -fd recovery
+ * - Returns result objects for all expected git operations (success, conflicts, network errors)
+ * - MAY throw for unexpected system failures (out of memory, filesystem corruption, simple-git internal errors)
  * 
- * Callers should:
+ * RETURN VALUES:
+ * - {success: true} - Rebase completed successfully
+ * - {success: false, hasConflicts: true} - Conflicts detected; rebase was aborted or reset recovery attempted
+ * - {success: false, hasConflicts: false} - Other failures (network errors, permission issues, etc.)
+ * 
+ * RECOVERY BEHAVIOR:
+ * - On conflicts: attempts rebase --abort
+ * - If abort fails: attempts reset --hard HEAD + clean -fd
+ * - Verifies repository cleanliness after recovery (checks modified, created, deleted, renamed, untracked, staged)
+ * 
+ * CALLER RESPONSIBILITY:
  * - Check result.success to determine if rebase succeeded
  * - Check result.hasConflicts to distinguish conflict errors from other errors
- * - Read result.message for detailed error information
- * - Wrap in try-catch only to handle unexpected system failures (optional but recommended)
+ * - Read result.message for detailed error/status information
+ * - Wrap in try-catch to handle unexpected system failures (RECOMMENDED for production use)
  */
 export async function pullRebaseAtPath(
     worktreePath: string
@@ -264,6 +269,7 @@ export async function pullRebaseAtPath(
                     message: 'Rebase has conflicts and was aborted',
                 }
             } catch (abortError) {
+                console.warn('[git] rebase abort failed, attempting reset recovery:', (abortError as Error).message)
                 try {
                     await g.raw(['reset', '--hard', 'HEAD'])
                     await g.raw(['clean', '-fd'])
