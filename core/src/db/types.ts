@@ -53,6 +53,7 @@ export interface ProjectSettingsRow {
     githubIssueSyncIntervalMinutes: number
     githubIssueAutoCreateEnabled: boolean
     autoCloseTicketOnPRMerge: boolean
+    autoCloseTicketOnIssueClose: boolean
     lastGithubPrAutoCloseAt: Date | null
     lastGithubPrAutoCloseStatus: string
     lastGithubIssueSyncAt: Date | null
@@ -90,6 +91,7 @@ export interface ProjectSettingsInsert {
     githubIssueSyncIntervalMinutes?: number
     githubIssueAutoCreateEnabled?: boolean
     autoCloseTicketOnPRMerge?: boolean
+    autoCloseTicketOnIssueClose?: boolean
     lastGithubPrAutoCloseAt?: Date | null
     lastGithubPrAutoCloseStatus?: string
     lastGithubIssueSyncAt?: Date | null

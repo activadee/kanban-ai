@@ -132,6 +132,7 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         githubIssueSyncIntervalMinutes: intervalMinutes,
         githubIssueAutoCreateEnabled: Boolean(row.githubIssueAutoCreateEnabled),
         autoCloseTicketOnPRMerge: Boolean(row.autoCloseTicketOnPRMerge),
+        autoCloseTicketOnIssueClose: Boolean(row.autoCloseTicketOnIssueClose),
         lastGithubPrAutoCloseAt: toNullableIso(row.lastGithubPrAutoCloseAt),
         lastGithubPrAutoCloseStatus: normalizeStatus(
             row.lastGithubPrAutoCloseStatus,

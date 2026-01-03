@@ -24,6 +24,10 @@ const mockIsEnabled = vi.fn(
     (settings: {autoCloseTicketOnPRMerge?: boolean}) =>
         Boolean(settings.autoCloseTicketOnPRMerge),
 );
+const mockIssueAutoCloseEnabled = vi.fn(
+    (settings: {autoCloseTicketOnIssueClose?: boolean}) =>
+        Boolean(settings.autoCloseTicketOnIssueClose),
+);
 const mockIsDue = vi.fn(() => true);
 const mockTryStart = vi.fn().mockResolvedValue(true);
 const mockComplete = vi.fn().mockResolvedValue(undefined);
@@ -53,6 +57,7 @@ function makeDeps() {
         },
         projectSettingsPrAutoClose: {
             isGithubPrAutoCloseEnabled: mockIsEnabled,
+            isGithubIssueAutoCloseEnabled: mockIssueAutoCloseEnabled,
             isGithubPrAutoCloseDue: mockIsDue,
             tryStartGithubPrAutoClose: mockTryStart,
             completeGithubPrAutoClose: mockComplete,
@@ -77,6 +82,7 @@ describe("github PR auto-close scheduler", () => {
         mockMoveBoardCard.mockReset();
         mockBroadcastBoard.mockReset();
         mockIsEnabled.mockReset();
+        mockIssueAutoCloseEnabled.mockReset();
         mockIsDue.mockReset();
         mockTryStart.mockReset();
         mockComplete.mockReset();
@@ -89,6 +95,10 @@ describe("github PR auto-close scheduler", () => {
         mockIsEnabled.mockImplementation(
             (settings: {autoCloseTicketOnPRMerge?: boolean}) =>
                 Boolean(settings.autoCloseTicketOnPRMerge),
+        );
+        mockIssueAutoCloseEnabled.mockImplementation(
+            (settings: {autoCloseTicketOnIssueClose?: boolean}) =>
+                Boolean(settings.autoCloseTicketOnIssueClose),
         );
         mockIsDue.mockReturnValue(true);
         mockTryStart.mockResolvedValue(true);
@@ -217,7 +227,8 @@ describe("github PR auto-close scheduler", () => {
 
     it("skips when auto-close is disabled", async () => {
         mockGetSettings.mockResolvedValue({
-            autoCloseTicketOnPRMerge: false,
+            autoCloseTicketOnPRMerge: true,
+            autoCloseTicketOnIssueClose: true,
             githubIssueSyncIntervalMinutes: 1,
             lastGithubPrAutoCloseAt: null,
             lastGithubPrAutoCloseStatus: "idle",
@@ -355,6 +366,16 @@ describe("github PR auto-close scheduler", () => {
     });
 
     it("moves cards to Done when GitHub issue is closed", async () => {
+        mockGetSettings.mockResolvedValue({
+            autoCloseTicketOnPRMerge: false,
+            autoCloseTicketOnIssueClose: true,
+            githubIssueSyncIntervalMinutes: 1,
+            lastGithubPrAutoCloseAt: null,
+            lastGithubPrAutoCloseStatus: "idle",
+        });
+
+        mockListCardsForColumns.mockResolvedValue([]);
+
         mockListCardsWithGithubIssuesNotInDone.mockResolvedValue([
             {
                 id: "card-issue-1",

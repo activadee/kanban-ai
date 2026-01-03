@@ -228,8 +228,23 @@ export async function runGithubPrAutoCloseTick(
                         (c.title || "").trim().toLowerCase() ===
                         "done";
 
+                    const reviewColumnIds = columns
+                        .filter(isReviewColumn)
+                        .map((c) => c.id);
+                    const reviewColumnIdSet = new Set(reviewColumnIds);
+                    if (reviewColumnIds.length === 0) {
+                        log.warn(
+                            "github:pr-auto-close",
+                            "No Review column found; refusing to auto-close (expected title Review)",
+                            {
+                                projectId,
+                                boardId,
+                            },
+                        );
+                        status = "failed";
+                        continue;
+                    }
 
-                    // Done column validation (shared by PR and Issue processing)
                     const doneColumnId =
                         columns.find(isDoneColumn)?.id ?? null;
                     if (!doneColumnId) {
@@ -245,7 +260,64 @@ export async function runGithubPrAutoCloseTick(
                         continue;
                     }
 
-                    // Shared helper functions for error handling
+                    const cards =
+                        await repo.listCardsForColumns(
+                            reviewColumnIds,
+                        );
+                    const reviewCardsWithPr = cards.filter(
+                        (c) =>
+                            Boolean(c.prUrl) &&
+                            !c.disableAutoCloseOnPRMerge,
+                    );
+                    if (reviewCardsWithPr.length === 0) continue;
+
+                    const byPrNumber = new Map<
+                        number,
+                        typeof reviewCardsWithPr
+                    >();
+                    for (const card of reviewCardsWithPr) {
+                        const parsedPr = parsePrUrl(card.prUrl!);
+                        if (!parsedPr) continue;
+                        if (
+                            parsedPr.owner.toLowerCase() !==
+                                origin.owner.toLowerCase() ||
+                            parsedPr.repo.toLowerCase() !==
+                                origin.repo.toLowerCase()
+                        ) {
+                            log.warn(
+                                "github:pr-auto-close",
+                                "PR url does not match project origin; skipping card",
+                                {
+                                    projectId,
+                                    cardId: card.id,
+                                    prUrl: card.prUrl,
+                                    originOwner: origin.owner,
+                                    originRepo: origin.repo,
+                                },
+                            );
+                            continue;
+                        }
+                        const list = byPrNumber.get(parsedPr.number) ?? [];
+                        list.push(card);
+                        byPrNumber.set(parsedPr.number, list);
+                    }
+
+                    const prEntries = Array.from(byPrNumber.entries());
+                    if (prEntries.length > MAX_UNIQUE_PRS_PER_PROJECT) {
+                        hadErrors = true;
+                        log.warn(
+                            "github:pr-auto-close",
+                            "Too many PR-linked cards in Review; capping PR lookups for this tick",
+                            {
+                                projectId,
+                                boardId,
+                                totalUniquePrs: prEntries.length,
+                                cappedAt: MAX_UNIQUE_PRS_PER_PROJECT,
+                            },
+                        );
+                        prEntries.length = MAX_UNIQUE_PRS_PER_PROJECT;
+                    }
+
                     const parseGithubStatus = (error: unknown): number | null => {
                         const message =
                             error instanceof Error
@@ -271,223 +343,140 @@ export async function runGithubPrAutoCloseTick(
                         return false;
                     };
 
-                    // Shared stop flag for both PR and Issue processing
                     let stop = false;
+                    let cursor = 0;
 
-                    // ========== PR Processing ==========
-                    if (prAutoCloseEnabled) {
-                        const reviewColumnIds = columns
-                            .filter(isReviewColumn)
-                            .map((c) => c.id);
-                        const reviewColumnIdSet = new Set(reviewColumnIds);
+                    const workerCount = Math.min(
+                        PR_LOOKUP_CONCURRENCY,
+                        prEntries.length,
+                    );
 
-                        if (reviewColumnIds.length === 0) {
-                            log.warn(
-                                "github:pr-auto-close",
-                                "No Review column found; skipping PR auto-close (expected title Review)",
+                    const runOne = async (
+                        prNumber: number,
+                        cardsForPr: typeof reviewCardsWithPr,
+                    ) => {
+                        const pr = await getPullRequest(
+                            projectId,
+                            accessToken,
+                            prNumber,
+                        );
+                        if (pr.state !== "closed" || !pr.merged) return;
+
+                        if (!taskSvc.moveBoardCard) {
+                            throw new Error(
+                                "tasks.moveBoardCard is not available",
+                            );
+                        }
+                        if (!repo.getCardById) {
+                            throw new Error(
+                                "projectsRepo.getCardById is not available",
+                            );
+                        }
+
+                        for (const card of cardsForPr) {
+                            const latest = await repo.getCardById(card.id);
+                            if (!latest) continue;
+                            if (latest.boardId !== boardId) continue;
+                            if (!reviewColumnIdSet.has(latest.columnId))
+                                continue;
+                            if (latest.disableAutoCloseOnPRMerge) continue;
+                            if (!latest.prUrl) continue;
+                            const parsedLatest = parsePrUrl(latest.prUrl);
+                            if (!parsedLatest) continue;
+                            if (
+                                parsedLatest.owner.toLowerCase() !==
+                                    origin.owner.toLowerCase() ||
+                                parsedLatest.repo.toLowerCase() !==
+                                    origin.repo.toLowerCase()
+                            )
+                                continue;
+                            if (parsedLatest.number !== prNumber) continue;
+
+                            await taskSvc.moveBoardCard(
+                                latest.id,
+                                doneColumnId,
+                                Number.MAX_SAFE_INTEGER,
+                                {suppressBroadcast: true},
+                            );
+                            movedAny = true;
+                            events.publish(
+                                "github.pr.merged.autoClosed",
                                 {
                                     projectId,
                                     boardId,
+                                    cardId: latest.id,
+                                    prNumber,
+                                    prUrl: latest.prUrl,
+                                    ts: new Date().toISOString(),
                                 },
                             );
-                            hadErrors = true;
-                        } else {
-                            const cards =
-                                await repo.listCardsForColumns(
-                                    reviewColumnIds,
-                                );
-                            const reviewCardsWithPr = cards.filter(
-                                (c) =>
-                                    Boolean(c.prUrl) &&
-                                    !c.disableAutoCloseOnPRMerge,
+                            log.info(
+                                "github:pr-auto-close",
+                                "card moved to Done on PR merge",
+                                {
+                                    projectId,
+                                    boardId,
+                                    cardId: latest.id,
+                                    ticketKey: latest.ticketKey ?? null,
+                                    prNumber,
+                                    prUrl: latest.prUrl,
+                                },
                             );
+                        }
+                    };
 
-                            if (reviewCardsWithPr.length > 0) {
-                                const byPrNumber = new Map<
-                                    number,
-                                    typeof reviewCardsWithPr
-                                >();
-                                for (const card of reviewCardsWithPr) {
-                                    const parsedPr = parsePrUrl(card.prUrl!);
-                                    if (!parsedPr) continue;
-                                    if (
-                                        parsedPr.owner.toLowerCase() !==
-                                            origin.owner.toLowerCase() ||
-                                        parsedPr.repo.toLowerCase() !==
-                                            origin.repo.toLowerCase()
-                                    ) {
-                                        log.warn(
-                                            "github:pr-auto-close",
-                                            "PR url does not match project origin; skipping card",
-                                            {
-                                                projectId,
-                                                cardId: card.id,
-                                                prUrl: card.prUrl,
-                                                originOwner: origin.owner,
-                                                originRepo: origin.repo,
-                                            },
-                                        );
-                                        continue;
-                                    }
-                                    const list = byPrNumber.get(parsedPr.number) ?? [];
-                                    list.push(card);
-                                    byPrNumber.set(parsedPr.number, list);
-                                }
+                    await Promise.all(
+                        Array.from({length: workerCount}, async () => {
+                            while (!stop) {
+                                const index = cursor++;
+                                const entry = prEntries[index];
+                                if (!entry) return;
 
-                                const prEntries = Array.from(byPrNumber.entries());
-                                if (prEntries.length > MAX_UNIQUE_PRS_PER_PROJECT) {
+                                const prNumber = entry[0];
+                                const cardsForPr = entry[1];
+
+                                try {
+                                    await runOne(prNumber, cardsForPr);
+                                } catch (error) {
                                     hadErrors = true;
                                     log.warn(
                                         "github:pr-auto-close",
-                                        "Too many PR-linked cards in Review; capping PR lookups for this tick",
+                                        "PR auto-close failed",
                                         {
+                                            err: error,
                                             projectId,
                                             boardId,
-                                            totalUniquePrs: prEntries.length,
-                                            cappedAt: MAX_UNIQUE_PRS_PER_PROJECT,
+                                            prNumber,
                                         },
                                     );
-                                    prEntries.length = MAX_UNIQUE_PRS_PER_PROJECT;
-                                }
-
-                                let cursor = 0;
-
-                                const workerCount = Math.min(
-                                    PR_LOOKUP_CONCURRENCY,
-                                    prEntries.length,
-                                );
-
-                                const runOne = async (
-                                    prNumber: number,
-                                    cardsForPr: typeof reviewCardsWithPr,
-                                ) => {
-                                    const pr = await getPullRequest(
-                                        projectId,
-                                        accessToken,
-                                        prNumber,
-                                    );
-                                    if (pr.state !== "closed" || !pr.merged) return;
-
-                                    if (!taskSvc.moveBoardCard) {
-                                        throw new Error(
-                                            "tasks.moveBoardCard is not available",
-                                        );
-                                    }
-                                    if (!repo.getCardById) {
-                                        throw new Error(
-                                            "projectsRepo.getCardById is not available",
-                                        );
-                                    }
-
-                                    for (const card of cardsForPr) {
-                                        const latest = await repo.getCardById(card.id);
-                                        if (!latest) continue;
-                                        if (latest.boardId !== boardId) continue;
-                                        if (!reviewColumnIdSet.has(latest.columnId))
-                                            continue;
-                                        if (latest.disableAutoCloseOnPRMerge) continue;
-                                        if (!latest.prUrl) continue;
-                                        const parsedLatest = parsePrUrl(latest.prUrl);
-                                        if (!parsedLatest) continue;
-                                        if (
-                                            parsedLatest.owner.toLowerCase() !==
-                                                origin.owner.toLowerCase() ||
-                                            parsedLatest.repo.toLowerCase() !==
-                                                origin.repo.toLowerCase()
-                                        )
-                                            continue;
-                                        if (parsedLatest.number !== prNumber) continue;
-
-                                        await taskSvc.moveBoardCard(
-                                            latest.id,
-                                            doneColumnId,
-                                            Number.MAX_SAFE_INTEGER,
-                                            {suppressBroadcast: true},
-                                        );
-                                        movedAny = true;
-                                        events.publish(
-                                            "github.pr.merged.autoClosed",
-                                            {
-                                                projectId,
-                                                boardId,
-                                                cardId: latest.id,
-                                                prNumber,
-                                                prUrl: latest.prUrl,
-                                                ts: new Date().toISOString(),
-                                            },
-                                        );
-                                        log.info(
+                                    if (shouldStopOnError(error)) {
+                                        stop = true;
+                                        globalStop = true;
+                                        log.warn(
                                             "github:pr-auto-close",
-                                            "card moved to Done on PR merge",
+                                            "Stopping PR auto-close early due to GitHub API error",
                                             {
                                                 projectId,
                                                 boardId,
-                                                cardId: latest.id,
-                                                ticketKey: latest.ticketKey ?? null,
                                                 prNumber,
-                                                prUrl: latest.prUrl,
+                                                statusCode:
+                                                    parseGithubStatus(
+                                                        error,
+                                                    ),
                                             },
                                         );
                                     }
-                                };
-
-                                await Promise.all(
-                                    Array.from({length: workerCount}, async () => {
-                                        while (!stop) {
-                                            const index = cursor++;
-                                            const entry = prEntries[index];
-                                            if (!entry) return;
-
-                                            const prNumber = entry[0];
-                                            const cardsForPr = entry[1];
-
-                                            try {
-                                                await runOne(prNumber, cardsForPr);
-                                            } catch (error) {
-                                                hadErrors = true;
-                                                log.warn(
-                                                    "github:pr-auto-close",
-                                                    "PR auto-close failed",
-                                                    {
-                                                        err: error,
-                                                        projectId,
-                                                        boardId,
-                                                        prNumber,
-                                                    },
-                                                );
-                                                if (shouldStopOnError(error)) {
-                                                    stop = true;
-                                                    globalStop = true;
-                                                    log.warn(
-                                                        "github:pr-auto-close",
-                                                        "Stopping PR auto-close early due to GitHub API error",
-                                                        {
-                                                            projectId,
-                                                            boardId,
-                                                            prNumber,
-                                                            statusCode:
-                                                                parseGithubStatus(
-                                                                    error,
-                                                                ),
-                                                        },
-                                                    );
-                                                }
-                                            }
-                                        }
-                                    }),
-                                );
+                                }
                             }
-                        }
-                    }
+                        }),
+                    );
 
-                    // ========== Issue Processing ==========
-                    if (issueAutoCloseEnabled) {
-                        const cardsWithIssues = await ghRepo.listCardsWithGithubIssuesNotInDone(
-                            boardId,
-                            [doneColumnId],
-                        );
+                    const cardsWithIssues = await ghRepo.listCardsWithGithubIssuesNotInDone(
+                        boardId,
+                        [doneColumnId],
+                    );
 
-                        if (cardsWithIssues.length > 0) {
+                    if (cardsWithIssues.length > 0) {
                         const byIssueNumber = new Map<
                             string,
                             typeof cardsWithIssues
@@ -656,7 +645,6 @@ export async function runGithubPrAutoCloseTick(
                                 }
                             }),
                         );
-                        }
                     }
 
                     if (movedAny) {
