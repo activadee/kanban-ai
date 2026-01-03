@@ -27,7 +27,7 @@ they return.
   track which card the enhancement belongs to.
 - While the enhancement job runs, the card shows an **Enhancing** badge and is temporarily marked as non-draggable to
   prevent accidental moves.
-- After the board records the new card, a toast pops up with “Ticket created” and clarifies that enhancement is running in the background so you stay focused on the board while the agents work.
+- After the board records the new card, a toast pops up with "Ticket created" and clarifies that enhancement is running in the background so you stay focused on the board while the agents work.
 - A temporary banner above the board columns also appears while one or more enhancements are pending, showing a spinner and the count of cards being enhanced so you know the system is processing without reopening each card manually.
 - Once a suggestion arrives, the card displays a sparkles icon that opens the enhancement diff dialog (see below).
 
@@ -42,10 +42,10 @@ they return.
 
 - When an enhancement job finishes, click the sparkles icon on the card to open the enhancement diff dialog. The dialog
   compares the persisted title/description on the left with the AI-enhanced copy on the right.
-- The dialog header surfaces a subtle “AI suggestion ready” label and reminds you that the ticket already exists, so the suggestion is just a refinement to the saved draft.
+- The dialog header surfaces a subtle "AI suggestion ready" label and reminds you that the ticket already exists, so the suggestion is just a refinement to the saved draft.
 - **Accept** automatically updates the card via `PATCH /boards/:boardId/cards/:cardId`, overriding the title/description
   with the suggestion and clearing the enhancement state.
-- When the patch succeeds it also sets `isEnhanced = true`, which lets the board render the persistent “Enhanced” badge
+- When the patch succeeds it also sets `isEnhanced = true`, which lets the board render the persistent "Enhanced" badge
   and highlight discussed in the board guide; clients can toggle that flag via the same endpoint if they want to clear or
   reapply the badge later.
 - **Reject** dismisses the suggestion without mutating the card and keeps the enhancement badge cleared so you can rerun
@@ -74,9 +74,9 @@ The UI and integrations continue to use the same enhancement endpoint, but now t
 - Error handling:
   - Unknown or missing project → `404` problem response.
   - Unknown agent key or agent without ticket-enhancement support → `400` problem response.
-  - Internal errors in the enhancement pipeline → `502` problem response with a generic `"Failed to enhance ticket"`
+  - Internal errors in the enhancement pipeline → `502` problem response with a generic "Failed to enhance ticket"
     message.
-  - Invalid ticket type → `400` with a message like `"Invalid ticket type: <value>"` (the value is normalized to
+  - Invalid ticket type → `400` with a message like "Invalid ticket type: <value>" (the value is normalized to
     lowercase when valid).
 - The endpoint remains a pure transformation:
   - It does not create, update, or persist cards and leaves that to the board APIs.
@@ -89,8 +89,8 @@ Enhancements are now persisted per-card so the UI can show badges and ready-stat
 board or switch devices:
 
 - `GET /projects/:projectId/enhancements`
-  - Returns `{ "enhancements": { "<cardId>": { "status": "enhancing" | "ready", "suggestion"?: { "title": string, "description"?: string } } } }`.
-  - The client polls this endpoint on board load and after state changes to hydrate each card’s badge and sparkle icon.
+  - Returns `{ "enhancements": { "<cardId>": { "status": "enhancing" | "ready", "suggestion?": { "title": string, "description?": string } } } }`.
+  - The client polls this endpoint on board load and after state changes to hydrate each card's badge and sparkle icon.
 - `PUT /projects/:projectId/cards/:cardId/enhancement`
   - Persists the current status (`"enhancing"` while the job is running, `"ready"` once the agent response arrives) and
     an optional `suggestion` payload derived from the enhancement result.
@@ -116,8 +116,8 @@ inline task with `kind = "ticketEnhance"`:
   - Resolves an effective `boardId` from the provided value, the project board, or the project ID.
   - Chooses an agent:
     - Uses the explicit `agentKey` when provided (for advanced integrations).
-    - Otherwise prefers the project’s configured `inlineAgent`.
-    - When no `inlineAgent` is configured, falls back to the project’s `defaultAgent`, or `"DROID"` when none is set.
+    - Otherwise prefers the project's configured `inlineAgent`.
+    - When no `inlineAgent` is configured, falls back to the project's `defaultAgent`, or `"DROID"` when none is set.
   - Validates that the agent exists and supports inline ticket enhancement, throwing errors for:
     - `Project not found`.
     - `Unknown agent: <KEY>`.
@@ -130,12 +130,12 @@ inline task with `kind = "ticketEnhance"`:
   - Resolves an agent profile in this order:
     - Uses the explicit `profileId` when provided.
     - Otherwise, consults the per-inline-agent mapping for `InlineAgentId = "ticketEnhance"` (when configured) to pick a profile dedicated to ticket enhancement.
-    - Otherwise, when using the project’s `inlineAgent`, prefers the project’s configured `inlineProfileId`.
-    - Otherwise, when falling back to the default agent, prefers the project’s `defaultProfileId` (if configured).
-    - In all cases, when the referenced profile is missing or invalid, logs a warning and falls back to the agent’s default profile so enhancement can still proceed.
-  - For inline requests, prefers an agent’s inline profile prompt (when configured) over the primary profile prompt:
+    - Otherwise, when using the project's `inlineAgent`, prefers the project's configured `inlineProfileId`.
+    - Otherwise, when falling back to the default agent, prefers the project's `defaultProfileId` (if configured).
+    - In all cases, when the referenced profile is missing or invalid, logs a warning and falls back to the agent's default profile so enhancement can still proceed.
+  - For inline requests, prefers an agent's inline profile prompt (when configured) over the primary profile prompt:
     - If the resolved profile contains `inlineProfile`, it is used to tailor the ticket-enhancement prompt.
-    - Otherwise, the primary profile’s prompt (e.g. `appendPrompt`) is used as before.
+    - Otherwise, the primary profile's prompt (e.g. `appendPrompt`) is used as before.
   - Annotates the inline context with `profileSource: "inline" | "primary"` so telemetry can distinguish which prompt was used.
   - Invokes `runInlineTask({agentKey, kind: "ticketEnhance", input, profile, context, signal})`.
   - Returns the `TicketEnhanceResult` (rewritten title + description) to the caller.
@@ -149,7 +149,17 @@ inline task with `kind = "ticketEnhance"`:
 
 - Turning terse titles into fuller tickets with acceptance criteria before starting an Attempt.
 - Cleaning up imported GitHub issues or backlog items without touching the underlying repository.
-- Giving non-technical stakeholders a simple “Improve this ticket” button while keeping full control over what actually
+- Giving non-technical stakeholders a simple "Improve this ticket" button while keeping full control over what actually
   gets saved.
+
+## Custom prompts
+
+Projects can override the default ticket enhancement prompt with a custom one via the **Custom Prompts** section in project settings. When a custom prompt is configured:
+
+- Your custom prompt replaces the built-in system prompt as the base.
+- The ticket context (title, description, type) is automatically appended to your custom prompt.
+- Profile append prompts still apply on top of the custom prompt.
+
+This allows you to tailor the enhancement behavior to your project's conventions while keeping the input context intact.
 
 For implementation details on agents, profiles, and the enhancement contract, see `core/agents-and-profiles.md`.
