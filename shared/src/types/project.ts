@@ -85,6 +85,16 @@ export interface ProjectSettings {
     lastGithubPrAutoCloseStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     lastGithubIssueSyncAt: string | null
     lastGithubIssueSyncStatus: 'idle' | 'running' | 'succeeded' | 'failed'
+    /**
+     * Custom prompt for ticket enhancement. When set, replaces the default
+     * system prompt for enhancing tickets.
+     */
+    enhancePrompt: string | null
+    /**
+     * Custom prompt for PR summary generation. When set, replaces the default
+     * system prompt for generating PR titles and descriptions.
+     */
+    prSummaryPrompt: string | null
     createdAt: string
     updatedAt: string
 }
@@ -114,6 +124,8 @@ export interface UpdateProjectSettingsRequest {
     githubIssueSyncIntervalMinutes?: number
     githubIssueAutoCreateEnabled?: boolean
     autoCloseTicketOnPRMerge?: boolean
+    enhancePrompt?: string | null
+    prSummaryPrompt?: string | null
 }
 
 export type ProjectSettingsResponse = {

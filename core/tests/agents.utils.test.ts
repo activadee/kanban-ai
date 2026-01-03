@@ -159,4 +159,123 @@ describe('agents/utils buildTicketEnhancePrompt', () => {
         const prompt = buildTicketEnhancePrompt(baseInput)
         expect(prompt).not.toContain('Type:')
     })
+
+    it('uses custom prompt when provided', () => {
+        const prompt = buildTicketEnhancePrompt({
+            ...baseInput,
+            customPrompt: 'You are a specialized ticket writer for React projects.',
+        })
+        expect(prompt).toContain('You are a specialized ticket writer for React projects.')
+        // Should NOT contain the default prompt
+        expect(prompt).not.toContain('Before writing the ticket, analyze the repository')
+    })
+
+    it('appends input context to custom prompt', () => {
+        const prompt = buildTicketEnhancePrompt({
+            ...baseInput,
+            customPrompt: 'Custom instructions here.',
+        })
+        expect(prompt).toContain('Input:')
+        expect(prompt).toContain('Title: Add login')
+        expect(prompt).toContain('Description:')
+        expect(prompt).toContain('Implement basic login form')
+    })
+
+    it('appends output format requirements to custom prompt', () => {
+        const prompt = buildTicketEnhancePrompt({
+            ...baseInput,
+            customPrompt: 'Custom instructions here.',
+        })
+        expect(prompt).toContain('Output format requirements (MUST follow):')
+        expect(prompt).toContain('First line MUST be: # <Title>')
+        expect(prompt).toContain('Markdown format')
+    })
+
+    it('includes append prompt with custom prompt', () => {
+        const prompt = buildTicketEnhancePrompt(
+            {...baseInput, customPrompt: 'Custom base.'},
+            'Additional instructions from profile.',
+        )
+        expect(prompt).toContain('Custom base.')
+        expect(prompt).toContain('Additional instructions from profile.')
+    })
+
+    it('has proper newline separation in custom prompt', () => {
+        const prompt = buildTicketEnhancePrompt({
+            ...baseInput,
+            customPrompt: 'Custom prompt ending without newline',
+        })
+        // The custom prompt should be followed by a newline before Input:
+        expect(prompt).toMatch(/Custom prompt ending without newline\n+\nInput:/)
+    })
+})
+
+describe('agents/utils buildPrSummaryPrompt with custom prompt', () => {
+    const baseInput = {
+        repositoryPath: '/tmp/repo',
+        baseBranch: 'main',
+        headBranch: 'feature/test',
+    }
+
+    it('uses custom prompt when provided', () => {
+        const prompt = buildPrSummaryPrompt({
+            ...baseInput,
+            customPrompt: 'You are a PR writer focusing on API changes.',
+        })
+        expect(prompt).toContain('You are a PR writer focusing on API changes.')
+        // Should NOT contain the default prompt intro
+        expect(prompt).not.toContain('You are a pull request generator for a software project.')
+    })
+
+    it('appends repository context to custom prompt', () => {
+        const prompt = buildPrSummaryPrompt({
+            ...baseInput,
+            customPrompt: 'Custom PR instructions.',
+        })
+        expect(prompt).toContain('Repository context:')
+        expect(prompt).toContain('Base branch: main')
+        expect(prompt).toContain('Head branch: feature/test')
+    })
+
+    it('appends output format requirements to custom prompt', () => {
+        const prompt = buildPrSummaryPrompt({
+            ...baseInput,
+            customPrompt: 'Custom PR instructions.',
+        })
+        expect(prompt).toContain('Output format requirements (MUST follow):')
+        expect(prompt).toContain('First line MUST be: # <PR Title>')
+        expect(prompt).toContain('maximum 5 bulletpoints')
+        expect(prompt).toContain('1-2 lines maximum')
+    })
+
+    it('includes commit and diff summaries with custom prompt', () => {
+        const prompt = buildPrSummaryPrompt({
+            ...baseInput,
+            customPrompt: 'Custom instructions.',
+            commitSummary: 'abc123 Fix bug',
+            diffSummary: '2 files changed',
+        })
+        expect(prompt).toContain('Commits (base..head):')
+        expect(prompt).toContain('abc123 Fix bug')
+        expect(prompt).toContain('Diff summary (files and stats):')
+        expect(prompt).toContain('2 files changed')
+    })
+
+    it('includes append prompt with custom prompt', () => {
+        const prompt = buildPrSummaryPrompt(
+            {...baseInput, customPrompt: 'Custom base.'},
+            'Additional profile instructions.',
+        )
+        expect(prompt).toContain('Custom base.')
+        expect(prompt).toContain('Additional profile instructions.')
+    })
+
+    it('has proper newline separation in custom prompt', () => {
+        const prompt = buildPrSummaryPrompt({
+            ...baseInput,
+            customPrompt: 'Custom prompt without trailing newline',
+        })
+        // Should have proper separation before Repository context
+        expect(prompt).toMatch(/Custom prompt without trailing newline\n+\nRepository context:/)
+    })
 })

@@ -78,8 +78,39 @@ export function buildTicketEnhancePrompt(
     appendPrompt?: string | null,
 ): string {
     const description = input.description?.trim() || "(keine Beschreibung)";
-
     const typeLine = input.ticketType ? `Type: ${input.ticketType}` : null;
+
+    // Input context block - always included
+    const inputContext = [
+        '',
+        'Input:',
+        `Title: ${input.title}`,
+        ...(typeLine ? [typeLine] : []),
+        'Description:',
+        description,
+    ].join('\n')
+
+    // Output format requirements - always enforced
+    const outputFormat = [
+        '',
+        'Output format requirements (MUST follow):',
+        '- Markdown format.',
+        '- First line MUST be: # <Title>',
+        '- Followed by detailed description with steps and acceptance criteria.',
+        '- No meta-explanation, only the ticket content.',
+        '- Do not edit or create files.',
+        '- Respond only with the ticket Markdown content, no additional commentary.',
+    ].join('\n')
+
+    const extra = (appendPrompt ?? '').trim()
+
+    // If a custom prompt is provided, use it as the base instead of the default
+    if (input.customPrompt) {
+        const customBase = input.customPrompt.trim()
+        // Ensure proper separation between sections with double newlines
+        const fullPrompt = customBase + '\n' + inputContext + '\n' + outputFormat
+        return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
+    }
 
     const base = [
         'You are a ticket generator for a software project.',
@@ -106,12 +137,7 @@ export function buildTicketEnhancePrompt(
         '   - Note any prefixes or patterns used (feat:, fix:, etc.)',
         '',
         'Use this context to write a ticket that aligns with the project\'s conventions.',
-        '',
-        'Input:',
-        `Title: ${input.title}`,
-        ...(typeLine ? [typeLine] : []),
-        'Description:',
-        description,
+        inputContext,
         '',
         'Task:',
         'Write an improved ticket that meets the following requirements:',
@@ -124,7 +150,6 @@ export function buildTicketEnhancePrompt(
         '- Respond only with the ticket Markdown content, no additional commentary or instructions.',
     ].join('\n')
 
-    const extra = (appendPrompt ?? '').trim()
     return extra ? `${base}\n\n${extra}` : base
 }
 
@@ -132,33 +157,62 @@ export function buildPrSummaryPrompt(
     input: PrSummaryInlineInput,
     appendPrompt?: string | null,
 ): string {
-    const parts: string[] = []
-
-    parts.push('You are a pull request generator for a software project.')
-    parts.push('')
-    parts.push('Repository context:')
-    parts.push(`- Repository path: ${input.repositoryPath}`)
-    parts.push(`- Base branch: ${input.baseBranch}`)
-    parts.push(`- Head branch: ${input.headBranch}`)
-
     const commitSummary = (input.commitSummary ?? '').trim()
     const diffSummary = (input.diffSummary ?? '').trim()
 
+    // Build the context part that will be appended to any prompt
+    const contextParts: string[] = []
+    contextParts.push('')
+    contextParts.push('Repository context:')
+    contextParts.push(`- Repository path: ${input.repositoryPath}`)
+    contextParts.push(`- Base branch: ${input.baseBranch}`)
+    contextParts.push(`- Head branch: ${input.headBranch}`)
+
     if (commitSummary || diffSummary) {
-        parts.push('')
-        parts.push('Summary of changes between base and head:')
+        contextParts.push('')
+        contextParts.push('Summary of changes between base and head:')
         if (commitSummary) {
-            parts.push('')
-            parts.push('Commits (base..head):')
-            parts.push(commitSummary)
+            contextParts.push('')
+            contextParts.push('Commits (base..head):')
+            contextParts.push(commitSummary)
         }
         if (diffSummary) {
-            parts.push('')
-            parts.push('Diff summary (files and stats):')
-            parts.push(diffSummary)
+            contextParts.push('')
+            contextParts.push('Diff summary (files and stats):')
+            contextParts.push(diffSummary)
         }
     }
+    const contextBlock = contextParts.join('\n')
 
+    // Output format requirements - always enforced
+    const outputFormat = [
+        '',
+        'Output format requirements (MUST follow):',
+        '- Markdown format.',
+        '- First line MUST be: # <PR Title>',
+        '- Summary section with **maximum 5 bulletpoints** (fewer is better if changes are simple).',
+        '- Each bulletpoint must be **1-2 lines maximum**, concise and scannable.',
+        '- Prioritize the **most impactful changes** - omit trivial or redundant items.',
+        '- Use clear, actionable language (e.g., "Add", "Fix", "Update", "Remove").',
+        '- No meta-explanation, only the PR body content.',
+        '- Do not edit or create files.',
+        '- Respond only with the PR Markdown content, no additional commentary.',
+    ].join('\n')
+
+    const extra = (appendPrompt ?? '').trim()
+
+    // If a custom prompt is provided, use it as the base instead of the default
+    if (input.customPrompt) {
+        const customBase = input.customPrompt.trim()
+        // Ensure proper separation between sections with double newlines
+        const fullPrompt = customBase + '\n' + contextBlock + '\n' + outputFormat
+        return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
+    }
+
+    const parts: string[] = []
+
+    parts.push('You are a pull request generator for a software project.')
+    parts.push(contextBlock)
     parts.push('')
     parts.push('Task:')
     parts.push('Write a pull request title and body that meet the following requirements:')
@@ -173,6 +227,5 @@ export function buildPrSummaryPrompt(
     parts.push('- Respond only with the PR Markdown content, no additional commentary or instructions.')
 
     const base = parts.join('\n')
-    const extra = (appendPrompt ?? '').trim()
     return extra ? `${base}\n\n${extra}` : base
 }

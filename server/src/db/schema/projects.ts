@@ -44,6 +44,8 @@ export const projectSettings = sqliteTable('project_settings', {
     lastGithubPrAutoCloseStatus: text('last_github_pr_auto_close_status').notNull().default('idle'),
     lastGithubIssueSyncAt: integer('last_github_issue_sync_at', {mode: 'timestamp'}),
     lastGithubIssueSyncStatus: text('last_github_issue_sync_status').notNull().default('idle'),
+    enhancePrompt: text('enhance_prompt'),
+    prSummaryPrompt: text('pr_summary_prompt'),
     createdAt: integer('created_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull().default(sql`CURRENT_TIMESTAMP`),
 })

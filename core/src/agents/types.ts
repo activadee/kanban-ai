@@ -44,6 +44,11 @@ export type TicketEnhanceInput = {
     profileId?: string | null
     images?: MessageImage[]
     signal: AbortSignal
+    /**
+     * Optional custom prompt that replaces the default system prompt.
+     * When set, this prompt is used instead of the built-in enhance prompt.
+     */
+    customPrompt?: string | null
 }
 
 export type TicketEnhanceResult = {
@@ -101,6 +106,11 @@ export type PrSummaryInlineInput = {
      * For example, a trimmed `git diff --stat base..head` excerpt.
      */
     diffSummary?: string
+    /**
+     * Optional custom prompt that replaces the default system prompt.
+     * When set, this prompt is used instead of the built-in PR summary prompt.
+     */
+    customPrompt?: string | null
 }
 
 export type PrSummaryInlineResult = {

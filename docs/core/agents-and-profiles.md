@@ -87,12 +87,17 @@ Until additional agents are promoted, **Codex and OpenCode are considered stable
   - Typical use cases:
     - Enriching an imported GitHub issue before it becomes a KanbanAI card.
     - Rewriting terse card titles/descriptions with additional acceptance criteria before an Attempt starts.
+  - Custom prompts:
+    - Projects can configure a custom enhancement prompt via `enhancePrompt` in project settings.
+    - When set, the custom prompt replaces the default system prompt while the ticket context (title, description, type) is still appended.
+    - Profile append prompts continue to apply on top of the custom prompt.
   - Helper utilities:
     - `core/agents/utils#splitTicketMarkdown(markdown, fallbackTitle, fallbackDescription)` extracts a leading H1 (`# `)
       from LLM output, making it easier for agents to return Markdown while still conforming to the required result shape.
     - `core/agents/utils#buildTicketEnhancePrompt(input, appendPrompt)` builds a standardized English-language prompt for
       ticket enhancement, used by agents like DROID and CODEX so they can share the same Markdown contract (H1 title,
-      detailed body, and at least one `mermaid` diagram).
+      detailed body, and at least one `mermaid` diagram). When a custom prompt is configured in project settings, it
+      replaces the default base prompt while still appending the input context and any profile append prompt.
     - `TicketEnhanceInput` / `TicketEnhanceResult`, `InlineTaskKind`, `InlineTaskContext`, and the inline task maps are
       exported from `core/agentTypes` (via `core/src/index.ts`) so custom agents can share the same types without
       reaching into private modules.
@@ -139,6 +144,10 @@ Until additional agents are promoted, **Codex and OpenCode are considered stable
     - Otherwise prefers the project's configured inline agent/profile when set.
     - Otherwise falls back to the project's default agent/profile (or `"DROID"` when no default agent is set).
     - Allows advanced callers to override `agentKey` / `profileId` explicitly.
+  - Custom prompts:
+    - Projects can configure a custom PR summary prompt via `prSummaryPrompt` in project settings.
+    - When set, the custom prompt replaces the default system prompt while the repository and change context is still appended.
+    - Profile append prompts continue to apply on top of the custom prompt.
   - Loads the project and settings (including `repositoryPath` and `baseBranch`) and constructs a `PrSummaryInlineInput`:
     - `repositoryPath`, `baseBranch`, `headBranch`, plus optional change summaries in the future.
   - Resolves the agent profile using the shared profile resolution helpers, including support for inline-specific prompts via `inlineProfile`.

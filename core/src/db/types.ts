@@ -57,6 +57,8 @@ export interface ProjectSettingsRow {
     lastGithubPrAutoCloseStatus: string
     lastGithubIssueSyncAt: Date | null
     lastGithubIssueSyncStatus: string
+    enhancePrompt: string | null
+    prSummaryPrompt: string | null
     createdAt: Date
     updatedAt: Date
 }
@@ -92,6 +94,8 @@ export interface ProjectSettingsInsert {
     lastGithubPrAutoCloseStatus?: string
     lastGithubIssueSyncAt?: Date | null
     lastGithubIssueSyncStatus?: string
+    enhancePrompt?: string | null
+    prSummaryPrompt?: string | null
     createdAt?: Date
     updatedAt?: Date
 }
