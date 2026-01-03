@@ -17,6 +17,7 @@ import {createEditorsRouter} from './editor/routes'
 import {createAppSettingsRouter} from './settings/routes'
 import {createOnboardingRouter} from './onboarding/routes'
 import {createTerminalRouter, createProjectTerminalRouter} from './terminal/routes'
+import {createWorktreesRouter} from './worktrees/worktrees.routes'
 import {createEventBus, type AppEventBus} from './events/bus'
 import {registerEventListeners} from './events/register'
 import {createDashboardRouter} from './dashboard/routes'
@@ -110,6 +111,7 @@ export const createApp = ({
     // GitHub PR endpoints under /projects/:projectId/pull-requests
     api.route('/projects', createGithubProjectRouter())
     api.route('/projects/:projectId/terminals', createProjectTerminalRouter())
+    api.route('/projects/:projectId/worktrees', createWorktreesRouter())
     api.route('/auth/github', createGithubRouter())
     api.route('/fs', createFilesystemRouter())
     api.route('/attempts', createAttemptsRouter())
