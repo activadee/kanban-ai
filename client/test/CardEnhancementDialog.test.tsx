@@ -33,7 +33,6 @@ describe("CardEnhancementDialog", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current Title", description: "Current Desc" }}
                 enhanced={{
                     title: "Enhanced Title",
@@ -61,7 +60,6 @@ describe("CardEnhancementDialog", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={onAccept}

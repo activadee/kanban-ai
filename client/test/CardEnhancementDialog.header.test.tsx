@@ -33,7 +33,6 @@ describe("CardEnhancementDialog – header", () => {
                 open
                 onOpenChange={vi.fn()}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Old", description: "before" }}
                 enhanced={{ title: "New", description: "after" }}
                 onAccept={vi.fn()}

@@ -44,7 +44,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={() => {}}
@@ -66,7 +65,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={() => {}}
@@ -89,7 +87,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={() => {}}
@@ -111,7 +108,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={() => {}}
@@ -133,7 +129,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={onAccept}
@@ -162,7 +157,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={onAccept}
@@ -188,7 +182,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={onAccept}
@@ -215,7 +208,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={onAccept}
@@ -238,7 +230,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={() => {}}
@@ -259,7 +250,6 @@ describe("CardEnhancementDialog - GitHub Issue Feature", () => {
                 open
                 onOpenChange={() => {}}
                 projectId="test-project"
-                boardId="test-board"
                 current={{ title: "Current", description: "" }}
                 enhanced={{ title: "Enhanced", description: "" }}
                 onAccept={() => {}}

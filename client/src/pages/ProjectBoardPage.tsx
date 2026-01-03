@@ -545,7 +545,6 @@ export function ProjectBoardPage() {
                     if (!open) setEnhancementDialogCardId(null);
                 }}
                 projectId={projectId}
-                boardId={boardId}
                 current={{
                     title:
                         (enhancementDialogCardId &&
@@ -587,7 +586,11 @@ export function ProjectBoardPage() {
 
                         if (createGithubIssue === true) {
                             try {
-                                await createCardGithubIssue(boardId, enhancementDialogCardId);
+                                const result = await createCardGithubIssue(boardId, enhancementDialogCardId);
+                                toast({
+                                    title: "GitHub issue created",
+                                    description: `Issue #${result.issueNumber} created successfully`,
+                                });
                             } catch (githubErr) {
                                 console.error("GitHub issue creation failed", githubErr);
                                 const problem = describeApiError(

@@ -25,7 +25,6 @@ type CardEnhancementDialogProps = {
     current: TicketSnapshot
     enhanced: TicketSnapshot
     projectId: string
-    boardId: string
     onAccept: (createGithubIssue?: boolean) => Promise<void> | void
     onReject: () => Promise<void> | void
 }
@@ -36,7 +35,6 @@ export function CardEnhancementDialog({
                                           current,
                                           enhanced,
                                           projectId,
-                                          boardId: _boardId,
                                           onAccept,
                                           onReject,
                                       }: CardEnhancementDialogProps) {
