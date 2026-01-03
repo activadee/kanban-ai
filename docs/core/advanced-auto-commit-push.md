@@ -71,6 +71,7 @@ The retry process emits the following events for real-time UI updates:
 - `git.rebase.completed`: Published when rebase succeeds
 - `git.rebase.aborted`: Published when rebase has conflicts or fails (with reason: "conflicts" or "error")
 - `git.push.retried`: Published when retry push is attempted
+- `git.push.failed`: Published when push fails (including after retry exhaustion)
 
 All operations are logged to attempt logs for visibility.
 
