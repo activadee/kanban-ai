@@ -167,13 +167,12 @@ export async function runGithubPrAutoCloseTick(
                     continue;
                 }
                 
-                if (
-                    !settingsSync.isGithubPrAutoCloseDue(
-                        settings,
-                        now,
-                    )
-                )
+                const prDue = settingsSync.isGithubPrAutoCloseDue(settings, now);
+                const issueDue = settingsSync.isGithubIssueAutoCloseDue?.(settings, now) ?? false;
+                
+                if (!prDue && !issueDue) {
                     continue;
+                }
 
                 const lockAcquired =
                     await settingsSync.tryStartGithubPrAutoClose(

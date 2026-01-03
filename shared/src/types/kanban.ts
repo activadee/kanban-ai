@@ -20,8 +20,8 @@ export interface Card {
     ticketKey?: string | null
     prUrl?: string | null
     /**
-     * Per-card opt-out from project-level auto-close on PR merge.
-     * When true, this card will not be auto-closed.
+     * Per-card opt-out from project-level auto-close.
+     * When true, this card will not be auto-closed on PR merge or GitHub issue close.
      */
     disableAutoCloseOnPRMerge?: boolean
     ticketType?: TicketType | null

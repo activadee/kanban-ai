@@ -227,8 +227,8 @@ describe("github PR auto-close scheduler", () => {
 
     it("skips when auto-close is disabled", async () => {
         mockGetSettings.mockResolvedValue({
-            autoCloseTicketOnPRMerge: true,
-            autoCloseTicketOnIssueClose: true,
+            autoCloseTicketOnPRMerge: false,
+            autoCloseTicketOnIssueClose: false,
             githubIssueSyncIntervalMinutes: 1,
             lastGithubPrAutoCloseAt: null,
             lastGithubPrAutoCloseStatus: "idle",
@@ -450,6 +450,14 @@ describe("github PR auto-close scheduler", () => {
     });
 
     it("skips when GitHub issue is still open", async () => {
+        mockGetSettings.mockResolvedValue({
+            autoCloseTicketOnPRMerge: false,
+            autoCloseTicketOnIssueClose: true,
+            githubIssueSyncIntervalMinutes: 1,
+            lastGithubPrAutoCloseAt: null,
+            lastGithubPrAutoCloseStatus: "idle",
+        });
+        mockListCardsForColumns.mockResolvedValue([]);
         mockListCardsWithGithubIssuesNotInDone.mockResolvedValue([
             {
                 id: "card-issue-2",
@@ -495,7 +503,30 @@ describe("github PR auto-close scheduler", () => {
     });
 
     it("skips cards with disableAutoCloseOnPRMerge when checking issues", async () => {
-        mockListCardsWithGithubIssuesNotInDone.mockResolvedValue([]);
+        mockGetSettings.mockResolvedValue({
+            autoCloseTicketOnPRMerge: false,
+            autoCloseTicketOnIssueClose: true,
+            githubIssueSyncIntervalMinutes: 1,
+            lastGithubPrAutoCloseAt: null,
+            lastGithubPrAutoCloseStatus: "idle",
+        });
+        mockListCardsForColumns.mockResolvedValue([]);
+        mockListCardsWithGithubIssuesNotInDone.mockResolvedValue([
+            {
+                id: "card-1",
+                boardId: "board-1",
+                columnId: "col-123",
+                ticketKey: "ISSUE-1",
+                issueNumber: 100,
+                disableAutoCloseOnPRMerge: true,
+            },
+        ]);
+        mockGetIssue.mockResolvedValue({
+            number: 100,
+            title: "Test Issue",
+            state: "closed",
+            html_url: "https://github.com/owner/repo/issues/100",
+        });
 
         const events = {publish: vi.fn()} as unknown as AppEventBus;
         const {runGithubPrAutoCloseTick} = await import(
@@ -507,6 +538,11 @@ describe("github PR auto-close scheduler", () => {
         expect(mockListCardsWithGithubIssuesNotInDone).toHaveBeenCalledWith(
             "board-1",
             ["col-456"],
+        );
+        expect(mockMoveBoardCard).not.toHaveBeenCalled();
+        expect(events.publish).not.toHaveBeenCalledWith(
+            "github.issue.closed.autoClosed",
+            expect.anything(),
         );
     });
 });

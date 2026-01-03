@@ -46,6 +46,22 @@ export function isGithubPrAutoCloseDue(
     return elapsedMs >= intervalMinutes * 60 * 1000
 }
 
+export function isGithubIssueAutoCloseDue(
+    settings: ProjectSettings,
+    now: Date = new Date(),
+): boolean {
+    if (!isGithubIssueAutoCloseEnabled(settings)) return false
+    const intervalMinutes = normalizeGithubIssueSyncInterval(
+        settings.githubIssueSyncIntervalMinutes,
+    )
+    const lastAtStr = settings.lastGithubPrAutoCloseAt
+    if (!lastAtStr) return true
+    const lastAt = new Date(lastAtStr)
+    if (Number.isNaN(lastAt.getTime())) return true
+    const elapsedMs = now.getTime() - lastAt.getTime()
+    return elapsedMs >= intervalMinutes * 60 * 1000
+}
+
 export async function tryStartGithubPrAutoClose(
     projectId: string,
     now: Date = new Date(),
