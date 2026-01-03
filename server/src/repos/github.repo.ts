@@ -143,6 +143,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                         isEnhanced: cards.isEnhanced,
                         prUrl: cards.prUrl,
                         disableAutoCloseOnPRMerge: cards.disableAutoCloseOnPRMerge,
+                        disableAutoCloseOnIssueClose: cards.disableAutoCloseOnIssueClose,
                         createdAt: cards.createdAt,
                         updatedAt: cards.updatedAt,
                         issueNumber: githubIssues.issueNumber,
@@ -154,7 +155,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                     .where(
                         and(
                             eq(cards.boardId, boardId),
-                            eq(cards.disableAutoCloseOnPRMerge, false),
+                            eq(cards.disableAutoCloseOnIssueClose, false),
                         ),
                     )
             }
@@ -172,6 +173,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                     isEnhanced: cards.isEnhanced,
                     prUrl: cards.prUrl,
                     disableAutoCloseOnPRMerge: cards.disableAutoCloseOnPRMerge,
+                    disableAutoCloseOnIssueClose: cards.disableAutoCloseOnIssueClose,
                     createdAt: cards.createdAt,
                     updatedAt: cards.updatedAt,
                     issueNumber: githubIssues.issueNumber,
@@ -184,7 +186,7 @@ export function createGithubRepo(db: DbExecutor): GithubRepo {
                     and(
                         eq(cards.boardId, boardId),
                         not(inArray(cards.columnId, doneColumnIds)),
-                        eq(cards.disableAutoCloseOnPRMerge, false),
+                        eq(cards.disableAutoCloseOnIssueClose, false),
                     ),
                 )
         },

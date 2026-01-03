@@ -137,6 +137,10 @@ function mapRow(row: ProjectSettingsRow): ProjectSettings {
         lastGithubPrAutoCloseStatus: normalizeStatus(
             row.lastGithubPrAutoCloseStatus,
         ),
+        lastGithubIssueAutoCloseAt: toNullableIso(row.lastGithubIssueAutoCloseAt),
+        lastGithubIssueAutoCloseStatus: normalizeStatus(
+            row.lastGithubIssueAutoCloseStatus,
+        ),
         lastGithubIssueSyncAt: toNullableIso(row.lastGithubIssueSyncAt),
         lastGithubIssueSyncStatus: normalizeStatus(
             row.lastGithubIssueSyncStatus,
@@ -185,8 +189,11 @@ export async function ensureProjectSettings(
             DEFAULT_GITHUB_SYNC_INTERVAL_MINUTES,
         githubIssueAutoCreateEnabled: false,
         autoCloseTicketOnPRMerge: false,
+        autoCloseTicketOnIssueClose: false,
         lastGithubPrAutoCloseAt: null,
         lastGithubPrAutoCloseStatus: "idle",
+        lastGithubIssueAutoCloseAt: null,
+        lastGithubIssueAutoCloseStatus: "idle",
         lastGithubIssueSyncAt: null,
         lastGithubIssueSyncStatus: "idle",
         enhancePrompt: null,
@@ -274,6 +281,9 @@ export async function updateProjectSettings(
     }
     if (updates.autoCloseTicketOnPRMerge !== undefined) {
         patch.autoCloseTicketOnPRMerge = Boolean(updates.autoCloseTicketOnPRMerge);
+    }
+    if (updates.autoCloseTicketOnIssueClose !== undefined) {
+        patch.autoCloseTicketOnIssueClose = Boolean(updates.autoCloseTicketOnIssueClose);
     }
     if (updates.enhancePrompt !== undefined) {
         patch.enhancePrompt = nn(updates.enhancePrompt) as string | null;

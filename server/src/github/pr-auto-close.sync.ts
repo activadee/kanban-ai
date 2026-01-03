@@ -161,14 +161,14 @@ export async function runGithubPrAutoCloseTick(
                 const settings = await services.getSettings(projectId);
                 
                 const prAutoCloseEnabled = settingsSync.isGithubPrAutoCloseEnabled(settings);
-                const issueAutoCloseEnabled = settingsSync.isGithubIssueAutoCloseEnabled?.(settings) ?? false;
+                const issueAutoCloseEnabled = settingsSync.isGithubIssueAutoCloseEnabled(settings);
                 
                 if (!prAutoCloseEnabled && !issueAutoCloseEnabled) {
                     continue;
                 }
                 
                 const prDue = settingsSync.isGithubPrAutoCloseDue(settings, now);
-                const issueDue = settingsSync.isGithubIssueAutoCloseDue?.(settings, now) ?? false;
+                const issueDue = settingsSync.isGithubIssueAutoCloseDue(settings, now);
                 
                 if (!prDue && !issueDue) {
                     continue;
@@ -384,7 +384,7 @@ export async function runGithubPrAutoCloseTick(
                                         if (latest.boardId !== boardId) continue;
                                         if (!reviewColumnIdSet.has(latest.columnId))
                                             continue;
-                                        if (latest.disableAutoCloseOnPRMerge) continue;
+                            if (latest.disableAutoCloseOnIssueClose) continue;
                                         if (!latest.prUrl) continue;
                                         const parsedLatest = parsePrUrl(latest.prUrl);
                                         if (!parsedLatest) continue;

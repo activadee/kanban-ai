@@ -54,7 +54,7 @@ export function isGithubIssueAutoCloseDue(
     const intervalMinutes = normalizeGithubIssueSyncInterval(
         settings.githubIssueSyncIntervalMinutes,
     )
-    const lastAtStr = settings.lastGithubPrAutoCloseAt
+    const lastAtStr = settings.lastGithubIssueAutoCloseAt
     if (!lastAtStr) return true
     const lastAt = new Date(lastAtStr)
     if (Number.isNaN(lastAt.getTime())) return true

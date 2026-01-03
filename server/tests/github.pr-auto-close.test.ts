@@ -29,6 +29,7 @@ const mockIssueAutoCloseEnabled = vi.fn(
         Boolean(settings.autoCloseTicketOnIssueClose),
 );
 const mockIsDue = vi.fn(() => true);
+const mockIssueAutoCloseDue = vi.fn(() => true);
 const mockTryStart = vi.fn().mockResolvedValue(true);
 const mockComplete = vi.fn().mockResolvedValue(undefined);
 const mockGetGitOriginUrl = vi.fn().mockResolvedValue("https://github.com/o/r.git");
@@ -59,6 +60,7 @@ function makeDeps() {
             isGithubPrAutoCloseEnabled: mockIsEnabled,
             isGithubIssueAutoCloseEnabled: mockIssueAutoCloseEnabled,
             isGithubPrAutoCloseDue: mockIsDue,
+            isGithubIssueAutoCloseDue: mockIssueAutoCloseDue,
             tryStartGithubPrAutoClose: mockTryStart,
             completeGithubPrAutoClose: mockComplete,
         },
@@ -84,6 +86,7 @@ describe("github PR auto-close scheduler", () => {
         mockIsEnabled.mockReset();
         mockIssueAutoCloseEnabled.mockReset();
         mockIsDue.mockReset();
+        mockIssueAutoCloseDue.mockReset();
         mockTryStart.mockReset();
         mockComplete.mockReset();
         mockGetGitOriginUrl.mockReset();
@@ -101,6 +104,7 @@ describe("github PR auto-close scheduler", () => {
                 Boolean(settings.autoCloseTicketOnIssueClose),
         );
         mockIsDue.mockReturnValue(true);
+        mockIssueAutoCloseDue.mockReturnValue(true);
         mockTryStart.mockResolvedValue(true);
         mockComplete.mockResolvedValue(undefined);
         mockGetGitOriginUrl.mockResolvedValue("https://github.com/o/r.git");
@@ -389,6 +393,7 @@ describe("github PR auto-close scheduler", () => {
                 prUrl: null,
                 ticketType: null,
                 disableAutoCloseOnPRMerge: false,
+                disableAutoCloseOnIssueClose: false,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 issueNumber: 42,
@@ -414,6 +419,7 @@ describe("github PR auto-close scheduler", () => {
                     ticketKey: "PRJ-10",
                     prUrl: null,
                     disableAutoCloseOnPRMerge: false,
+                    disableAutoCloseOnIssueClose: false,
                 };
             }
             return null;
@@ -471,6 +477,7 @@ describe("github PR auto-close scheduler", () => {
                 prUrl: null,
                 ticketType: null,
                 disableAutoCloseOnPRMerge: false,
+                disableAutoCloseOnIssueClose: false,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 issueNumber: 43,
@@ -502,7 +509,7 @@ describe("github PR auto-close scheduler", () => {
         );
     });
 
-    it("skips cards with disableAutoCloseOnPRMerge when checking issues", async () => {
+    it("skips cards with disableAutoCloseOnIssueClose when checking issues", async () => {
         mockGetSettings.mockResolvedValue({
             autoCloseTicketOnPRMerge: false,
             autoCloseTicketOnIssueClose: true,
@@ -518,9 +525,20 @@ describe("github PR auto-close scheduler", () => {
                 columnId: "col-123",
                 ticketKey: "ISSUE-1",
                 issueNumber: 100,
-                disableAutoCloseOnPRMerge: true,
+                disableAutoCloseOnPRMerge: false,
+                disableAutoCloseOnIssueClose: true,
+                owner: "owner",
+                repo: "repo",
             },
         ]);
+        mockGetCardById.mockResolvedValue({
+            id: "card-1",
+            boardId: "board-1",
+            columnId: "col-123",
+            ticketKey: "ISSUE-1",
+            disableAutoCloseOnPRMerge: false,
+            disableAutoCloseOnIssueClose: true,
+        });
         mockGetIssue.mockResolvedValue({
             number: 100,
             title: "Test Issue",

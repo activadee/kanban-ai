@@ -77,8 +77,9 @@ export interface ProjectSettings {
     autoCloseTicketOnPRMerge: boolean
     autoCloseTicketOnIssueClose: boolean
     lastGithubPrAutoCloseAt: string | null
-    /** Current/last status of the PR auto-close tick. */
     lastGithubPrAutoCloseStatus: 'idle' | 'running' | 'succeeded' | 'failed'
+    lastGithubIssueAutoCloseAt: string | null
+    lastGithubIssueAutoCloseStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     lastGithubIssueSyncAt: string | null
     lastGithubIssueSyncStatus: 'idle' | 'running' | 'succeeded' | 'failed'
     /**
