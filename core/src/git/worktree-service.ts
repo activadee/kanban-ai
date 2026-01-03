@@ -199,6 +199,136 @@ export async function commitAtPath(
     return sha
 }
 
+export function isPushConflictError(error: Error): boolean {
+    const conflictPatterns = [
+        /rejected.*non-fast-forward/i,
+        /failed to push.*updates were rejected/i,
+        /fetch first/i,
+        /\[rejected\]/i,
+    ]
+    const errorMessage = error.message + ((error as any).stderr ?? '')
+    return conflictPatterns.some(pattern => pattern.test(errorMessage))
+}
+
+/**
+ * Attempts to pull with rebase in the specified worktree.
+ * 
+ * ERROR HANDLING CONTRACT:
+ * - Returns result objects for all expected git operations (success, conflicts, network errors)
+ * - MAY throw for unexpected system failures (out of memory, filesystem corruption, simple-git internal errors)
+ * 
+ * RETURN VALUES:
+ * - {success: true} - Rebase completed successfully
+ * - {success: false, hasConflicts: true} - Conflicts detected; rebase was aborted or reset recovery attempted
+ * - {success: false, hasConflicts: false} - Other failures (network errors, permission issues, etc.)
+ * 
+ * RECOVERY BEHAVIOR:
+ * - On conflicts: attempts rebase --abort
+ * - If abort fails: attempts reset --hard HEAD + clean -fd
+ * - Verifies repository cleanliness after recovery (checks modified, created, deleted, renamed, untracked, staged)
+ * 
+ * CALLER RESPONSIBILITY:
+ * - Check result.success to determine if rebase succeeded
+ * - Check result.hasConflicts to distinguish conflict errors from other errors
+ * - Read result.message for detailed error/status information
+ * - Wrap in try-catch to handle unexpected system failures (RECOMMENDED for production use)
+ */
+export async function pullRebaseAtPath(
+    worktreePath: string
+): Promise<{
+    success: boolean
+    hasConflicts: boolean
+    message: string
+}> {
+    const g = gitAtPath(worktreePath)
+    try {
+        await g.raw(['pull', '--rebase'])
+        return {
+            success: true,
+            hasConflicts: false,
+            message: 'Rebase completed successfully',
+        }
+    } catch (error) {
+        const errorMessage = (error as Error).message + ((error as any).stderr ?? '')
+        
+        const conflictPatterns = [
+            /conflict/i,
+            /could not apply/i,
+            /Resolve all conflicts/i,
+            /needs merge/i,
+            /cannot rebase/i,
+        ]
+        const hasConflicts = conflictPatterns.some(pattern => pattern.test(errorMessage))
+        
+        if (hasConflicts) {
+            try {
+                await g.raw(['rebase', '--abort'])
+                return {
+                    success: false,
+                    hasConflicts: true,
+                    message: 'Rebase has conflicts and was aborted',
+                }
+            } catch (abortError) {
+                console.warn('[git] rebase abort failed, attempting reset recovery:', (abortError as Error).message)
+                try {
+                    await g.raw(['reset', '--hard', 'HEAD'])
+                    await g.raw(['clean', '-fd'])
+                    
+                    const status = await g.status()
+                    const stagedCount = status.files.filter(f => {
+                        const indexFlag = f.index?.trim()
+                        return indexFlag && indexFlag !== ' ' && indexFlag !== '?'
+                    }).length
+                    const hasStagedChanges = stagedCount > 0
+                    const isClean = !status.conflicted.length && 
+                                   !status.modified.length && 
+                                   !status.created.length && 
+                                   !status.deleted.length &&
+                                   !status.renamed.length &&
+                                   !status.not_added.length &&
+                                   !hasStagedChanges
+                    
+                    if (!isClean) {
+                        const details = [
+                            status.modified.length && `${status.modified.length} modified`,
+                            status.created.length && `${status.created.length} created`,
+                            status.deleted.length && `${status.deleted.length} deleted`,
+                            status.renamed.length && `${status.renamed.length} renamed`,
+                            status.not_added.length && `${status.not_added.length} untracked`,
+                            status.conflicted.length && `${status.conflicted.length} conflicted`,
+                            stagedCount && `${stagedCount} staged`,
+                        ].filter(Boolean).join(', ')
+                        
+                        return {
+                            success: false,
+                            hasConflicts: true,
+                            message: `Reset completed but repository still has uncommitted changes: ${details}. Manual intervention required. Rebase abort failed: ${(abortError as Error).message}`,
+                        }
+                    }
+                    
+                    return {
+                        success: false,
+                        hasConflicts: true,
+                        message: `Rebase abort failed but repository was reset to clean state. Abort error: ${(abortError as Error).message}`,
+                    }
+                } catch (resetError) {
+                    return {
+                        success: false,
+                        hasConflicts: true,
+                        message: `Failed to abort rebase after conflicts detected. Repository may be in an inconsistent state. Manual intervention required: ${(abortError as Error).message}`,
+                    }
+                }
+            }
+        }
+        
+        return {
+            success: false,
+            hasConflicts: false,
+            message: `Rebase failed: ${(error as Error).message}`,
+        }
+    }
+}
+
 export async function pushAtPath(
     worktreePath: string,
     {remote, branch, token, setUpstream}: { remote?: string; branch?: string; token?: string; setUpstream?: boolean },
