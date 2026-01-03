@@ -270,6 +270,17 @@ export async function performAutoCommit(params: AutoCommitParams) {
                     const retryBranch = postRebaseStatus.current || targetBranch
                     const retryRemote = preferredRemote?.trim() || (postRebaseStatus.tracking?.split('/')?.[0] ?? targetRemote)
                     
+                    if (!postRebaseStatus.current) {
+                        const warnTs = new Date()
+                        await insertAttemptLog({
+                            id: `log-${crypto.randomUUID()}`,
+                            attemptId,
+                            ts: warnTs,
+                            level: 'warn',
+                            message: '[autopush] warning: could not determine current branch after rebase, using original branch',
+                        })
+                    }
+                    
                     try {
                         await pushAtPath(worktreePath, {remote: retryRemote, branch: retryBranch}, {projectId: boardId, attemptId})
                         const retryPushTs = new Date()

@@ -300,14 +300,14 @@ export async function pullRebaseAtPath(
                         return {
                             success: false,
                             hasConflicts: true,
-                            message: `Reset completed but repository still has uncommitted changes: ${details}. Manual intervention required. Original error: ${(abortError as Error).message}`,
+                            message: `Reset completed but repository still has uncommitted changes: ${details}. Manual intervention required. Rebase abort failed: ${(abortError as Error).message}`,
                         }
                     }
                     
                     return {
                         success: false,
                         hasConflicts: true,
-                        message: `Rebase abort failed but repository was reset to clean state. Original error: ${(abortError as Error).message}`,
+                        message: `Rebase abort failed but repository was reset to clean state. Abort error: ${(abortError as Error).message}`,
                     }
                 } catch (resetError) {
                     return {
