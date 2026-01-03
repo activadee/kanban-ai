@@ -11,6 +11,22 @@ type PromptsSectionProps = {
     }>) => void;
 }
 
+const ENHANCE_PLACEHOLDER = `You are a ticket generator for a software project.
+
+Analyze the repository to understand:
+- Project structure and tech stack
+- Naming conventions and patterns
+- Commit message style
+
+Write tickets that align with the project's conventions.`
+
+const PR_SUMMARY_PLACEHOLDER = `You are a pull request generator for a software project.
+
+Focus on:
+- Summarizing the key changes
+- Explaining the motivation
+- Highlighting any breaking changes`
+
 export function PromptsSection({
     enhancePrompt,
     prSummaryPrompt,
@@ -43,7 +59,7 @@ export function PromptsSection({
                     </p>
                     <Textarea
                         id="enhance-prompt"
-                        placeholder="You are a ticket generator for a software project..."
+                        placeholder={ENHANCE_PLACEHOLDER}
                         className="min-h-[200px] resize-y font-mono text-xs leading-relaxed"
                         value={enhancePrompt}
                         onChange={(e) => onChange({enhancePrompt: e.target.value})}
@@ -58,11 +74,11 @@ export function PromptsSection({
                         </Label>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Custom system prompt for generating PR titles and descriptions. Leave empty to use the default.
+                        Custom system prompt for generating PR summaries. Leave empty to use the default.
                     </p>
                     <Textarea
                         id="pr-summary-prompt"
-                        placeholder="You are a pull request generator for a software project..."
+                        placeholder={PR_SUMMARY_PLACEHOLDER}
                         className="min-h-[200px] resize-y font-mono text-xs leading-relaxed"
                         value={prSummaryPrompt}
                         onChange={(e) => onChange({prSummaryPrompt: e.target.value})}
@@ -72,9 +88,10 @@ export function PromptsSection({
 
             <div className="rounded-lg border border-border/30 bg-muted/10 p-4">
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                    <strong className="font-medium text-foreground">Note:</strong>{' '}
-                    Custom prompts replace the default system prompt. The ticket/PR context (title, description, diff, etc.)
-                    will be automatically appended to your custom prompt. Profile append prompts still apply on top.
+                    <strong className="font-medium text-foreground">How it works:</strong>{' '}
+                    Custom prompts replace the default instructions. The input context (ticket info, diff summary, etc.)
+                    and output format requirements are automatically appended to ensure correct formatting.
+                    Profile append prompts still apply on top.
                 </p>
             </div>
         </div>

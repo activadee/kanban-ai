@@ -80,20 +80,34 @@ export function buildTicketEnhancePrompt(
     const description = input.description?.trim() || "(keine Beschreibung)";
     const typeLine = input.ticketType ? `Type: ${input.ticketType}` : null;
 
+    // Input context block - always included
+    const inputContext = [
+        '',
+        'Input:',
+        `Title: ${input.title}`,
+        ...(typeLine ? [typeLine] : []),
+        'Description:',
+        description,
+    ].join('\n')
+
+    // Output format requirements - always enforced
+    const outputFormat = [
+        '',
+        'Output format requirements (MUST follow):',
+        '- Markdown format.',
+        '- First line MUST be: # <Title>',
+        '- Followed by detailed description with steps and acceptance criteria.',
+        '- No meta-explanation, only the ticket content.',
+        '- Do not edit or create files.',
+        '- Respond only with the ticket Markdown content, no additional commentary.',
+    ].join('\n')
+
+    const extra = (appendPrompt ?? '').trim()
+
     // If a custom prompt is provided, use it as the base instead of the default
     if (input.customPrompt) {
         const customBase = input.customPrompt.trim()
-        // Inject the input context into the custom prompt
-        const inputContext = [
-            '',
-            'Input:',
-            `Title: ${input.title}`,
-            ...(typeLine ? [typeLine] : []),
-            'Description:',
-            description,
-        ].join('\n')
-        const extra = (appendPrompt ?? '').trim()
-        const fullPrompt = customBase + inputContext
+        const fullPrompt = customBase + inputContext + outputFormat
         return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
     }
 
@@ -122,12 +136,7 @@ export function buildTicketEnhancePrompt(
         '   - Note any prefixes or patterns used (feat:, fix:, etc.)',
         '',
         'Use this context to write a ticket that aligns with the project\'s conventions.',
-        '',
-        'Input:',
-        `Title: ${input.title}`,
-        ...(typeLine ? [typeLine] : []),
-        'Description:',
-        description,
+        inputContext,
         '',
         'Task:',
         'Write an improved ticket that meets the following requirements:',
@@ -140,7 +149,6 @@ export function buildTicketEnhancePrompt(
         '- Respond only with the ticket Markdown content, no additional commentary or instructions.',
     ].join('\n')
 
-    const extra = (appendPrompt ?? '').trim()
     return extra ? `${base}\n\n${extra}` : base
 }
 
@@ -175,11 +183,27 @@ export function buildPrSummaryPrompt(
     }
     const contextBlock = contextParts.join('\n')
 
+    // Output format requirements - always enforced
+    const outputFormat = [
+        '',
+        'Output format requirements (MUST follow):',
+        '- Markdown format.',
+        '- First line MUST be: # <PR Title>',
+        '- Summary section with **maximum 5 bulletpoints** (fewer is better if changes are simple).',
+        '- Each bulletpoint must be **1-2 lines maximum**, concise and scannable.',
+        '- Prioritize the **most impactful changes** - omit trivial or redundant items.',
+        '- Use clear, actionable language (e.g., "Add", "Fix", "Update", "Remove").',
+        '- No meta-explanation, only the PR body content.',
+        '- Do not edit or create files.',
+        '- Respond only with the PR Markdown content, no additional commentary.',
+    ].join('\n')
+
+    const extra = (appendPrompt ?? '').trim()
+
     // If a custom prompt is provided, use it as the base instead of the default
     if (input.customPrompt) {
         const customBase = input.customPrompt.trim()
-        const extra = (appendPrompt ?? '').trim()
-        const fullPrompt = customBase + contextBlock
+        const fullPrompt = customBase + contextBlock + outputFormat
         return extra ? `${fullPrompt}\n\n${extra}` : fullPrompt
     }
 
@@ -201,6 +225,5 @@ export function buildPrSummaryPrompt(
     parts.push('- Respond only with the PR Markdown content, no additional commentary or instructions.')
 
     const base = parts.join('\n')
-    const extra = (appendPrompt ?? '').trim()
     return extra ? `${base}\n\n${extra}` : base
 }
