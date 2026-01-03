@@ -74,12 +74,8 @@ export interface ProjectSettings {
     githubIssueSyncState: 'open' | 'all' | 'closed'
     githubIssueSyncIntervalMinutes: number
     githubIssueAutoCreateEnabled: boolean
-    /**
-     * When enabled, KanbanAI automatically moves cards linked to merged PRs
-     * into the Done column (unless per-card opt-out is set).
-     */
     autoCloseTicketOnPRMerge: boolean
-    /** Last time the background PR auto-close ran (if enabled). */
+    autoCloseTicketOnIssueClose: boolean
     lastGithubPrAutoCloseAt: string | null
     /** Current/last status of the PR auto-close tick. */
     lastGithubPrAutoCloseStatus: 'idle' | 'running' | 'succeeded' | 'failed'
@@ -124,6 +120,7 @@ export interface UpdateProjectSettingsRequest {
     githubIssueSyncIntervalMinutes?: number
     githubIssueAutoCreateEnabled?: boolean
     autoCloseTicketOnPRMerge?: boolean
+    autoCloseTicketOnIssueClose?: boolean
     enhancePrompt?: string | null
     prSummaryPrompt?: string | null
 }
