@@ -143,8 +143,13 @@ describe('POST /projects/:projectId/worktrees/sync', () => {
 })
 
 describe('DELETE /projects/:projectId/worktrees/:id', () => {
-    beforeEach(() => {
-        vi.clearAllMocks()
+    beforeEach(async () => {
+        const {projectsRepo} = await import('core')
+        ;(projectsRepo.getColumnById as any).mockReset()
+        ;(projectsRepo.getColumnById as any).mockImplementation(async (id: string) => {
+            if (id === 'column-done') return mockColumn
+            return null
+        })
     })
 
     it('deletes worktree when card is in Done column', async () => {
@@ -186,10 +191,10 @@ describe('DELETE /projects/:projectId/worktrees/:id', () => {
 
     it('returns 409 when trying to delete active worktree without force', async () => {
         const {projectsRepo} = await import('core')
-        vi.mocked(projectsRepo.getColumnById).mockResolvedValueOnce({
+        ;(projectsRepo.getColumnById as any).mockResolvedValueOnce({
             id: 'column-progress',
             title: 'In Progress',
-        } as any)
+        })
 
         const app = createApp()
         const res = await app.request('/projects/project-1/worktrees/attempt-1', {
@@ -206,16 +211,83 @@ describe('DELETE /projects/:projectId/worktrees/:id', () => {
 
     it('allows force delete of active worktree', async () => {
         const {projectsRepo} = await import('core')
-        vi.mocked(projectsRepo.getColumnById).mockResolvedValue({
+        ;(projectsRepo.getColumnById as any).mockResolvedValueOnce({
             id: 'column-progress',
             title: 'In Progress',
-        } as any)
+        })
 
         const app = createApp()
         const res = await app.request('/projects/project-1/worktrees/attempt-1', {
             method: 'DELETE',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({force: true}),
+        })
+
+        expect(res.status).toBe(200)
+    })
+
+    it('deletes worktree with branch deletion options', async () => {
+        const app = createApp()
+        const res = await app.request('/projects/project-1/worktrees/attempt-1', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                deleteBranch: true,
+                deleteRemoteBranch: true,
+            }),
+        })
+
+        expect(res.status).toBe(200)
+
+        const body = await res.json()
+        expect(body.success).toBe(true)
+        expect(body.deletedPath).toBe('/path/to/worktree')
+    })
+
+    it('accepts deleteBranch without deleteRemoteBranch', async () => {
+        const app = createApp()
+        const res = await app.request('/projects/project-1/worktrees/attempt-1', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                deleteBranch: true,
+                deleteRemoteBranch: false,
+            }),
+        })
+
+        expect(res.status).toBe(200)
+    })
+
+    it('accepts deleteRemoteBranch without deleteBranch', async () => {
+        const app = createApp()
+        const res = await app.request('/projects/project-1/worktrees/attempt-1', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                deleteBranch: false,
+                deleteRemoteBranch: true,
+            }),
+        })
+
+        expect(res.status).toBe(200)
+    })
+
+    it('accepts all options together (force + branch deletion)', async () => {
+        const {projectsRepo} = await import('core')
+        ;(projectsRepo.getColumnById as any).mockResolvedValueOnce({
+            id: 'column-progress',
+            title: 'In Progress',
+        })
+
+        const app = createApp()
+        const res = await app.request('/projects/project-1/worktrees/attempt-1', {
+            method: 'DELETE',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                force: true,
+                deleteBranch: true,
+                deleteRemoteBranch: true,
+            }),
         })
 
         expect(res.status).toBe(200)
